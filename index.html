@@ -4,22 +4,44 @@
   <meta charset="UTF-8">
   <title>Meu Site</title>
 </head>
+
 <body>
   <h1>Meu primeiro site no ar 🚀</h1>
-  <p>Funcionando com Vercel!</p>
+  <p id="status">Aguardando ação...</p>
+
+  <button onclick="salvar()">Salvar no banco</button>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+
+    const supabaseUrl = 'https://iuyvebdanbnsgxtmbqlk.supabase.co'
+    const supabaseKey = 'sb_publishable_aBCTVUw3nVJB_EPsuNiRoA_hRK_pta-'
+
+    const client = createClient(supabaseUrl, supabaseKey)
+
+    console.log("Conectado ao Supabase 🚀", client)
+
+    // Função global (pra funcionar no botão)
+    window.salvar = async function () {
+      document.getElementById("status").innerText = "Salvando..."
+
+      const { data, error } = await client
+        .from('processamentos')
+        .insert([
+          {
+            nome: "teste",
+            parametros: { exemplo: 123 }
+          }
+        ])
+
+      if (error) {
+        console.error("Erro:", error)
+        document.getElementById("status").innerText = "Erro ao salvar ❌"
+      } else {
+        console.log("Sucesso:", data)
+        document.getElementById("status").innerText = "Salvo com sucesso ✅"
+      }
+    }
+  </script>
 </body>
 </html>
-
-<script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
-
-  const supabaseUrl = 'https://iuyvebdanbnsgxtmbqlk.supabase.co'
-  const supabaseKey = 'sb_publishable_aBCTVUw3nVJB_EPsuNiRoA_hRK_pta-'
-
-  const client = createClient(supabaseUrl, supabaseKey)
-
-  console.log("Conectado ao Supabase 🚀", client)
-</script>
-
-
-
