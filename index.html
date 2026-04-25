@@ -10,13 +10,16 @@
 </body>
 </html>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
-<script>
   const supabaseUrl = 'https://iuyvebdanbnsgxtmbqlk.supabase.co'
   const supabaseKey = 'sb_publishable_aBCTVUw3nVJB_EPsuNiRoA_hRK_pta-'
 
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey)
+  const client = createClient(supabaseUrl, supabaseKey)
 
-  console.log("Conectado ao Supabase 🚀")
+  console.log("Conectado ao Supabase 🚀", client)
 </script>
+
+
+
