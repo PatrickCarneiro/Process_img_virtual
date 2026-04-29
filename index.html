@@ -1,47 +1,173 @@
+/* Teste GIT */
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Meu Site</title>
+
+<meta charset="UTF-8">
+<title>Processamento de Imagens Médicas</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+
+/* Remove espaçamentos padrão do navegador */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; 
+}
+
+/* FUNDO GERAL DA PÁGINA */
+body {
+  font-family: 'Poppins', sans-serif; 
+  background: linear-gradient(135deg, #0b1d3a, #050c1a);
+  color: white;
+  height: 100vh; /* Altura total da tela */
+  display: flex; /* Permite layout lado a lado */
+}
+
+/* MENU LATERAL */
+.sidebar {
+  width: 250px; /* Largura fixa */
+  background: rgba(10, 20, 40, 0.9); /* Fundo semi-transparente */
+  backdrop-filter: blur(10px); /* Efeito de vidro */
+  padding: 20px;
+  display: flex;
+  flex-direction: column; /* Organiza verticalmente */
+  justify-content: space-between; /* Espaça topo e base */
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+
+/* LOGO */
+.logo {
+  font-size: 25px;
+  font-weight: 600;
+  margin-bottom: 50px;
+}
+
+/* LISTA DO MENU */
+.menu {
+  list-style: none; /* Remove bolinhas */
+}
+
+/* ITEM DO MENU */
+.menu li {
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  cursor: pointer; /* Muda cursor */
+  transition: 0.3s; /* Animação suave */
+}
+
+/* Quando passa o mouse) */
+.menu li:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* ITEM ATIVO */
+.menu .active {
+  background: rgba(192,132,252,0.2);
+  color: #c084fc; /* Roxo */
+}
+
+/* CONTEÚDO PRINCIPAL */
+.main {
+  flex: 1; /* Ocupa todo espaço restante */
+  padding: 40px;
+}
+
+/* TÍTULO PRINCIPAL */
+.main h1 {
+  font-size: 52px;
+  margin-bottom: 10px;
+}
+
+/* SUBTEXTO */
+.main p {
+  opacity: 0.7;
+  margin-bottom: 30px;
+}
+
+/* CAIXA DE UPLOAD */
+.upload-box {
+  
+  border: 2px dashed rgba(255,255,255,0.2); /* Borda tracejada */
+  border-radius: 20px;
+  padding: 50px;
+  text-align: center;
+  background: rgba(255,255,255,0.02);  /* Fundo leve transparente */
+  margin-bottom: 30px;
+  transition: 0.3s;
+}
+
+/* EFEITO AO PASSAR O MOUSE */
+.upload-box:hover {
+  border-color: #c084fc; /* Roxo */
+  background: rgba(192,132,252,0.05);
+}
+
+/* BOTÃO */
+.button {
+  margin-top: 20px;
+  padding: 12px 25px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* HOVER DO BOTÃO */
+.button:hover {
+  background: rgba(192,132,252,0.3);
+}
+
+
+</style>
 </head>
 
 <body>
-  <h1>Meu primeiro site no ar 🚀</h1>
-  <p id="status">Aguardando ação...</p>
 
-  <button onclick="salvar()">Salvar no banco</button>
+<!-- SIDEBAR (MENU LATERAL) -->
+<div class="sidebar">
+  
+  <div>
+    <!-- LOGO -->
+    <div class="logo"> Processamento Imagem Médica</div>
 
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+    <!-- MENU -->
+    <ul class="menu">
+      <li class="active"> Início</li>
+      <li> Projetos</li>
+    </ul>
+  </div>
 
-    const supabaseUrl = 'https://iuyvebdanbnsgxtmbqlk.supabase.co'
-    const supabaseKey = 'sb_publishable_aBCTVUw3nVJB_EPsuNiRoA_hRK_pta-'
 
-    const client = createClient(supabaseUrl, supabaseKey)
+</div>
 
-    console.log("Conectado ao Supabase 🚀", client)
+<!-- CONTEÚDO PRINCIPAL -->
+<div class="main">
 
-    // Função global (pra funcionar no botão)
-    window.salvar = async function () {
-      document.getElementById("status").innerText = "Salvando..."
+  <!-- TÍTULO -->
+  <h1>Comece seu processamento de imagens</h1>
 
-      const { data, error } = await client
-        .from('processamentos')
-        .insert([
-          {
-            nome: "teste",
-            parametros: { exemplo: 123 }
-          }
-        ])
+  <!-- DESCRIÇÃO -->
+  <p>Envie suas imagens médicas para iniciar o processamento.</p>
 
-      if (error) {
-        console.error("Erro:", error)
-        document.getElementById("status").innerText = "Erro ao salvar ❌"
-      } else {
-        console.log("Sucesso:", data)
-        document.getElementById("status").innerText = "Salvo com sucesso ✅"
-      }
-    }
-  </script>
+  <!-- ÁREA DE UPLOAD -->
+  <div class="upload-box">
+    <p>Escolher pasta ou arquivos </p>
+    <p style="font-size: 12px; opacity: 0.6;">ou arraste e solte aqui</p>
+    
+    <!-- BOTÃO -->
+    <button class="button">Selecionar arquivos</button>
+  </div>
+
+  </div>
+
+</div>
+
 </body>
 </html>
