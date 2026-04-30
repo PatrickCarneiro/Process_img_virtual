@@ -52,6 +52,7 @@
     .main {
       flex: 1;
       padding: 40px;
+      overflow-y: auto;
     }
 
     .main h1 {
@@ -70,6 +71,12 @@
       padding: 50px;
       text-align: center;
       background: rgba(255,255,255,0.02);
+      transition: 0.3s;
+    }
+
+    .upload-box:hover {
+      border-color: #c084fc;
+      background: rgba(192,132,252,0.05);
     }
 
     .button {
@@ -92,6 +99,60 @@
       opacity: 0.7;
       margin-top: 15px;
     }
+
+    .recent-title {
+      margin-top: 35px;
+      margin-bottom: 15px;
+      font-size: 22px;
+    }
+
+    .recent-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 15px;
+    }
+
+    .thumb-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 15px;
+      padding: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+      text-align: center;
+    }
+
+    .thumb-card:hover {
+      background: rgba(192,132,252,0.18);
+      transform: translateY(-3px);
+    }
+
+    .thumb-card img {
+      width: 100%;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      background: black;
+    }
+
+    .dicom-thumb {
+      height: 90px;
+      border-radius: 10px;
+      background: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c084fc;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .thumb-name {
+      font-size: 12px;
+      opacity: 0.8;
+      word-break: break-word;
+    }
   </style>
 </head>
 
@@ -107,6 +168,7 @@
   </div>
 
   <div class="main">
+
     <h1>Comece seu processamento de imagens</h1>
     <p>Envie suas imagens médicas para iniciar o processamento.</p>
 
@@ -131,22 +193,34 @@
 
       <p id="status">Nenhum arquivo selecionado.</p>
     </div>
+
+    <h2 class="recent-title">Últimas imagens enviadas</h2>
+
+    <div id="recentImages" class="recent-grid"></div>
+
   </div>
 
   <script>
     const fileInput = document.getElementById("fileInput");
     const statusText = document.getElementById("status");
+    const recentImages = document.getElementById("recentImages");
 
-    // Abre ou cria o banco IndexedDB
     function openDatabase() {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open("MedicalImagesDB", 1);
+        const request = indexedDB.open("MedicalImagesDB", 2);
 
         request.onupgradeneeded = function (event) {
           const db = event.target.result;
 
           if (!db.objectStoreNames.contains("files")) {
             db.createObjectStore("files", {
+              keyPath: "id",
+              autoIncrement: true
+            });
+          }
+
+          if (!db.objectStoreNames.contains("recent")) {
+            db.createObjectStore("recent", {
               keyPath: "id",
               autoIncrement: true
             });
@@ -163,11 +237,10 @@
       });
     }
 
-    // Limpa arquivos antigos
-    function clearFiles(db) {
+    function clearStore(db, storeName) {
       return new Promise((resolve, reject) => {
-        const transaction = db.transaction("files", "readwrite");
-        const store = transaction.objectStore("files");
+        const transaction = db.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
         const request = store.clear();
 
         request.onsuccess = () => resolve();
@@ -175,21 +248,57 @@
       });
     }
 
-    // Salva um arquivo no IndexedDB
-    function saveFile(db, file, type) {
+    function addToStore(db, storeName, data) {
       return new Promise((resolve, reject) => {
-        const transaction = db.transaction("files", "readwrite");
-        const store = transaction.objectStore("files");
+        const transaction = db.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.add(data);
 
-        const request = store.add({
-          name: file.name,
-          type: type,
-          file: file
-        });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function getAllFromStore(db, storeName) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, "readonly");
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function deleteFromStore(db, storeName, id) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.delete(id);
 
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
       });
+    }
+
+    function getFileType(fileName) {
+      const name = fileName.toLowerCase();
+
+      if (name.endsWith(".dcm") || name.endsWith(".dicom")) {
+        return "dicom";
+      }
+
+      if (
+        name.endsWith(".png") ||
+        name.endsWith(".jpg") ||
+        name.endsWith(".jpeg") ||
+        name.endsWith(".tif") ||
+        name.endsWith(".tiff")
+      ) {
+        return "image";
+      }
+
+      return "invalid";
     }
 
     fileInput.addEventListener("change", async function () {
@@ -205,36 +314,36 @@
       try {
         const db = await openDatabase();
 
-        await clearFiles(db);
+        await clearStore(db, "files");
 
         let validFiles = 0;
 
         for (const file of files) {
-          const name = file.name.toLowerCase();
+          const type = getFileType(file.name);
 
-          const isDicom =
-            name.endsWith(".dcm") ||
-            name.endsWith(".dicom");
-
-          const isImage =
-            name.endsWith(".png") ||
-            name.endsWith(".jpg") ||
-            name.endsWith(".jpeg") ||
-            name.endsWith(".tif") ||
-            name.endsWith(".tiff");
-
-          if (isDicom || isImage) {
-            await saveFile(db, file, isDicom ? "dicom" : "image");
-            validFiles++;
+          if (type === "invalid") {
+            continue;
           }
+
+          const data = {
+            name: file.name,
+            type: type,
+            file: file,
+            createdAt: Date.now()
+          };
+
+          await addToStore(db, "files", data);
+          await addToStore(db, "recent", data);
+
+          validFiles++;
         }
+
+        await keepOnlyLastTen(db);
 
         if (validFiles === 0) {
           statusText.innerText = "Nenhum arquivo válido selecionado.";
           return;
         }
-
-        statusText.innerText = "Arquivos carregados. Abrindo processamento...";
 
         window.location.href = "processamento.html";
 
@@ -243,6 +352,88 @@
         statusText.innerText = "Erro ao salvar os arquivos.";
       }
     });
+
+    async function keepOnlyLastTen(db) {
+      const allRecent = await getAllFromStore(db, "recent");
+
+      allRecent.sort((a, b) => b.createdAt - a.createdAt);
+
+      const excess = allRecent.slice(10);
+
+      for (const item of excess) {
+        await deleteFromStore(db, "recent", item.id);
+      }
+    }
+
+    async function loadRecentImages() {
+      try {
+        const db = await openDatabase();
+        const files = await getAllFromStore(db, "recent");
+
+        files.sort((a, b) => b.createdAt - a.createdAt);
+
+        recentImages.innerHTML = "";
+
+        if (files.length === 0) {
+          recentImages.innerHTML = "<p style='opacity: 0.6;'>Nenhuma imagem enviada ainda.</p>";
+          return;
+        }
+
+        files.forEach(item => {
+          const card = document.createElement("div");
+          card.className = "thumb-card";
+
+          if (item.type === "image") {
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(item.file);
+            card.appendChild(img);
+          } else {
+            const dicomBox = document.createElement("div");
+            dicomBox.className = "dicom-thumb";
+            dicomBox.innerText = "DICOM";
+            card.appendChild(dicomBox);
+          }
+
+          const name = document.createElement("div");
+          name.className = "thumb-name";
+          name.innerText = item.name;
+          card.appendChild(name);
+
+          card.onclick = async function () {
+            await openOnlyThisFile(item);
+          };
+
+          recentImages.appendChild(card);
+        });
+
+      } catch (error) {
+        console.error(error);
+        recentImages.innerHTML = "<p>Erro ao carregar imagens recentes.</p>";
+      }
+    }
+
+    async function openOnlyThisFile(item) {
+      try {
+        const db = await openDatabase();
+
+        await clearStore(db, "files");
+
+        await addToStore(db, "files", {
+          name: item.name,
+          type: item.type,
+          file: item.file,
+          createdAt: Date.now()
+        });
+
+        window.location.href = "processamento.html";
+
+      } catch (error) {
+        console.error(error);
+        statusText.innerText = "Erro ao abrir imagem selecionada.";
+      }
+    }
+
+    loadRecentImages();
   </script>
 
 </body>
