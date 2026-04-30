@@ -1,284 +1,315 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Processamento</title>
+<meta charset="UTF-8">
+<title>Processamento</title>
 
-  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>
-  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script>
-  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
+<script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>
+<script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script>
+<script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
 
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #0b1d3a, #050c1a);
-      color: white;
-      height: 100vh;
-      display: flex;
-    }
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #0b1d3a, #050c1a);
+  color: white;
+  height: 100vh;
+  display: flex;
+}
 
-    .sidebar {
-      width: 250px;
-      background: rgba(10, 20, 40, 0.9);
-      padding: 20px;
-    }
+.sidebar {
+  width: 250px;
+  background: rgba(10, 20, 40, 0.9);
+  padding: 20px;
+}
 
-    .logo {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 40px;
-    }
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 40px;
+}
 
-    .main {
-      flex: 1;
-      padding: 30px;
-      display: grid;
-      grid-template-columns: 220px 1fr 280px;
-      gap: 20px;
-    }
+.main {
+  flex: 1;
+  padding: 30px;
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+  gap: 20px;
+}
 
-    .panel {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px;
-      padding: 20px;
-    }
+.panel {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 20px;
+}
 
-    .tool {
-      padding: 12px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 12px;
-      margin-bottom: 10px;
-      cursor: pointer;
-    }
+.tool {
+  padding: 12px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
 
-    .tool:hover {
-      background: rgba(192,132,252,0.25);
-    }
+.tool:hover {
+  background: rgba(192,132,252,0.25);
+}
 
-    #dicomViewer {
-      width: 100%;
-      height: 600px;
-      background: black;
-      border-radius: 20px;
-      overflow: hidden;
-    }
+.viewer-area {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
 
-    #normalImage {
-      max-width: 100%;
-      max-height: 600px;
-      display: none;
-      border-radius: 20px;
-      background: black;
-      object-fit: contain;
-    }
+#dicomViewer {
+  width: 100%;
+  height: 600px;
+  background: black;
+  border-radius: 20px;
+  overflow: hidden;
+}
 
-    .thumb {
-      padding: 10px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 10px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      font-size: 13px;
-    }
+#normalImage {
+  width: 100%;
+  max-height: 600px;
+  display: none;
+  border-radius: 20px;
+  background: black;
+  object-fit: contain;
+}
 
-    .thumb:hover {
-      background: rgba(192,132,252,0.25);
-    }
+.thumb {
+  padding: 10px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  word-break: break-word;
+}
 
-    .block {
-      padding: 12px;
-      background: rgba(192,132,252,0.15);
-      border-radius: 12px;
-      margin-bottom: 10px;
-    }
-  </style>
+.thumb:hover {
+  background: rgba(192,132,252,0.25);
+}
+
+.block {
+  padding: 12px;
+  background: rgba(192,132,252,0.15);
+  border: 1px solid rgba(192,132,252,0.35);
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+</style>
 </head>
 
 <body>
 
-  <div class="sidebar">
-    <div class="logo">Processamento Imagem Médica</div>
-    <p>Visualização DICOM e imagens</p>
+<div class="sidebar">
+  <div class="logo">Processamento Imagem Médica</div>
+  <p>Visualização DICOM e imagens</p>
+</div>
+
+<div class="main">
+
+  <div class="panel">
+    <h3>Ferramentas</h3>
+    <br>
+
+    <div class="tool" onclick="addBlock('Filtro Gaussiano')">Filtro Gaussiano</div>
+    <div class="tool" onclick="addBlock('Threshold')">Threshold</div>
+    <div class="tool" onclick="addBlock('Canny')">Canny</div>
+    <div class="tool" onclick="addBlock('Histograma')">Histograma</div>
+    <div class="tool" onclick="addBlock('Segmentação')">Segmentação</div>
   </div>
 
-  <div class="main">
+  <div class="viewer-area">
+    <h1>Área de processamento</h1>
 
-    <div class="panel">
-      <h3>Ferramentas</h3>
-      <br>
+    <div id="dicomViewer"></div>
+    <img id="normalImage">
 
-      <div class="tool" onclick="addBlock('Filtro Gaussiano')">Filtro Gaussiano</div>
-      <div class="tool" onclick="addBlock('Threshold')">Threshold</div>
-      <div class="tool" onclick="addBlock('Canny')">Canny</div>
-      <div class="tool" onclick="addBlock('Histograma')">Histograma</div>
-      <div class="tool" onclick="addBlock('Segmentação')">Segmentação</div>
-    </div>
-
-    <div>
-      <h1>Área de processamento</h1>
-      <br>
-
-      <div id="dicomViewer"></div>
-      <img id="normalImage">
-
-      <p id="status">Carregando arquivos...</p>
-    </div>
-
-    <div class="panel">
-      <h3>Arquivos</h3>
-      <br>
-      <div id="fileList"></div>
-
-      <br>
-
-      <h3>Blocos usados</h3>
-      <br>
-      <div id="blocksArea">
-        <p style="opacity: 0.6;">Clique em uma ferramenta.</p>
-      </div>
-    </div>
-
+    <p id="status">Carregando arquivos...</p>
   </div>
 
-  <script>
-    const dicomViewer = document.getElementById("dicomViewer");
-    const normalImage = document.getElementById("normalImage");
-    const statusText = document.getElementById("status");
-    const fileList = document.getElementById("fileList");
+  <div class="panel">
+    <h3>Arquivos</h3>
+    <br>
+    <div id="fileList"></div>
 
-    cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-    cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+    <br>
 
-    cornerstoneWADOImageLoader.configure({
-      useWebWorkers: false
+    <h3>Blocos usados</h3>
+    <br>
+
+    <div id="blocksArea">
+      <p style="opacity: 0.6;">Clique em uma ferramenta.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DB_NAME = "MedicalImagesDB";
+const DB_VERSION = 4;
+
+const dicomViewer = document.getElementById("dicomViewer");
+const normalImage = document.getElementById("normalImage");
+const statusText = document.getElementById("status");
+const fileList = document.getElementById("fileList");
+
+cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+
+cornerstoneWADOImageLoader.configure({
+  useWebWorkers: false
+});
+
+cornerstone.enable(dicomViewer);
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = function(event) {
+      const db = event.target.result;
+
+      if (!db.objectStoreNames.contains("files")) {
+        db.createObjectStore("files", {
+          keyPath: "id",
+          autoIncrement: true
+        });
+      }
+
+      if (!db.objectStoreNames.contains("recent")) {
+        db.createObjectStore("recent", {
+          keyPath: "id",
+          autoIncrement: true
+        });
+      }
+    };
+
+    request.onsuccess = function() {
+      resolve(request.result);
+    };
+
+    request.onerror = function() {
+      reject(request.error);
+    };
+  });
+}
+
+function getFiles(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("files", "readonly");
+    const store = transaction.objectStore("files");
+    const request = store.getAll();
+
+    request.onsuccess = function() {
+      resolve(request.result);
+    };
+
+    request.onerror = function() {
+      reject(request.error);
+    };
+  });
+}
+
+async function loadFiles() {
+  try {
+    const db = await openDatabase();
+    const files = await getFiles(db);
+
+    if (files.length === 0) {
+      statusText.innerText = "Nenhum arquivo encontrado.";
+      return;
+    }
+
+    fileList.innerHTML = "";
+
+    files.forEach((item) => {
+      const div = document.createElement("div");
+      div.className = "thumb";
+      div.innerText = item.name;
+
+      div.onclick = function() {
+        openFile(item);
+      };
+
+      fileList.appendChild(div);
     });
 
-    cornerstone.enable(dicomViewer);
+    openFile(files[0]);
 
-    function openDatabase() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open("MedicalImagesDB", 1);
+  } catch (error) {
+    console.error(error);
+    statusText.innerText = "Erro ao carregar arquivos.";
+  }
+}
 
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
+function openFile(item) {
+  statusText.innerText = "Abrindo: " + item.name;
 
-        request.onerror = function () {
-          reject(request.error);
-        };
-      });
-    }
+  if (item.type === "dicom") {
+    normalImage.style.display = "none";
+    dicomViewer.style.display = "block";
 
-    function getFiles(db) {
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction("files", "readonly");
-        const store = transaction.objectStore("files");
-        const request = store.getAll();
+    try {
+      const dicomFile = new File([item.file], item.name);
+      const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
 
-        request.onsuccess = function () {
-          resolve(request.result);
-        };
+      cornerstone.loadImage(imageId)
+        .then(function(image) {
+          cornerstone.displayImage(dicomViewer, image);
+          cornerstone.resize(dicomViewer, true);
 
-        request.onerror = function () {
-          reject(request.error);
-        };
-      });
-    }
+          statusText.innerText = "DICOM carregado: " + item.name;
+        })
+        .catch(function(error) {
+          console.error(error);
 
-    async function loadFiles() {
-      try {
-        const db = await openDatabase();
-        const files = await getFiles(db);
-
-        if (files.length === 0) {
-          statusText.innerText = "Nenhum arquivo encontrado.";
-          return;
-        }
-
-        files.forEach((item, index) => {
-          const div = document.createElement("div");
-          div.className = "thumb";
-          div.innerText = item.name;
-
-          div.onclick = function () {
-            openFile(item);
-          };
-
-          fileList.appendChild(div);
+          statusText.innerText =
+            "Erro ao abrir DICOM. Pode ser DICOM comprimido ou incompatível.";
         });
 
-        openFile(files[0]);
-
-      } catch (error) {
-        console.error(error);
-        statusText.innerText = "Erro ao carregar arquivos.";
-      }
+    } catch (error) {
+      console.error(error);
+      statusText.innerText = "Erro ao processar DICOM.";
     }
 
-    function openFile(item) {
-      statusText.innerText = "Abrindo: " + item.name;
+  } else {
+    dicomViewer.style.display = "none";
+    normalImage.style.display = "block";
 
-      if (item.type === "dicom") {
-        normalImage.style.display = "none";
-        dicomViewer.style.display = "block";
+    const imageURL = URL.createObjectURL(item.file);
+    normalImage.src = imageURL;
 
-        try {
-          const dicomFile = new File([item.file], item.name);
-          const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+    statusText.innerText = "Imagem carregada: " + item.name;
+  }
+}
 
-          cornerstone.loadImage(imageId)
-            .then(function (image) {
-              cornerstone.displayImage(dicomViewer, image);
-              cornerstone.resize(dicomViewer, true);
+function addBlock(name) {
+  const blocksArea = document.getElementById("blocksArea");
 
-              statusText.innerText = "DICOM carregado: " + item.name;
-            })
-            .catch(function (error) {
-              console.error(error);
+  if (blocksArea.querySelector("p")) {
+    blocksArea.innerHTML = "";
+  }
 
-              statusText.innerText =
-                "Erro ao abrir DICOM. Pode ser DICOM comprimido ou incompatível.";
-            });
+  const block = document.createElement("div");
+  block.className = "block";
+  block.innerText = name;
 
-        } catch (error) {
-          console.error(error);
-          statusText.innerText = "Erro ao processar DICOM.";
-        }
+  blocksArea.appendChild(block);
+}
 
-      } else {
-        dicomViewer.style.display = "none";
-        normalImage.style.display = "block";
-
-        const imageURL = URL.createObjectURL(item.file);
-        normalImage.src = imageURL;
-
-        statusText.innerText = "Imagem carregada: " + item.name;
-      }
-    }
-
-    function addBlock(name) {
-      const blocksArea = document.getElementById("blocksArea");
-
-      if (blocksArea.querySelector("p")) {
-        blocksArea.innerHTML = "";
-      }
-
-      const block = document.createElement("div");
-      block.className = "block";
-      block.innerText = name;
-
-      blocksArea.appendChild(block);
-    }
-
-    loadFiles();
-  </script>
+loadFiles();
+</script>
 
 </body>
 </html>
