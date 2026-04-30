@@ -1,84 +1,87 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Processamento de Imagens Médicas</title>
+<!DOCTYPE html> <!-- Define que o documento é HTML5 -->
+<html lang="pt-BR"> <!-- Define o idioma da página como português do Brasil -->
 
+<head>
+  <meta charset="UTF-8"> <!-- Define a codificação de caracteres (acentos, ç, etc.) -->
+
+  <title>Processamento de Imagens Médicas</title> <!-- Título da aba do navegador -->
+
+  <!-- Importa a fonte Poppins do Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-  <!-- Bibliotecas para ler DICOM -->
-  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>
-  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script>
-  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
+  <!-- Bibliotecas necessárias para ler e exibir arquivos DICOM -->
+  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script> <!-- Biblioteca principal de visualização -->
+  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script> <!-- Parser de arquivos DICOM -->
+  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script> <!-- Loader para imagens DICOM -->
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    * { /* Aplica a todos os elementos */
+      margin: 0; /* Remove margem padrão */
+      padding: 0; /* Remove padding padrão */
+      box-sizing: border-box; /* Faz padding e border entrarem no tamanho total */
     }
 
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #0b1d3a, #050c1a);
-      color: white;
-      min-height: 100vh;
-      display: flex;
+    body { /* Corpo da página */
+      font-family: 'Poppins', sans-serif; /* Define a fonte */
+      background: linear-gradient(135deg, #0b1d3a, #050c1a); /* Fundo degradê */
+      color: white; /* Cor do texto */
+      min-height: 100vh; /* Altura mínima da tela */
+      display: flex; /* Layout flexível */
     }
 
-    .sidebar {
-      width: 250px;
-      background: rgba(10, 20, 40, 0.9);
-      padding: 20px;
-      border-right: 1px solid rgba(255,255,255,0.05);
+    .sidebar { /* Menu lateral */
+      width: 250px; /* Largura fixa */
+      background: rgba(10, 20, 40, 0.9); /* Fundo semi-transparente */
+      padding: 20px; /* Espaçamento interno */
+      border-right: 1px solid rgba(255,255,255,0.05); /* Linha separadora */
     }
 
-    .logo {
+    .logo { /* Título/logo */
       font-size: 25px;
       font-weight: 600;
       margin-bottom: 50px;
     }
 
-    .menu {
-      list-style: none;
+    .menu { /* Lista do menu */
+      list-style: none; /* Remove bolinhas */
     }
 
-    .menu li {
+    .menu li { /* Itens do menu */
       padding: 12px;
       border-radius: 10px;
       margin-bottom: 10px;
     }
 
-    .menu .active {
+    .menu .active { /* Item ativo */
       background: rgba(192,132,252,0.2);
       color: #c084fc;
     }
 
-    .main {
-      flex: 1;
+    .main { /* Área principal */
+      flex: 1; /* Ocupa o espaço restante */
       padding: 40px;
-      overflow-y: auto;
+      overflow-y: auto; /* Permite rolagem vertical */
     }
 
-    .main h1 {
+    .main h1 { /* Título principal */
       font-size: 52px;
       margin-bottom: 10px;
     }
 
-    .main p {
+    .main p { /* Texto descritivo */
       opacity: 0.7;
       margin-bottom: 30px;
     }
 
-    .upload-box {
-      border: 2px dashed rgba(255,255,255,0.2);
+    .upload-box { /* Caixa de upload */
+      border: 2px dashed rgba(255,255,255,0.2); /* Borda tracejada */
       border-radius: 20px;
       padding: 50px;
       text-align: center;
       background: rgba(255,255,255,0.02);
     }
 
-    .button {
+    .button { /* Botões */
       margin-top: 20px;
       padding: 12px 25px;
       border-radius: 10px;
@@ -90,32 +93,28 @@
       transition: 0.3s;
     }
 
-    .button:hover {
+    .button:hover { /* Efeito ao passar o mouse */
       background: rgba(192,132,252,0.3);
     }
 
-    #status {
+    #status { /* Texto de status */
       font-size: 14px;
       opacity: 0.7;
       margin-top: 15px;
     }
 
-    .recent-title {
+    .recent-title { /* Título das imagens recentes */
       margin-top: 35px;
       margin-bottom: 15px;
     }
 
-    .recent-actions {
-      margin-bottom: 20px;
-    }
-
-    .recent-grid {
+    .recent-grid { /* Grid de miniaturas */
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Layout responsivo */
       gap: 15px;
     }
 
-    .thumb-card {
+    .thumb-card { /* Cada card de imagem */
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 15px;
@@ -125,12 +124,12 @@
       transition: 0.3s;
     }
 
-    .thumb-card:hover {
+    .thumb-card:hover { /* Hover do card */
       background: rgba(192,132,252,0.18);
       transform: translateY(-3px);
     }
 
-    .thumb-card img {
+    .thumb-card img { /* Imagem normal */
       width: 100%;
       height: 90px;
       object-fit: cover;
@@ -139,7 +138,7 @@
       background: black;
     }
 
-    .dicom-thumb {
+    .dicom-thumb { /* Área para miniatura DICOM */
       width: 100%;
       height: 90px;
       border-radius: 10px;
@@ -148,7 +147,7 @@
       margin-bottom: 8px;
     }
 
-    .dicom-fallback {
+    .dicom-fallback { /* Caso DICOM não carregue */
       width: 100%;
       height: 90px;
       border-radius: 10px;
@@ -161,18 +160,18 @@
       margin-bottom: 8px;
     }
 
-    .thumb-name {
+    .thumb-name { /* Nome do arquivo */
       font-size: 12px;
       opacity: 0.8;
       word-break: break-word;
     }
 
-    .selected {
+    .selected { /* Estilo quando selecionado */
       border: 2px solid #c084fc !important;
       background: rgba(192,132,252,0.22);
     }
 
-    @media (max-width: 800px) {
+    @media (max-width: 800px) { /* Responsividade para celular */
       body {
         flex-direction: column;
       }
@@ -194,27 +193,36 @@
 
 <body>
 
+  <!-- Menu lateral -->
   <div class="sidebar">
     <div class="logo">Processamento Imagem Médica</div>
 
+    <!-- Itens do menu -->
     <ul class="menu">
       <li class="active">Início</li>
       <li>Projetos</li>
     </ul>
   </div>
 
+  <!-- Conteúdo principal -->
   <div class="main">
 
+    <!-- Título principal -->
     <h1>Comece seu processamento de imagens</h1>
+
+    <!-- Descrição -->
     <p>Envie suas imagens médicas para iniciar o processamento.</p>
 
+    <!-- Caixa de upload -->
     <div class="upload-box">
+
       <p>Escolher imagens ou arquivos DICOM</p>
 
       <p style="font-size: 12px; opacity: 0.6;">
         Formatos aceitos: PNG, JPG, JPEG, TIF, TIFF, DCM e DICOM
       </p>
 
+      <!-- Input escondido para selecionar arquivos -->
       <input
         type="file"
         id="fileInput"
@@ -223,24 +231,29 @@
         hidden
       >
 
+      <!-- Botão que abre o seletor -->
       <button class="button" onclick="document.getElementById('fileInput').click()">
         Selecionar arquivos
       </button>
 
+      <!-- Status -->
       <p id="status">Nenhum arquivo selecionado.</p>
     </div>
 
+    <!-- Título das imagens recentes -->
     <h2 class="recent-title">Últimas imagens enviadas</h2>
 
+    <!-- Grid onde as miniaturas serão inseridas via JS -->
     <div id="recentImages" class="recent-grid"></div>
 
-    <!-- 🔥 botão agora fica embaixo -->
+    <!-- Botão para processar imagens selecionadas -->
     <div style="margin-top: 20px;">
       <button class="button" onclick="processSelected()">
         Processar selecionadas
       </button>
     </div>
 
+  <!-- Script principal -->
   <script src="index.js"></script>
 
 </body>
