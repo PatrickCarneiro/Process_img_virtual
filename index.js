@@ -1,10 +1,268 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+const DB_NAME = "MedicalImagesDB";
+const DB_VERSION = 5;
 
-const supabaseUrl = 'https://iuyvebdanbnsgxtmbqlk.supabase.co'
-const supabaseKey = 'sb_publishable_aBCTVUw3nVJB_EPsuNiRoA_hRK_pta-'
+const fileInput = document.getElementById("fileInput");
+const statusText = document.getElementById("status");
+const recentImages = document.getElementById("recentImages");
 
-const client = createClient(supabaseUrl, supabaseKey)
+// Configuração do Cornerstone para DICOM
+cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
 
-console.log("Conectado ao Supabase 🚀", client)
+cornerstoneWADOImageLoader.configure({
+  useWebWorkers: false
+});
 
-document.getElementById("status").innerText = "Conectado ao Supabase 🚀"
+// Abre ou cria o banco
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = function(event) {
+      const db = event.target.result;
+
+      if (!db.objectStoreNames.contains("files")) {
+        db.createObjectStore("files", {
+          keyPath: "id",
+          autoIncrement: true
+        });
+      }
+
+      if (!db.objectStoreNames.contains("recent")) {
+        db.createObjectStore("recent", {
+          keyPath: "id",
+          autoIncrement: true
+        });
+      }
+    };
+
+    request.onsuccess = function() {
+      resolve(request.result);
+    };
+
+    request.onerror = function() {
+      reject(request.error);
+    };
+  });
+}
+
+// Identifica tipo do arquivo
+function getFileType(fileName) {
+  const name = fileName.toLowerCase();
+
+  if (name.endsWith(".dcm") || name.endsWith(".dicom")) {
+    return "dicom";
+  }
+
+  if (
+    name.endsWith(".png") ||
+    name.endsWith(".jpg") ||
+    name.endsWith(".jpeg") ||
+    name.endsWith(".tif") ||
+    name.endsWith(".tiff")
+  ) {
+    return "image";
+  }
+
+  return "invalid";
+}
+
+// Limpa uma tabela
+function clearStore(db, storeName) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const request = store.clear();
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Adiciona arquivo na tabela
+function addToStore(db, storeName, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const request = store.add(data);
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Busca todos os arquivos de uma tabela
+function getAllFromStore(db, storeName) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
+    const request = store.getAll();
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Apaga um item da tabela
+function deleteFromStore(db, storeName, id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const request = store.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Mantém somente os últimos 10 arquivos
+async function keepOnlyLastTen(db) {
+  const allRecent = await getAllFromStore(db, "recent");
+
+  allRecent.sort((a, b) => b.createdAt - a.createdAt);
+
+  const excess = allRecent.slice(10);
+
+  for (const item of excess) {
+    await deleteFromStore(db, "recent", item.id);
+  }
+}
+
+// Quando o usuário seleciona arquivos
+fileInput.addEventListener("change", async function() {
+  const files = Array.from(fileInput.files);
+
+  if (files.length === 0) {
+    statusText.innerText = "Nenhum arquivo selecionado.";
+    return;
+  }
+
+  statusText.innerText = "Salvando arquivos...";
+
+  try {
+    const db = await openDatabase();
+
+    await clearStore(db, "files");
+
+    let validFiles = 0;
+
+    for (const file of files) {
+      const type = getFileType(file.name);
+
+      if (type === "invalid") {
+        continue;
+      }
+
+      const data = {
+        name: file.name,
+        type: type,
+        file: file,
+        createdAt: Date.now()
+      };
+
+      await addToStore(db, "files", data);
+      await addToStore(db, "recent", data);
+
+      validFiles++;
+    }
+
+    await keepOnlyLastTen(db);
+
+    if (validFiles === 0) {
+      statusText.innerText = "Nenhum arquivo válido selecionado.";
+      return;
+    }
+
+    window.location.href = "processamento.html";
+
+  } catch (error) {
+    console.error(error);
+    statusText.innerText = "Erro ao salvar os arquivos.";
+  }
+});
+
+// Carrega miniatura DICOM real
+async function renderDicomThumbnail(item, container) {
+  try {
+    cornerstone.enable(container);
+
+    const dicomFile = new File([item.file], item.name);
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+
+    const image = await cornerstone.loadImage(imageId);
+
+    cornerstone.displayImage(container, image);
+    cornerstone.resize(container, true);
+
+  } catch (error) {
+    console.error("Erro ao gerar miniatura DICOM:", error);
+
+    container.className = "dicom-fallback";
+    container.innerText = "DICOM";
+  }
+}
+
+// Carrega as últimas imagens enviadas
+async function loadRecentImages() {
+  try {
+    const db = await openDatabase();
+    const files = await getAllFromStore(db, "recent");
+
+    files.sort((a, b) => b.createdAt - a.createdAt);
+
+    recentImages.innerHTML = "";
+
+    if (files.length === 0) {
+      recentImages.innerHTML =
+        "<p style='opacity: 0.6;'>Nenhuma imagem enviada ainda.</p>";
+      return;
+    }
+
+    files.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "thumb-card";
+
+      if (item.type === "image") {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(item.file);
+        card.appendChild(img);
+      }
+
+      if (item.type === "dicom") {
+        const dicomBox = document.createElement("div");
+        dicomBox.className = "dicom-thumb";
+        card.appendChild(dicomBox);
+
+        renderDicomThumbnail(item, dicomBox);
+      }
+
+      const name = document.createElement("div");
+      name.className = "thumb-name";
+      name.innerText = item.name;
+      card.appendChild(name);
+
+      card.onclick = async function() {
+        const db = await openDatabase();
+
+        await clearStore(db, "files");
+
+        await addToStore(db, "files", {
+          name: item.name,
+          type: item.type,
+          file: item.file,
+          createdAt: Date.now()
+        });
+
+        window.location.href = "processamento.html";
+      };
+
+      recentImages.appendChild(card);
+    });
+
+  } catch (error) {
+    console.error(error);
+    recentImages.innerHTML = "<p>Erro ao carregar imagens recentes.</p>";
+  }
+}
+
+loadRecentImages();

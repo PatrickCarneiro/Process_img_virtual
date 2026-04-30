@@ -106,6 +106,24 @@ body {
   border-radius: 12px;
   margin-bottom: 10px;
 }
+
+@media (max-width: 900px) {
+  body {
+    height: auto;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main {
+    grid-template-columns: 1fr;
+  }
+
+  #dicomViewer {
+    height: 400px;
+  }
+}
 </style>
 </head>
 
@@ -113,7 +131,7 @@ body {
 
 <div class="sidebar">
   <div class="logo">Processamento Imagem Médica</div>
-  <p>Visualização DICOM e imagens</p>
+  <p>Visualização DICOM e imagens comuns</p>
 </div>
 
 <div class="main">
@@ -157,7 +175,7 @@ body {
 
 <script>
 const DB_NAME = "MedicalImagesDB";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const dicomViewer = document.getElementById("dicomViewer");
 const normalImage = document.getElementById("normalImage");
