@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Processamento</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #0b1d3a, #050c1a);
+  color: white;
+  height: 100vh;
+  display: flex;
+}
+
+/* MENU LATERAL */
+.sidebar {
+  width: 250px;
+  background: rgba(10, 20, 40, 0.9);
+  padding: 20px;
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 50px;
+}
+
+.menu {
+  list-style: none;
+}
+
+.menu li {
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.menu .active {
+  background: rgba(192,132,252,0.2);
+  color: #c084fc;
+}
+
+/* ÁREA PRINCIPAL */
+.main {
+  flex: 1;
+  padding: 30px;
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+  gap: 25px;
+}
+
+/* PAINÉIS */
+.panel {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 20px;
+}
+
+/* FERRAMENTAS */
+.tool {
+  background: rgba(255,255,255,0.08);
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.tool:hover {
+  background: rgba(192,132,252,0.25);
+}
+
+/* VISUALIZAÇÃO DA IMAGEM */
+.viewer {
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer h1 {
+  font-size: 32px;
+  margin-bottom: 20px;
+}
+
+.image-box {
+  flex: 1;
+  border: 2px dashed rgba(255,255,255,0.15);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+
+.image-box img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 10px;
+}
+
+/* MINIATURAS */
+.thumbnails {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  overflow-x: auto;
+}
+
+.thumbnails img {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.thumbnails img:hover {
+  border-color: #c084fc;
+}
+
+/* BLOCOS */
+.block {
+  background: rgba(192,132,252,0.15);
+  border: 1px solid rgba(192,132,252,0.35);
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+/* RESPONSIVO */
+@media (max-width: 900px) {
+  body {
+    height: auto;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main {
+    grid-template-columns: 1fr;
+  }
+
+  .image-box {
+    height: 350px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <div class="logo">Processamento Imagem Médica</div>
+
+  <ul class="menu">
+    <li>Início</li>
+    <li class="active">Processamento</li>
+    <li>Projetos</li>
+  </ul>
+</div>
+
+<div class="main">
+
+  <!-- ESQUERDA: FERRAMENTAS -->
+  <div class="panel">
+    <h3>Ferramentas</h3>
+    <br>
+
+    <div class="tool" onclick="addBlock('Filtro Gaussiano')">Filtro Gaussiano</div>
+    <div class="tool" onclick="addBlock('Threshold')">Threshold</div>
+    <div class="tool" onclick="addBlock('Canny')">Canny</div>
+    <div class="tool" onclick="addBlock('Histograma')">Histograma</div>
+    <div class="tool" onclick="addBlock('Segmentação')">Segmentação</div>
+  </div>
+
+  <!-- CENTRO: IMAGEM -->
+  <div class="viewer">
+    <h1>Área de processamento</h1>
+
+    <div class="image-box">
+      <img id="mainImage" alt="Imagem selecionada">
+    </div>
+
+    <div class="thumbnails" id="thumbnails"></div>
+  </div>
+
+  <!-- DIREITA: BLOCOS -->
+  <div class="panel">
+    <h3>Blocos usados</h3>
+    <br>
+
+    <div id="blocksArea">
+      <p style="opacity: 0.6;">Clique em uma ferramenta para montar o fluxo.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const images = JSON.parse(sessionStorage.getItem("selectedImages")) || [];
+
+const mainImage = document.getElementById("mainImage");
+const thumbnails = document.getElementById("thumbnails");
+
+if (images.length > 0) {
+  mainImage.src = images[0];
+
+  images.forEach((src) => {
+    const img = document.createElement("img");
+    img.src = src;
+
+    img.onclick = () => {
+      mainImage.src = src;
+    };
+
+    thumbnails.appendChild(img);
+  });
+}
+
+function addBlock(name) {
+  const blocksArea = document.getElementById("blocksArea");
+
+  if (blocksArea.querySelector("p")) {
+    blocksArea.innerHTML = "";
+  }
+
+  const block = document.createElement("div");
+  block.className = "block";
+  block.innerText = name;
+
+  blocksArea.appendChild(block);
+}
+</script>
+
+</body>
+</html>

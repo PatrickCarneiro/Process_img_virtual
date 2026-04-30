@@ -1,173 +1,267 @@
-/* Teste GIT */
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 
-<meta charset="UTF-8">
-<title>Processamento de Imagens Médicas</title>
+  <!-- Define a codificação dos caracteres -->
+  <meta charset="UTF-8">
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Título que aparece na aba do navegador -->
+  <title>Processamento de Imagens Médicas</title>
 
-<style>
+  <!-- Importa a fonte Poppins do Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-/* Remove espaçamentos padrão do navegador */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box; 
-}
+  <style>
+    /* Remove margens e espaçamentos padrões do navegador */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-/* FUNDO GERAL DA PÁGINA */
-body {
-  font-family: 'Poppins', sans-serif; 
-  background: linear-gradient(135deg, #0b1d3a, #050c1a);
-  color: white;
-  height: 100vh; /* Altura total da tela */
-  display: flex; /* Permite layout lado a lado */
-}
+    /* Corpo geral da página */
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0b1d3a, #050c1a);
+      color: white;
+      height: 100vh;
+      display: flex;
+    }
 
-/* MENU LATERAL */
-.sidebar {
-  width: 250px; /* Largura fixa */
-  background: rgba(10, 20, 40, 0.9); /* Fundo semi-transparente */
-  backdrop-filter: blur(10px); /* Efeito de vidro */
-  padding: 20px;
-  display: flex;
-  flex-direction: column; /* Organiza verticalmente */
-  justify-content: space-between; /* Espaça topo e base */
-  border-right: 1px solid rgba(255,255,255,0.05);
-}
+    /* Menu lateral esquerdo */
+    .sidebar {
+      width: 250px;
+      background: rgba(10, 20, 40, 0.9);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid rgba(255,255,255,0.05);
+    }
 
-/* LOGO */
-.logo {
-  font-size: 25px;
-  font-weight: 600;
-  margin-bottom: 50px;
-}
+    /* Logo/nome do sistema */
+    .logo {
+      font-size: 25px;
+      font-weight: 600;
+      margin-bottom: 50px;
+    }
 
-/* LISTA DO MENU */
-.menu {
-  list-style: none; /* Remove bolinhas */
-}
+    /* Lista do menu */
+    .menu {
+      list-style: none;
+    }
 
-/* ITEM DO MENU */
-.menu li {
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  cursor: pointer; /* Muda cursor */
-  transition: 0.3s; /* Animação suave */
-}
+    /* Itens do menu */
+    .menu li {
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
 
-/* Quando passa o mouse) */
-.menu li:hover {
-  background: rgba(255,255,255,0.08);
-}
+    /* Efeito ao passar o mouse nos itens */
+    .menu li:hover {
+      background: rgba(255,255,255,0.08);
+    }
 
-/* ITEM ATIVO */
-.menu .active {
-  background: rgba(192,132,252,0.2);
-  color: #c084fc; /* Roxo */
-}
+    /* Item ativo do menu */
+    .menu .active {
+      background: rgba(192,132,252,0.2);
+      color: #c084fc;
+    }
 
-/* CONTEÚDO PRINCIPAL */
-.main {
-  flex: 1; /* Ocupa todo espaço restante */
-  padding: 40px;
-}
+    /* Área principal da página */
+    .main {
+      flex: 1;
+      padding: 40px;
+    }
 
-/* TÍTULO PRINCIPAL */
-.main h1 {
-  font-size: 52px;
-  margin-bottom: 10px;
-}
+    /* Título principal */
+    .main h1 {
+      font-size: 52px;
+      margin-bottom: 10px;
+    }
 
-/* SUBTEXTO */
-.main p {
-  opacity: 0.7;
-  margin-bottom: 30px;
-}
+    /* Texto abaixo do título */
+    .main p {
+      opacity: 0.7;
+      margin-bottom: 30px;
+    }
 
-/* CAIXA DE UPLOAD */
-.upload-box {
-  
-  border: 2px dashed rgba(255,255,255,0.2); /* Borda tracejada */
-  border-radius: 20px;
-  padding: 50px;
-  text-align: center;
-  background: rgba(255,255,255,0.02);  /* Fundo leve transparente */
-  margin-bottom: 30px;
-  transition: 0.3s;
-}
+    /* Caixa de upload */
+    .upload-box {
+      border: 2px dashed rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 50px;
+      text-align: center;
+      background: rgba(255,255,255,0.02);
+      margin-bottom: 30px;
+      transition: 0.3s;
+    }
 
-/* EFEITO AO PASSAR O MOUSE */
-.upload-box:hover {
-  border-color: #c084fc; /* Roxo */
-  background: rgba(192,132,252,0.05);
-}
+    /* Efeito ao passar o mouse na caixa */
+    .upload-box:hover {
+      border-color: #c084fc;
+      background: rgba(192,132,252,0.05);
+    }
 
-/* BOTÃO */
-.button {
-  margin-top: 20px;
-  padding: 12px 25px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.08);
-  border: none;
-  color: white;
-  cursor: pointer;
-  transition: 0.3s;
-}
+    /* Botão de seleção */
+    .button {
+      margin-top: 20px;
+      padding: 12px 25px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      border: none;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+      font-family: 'Poppins', sans-serif;
+    }
 
-/* HOVER DO BOTÃO */
-.button:hover {
-  background: rgba(192,132,252,0.3);
-}
+    /* Efeito ao passar o mouse no botão */
+    .button:hover {
+      background: rgba(192,132,252,0.3);
+    }
 
+    /* Texto de status */
+    #status {
+      font-size: 14px;
+      opacity: 0.7;
+      margin-top: 15px;
+    }
 
-</style>
+    /* Responsividade para celular */
+    @media (max-width: 800px) {
+      body {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      .main h1 {
+        font-size: 34px;
+      }
+
+      .main {
+        padding: 25px;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- SIDEBAR (MENU LATERAL) -->
-<div class="sidebar">
-  
-  <div>
-    <!-- LOGO -->
-    <div class="logo"> Processamento Imagem Médica</div>
+  <!-- Menu lateral -->
+  <div class="sidebar">
 
-    <!-- MENU -->
-    <ul class="menu">
-      <li class="active"> Início</li>
-      <li> Projetos</li>
-    </ul>
-  </div>
+    <div>
+      <!-- Nome/logo do sistema -->
+      <div class="logo">Processamento Imagem Médica</div>
 
-
-</div>
-
-<!-- CONTEÚDO PRINCIPAL -->
-<div class="main">
-
-  <!-- TÍTULO -->
-  <h1>Comece seu processamento de imagens</h1>
-
-  <!-- DESCRIÇÃO -->
-  <p>Envie suas imagens médicas para iniciar o processamento.</p>
-
-  <!-- ÁREA DE UPLOAD -->
-  <div class="upload-box">
-    <p>Escolher pasta ou arquivos </p>
-    <p style="font-size: 12px; opacity: 0.6;">ou arraste e solte aqui</p>
-    
-    <!-- BOTÃO -->
-    <button class="button">Selecionar arquivos</button>
-  </div>
+      <!-- Opções do menu -->
+      <ul class="menu">
+        <li class="active">Início</li>
+        <li>Projetos</li>
+      </ul>
+    </div>
 
   </div>
 
-</div>
+  <!-- Conteúdo principal -->
+  <div class="main">
+
+    <!-- Título -->
+    <h1>Comece seu processamento de imagens</h1>
+
+    <!-- Descrição -->
+    <p>Envie suas imagens médicas para iniciar o processamento.</p>
+
+    <!-- Caixa de upload -->
+    <div class="upload-box">
+
+      <!-- Texto principal da caixa -->
+      <p>Escolher pasta ou arquivos</p>
+
+      <!-- Texto secundário -->
+      <p style="font-size: 12px; opacity: 0.6;">
+        Selecione uma ou mais imagens para continuar
+      </p>
+
+      <!-- Input escondido para selecionar arquivos -->
+      <input 
+        type="file" 
+        id="fileInput" 
+        multiple 
+        accept="image/*" 
+        hidden
+      >
+
+      <!-- Botão visível que abre o seletor de arquivos -->
+      <button class="button" onclick="document.getElementById('fileInput').click()">
+        Selecionar arquivos
+      </button>
+
+      <!-- Texto de status -->
+      <p id="status">Nenhuma imagem selecionada.</p>
+
+    </div>
+
+  </div>
+
+  <script>
+    // Pega o input de arquivos pelo ID
+    const fileInput = document.getElementById("fileInput");
+
+    // Escuta quando o usuário seleciona arquivos
+    fileInput.addEventListener("change", function () {
+
+      // Transforma os arquivos selecionados em uma lista
+      const files = Array.from(fileInput.files);
+
+      // Se nenhum arquivo for selecionado, para a função
+      if (files.length === 0) {
+        document.getElementById("status").innerText = "Nenhuma imagem selecionada.";
+        return;
+      }
+
+      // Atualiza o status na tela
+      document.getElementById("status").innerText = "Carregando imagens...";
+
+      // Array onde serão guardadas as imagens convertidas
+      const images = [];
+
+      // Para cada arquivo selecionado
+      files.forEach(file => {
+
+        // Cria um leitor de arquivo
+        const reader = new FileReader();
+
+        // Quando terminar de ler o arquivo
+        reader.onload = function (event) {
+
+          // Salva a imagem em formato base64
+          images.push(event.target.result);
+
+          // Quando todas as imagens forem carregadas
+          if (images.length === files.length) {
+
+            // Salva as imagens temporariamente no navegador
+            sessionStorage.setItem("selectedImages", JSON.stringify(images));
+
+            // Redireciona para a página de processamento
+            window.location.href = "processamento.html";
+          }
+        };
+
+        // Lê o arquivo como imagem/base64
+        reader.readAsDataURL(file);
+      });
+    });
+  </script>
 
 </body>
 </html>
