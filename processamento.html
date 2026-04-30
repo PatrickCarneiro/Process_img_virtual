@@ -1,250 +1,284 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Processamento</title>
+  <meta charset="UTF-8">
+  <title>Processamento</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>
+  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script>
+  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-body {
-  font-family: 'Poppins', sans-serif;
-  background: linear-gradient(135deg, #0b1d3a, #050c1a);
-  color: white;
-  height: 100vh;
-  display: flex;
-}
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0b1d3a, #050c1a);
+      color: white;
+      height: 100vh;
+      display: flex;
+    }
 
-/* MENU LATERAL */
-.sidebar {
-  width: 250px;
-  background: rgba(10, 20, 40, 0.9);
-  padding: 20px;
-  border-right: 1px solid rgba(255,255,255,0.05);
-}
+    .sidebar {
+      width: 250px;
+      background: rgba(10, 20, 40, 0.9);
+      padding: 20px;
+    }
 
-.logo {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 50px;
-}
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 40px;
+    }
 
-.menu {
-  list-style: none;
-}
+    .main {
+      flex: 1;
+      padding: 30px;
+      display: grid;
+      grid-template-columns: 220px 1fr 280px;
+      gap: 20px;
+    }
 
-.menu li {
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  cursor: pointer;
-}
+    .panel {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 20px;
+    }
 
-.menu .active {
-  background: rgba(192,132,252,0.2);
-  color: #c084fc;
-}
+    .tool {
+      padding: 12px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
 
-/* ÁREA PRINCIPAL */
-.main {
-  flex: 1;
-  padding: 30px;
-  display: grid;
-  grid-template-columns: 220px 1fr 280px;
-  gap: 25px;
-}
+    .tool:hover {
+      background: rgba(192,132,252,0.25);
+    }
 
-/* PAINÉIS */
-.panel {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 20px;
-}
+    #dicomViewer {
+      width: 100%;
+      height: 600px;
+      background: black;
+      border-radius: 20px;
+      overflow: hidden;
+    }
 
-/* FERRAMENTAS */
-.tool {
-  background: rgba(255,255,255,0.08);
-  padding: 12px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: 0.3s;
-}
+    #normalImage {
+      max-width: 100%;
+      max-height: 600px;
+      display: none;
+      border-radius: 20px;
+      background: black;
+      object-fit: contain;
+    }
 
-.tool:hover {
-  background: rgba(192,132,252,0.25);
-}
+    .thumb {
+      padding: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
 
-/* VISUALIZAÇÃO DA IMAGEM */
-.viewer {
-  display: flex;
-  flex-direction: column;
-}
+    .thumb:hover {
+      background: rgba(192,132,252,0.25);
+    }
 
-.viewer h1 {
-  font-size: 32px;
-  margin-bottom: 20px;
-}
-
-.image-box {
-  flex: 1;
-  border: 2px dashed rgba(255,255,255,0.15);
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.02);
-  overflow: hidden;
-}
-
-.image-box img {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 10px;
-}
-
-/* MINIATURAS */
-.thumbnails {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-  overflow-x: auto;
-}
-
-.thumbnails img {
-  width: 80px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 10px;
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-
-.thumbnails img:hover {
-  border-color: #c084fc;
-}
-
-/* BLOCOS */
-.block {
-  background: rgba(192,132,252,0.15);
-  border: 1px solid rgba(192,132,252,0.35);
-  padding: 12px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-}
-
-/* RESPONSIVO */
-@media (max-width: 900px) {
-  body {
-    height: auto;
-  }
-
-  .sidebar {
-    display: none;
-  }
-
-  .main {
-    grid-template-columns: 1fr;
-  }
-
-  .image-box {
-    height: 350px;
-  }
-}
-</style>
+    .block {
+      padding: 12px;
+      background: rgba(192,132,252,0.15);
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="sidebar">
-  <div class="logo">Processamento Imagem Médica</div>
-
-  <ul class="menu">
-    <li>Início</li>
-    <li class="active">Processamento</li>
-    <li>Projetos</li>
-  </ul>
-</div>
-
-<div class="main">
-
-  <!-- ESQUERDA: FERRAMENTAS -->
-  <div class="panel">
-    <h3>Ferramentas</h3>
-    <br>
-
-    <div class="tool" onclick="addBlock('Filtro Gaussiano')">Filtro Gaussiano</div>
-    <div class="tool" onclick="addBlock('Threshold')">Threshold</div>
-    <div class="tool" onclick="addBlock('Canny')">Canny</div>
-    <div class="tool" onclick="addBlock('Histograma')">Histograma</div>
-    <div class="tool" onclick="addBlock('Segmentação')">Segmentação</div>
+  <div class="sidebar">
+    <div class="logo">Processamento Imagem Médica</div>
+    <p>Visualização DICOM e imagens</p>
   </div>
 
-  <!-- CENTRO: IMAGEM -->
-  <div class="viewer">
-    <h1>Área de processamento</h1>
+  <div class="main">
 
-    <div class="image-box">
-      <img id="mainImage" alt="Imagem selecionada">
+    <div class="panel">
+      <h3>Ferramentas</h3>
+      <br>
+
+      <div class="tool" onclick="addBlock('Filtro Gaussiano')">Filtro Gaussiano</div>
+      <div class="tool" onclick="addBlock('Threshold')">Threshold</div>
+      <div class="tool" onclick="addBlock('Canny')">Canny</div>
+      <div class="tool" onclick="addBlock('Histograma')">Histograma</div>
+      <div class="tool" onclick="addBlock('Segmentação')">Segmentação</div>
     </div>
 
-    <div class="thumbnails" id="thumbnails"></div>
-  </div>
+    <div>
+      <h1>Área de processamento</h1>
+      <br>
 
-  <!-- DIREITA: BLOCOS -->
-  <div class="panel">
-    <h3>Blocos usados</h3>
-    <br>
+      <div id="dicomViewer"></div>
+      <img id="normalImage">
 
-    <div id="blocksArea">
-      <p style="opacity: 0.6;">Clique em uma ferramenta para montar o fluxo.</p>
+      <p id="status">Carregando arquivos...</p>
     </div>
+
+    <div class="panel">
+      <h3>Arquivos</h3>
+      <br>
+      <div id="fileList"></div>
+
+      <br>
+
+      <h3>Blocos usados</h3>
+      <br>
+      <div id="blocksArea">
+        <p style="opacity: 0.6;">Clique em uma ferramenta.</p>
+      </div>
+    </div>
+
   </div>
 
-</div>
+  <script>
+    const dicomViewer = document.getElementById("dicomViewer");
+    const normalImage = document.getElementById("normalImage");
+    const statusText = document.getElementById("status");
+    const fileList = document.getElementById("fileList");
 
-<script>
-const images = JSON.parse(sessionStorage.getItem("selectedImages")) || [];
+    cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+    cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
 
-const mainImage = document.getElementById("mainImage");
-const thumbnails = document.getElementById("thumbnails");
+    cornerstoneWADOImageLoader.configure({
+      useWebWorkers: false
+    });
 
-if (images.length > 0) {
-  mainImage.src = images[0];
+    cornerstone.enable(dicomViewer);
 
-  images.forEach((src) => {
-    const img = document.createElement("img");
-    img.src = src;
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("MedicalImagesDB", 1);
 
-    img.onclick = () => {
-      mainImage.src = src;
-    };
+        request.onsuccess = function () {
+          resolve(request.result);
+        };
 
-    thumbnails.appendChild(img);
-  });
-}
+        request.onerror = function () {
+          reject(request.error);
+        };
+      });
+    }
 
-function addBlock(name) {
-  const blocksArea = document.getElementById("blocksArea");
+    function getFiles(db) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction("files", "readonly");
+        const store = transaction.objectStore("files");
+        const request = store.getAll();
 
-  if (blocksArea.querySelector("p")) {
-    blocksArea.innerHTML = "";
-  }
+        request.onsuccess = function () {
+          resolve(request.result);
+        };
 
-  const block = document.createElement("div");
-  block.className = "block";
-  block.innerText = name;
+        request.onerror = function () {
+          reject(request.error);
+        };
+      });
+    }
 
-  blocksArea.appendChild(block);
-}
-</script>
+    async function loadFiles() {
+      try {
+        const db = await openDatabase();
+        const files = await getFiles(db);
+
+        if (files.length === 0) {
+          statusText.innerText = "Nenhum arquivo encontrado.";
+          return;
+        }
+
+        files.forEach((item, index) => {
+          const div = document.createElement("div");
+          div.className = "thumb";
+          div.innerText = item.name;
+
+          div.onclick = function () {
+            openFile(item);
+          };
+
+          fileList.appendChild(div);
+        });
+
+        openFile(files[0]);
+
+      } catch (error) {
+        console.error(error);
+        statusText.innerText = "Erro ao carregar arquivos.";
+      }
+    }
+
+    function openFile(item) {
+      statusText.innerText = "Abrindo: " + item.name;
+
+      if (item.type === "dicom") {
+        normalImage.style.display = "none";
+        dicomViewer.style.display = "block";
+
+        try {
+          const dicomFile = new File([item.file], item.name);
+          const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+
+          cornerstone.loadImage(imageId)
+            .then(function (image) {
+              cornerstone.displayImage(dicomViewer, image);
+              cornerstone.resize(dicomViewer, true);
+
+              statusText.innerText = "DICOM carregado: " + item.name;
+            })
+            .catch(function (error) {
+              console.error(error);
+
+              statusText.innerText =
+                "Erro ao abrir DICOM. Pode ser DICOM comprimido ou incompatível.";
+            });
+
+        } catch (error) {
+          console.error(error);
+          statusText.innerText = "Erro ao processar DICOM.";
+        }
+
+      } else {
+        dicomViewer.style.display = "none";
+        normalImage.style.display = "block";
+
+        const imageURL = URL.createObjectURL(item.file);
+        normalImage.src = imageURL;
+
+        statusText.innerText = "Imagem carregada: " + item.name;
+      }
+    }
+
+    function addBlock(name) {
+      const blocksArea = document.getElementById("blocksArea");
+
+      if (blocksArea.querySelector("p")) {
+        blocksArea.innerHTML = "";
+      }
+
+      const block = document.createElement("div");
+      block.className = "block";
+      block.innerText = name;
+
+      blocksArea.appendChild(block);
+    }
+
+    loadFiles();
+  </script>
 
 </body>
 </html>

@@ -1,25 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-
-  <!-- Define a codificação dos caracteres -->
   <meta charset="UTF-8">
-
-  <!-- Título que aparece na aba do navegador -->
   <title>Processamento de Imagens Médicas</title>
 
-  <!-- Importa a fonte Poppins do Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
   <style>
-    /* Remove margens e espaçamentos padrões do navegador */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    /* Corpo geral da página */
     body {
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #0b1d3a, #050c1a);
@@ -28,86 +21,57 @@
       display: flex;
     }
 
-    /* Menu lateral esquerdo */
     .sidebar {
       width: 250px;
       background: rgba(10, 20, 40, 0.9);
-      backdrop-filter: blur(10px);
       padding: 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
       border-right: 1px solid rgba(255,255,255,0.05);
     }
 
-    /* Logo/nome do sistema */
     .logo {
       font-size: 25px;
       font-weight: 600;
       margin-bottom: 50px;
     }
 
-    /* Lista do menu */
     .menu {
       list-style: none;
     }
 
-    /* Itens do menu */
     .menu li {
       padding: 12px;
       border-radius: 10px;
       margin-bottom: 10px;
-      cursor: pointer;
-      transition: 0.3s;
     }
 
-    /* Efeito ao passar o mouse nos itens */
-    .menu li:hover {
-      background: rgba(255,255,255,0.08);
-    }
-
-    /* Item ativo do menu */
     .menu .active {
       background: rgba(192,132,252,0.2);
       color: #c084fc;
     }
 
-    /* Área principal da página */
     .main {
       flex: 1;
       padding: 40px;
     }
 
-    /* Título principal */
     .main h1 {
       font-size: 52px;
       margin-bottom: 10px;
     }
 
-    /* Texto abaixo do título */
     .main p {
       opacity: 0.7;
       margin-bottom: 30px;
     }
 
-    /* Caixa de upload */
     .upload-box {
       border: 2px dashed rgba(255,255,255,0.2);
       border-radius: 20px;
       padding: 50px;
       text-align: center;
       background: rgba(255,255,255,0.02);
-      margin-bottom: 30px;
-      transition: 0.3s;
     }
 
-    /* Efeito ao passar o mouse na caixa */
-    .upload-box:hover {
-      border-color: #c084fc;
-      background: rgba(192,132,252,0.05);
-    }
-
-    /* Botão de seleção */
     .button {
       margin-top: 20px;
       padding: 12px 25px;
@@ -116,150 +80,168 @@
       border: none;
       color: white;
       cursor: pointer;
-      transition: 0.3s;
       font-family: 'Poppins', sans-serif;
     }
 
-    /* Efeito ao passar o mouse no botão */
     .button:hover {
       background: rgba(192,132,252,0.3);
     }
 
-    /* Texto de status */
     #status {
       font-size: 14px;
       opacity: 0.7;
       margin-top: 15px;
-    }
-
-    /* Responsividade para celular */
-    @media (max-width: 800px) {
-      body {
-        flex-direction: column;
-      }
-
-      .sidebar {
-        width: 100%;
-      }
-
-      .main h1 {
-        font-size: 34px;
-      }
-
-      .main {
-        padding: 25px;
-      }
     }
   </style>
 </head>
 
 <body>
 
-  <!-- Menu lateral -->
   <div class="sidebar">
+    <div class="logo">Processamento Imagem Médica</div>
 
-    <div>
-      <!-- Nome/logo do sistema -->
-      <div class="logo">Processamento Imagem Médica</div>
-
-      <!-- Opções do menu -->
-      <ul class="menu">
-        <li class="active">Início</li>
-        <li>Projetos</li>
-      </ul>
-    </div>
-
+    <ul class="menu">
+      <li class="active">Início</li>
+      <li>Projetos</li>
+    </ul>
   </div>
 
-  <!-- Conteúdo principal -->
   <div class="main">
-
-    <!-- Título -->
     <h1>Comece seu processamento de imagens</h1>
-
-    <!-- Descrição -->
     <p>Envie suas imagens médicas para iniciar o processamento.</p>
 
-    <!-- Caixa de upload -->
     <div class="upload-box">
+      <p>Escolher imagens ou arquivos DICOM</p>
 
-      <!-- Texto principal da caixa -->
-      <p>Escolher pasta ou arquivos</p>
-
-      <!-- Texto secundário -->
       <p style="font-size: 12px; opacity: 0.6;">
-        Selecione uma ou mais imagens para continuar
+        Formatos aceitos: PNG, JPG, JPEG, TIF, TIFF, DCM e DICOM
       </p>
 
-      <!-- Input escondido para selecionar arquivos -->
-      <input 
-        type="file" 
-        id="fileInput" 
-        multiple 
-        accept="image/*" 
+      <input
+        type="file"
+        id="fileInput"
+        multiple
+        accept=".png,.jpg,.jpeg,.tif,.tiff,.dcm,.dicom"
         hidden
       >
 
-      <!-- Botão visível que abre o seletor de arquivos -->
       <button class="button" onclick="document.getElementById('fileInput').click()">
         Selecionar arquivos
       </button>
 
-      <!-- Texto de status -->
-      <p id="status">Nenhuma imagem selecionada.</p>
-
+      <p id="status">Nenhum arquivo selecionado.</p>
     </div>
-
   </div>
 
   <script>
-    // Pega o input de arquivos pelo ID
     const fileInput = document.getElementById("fileInput");
+    const statusText = document.getElementById("status");
 
-    // Escuta quando o usuário seleciona arquivos
-    fileInput.addEventListener("change", function () {
+    // Abre ou cria o banco IndexedDB
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("MedicalImagesDB", 1);
 
-      // Transforma os arquivos selecionados em uma lista
-      const files = Array.from(fileInput.files);
+        request.onupgradeneeded = function (event) {
+          const db = event.target.result;
 
-      // Se nenhum arquivo for selecionado, para a função
-      if (files.length === 0) {
-        document.getElementById("status").innerText = "Nenhuma imagem selecionada.";
-        return;
-      }
-
-      // Atualiza o status na tela
-      document.getElementById("status").innerText = "Carregando imagens...";
-
-      // Array onde serão guardadas as imagens convertidas
-      const images = [];
-
-      // Para cada arquivo selecionado
-      files.forEach(file => {
-
-        // Cria um leitor de arquivo
-        const reader = new FileReader();
-
-        // Quando terminar de ler o arquivo
-        reader.onload = function (event) {
-
-          // Salva a imagem em formato base64
-          images.push(event.target.result);
-
-          // Quando todas as imagens forem carregadas
-          if (images.length === files.length) {
-
-            // Salva as imagens temporariamente no navegador
-            sessionStorage.setItem("selectedImages", JSON.stringify(images));
-
-            // Redireciona para a página de processamento
-            window.location.href = "processamento.html";
+          if (!db.objectStoreNames.contains("files")) {
+            db.createObjectStore("files", {
+              keyPath: "id",
+              autoIncrement: true
+            });
           }
         };
 
-        // Lê o arquivo como imagem/base64
-        reader.readAsDataURL(file);
+        request.onsuccess = function () {
+          resolve(request.result);
+        };
+
+        request.onerror = function () {
+          reject(request.error);
+        };
       });
+    }
+
+    // Limpa arquivos antigos
+    function clearFiles(db) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction("files", "readwrite");
+        const store = transaction.objectStore("files");
+        const request = store.clear();
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // Salva um arquivo no IndexedDB
+    function saveFile(db, file, type) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction("files", "readwrite");
+        const store = transaction.objectStore("files");
+
+        const request = store.add({
+          name: file.name,
+          type: type,
+          file: file
+        });
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    fileInput.addEventListener("change", async function () {
+      const files = Array.from(fileInput.files);
+
+      if (files.length === 0) {
+        statusText.innerText = "Nenhum arquivo selecionado.";
+        return;
+      }
+
+      statusText.innerText = "Salvando arquivos...";
+
+      try {
+        const db = await openDatabase();
+
+        await clearFiles(db);
+
+        let validFiles = 0;
+
+        for (const file of files) {
+          const name = file.name.toLowerCase();
+
+          const isDicom =
+            name.endsWith(".dcm") ||
+            name.endsWith(".dicom");
+
+          const isImage =
+            name.endsWith(".png") ||
+            name.endsWith(".jpg") ||
+            name.endsWith(".jpeg") ||
+            name.endsWith(".tif") ||
+            name.endsWith(".tiff");
+
+          if (isDicom || isImage) {
+            await saveFile(db, file, isDicom ? "dicom" : "image");
+            validFiles++;
+          }
+        }
+
+        if (validFiles === 0) {
+          statusText.innerText = "Nenhum arquivo válido selecionado.";
+          return;
+        }
+
+        statusText.innerText = "Arquivos carregados. Abrindo processamento...";
+
+        window.location.href = "processamento.html";
+
+      } catch (error) {
+        console.error(error);
+        statusText.innerText = "Erro ao salvar os arquivos.";
+      }
     });
   </script>
 
