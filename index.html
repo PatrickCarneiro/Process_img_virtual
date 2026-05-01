@@ -1,12 +1,10 @@
-<!DOCTYPE html> <!-- Define que o documento é HTML5 -->
-<html lang="pt-BR"> <!-- Define o idioma da página como português do Brasil -->
-
+<!DOCTYPE html> 
+<html lang="pt-BR"> 
 <head>
-  <meta charset="UTF-8"> <!-- Define a codificação de caracteres (acentos, ç, etc.) -->
+  <meta charset="UTF-8"> 
 
-  <title>Processamento de Imagens Médicas</title> <!-- Título da aba do navegador -->
+  <title>Processamento de Imagens Médicas</title> 
 
-  <!-- Importa a fonte Poppins do Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
   <!-- Bibliotecas necessárias para ler e exibir arquivos DICOM -->
@@ -21,7 +19,7 @@
       box-sizing: border-box; /* Faz padding e border entrarem no tamanho total */
     }
 
-    body { /* Corpo da página */
+    body { 
       font-family: 'Poppins', sans-serif; /* Define a fonte */
       background: linear-gradient(135deg, #0b1d3a, #050c1a); /* Fundo degradê */
       color: white; /* Cor do texto */
@@ -29,14 +27,14 @@
       display: flex; /* Layout flexível */
     }
 
-    .sidebar { /* Menu lateral */
+    .menulateral { 
       width: 250px; /* Largura fixa */
       background: rgba(10, 20, 40, 0.9); /* Fundo semi-transparente */
       padding: 20px; /* Espaçamento interno */
       border-right: 1px solid rgba(255,255,255,0.05); /* Linha separadora */
     }
 
-    .logo { /* Título/logo */
+    .logo { 
       font-size: 25px;
       font-weight: 600;
       margin-bottom: 50px;
@@ -46,10 +44,17 @@
       list-style: none; /* Remove bolinhas */
     }
 
-    .menu li { /* Itens do menu */
+    .menu li{ 
       padding: 12px;
       border-radius: 10px;
       margin-bottom: 10px;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+
+    .menu li:hover {   /* Clareia se passar o mouse em cima */ 
+      background: rgba(192,132,252,0.15);
+      color: #c084fc;
     }
 
     .menu .active { /* Item ativo */
@@ -63,25 +68,31 @@
       overflow-y: auto; /* Permite rolagem vertical */
     }
 
-    .main h1 { /* Título principal */
+    .main h1 { 
       font-size: 52px;
       margin-bottom: 10px;
     }
 
-    .main p { /* Texto descritivo */
+    .main p { 
       opacity: 0.7;
       margin-bottom: 30px;
     }
 
-    .upload-box { /* Caixa de upload */
+    .upload-box { 
       border: 2px dashed rgba(255,255,255,0.2); /* Borda tracejada */
       border-radius: 20px;
       padding: 50px;
       text-align: center;
       background: rgba(255,255,255,0.02);
+      transition: 0.3s;
     }
 
-    .button { /* Botões */
+    .upload-box:hover {   /* Clareia se passar o mouse em cima */ 
+      border-color: #c084fc;
+      background: rgba(192,132,252,0.05);
+    }
+
+    .botoes {
       margin-top: 20px;
       padding: 12px 25px;
       border-radius: 10px;
@@ -93,43 +104,43 @@
       transition: 0.3s;
     }
 
-    .button:hover { /* Efeito ao passar o mouse */
+    .botoes:hover { /* Efeito ao passar o mouse */
       background: rgba(192,132,252,0.3);
     }
 
-    #status { /* Texto de status */
+    #status { 
       font-size: 14px;
       opacity: 0.7;
       margin-top: 15px;
     }
 
-    .recent-title { /* Título das imagens recentes */
+    .recent-titul { /* Título das imagens recentes */
       margin-top: 35px;
       margin-bottom: 15px;
     }
 
-    .recent-grid { /* Grid de miniaturas */
+    .grid_recente { /* Grid para miniaturas */
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Layout responsivo */
       gap: 15px;
     }
 
-    .thumb-card { /* Cada card de imagem */
+    .miniaturas {
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 15px;
       padding: 10px;
-      cursor: pointer;
+      cursor: pointer; /* Cursor de mão para indicar que é clicável */
       text-align: center;
       transition: 0.3s;
     }
 
-    .thumb-card:hover { /* Hover do card */
+    .miniaturas:hover { 
       background: rgba(192,132,252,0.18);
       transform: translateY(-3px);
     }
 
-    .thumb-card img { /* Imagem normal */
+    .miniaturas img { /* Imagem normal */
       width: 100%;
       height: 90px;
       object-fit: cover;
@@ -138,7 +149,7 @@
       background: black;
     }
 
-    .dicom-thumb { /* Área para miniatura DICOM */
+    .dicom_miniatura { /* Área para miniatura DICOM */
       width: 100%;
       height: 90px;
       border-radius: 10px;
@@ -147,7 +158,7 @@
       margin-bottom: 8px;
     }
 
-    .dicom-fallback { /* Caso DICOM não carregue */
+    .dicom-erro { /* Caso DICOM não carregue */
       width: 100%;
       height: 90px;
       border-radius: 10px;
@@ -160,13 +171,13 @@
       margin-bottom: 8px;
     }
 
-    .thumb-name { /* Nome do arquivo */
+    .miniatura_nome { /* Nome do arquivo */
       font-size: 12px;
       opacity: 0.8;
       word-break: break-word;
     }
 
-    .selected { /* Estilo quando selecionado */
+    .selecionado { /* Estilo quando selecionado */
       border: 2px solid #c084fc !important;
       background: rgba(192,132,252,0.22);
     }
@@ -176,7 +187,7 @@
         flex-direction: column;
       }
 
-      .sidebar {
+      .menulateral {
         width: 100%;
       }
 
@@ -191,30 +202,24 @@
   </style>
 </head>
 
-<body>
+<body> 
 
-  <!-- Menu lateral -->
-  <div class="sidebar">
+  <div class="menulateral">  <!-- Menu lateral -->
     <div class="logo">Processamento Imagem Médica</div>
 
-    <!-- Itens do menu -->
-    <ul class="menu">
+    <ul class="menu"> <!-- Itens do menu -->
       <li class="active">Início</li>
       <li>Projetos</li>
     </ul>
   </div>
 
-  <!-- Conteúdo principal -->
-  <div class="main">
+  <div class="main"> <!-- Conteúdo principal -->
 
-    <!-- Título principal -->
-    <h1>Comece seu processamento de imagens</h1>
+    <h1>Comece seu processamento de imagens</h1> <!-- Título principal -->
 
-    <!-- Descrição -->
-    <p>Envie suas imagens médicas para iniciar o processamento.</p>
+    <p>Envie suas imagens médicas para iniciar o processamento.</p> <!-- Descrição -->
 
-    <!-- Caixa de upload -->
-    <div class="upload-box">
+    <div class="upload-box"> <!-- Caixa de upload -->
 
       <p>Escolher imagens ou arquivos DICOM</p>
 
@@ -232,7 +237,7 @@
       >
 
       <!-- Botão que abre o seletor -->
-      <button class="button" onclick="document.getElementById('fileInput').click()">
+      <button class="botoes" onclick="document.getElementById('fileInput').click()">
         Selecionar arquivos
       </button>
 
@@ -241,17 +246,19 @@
     </div>
 
     <!-- Título das imagens recentes -->
-    <h2 class="recent-title">Últimas imagens enviadas</h2>
+    <h2 class="recent-titul">Últimas imagens enviadas</h2>
 
     <!-- Grid onde as miniaturas serão inseridas via JS -->
-    <div id="recentImages" class="recent-grid"></div>
+    <div id="recentImages" class="grid_recente"></div>
 
     <!-- Botão para processar imagens selecionadas -->
     <div style="margin-top: 20px;">
-      <button class="button" onclick="processSelected()">
+      <button class="botoes" onclick="processSelected()">
         Processar selecionadas
       </button>
     </div>
+
+  </div> 
 
   <!-- Script principal -->
   <script src="index.js"></script>
