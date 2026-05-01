@@ -1,11 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Processamento</title>
+
+<script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>
+<script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script>
+<script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #0b1d3a, #050c1a);
+  color: white;
+  min-height: 100vh;
+  display: flex;
+}
+
+.menulateral {
+  width: 250px;
+  background: rgba(10, 20, 40, 0.9);
+  padding: 20px;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 40px;
+}
+
+.principal {
+  flex: 1;
+  padding: 30px;
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+  gap: 20px;
+}
+
+.painel {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.ferramenta {
+  padding: 12px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.ferramenta:hover {
+  background: rgba(192,132,252,0.25);
+}
+
+.area_visualizacao {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+#visualizadorDicom {
+  width: 100%;
+  height: 600px;
+  background: black;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+#imagemNormal {
+  width: 100%;
+  max-height: 600px;
+  display: none;
+  border-radius: 20px;
+  background: black;
+  object-fit: contain;
+}
+
+.arquivo_item {
+  padding: 10px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.arquivo_item:hover {
+  background: rgba(192,132,252,0.25);
+}
+
+.bloco {
+  padding: 12px;
+  background: rgba(192,132,252,0.15);
+  border: 1px solid rgba(192,132,252,0.35);
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  body {
+    height: auto;
+  }
+
+  .menulateral {
+    display: none;
+  }
+
+  .principal {
+    grid-template-columns: 1fr;
+  }
+
+  #visualizadorDicom {
+    height: 400px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="menulateral">
+  <div class="logo">Processamento Imagem Médica</div>
+  <p>Visualização DICOM e imagens comuns</p>
+</div>
+
+<div class="principal">
+
+  <div class="painel">
+    <h3>Ferramentas</h3>
+    <br>
+
+    <div class="ferramenta" onclick="addBlock('Filtro Gaussiano')">Filtro Gaussiano</div>
+    <div class="ferramenta" onclick="addBlock('Threshold')">Threshold</div>
+    <div class="ferramenta" onclick="addBlock('Canny')">Canny</div>
+    <div class="ferramenta" onclick="addBlock('Histograma')">Histograma</div>
+    <div class="ferramenta" onclick="addBlock('Segmentação')">Segmentação</div>
+  </div>
+
+  <div class="area_visualizacao">
+    <h1>Área de processamento</h1>
+
+    <div id="visualizadorDicom"></div>
+    <img id="imagemNormal">
+
+    <p id="status">Carregando arquivos...</p>
+  </div>
+
+  <div class="painel">
+    <h3>Arquivos</h3>
+    <br>
+    <div id="listaArquivos"></div>
+
+    <br>
+
+    <h3>Blocos usados</h3>
+    <br>
+
+    <div id="areaBlocos">
+      <p style="opacity: 0.6;">Clique em uma ferramenta.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
 const DB_NAME = "MedicalImagesDB";
 const DB_VERSION = 5;
 
-const fileInput = document.getElementById("fileInput");
+const visualizadorDicom = document.getElementById("visualizadorDicom");
+const imagemNormal = document.getElementById("imagemNormal");
 const statusText = document.getElementById("status");
-const recentImages = document.getElementById("recentImages");
-
-let selectedItems = [];
+const listaArquivos = document.getElementById("listaArquivos");
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
@@ -13,6 +189,8 @@ cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
 cornerstoneWADOImageLoader.configure({
   useWebWorkers: false
 });
+
+cornerstone.enable(visualizadorDicom);
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -46,244 +224,111 @@ function openDatabase() {
   });
 }
 
-function getFileType(fileName) {
-  const name = fileName.toLowerCase();
-
-  if (name.endsWith(".dcm") || name.endsWith(".dicom")) {
-    return "dicom";
-  }
-
-  if (
-    name.endsWith(".png") ||
-    name.endsWith(".jpg") ||
-    name.endsWith(".jpeg") ||
-    name.endsWith(".tif") ||
-    name.endsWith(".tiff")
-  ) {
-    return "image";
-  }
-
-  return "invalid";
-}
-
-function clearStore(db, storeName) {
+function getFiles(db) {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    const request = store.clear();
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function addToStore(db, storeName, data) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    const request = store.add(data);
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function getAllFromStore(db, storeName) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
-    const store = tx.objectStore(storeName);
+    const transaction = db.transaction("files", "readonly");
+    const store = transaction.objectStore("files");
     const request = store.getAll();
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onsuccess = function() {
+      resolve(request.result);
+    };
+
+    request.onerror = function() {
+      reject(request.error);
+    };
   });
 }
 
-function deleteFromStore(db, storeName, id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function keepOnlyLastTen(db) {
-  const allRecent = await getAllFromStore(db, "recent");
-
-  allRecent.sort((a, b) => b.createdAt - a.createdAt);
-
-  const excess = allRecent.slice(10);
-
-  for (const item of excess) {
-    await deleteFromStore(db, "recent", item.id);
-  }
-}
-
-fileInput.addEventListener("change", async function() {
-  const files = Array.from(fileInput.files);
-
-  if (files.length === 0) {
-    statusText.innerText = "Nenhum arquivo selecionado.";
-    return;
-  }
-
-  statusText.innerText = "Salvando arquivos...";
-
+async function loadFiles() {
   try {
     const db = await openDatabase();
-
-    await clearStore(db, "files");
-
-    let validFiles = 0;
-
-    for (const file of files) {
-      const type = getFileType(file.name);
-
-      if (type === "invalid") {
-        continue;
-      }
-
-      const data = {
-        name: file.name,
-        type: type,
-        file: file,
-        createdAt: Date.now()
-      };
-
-      await addToStore(db, "files", data);
-      await addToStore(db, "recent", data);
-
-      validFiles++;
-    }
-
-    await keepOnlyLastTen(db);
-
-    if (validFiles === 0) {
-      statusText.innerText = "Nenhum arquivo válido selecionado.";
-      return;
-    }
-
-    window.location.href = "processamento.html";
-
-  } catch (error) {
-    console.error(error);
-    statusText.innerText = "Erro ao salvar os arquivos.";
-  }
-});
-
-function toggleSelection(item, card) {
-  const index = selectedItems.findIndex(selected => selected.id === item.id);
-
-  if (index === -1) {
-    selectedItems.push(item);
-    card.classList.add("selecionado");
-  } else {
-    selectedItems.splice(index, 1);
-    card.classList.remove("selecionado");
-  }
-}
-
-async function processSelected() {
-  if (selectedItems.length === 0) {
-    alert("Selecione pelo menos uma imagem.");
-    return;
-  }
-
-  try {
-    const db = await openDatabase();
-
-    await clearStore(db, "files");
-
-    for (const item of selectedItems) {
-      await addToStore(db, "files", {
-        name: item.name,
-        type: item.type,
-        file: item.file,
-        createdAt: Date.now()
-      });
-    }
-
-    window.location.href = "processamento.html";
-
-  } catch (error) {
-    console.error(error);
-    statusText.innerText = "Erro ao processar imagens selecionadas.";
-  }
-}
-
-async function renderDicomThumbnail(item, container) {
-  try {
-    cornerstone.enable(container);
-
-    const dicomFile = new File([item.file], item.name);
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
-
-    const image = await cornerstone.loadImage(imageId);
-
-    cornerstone.displayImage(container, image);
-    cornerstone.resize(container, true);
-
-  } catch (error) {
-    console.error("Erro ao gerar miniatura DICOM:", error);
-
-    container.className = "dicom-erro";
-    container.innerText = "DICOM";
-  }
-}
-
-async function loadRecentImages() {
-  try {
-    const db = await openDatabase();
-    const files = await getAllFromStore(db, "recent");
-
-    files.sort((a, b) => b.createdAt - a.createdAt);
-
-    recentImages.innerHTML = "";
-    selectedItems = [];
+    const files = await getFiles(db);
 
     if (files.length === 0) {
-      recentImages.innerHTML =
-        "<p style='opacity: 0.6;'>Nenhuma imagem enviada ainda.</p>";
+      statusText.innerText = "Nenhum arquivo encontrado.";
       return;
     }
 
-    files.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "miniaturas";
+    listaArquivos.innerHTML = "";
 
-      if (item.type === "image") {
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(item.file);
-        card.appendChild(img);
-      }
+    files.forEach((item) => {
+      const div = document.createElement("div");
+      div.className = "arquivo_item";
+      div.innerText = item.name;
 
-      if (item.type === "dicom") {
-        const dicomBox = document.createElement("div");
-        dicomBox.className = "dicom_miniatura";
-        card.appendChild(dicomBox);
-
-        renderDicomThumbnail(item, dicomBox);
-      }
-
-      const name = document.createElement("div");
-      name.className = "miniatura_nome";
-      name.innerText = item.name;
-      card.appendChild(name);
-
-      card.onclick = function() {
-        toggleSelection(item, card);
+      div.onclick = function() {
+        openFile(item);
       };
 
-      recentImages.appendChild(card);
+      listaArquivos.appendChild(div);
     });
+
+    openFile(files[0]);
 
   } catch (error) {
     console.error(error);
-    recentImages.innerHTML = "<p>Erro ao carregar imagens recentes.</p>";
+    statusText.innerText = "Erro ao carregar arquivos.";
   }
 }
 
-loadRecentImages();
+function openFile(item) {
+  statusText.innerText = "Abrindo: " + item.name;
+
+  if (item.type === "dicom") {
+    imagemNormal.style.display = "none";
+    visualizadorDicom.style.display = "block";
+
+    try {
+      const dicomFile = new File([item.file], item.name);
+      const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+
+      cornerstone.loadImage(imageId)
+        .then(function(image) {
+          cornerstone.displayImage(visualizadorDicom, image);
+          cornerstone.resize(visualizadorDicom, true);
+
+          statusText.innerText = "DICOM carregado: " + item.name;
+        })
+        .catch(function(error) {
+          console.error(error);
+
+          statusText.innerText =
+            "Erro ao abrir DICOM. Pode ser DICOM comprimido ou incompatível.";
+        });
+
+    } catch (error) {
+      console.error(error);
+      statusText.innerText = "Erro ao processar DICOM.";
+    }
+
+  } else {
+    visualizadorDicom.style.display = "none";
+    imagemNormal.style.display = "block";
+
+    const imageURL = URL.createObjectURL(item.file);
+    imagemNormal.src = imageURL;
+
+    statusText.innerText = "Imagem carregada: " + item.name;
+  }
+}
+
+function addBlock(name) {
+  const areaBlocos = document.getElementById("areaBlocos");
+
+  if (areaBlocos.querySelector("p")) {
+    areaBlocos.innerHTML = "";
+  }
+
+  const bloco = document.createElement("div");
+  bloco.className = "bloco";
+  bloco.innerText = name;
+
+  areaBlocos.appendChild(bloco);
+}
+
+loadFiles();
+</script>
+
+</body>
+</html>
