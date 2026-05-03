@@ -9,12 +9,10 @@ const fileInput = document.getElementById("fileInput");
 const statusText = document.getElementById("status"); 
 const recentImages = document.getElementById("recentImages"); 
 
-// 🔥 array que guarda as imagens selecionadas pelo usuário
+// Array que guarda as imagens selecionadas pelo usuário
 let selectedItems = [];
 
-// =====================
 // CONFIGURAÇÃO DICOM
-// =====================
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
 
@@ -22,126 +20,120 @@ cornerstoneWADOImageLoader.configure({
   useWebWorkers: false
 });
 
-// =====================
-// BANCO
-// =====================
+// BANCO DE DADOS 
+// Função que abre (ou cria) o banco de dados
 function openDatabase() {
-  return new Promise((resolve, reject) => {
+  
+  return new Promise((resolve, reject) => { // Retorna uma Promise para trabalhar de forma assíncrona (esperar abrir o banco)
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(DB_NAME, DB_VERSION); 
 
-    request.onupgradeneeded = function(event) {
-      const db = event.target.result;
+    request.onupgradeneeded = function(event) { // Evento que cria ou atualiza o banco 
 
-      if (!db.objectStoreNames.contains("files")) {
+      const db = event.target.result; 
+
+      // Verifica se a tabela "files" NÃO existe
+      if (!db.objectStoreNames.contains("files")) { 
+        // Cria a tabela "files"
         db.createObjectStore("files", {
-          keyPath: "id",
+
+          keyPath: "id", // Define que cada item terá um campo "id" como chave primária
+
           autoIncrement: true
         });
       }
 
+      // Verifica se a tabela "recent" NÃO existe
       if (!db.objectStoreNames.contains("recent")) {
+
         db.createObjectStore("recent", {
+
           keyPath: "id",
+
           autoIncrement: true
         });
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    // Evento que roda quando o banco abre com sucesso
+    request.onsuccess = () => 
+      
+      resolve(request.result); // Resolve a Promise retornando o banco aberto
+
+    request.onerror = () =>  // Evento que roda se ocorrer erro ao abrir o banco
+
+      // Rejeita a Promise com o erro
+      reject(request.error);
   });
 }
 
-// =====================
-// FUNÇÕES BANCO
-// =====================
-function clearStore(db, storeName) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    const request = store.clear();
+function addToStore(db, storeName, data) { // Função para adicionar um item a uma tabela do banco 
+  return new Promise((resolve, reject) => {  
+    const tx = db.transaction(storeName, "readwrite");  
+    const store = tx.objectStore(storeName);  
+    const request = store.add(data); // Adiciona o item à tabela
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(); 
+    request.onerror = () => reject(request.error); 
   });
 }
 
-function addToStore(db, storeName, data) {
+function getAllFromStore(db, storeName) { // Função para pegar todos os itens de uma tabela do banco
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    const request = store.add(data);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function getAllFromStore(db, storeName) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
-    const store = tx.objectStore(storeName);
-    const request = store.getAll();
+    const tx = db.transaction(storeName, "readonly"); // Transação de leitura
+    const store = tx.objectStore(storeName); 
+    const request = store.getAll(); // Pega todos os itens da tabela
 
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
 
-// =====================
 // SELEÇÃO MULTIPLA
-// =====================
-function toggleSelection(item, card) {
-
-  const index = selectedItems.findIndex(i => i.id === item.id);
+function toggleSelection(item, card) { // Função para selecionar ou deselecionar um item (imagem)
+ 
+  const index = selectedItems.findIndex(i => i.id === item.id); // Verifica se o item já está selecionado (procura pelo id)
 
   if (index === -1) {
-    selectedItems.push(item);
+    selectedItems.push(item); 
 
-    // 🔥 CORREÇÃO AQUI
-    card.classList.add("selecionado");
+    card.classList.add("selecionado"); // Adiciona a classe "selecionado" ao card para marcar visualmente
 
   } else {
-    selectedItems.splice(index, 1);
+    selectedItems.splice(index, 1); // Remove o item do array de selecionados
 
-    // 🔥 CORREÇÃO AQUI
-    card.classList.remove("selecionado");
+    card.classList.remove("selecionado"); // Remove a classe "selecionado" do card para desmarcar visualmente
   }
 }
 
-// =====================
 // BOTÃO PROCESSAR
-// =====================
-async function processSelected() {
+async function processSelected() { // Função para processar as imagens selecionadas ao clicar no botão 
 
   if (selectedItems.length === 0) {
     alert("Selecione pelo menos uma imagem");
     return;
   }
 
-  const db = await openDatabase();
-  await clearStore(db, "files");
+  const db = await openDatabase();  
+  await clearStore(db, "files"); // Limpa a tabela "files" para guardar apenas as imagens selecionadas para processamento
 
-  for (const item of selectedItems) {
-    await addToStore(db, "files", item);
+  for (const item of selectedItems) { 
+    await addToStore(db, "files", item); // Adiciona cada item selecionado à tabela "files"
   }
 
-  window.location.href = "processamento.html";
+  window.location.href = "processamento.html"; // Redireciona para a página de processamento
 }
 
-// =====================
 // MINIATURA DICOM
-// =====================
-async function renderDicomThumbnail(item, container) {
+async function renderDicomThumbnail(item, container) { // Função para renderizar a miniatura de um arquivo DICOM dentro de um container HTML
   try {
 
-    cornerstone.enable(container);
+    cornerstone.enable(container); // Habilita o container para exibir imagens DICOM usando o Cornerstone
 
-    const dicomFile = new File([item.file], item.name);
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+    const dicomFile = new File([item.file], item.name); 
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);  
 
-    const image = await cornerstone.loadImage(imageId);
+    const image = await cornerstone.loadImage(imageId); // Carrega a imagem DICOM usando o Cornerstone
 
     cornerstone.displayImage(container, image);
     cornerstone.resize(container, true);
@@ -151,43 +143,38 @@ async function renderDicomThumbnail(item, container) {
   }
 }
 
-// =====================
 // CARREGAR RECENTES
-// =====================
-async function loadRecentImages() {
+async function loadRecentImages() { // Função para carregar as imagens recentes da tabela "recent" do banco e exibi-las na tela
 
-  const db = await openDatabase();
+  const db = await openDatabase(); 
   const files = await getAllFromStore(db, "recent");
 
   recentImages.innerHTML = "";
   selectedItems = [];
 
-  files.forEach(item => {
+  files
+  .sort((a, b) => b.createdAt - a.createdAt) // ordena do mais novo
+  .slice(0, 10) // pega só 10
+  .forEach(item => {  // Para cada item encontrado na tabela "recent", cria um card para exibir a miniatura e o nome do arquivo
 
     const card = document.createElement("div");
 
-    // 🔥 CORREÇÃO AQUI
     card.className = "miniaturas";
 
-    // =====================
     // IMAGEM NORMAL
-    // =====================
-    if (item.type === "image") {
-      const img = document.createElement("img");
-      img.src = URL.createObjectURL(item.file);
+    if (item.type === "image") { 
+      const img = document.createElement("img"); // Cria um elemento de imagem para exibir a miniatura
+      img.src = URL.createObjectURL(item.file); 
       card.appendChild(img);
     }
 
-    // =====================
-    // DICOM
-    // =====================
+    // IMAGEM DICOM
     if (item.type === "dicom") {
       const dicomBox = document.createElement("div");
 
-      // 🔥 CORREÇÃO AQUI
-      dicomBox.className = "dicom_miniatura";
+      dicomBox.className = "dicom_miniatura";  
 
-      card.appendChild(dicomBox);
+      card.appendChild(dicomBox); 
 
       renderDicomThumbnail(item, dicomBox);
     }
@@ -195,48 +182,43 @@ async function loadRecentImages() {
     // Nome do arquivo
     const name = document.createElement("div");
 
-    // 🔥 CORREÇÃO AQUI
-    name.className = "miniatura_nome";
+    name.className = "miniatura_nome"; // Cria um elemento de texto para exibir o nome do arquivo
 
-    name.innerText = item.name;
+    name.innerText = item.name; // Define o texto do elemento como o nome do arquivo
 
     card.appendChild(name);
 
-    card.onclick = () => toggleSelection(item, card);
+    card.onclick = () => toggleSelection(item, card); // Adiciona um evento de clique ao card para selecionar ou deselecionar a imagem
 
-    recentImages.appendChild(card);
+    recentImages.appendChild(card); // Adiciona o card ao container de imagens recentes
   });
 }
 
-// =====================
 // UPLOAD NORMAL
-// =====================
-fileInput.addEventListener("change", async function() {
+fileInput.addEventListener("change", async function() { // Evento que roda quando o usuário seleciona arquivos usando o input de arquivos
 
-  const files = Array.from(fileInput.files);
+  const files = Array.from(fileInput.files); // Converte a lista de arquivos selecionados em um array para facilitar o uso
 
-  const db = await openDatabase();
+  const db = await openDatabase(); 
   await clearStore(db, "files");
 
   for (const file of files) {
 
     const type = file.name.endsWith(".dcm") ? "dicom" : "image";
 
-    const data = {
+    const data = { // Cria um objeto com as informações do arquivo para armazenar no banco
       name: file.name,
-      type: type,
-      file: file,
+      type: type, 
+      file: file, // Armazena o arquivo em si para poder acessar os dados posteriormente
       createdAt: Date.now()
     };
 
-    await addToStore(db, "files", data);
+    await addToStore(db, "files", data); 
     await addToStore(db, "recent", data);
   }
 
   window.location.href = "processamento.html";
 });
 
-// =====================
 // INICIAR
-// =====================
 loadRecentImages();
