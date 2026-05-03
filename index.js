@@ -106,6 +106,18 @@ function toggleSelection(item, card) { // Função para selecionar ou deselecion
   }
 }
 
+// LIMPAR TABELA
+function clearStore(db, storeName) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const request = store.clear();
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // BOTÃO PROCESSAR
 async function processSelected() { // Função para processar as imagens selecionadas ao clicar no botão 
 
