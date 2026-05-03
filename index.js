@@ -2,7 +2,7 @@
 const DB_NAME = "MedicalImagesDB";
 
 // Versão do banco (sempre aumentar quando mudar estrutura)
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 // Pegando elementos do HTML
 const fileInput = document.getElementById("fileInput"); 
@@ -154,7 +154,7 @@ async function loadRecentImages() { // Função para carregar as imagens recente
 
   files
   .sort((a, b) => b.createdAt - a.createdAt) // ordena do mais novo
-  .slice(0, 10) // pega só 10
+  .sort(...).slice(0, 10) // pega só 10
   .forEach(item => {  // Para cada item encontrado na tabela "recent", cria um card para exibir a miniatura e o nome do arquivo
 
     const card = document.createElement("div");
