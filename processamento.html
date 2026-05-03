@@ -21,35 +21,77 @@ body {
   color: white;
   min-height: 100vh;
   display: flex;
+  overflow: hidden;
 }
 
+/* MENU LATERAL */
 .menulateral {
   width: 250px;
-  background: rgba(10, 20, 40, 0.9);
+  background: rgba(10, 20, 40, 0.95);
   padding: 20px;
+  transition: 0.3s;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+.menulateral.fechado {
+  width: 70px;
 }
 
 .logo {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: bold;
-  margin-bottom: 40px;
+  margin-bottom: 25px;
 }
 
+.menulateral.fechado .logo,
+.menulateral.fechado .texto-menu {
+  display: none;
+}
+
+.botao-menu {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(192,132,252,0.2);
+  color: white;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.menu-item {
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.06);
+}
+
+.menu-item:hover {
+  background: rgba(192,132,252,0.25);
+}
+
+/* ÁREA PRINCIPAL */
 .principal {
   flex: 1;
-  padding: 30px;
+  height: 100vh;
   display: grid;
-  grid-template-columns: 220px 1fr 280px;
-  gap: 20px;
+  grid-template-columns: 230px 1fr 330px;
+  grid-template-rows: 1fr 190px;
+  gap: 15px;
+  padding: 20px;
+  overflow: hidden;
 }
 
 .painel {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 20px;
-  padding: 20px;
+  padding: 18px;
+  overflow: auto;
 }
 
+/* FERRAMENTAS */
 .ferramenta {
   padding: 12px;
   background: rgba(255,255,255,0.08);
@@ -63,15 +105,16 @@ body {
   background: rgba(192,132,252,0.25);
 }
 
+/* VISUALIZAÇÃO */
 .area_visualizacao {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
 }
 
 #visualizadorDicom {
   width: 100%;
-  height: 600px;
+  height: 540px;
   background: black;
   border-radius: 20px;
   overflow: hidden;
@@ -79,38 +122,144 @@ body {
 
 #imagemNormal {
   width: 100%;
-  max-height: 600px;
+  max-height: 540px;
   display: none;
   border-radius: 20px;
   background: black;
   object-fit: contain;
 }
 
-.arquivo_item {
-  padding: 10px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 10px;
+/* FLUXOGRAMA */
+#areaFluxograma {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bloco_fluxo {
+  width: 100%;
+  padding: 12px;
+  background: rgba(192,132,252,0.18);
+  border: 1px solid rgba(192,132,252,0.45);
+  border-radius: 14px;
   margin-bottom: 8px;
+  text-align: center;
+  position: relative;
+}
+
+.seta {
+  font-size: 24px;
+  color: #c084fc;
+  margin-bottom: 8px;
+}
+
+.remover {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255,80,80,0.25);
+  color: white;
   cursor: pointer;
-  font-size: 13px;
+}
+
+.remover:hover {
+  background: rgba(255,80,80,0.45);
+}
+
+/* IMAGENS EMBAIXO */
+.imagens_trabalho {
+  grid-column: 1 / 4;
+  display: flex;
+  gap: 15px;
+  overflow-x: auto;
+}
+
+.card_imagem {
+  min-width: 170px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 12px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.card_imagem:hover {
+  background: rgba(192,132,252,0.18);
+  transform: translateY(-3px);
+}
+
+.card_imagem img,
+.dicom_thumb {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  background: black;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.nome_arquivo {
+  font-size: 12px;
+  opacity: 0.8;
   word-break: break-word;
 }
 
-.arquivo_item:hover {
-  background: rgba(192,132,252,0.25);
+/* ABA DE ANÁLISES */
+.aba_analises {
+  position: fixed;
+  left: 270px;
+  right: 20px;
+  bottom: 0;
+  height: 55px;
+  background: rgba(10,20,40,0.97);
+  border: 1px solid rgba(192,132,252,0.35);
+  border-radius: 20px 20px 0 0;
+  transition: 0.3s;
+  overflow: hidden;
+  z-index: 10;
 }
 
-.bloco {
-  padding: 12px;
+.aba_analises.aberta {
+  height: 330px;
+}
+
+.cabecalho_analises {
+  height: 55px;
+  padding: 15px 20px;
+  cursor: pointer;
   background: rgba(192,132,252,0.15);
-  border: 1px solid rgba(192,132,252,0.35);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.conteudo_analises {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 20px;
+}
+
+#histograma {
+  width: 100%;
+  height: 190px;
+  background: black;
   border-radius: 12px;
-  margin-bottom: 10px;
+}
+
+.metrica {
+  background: rgba(255,255,255,0.06);
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 8px;
 }
 
 @media (max-width: 900px) {
   body {
-    height: auto;
+    overflow: auto;
   }
 
   .menulateral {
@@ -118,11 +267,18 @@ body {
   }
 
   .principal {
+    height: auto;
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 
-  #visualizadorDicom {
-    height: 400px;
+  .imagens_trabalho {
+    grid-column: 1;
+  }
+
+  .aba_analises {
+    left: 10px;
+    right: 10px;
   }
 }
 </style>
@@ -130,9 +286,18 @@ body {
 
 <body>
 
-<div class="menulateral">
+<div class="menulateral" id="menulateral">
+  <button class="botao-menu" onclick="toggleMenu()">☰</button>
+
   <div class="logo">Processamento Imagem Médica</div>
-  <p>Visualização DICOM e imagens comuns</p>
+
+  <div class="menu-item" onclick="window.location.href='index.html'">
+    🏠 <span class="texto-menu">Início</span>
+  </div>
+
+  <div class="menu-item">
+    📁 <span class="texto-menu">Projetos</span>
+  </div>
 </div>
 
 <div class="principal">
@@ -158,20 +323,34 @@ body {
   </div>
 
   <div class="painel">
-    <h3>Arquivos</h3>
-    <br>
-    <div id="listaArquivos"></div>
-
+    <h3>Fluxograma</h3>
     <br>
 
-    <h3>Blocos usados</h3>
-    <br>
-
-    <div id="areaBlocos">
-      <p style="opacity: 0.6;">Clique em uma ferramenta.</p>
+    <div id="areaFluxograma">
+      <p style="opacity: 0.6;">Clique em uma ferramenta para montar o fluxo.</p>
     </div>
   </div>
 
+  <div class="painel imagens_trabalho" id="imagensTrabalho"></div>
+
+</div>
+
+<div class="aba_analises" id="abaAnalises">
+  <div class="cabecalho_analises" onclick="toggleAnalises()">
+    <strong>Análises da imagem</strong>
+    <span id="iconeAnalises">▲</span>
+  </div>
+
+  <div class="conteudo_analises">
+    <canvas id="histograma"></canvas>
+
+    <div>
+      <div class="metrica">Média: <span id="media">---</span></div>
+      <div class="metrica">Mínimo: <span id="minimo">---</span></div>
+      <div class="metrica">Máximo: <span id="maximo">---</span></div>
+      <div class="metrica">Arquivo atual: <span id="arquivoAtual">---</span></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -181,7 +360,8 @@ const DB_VERSION = 6;
 const visualizadorDicom = document.getElementById("visualizadorDicom");
 const imagemNormal = document.getElementById("imagemNormal");
 const statusText = document.getElementById("status");
-const listaArquivos = document.getElementById("listaArquivos");
+const imagensTrabalho = document.getElementById("imagensTrabalho");
+const areaFluxograma = document.getElementById("areaFluxograma");
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
@@ -191,6 +371,23 @@ cornerstoneWADOImageLoader.configure({
 });
 
 cornerstone.enable(visualizadorDicom);
+
+function toggleMenu() {
+  document.getElementById("menulateral").classList.toggle("fechado");
+}
+
+function toggleAnalises() {
+  const aba = document.getElementById("abaAnalises");
+  const icone = document.getElementById("iconeAnalises");
+
+  aba.classList.toggle("aberta");
+
+  if (aba.classList.contains("aberta")) {
+    icone.innerText = "▼";
+  } else {
+    icone.innerText = "▲";
+  }
+}
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -250,18 +447,10 @@ async function loadFiles() {
       return;
     }
 
-    listaArquivos.innerHTML = "";
+    imagensTrabalho.innerHTML = "";
 
     files.forEach((item) => {
-      const div = document.createElement("div");
-      div.className = "arquivo_item";
-      div.innerText = item.name;
-
-      div.onclick = function() {
-        openFile(item);
-      };
-
-      listaArquivos.appendChild(div);
+      criarCardImagem(item);
     });
 
     openFile(files[0]);
@@ -272,8 +461,54 @@ async function loadFiles() {
   }
 }
 
+function criarCardImagem(item) {
+  const card = document.createElement("div");
+  card.className = "card_imagem";
+
+  if (item.type === "dicom") {
+    const dicomBox = document.createElement("div");
+    dicomBox.className = "dicom_thumb";
+    card.appendChild(dicomBox);
+    renderDicomThumbnail(item, dicomBox);
+  } else {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(item.file);
+    card.appendChild(img);
+  }
+
+  const nome = document.createElement("div");
+  nome.className = "nome_arquivo";
+  nome.innerText = item.name;
+
+  card.appendChild(nome);
+
+  card.onclick = function() {
+    openFile(item);
+  };
+
+  imagensTrabalho.appendChild(card);
+}
+
+async function renderDicomThumbnail(item, container) {
+  try {
+    cornerstone.enable(container);
+
+    const dicomFile = new File([item.file], item.name);
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+
+    const image = await cornerstone.loadImage(imageId);
+
+    cornerstone.displayImage(container, image);
+    cornerstone.resize(container, true);
+
+  } catch {
+    container.innerText = "DICOM";
+  }
+}
+
 function openFile(item) {
   statusText.innerText = "Abrindo: " + item.name;
+  document.getElementById("arquivoAtual").innerText = item.name;
 
   if (item.type === "dicom") {
     imagemNormal.style.display = "none";
@@ -288,13 +523,13 @@ function openFile(item) {
           cornerstone.displayImage(visualizadorDicom, image);
           cornerstone.resize(visualizadorDicom, true);
 
+          gerarAnaliseDicom(image);
+
           statusText.innerText = "DICOM carregado: " + item.name;
         })
         .catch(function(error) {
           console.error(error);
-
-          statusText.innerText =
-            "Erro ao abrir DICOM. Pode ser DICOM comprimido ou incompatível.";
+          statusText.innerText = "Erro ao abrir DICOM.";
         });
 
     } catch (error) {
@@ -309,22 +544,161 @@ function openFile(item) {
     const imageURL = URL.createObjectURL(item.file);
     imagemNormal.src = imageURL;
 
+    imagemNormal.onload = function() {
+      gerarAnaliseImagemNormal(imagemNormal);
+    };
+
     statusText.innerText = "Imagem carregada: " + item.name;
   }
 }
 
 function addBlock(name) {
-  const areaBlocos = document.getElementById("areaBlocos");
+  if (areaFluxograma.querySelector("p")) {
+    areaFluxograma.innerHTML = "";
+  }
 
-  if (areaBlocos.querySelector("p")) {
-    areaBlocos.innerHTML = "";
+  const quantidade = areaFluxograma.querySelectorAll(".bloco_fluxo").length;
+
+  if (quantidade > 0) {
+    const seta = document.createElement("div");
+    seta.className = "seta";
+    seta.innerText = "↓";
+    areaFluxograma.appendChild(seta);
   }
 
   const bloco = document.createElement("div");
-  bloco.className = "bloco";
-  bloco.innerText = name;
+  bloco.className = "bloco_fluxo";
 
-  areaBlocos.appendChild(bloco);
+  const titulo = document.createElement("div");
+  titulo.innerText = name;
+
+  const botao = document.createElement("button");
+  botao.className = "remover";
+  botao.innerText = "Remover";
+
+  botao.onclick = function() {
+    bloco.remove();
+    atualizarSetas();
+  };
+
+  bloco.appendChild(titulo);
+  bloco.appendChild(botao);
+
+  areaFluxograma.appendChild(bloco);
+}
+
+function atualizarSetas() {
+  const blocos = Array.from(areaFluxograma.querySelectorAll(".bloco_fluxo"));
+
+  areaFluxograma.innerHTML = "";
+
+  if (blocos.length === 0) {
+    areaFluxograma.innerHTML = '<p style="opacity: 0.6;">Clique em uma ferramenta para montar o fluxo.</p>';
+    return;
+  }
+
+  blocos.forEach((bloco, index) => {
+    if (index > 0) {
+      const seta = document.createElement("div");
+      seta.className = "seta";
+      seta.innerText = "↓";
+      areaFluxograma.appendChild(seta);
+    }
+
+    areaFluxograma.appendChild(bloco);
+  });
+}
+
+function gerarAnaliseImagemNormal(img) {
+  const canvas = document.getElementById("histograma");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+
+  tempCanvas.width = img.naturalWidth;
+  tempCanvas.height = img.naturalHeight;
+
+  tempCtx.drawImage(img, 0, 0);
+
+  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+  const data = imageData.data;
+
+  const hist = new Array(256).fill(0);
+
+  let soma = 0;
+  let min = 255;
+  let max = 0;
+  let total = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = Math.round((data[i] + data[i + 1] + data[i + 2]) / 3);
+
+    hist[gray]++;
+    soma += gray;
+    total++;
+
+    if (gray < min) min = gray;
+    if (gray > max) max = gray;
+  }
+
+  desenharHistograma(hist, ctx, canvas);
+
+  document.getElementById("media").innerText = (soma / total).toFixed(2);
+  document.getElementById("minimo").innerText = min;
+  document.getElementById("maximo").innerText = max;
+}
+
+function gerarAnaliseDicom(image) {
+  const pixels = image.getPixelData();
+  const hist = new Array(256).fill(0);
+
+  let soma = 0;
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (let i = 0; i < pixels.length; i++) {
+    const valor = pixels[i];
+
+    soma += valor;
+
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
+  }
+
+  for (let i = 0; i < pixels.length; i++) {
+    const normalizado = Math.floor(((pixels[i] - min) / (max - min)) * 255);
+    hist[normalizado]++;
+  }
+
+  const canvas = document.getElementById("histograma");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  desenharHistograma(hist, ctx, canvas);
+
+  document.getElementById("media").innerText = (soma / pixels.length).toFixed(2);
+  document.getElementById("minimo").innerText = min;
+  document.getElementById("maximo").innerText = max;
+}
+
+function desenharHistograma(hist, ctx, canvas) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const maior = Math.max(...hist);
+  const larguraBarra = canvas.width / hist.length;
+
+  ctx.fillStyle = "rgba(192,132,252,0.8)";
+
+  hist.forEach((valor, i) => {
+    const altura = (valor / maior) * canvas.height;
+    ctx.fillRect(i * larguraBarra, canvas.height - altura, larguraBarra, altura);
+  });
 }
 
 loadFiles();
