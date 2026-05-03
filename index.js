@@ -154,7 +154,7 @@ async function loadRecentImages() { // Função para carregar as imagens recente
 
   files
   .sort((a, b) => b.createdAt - a.createdAt) // ordena do mais novo
-  .sort(...).slice(0, 10) // pega só 10
+  .slice(0, 10) // pega só 10
   .forEach(item => {  // Para cada item encontrado na tabela "recent", cria um card para exibir a miniatura e o nome do arquivo
 
     const card = document.createElement("div");
