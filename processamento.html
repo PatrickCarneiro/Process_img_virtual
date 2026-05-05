@@ -21,16 +21,20 @@ body {
   color: white;
   min-height: 100vh;
   display: flex;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* MENU LATERAL */
 .menulateral {
   width: 250px;
+  min-height: 100vh;
   background: rgba(10, 20, 40, 0.95);
   padding: 20px;
   transition: 0.3s;
   border-right: 1px solid rgba(255,255,255,0.08);
+  position: sticky;
+  top: 0;
 }
 
 .menulateral.fechado {
@@ -74,13 +78,14 @@ body {
 /* ÁREA PRINCIPAL */
 .principal {
   flex: 1;
-  height: 100vh;
+  min-height: 100vh;
   display: grid;
-  grid-template-columns: 230px 1fr 330px;
-  grid-template-rows: 1fr 190px;
+  grid-template-columns: 230px minmax(400px, 1fr) 330px;
+  grid-template-rows: auto auto;
   gap: 15px;
   padding: 20px;
-  overflow: hidden;
+  padding-bottom: 100px;
+  overflow: visible;
 }
 
 .painel {
@@ -110,19 +115,27 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  align-items: center;
+}
+
+.area_visualizacao h1,
+.area_visualizacao p {
+  width: 100%;
 }
 
 #visualizadorDicom {
   width: 100%;
-  height: 540px;
+  min-height: 450px;
   background: black;
   border-radius: 20px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 #imagemNormal {
-  width: 100%;
-  max-height: 540px;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
   display: none;
   border-radius: 20px;
   background: black;
@@ -144,7 +157,6 @@ body {
   border-radius: 14px;
   margin-bottom: 8px;
   text-align: center;
-  position: relative;
 }
 
 .seta {
@@ -173,10 +185,12 @@ body {
   display: flex;
   gap: 15px;
   overflow-x: auto;
+  min-height: 190px;
 }
 
 .card_imagem {
-  min-width: 170px;
+  min-width: 180px;
+  max-width: 180px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 18px;
@@ -193,7 +207,7 @@ body {
 .card_imagem img,
 .dicom_thumb {
   width: 100%;
-  height: 120px;
+  height: 125px;
   object-fit: cover;
   background: black;
   border-radius: 12px;
@@ -214,16 +228,21 @@ body {
   right: 20px;
   bottom: 0;
   height: 55px;
-  background: rgba(10,20,40,0.97);
+  background: rgba(10,20,40,0.98);
   border: 1px solid rgba(192,132,252,0.35);
   border-radius: 20px 20px 0 0;
   transition: 0.3s;
   overflow: hidden;
-  z-index: 10;
+  z-index: 100;
 }
 
 .aba_analises.aberta {
-  height: 330px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  border-radius: 0;
 }
 
 .cabecalho_analises {
@@ -239,13 +258,18 @@ body {
 .conteudo_analises {
   padding: 20px;
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: 1fr 300px;
   gap: 20px;
+}
+
+.aba_analises.aberta .conteudo_analises {
+  height: calc(100vh - 55px);
+  overflow: auto;
 }
 
 #histograma {
   width: 100%;
-  height: 190px;
+  height: 70vh;
   background: black;
   border-radius: 12px;
 }
@@ -257,23 +281,33 @@ body {
   margin-bottom: 8px;
 }
 
+/* RESPONSIVO */
 @media (max-width: 900px) {
   body {
-    overflow: auto;
+    display: block;
   }
 
   .menulateral {
-    display: none;
+    width: 100%;
+    min-height: auto;
+    position: relative;
+  }
+
+  .menulateral.fechado {
+    width: 100%;
   }
 
   .principal {
-    height: auto;
     grid-template-columns: 1fr;
     grid-template-rows: auto;
   }
 
   .imagens_trabalho {
     grid-column: 1;
+  }
+
+  .conteudo_analises {
+    grid-template-columns: 1fr;
   }
 
   .aba_analises {
@@ -338,7 +372,7 @@ body {
 <div class="aba_analises" id="abaAnalises">
   <div class="cabecalho_analises" onclick="toggleAnalises()">
     <strong>Análises da imagem</strong>
-    <span id="iconeAnalises">▲</span>
+    <span id="iconeAnalises">▲ Abrir análises</span>
   </div>
 
   <div class="conteudo_analises">
@@ -383,9 +417,12 @@ function toggleAnalises() {
   aba.classList.toggle("aberta");
 
   if (aba.classList.contains("aberta")) {
-    icone.innerText = "▼";
+    icone.innerText = "▼ Fechar análises";
+    document.body.style.overflow = "hidden";
   } else {
-    icone.innerText = "▲";
+    icone.innerText = "▲ Abrir análises";
+    document.body.style.overflowY = "auto";
+    document.body.style.overflowX = "hidden";
   }
 }
 
@@ -670,7 +707,12 @@ function gerarAnaliseDicom(image) {
   }
 
   for (let i = 0; i < pixels.length; i++) {
-    const normalizado = Math.floor(((pixels[i] - min) / (max - min)) * 255);
+    let normalizado = 0;
+
+    if (max !== min) {
+      normalizado = Math.floor(((pixels[i] - min) / (max - min)) * 255);
+    }
+
     hist[normalizado]++;
   }
 
@@ -696,7 +738,7 @@ function desenharHistograma(hist, ctx, canvas) {
   ctx.fillStyle = "rgba(192,132,252,0.8)";
 
   hist.forEach((valor, i) => {
-    const altura = (valor / maior) * canvas.height;
+    const altura = maior > 0 ? (valor / maior) * canvas.height : 0;
     ctx.fillRect(i * larguraBarra, canvas.height - altura, larguraBarra, altura);
   });
 }
