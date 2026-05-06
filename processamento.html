@@ -226,21 +226,24 @@ body {
   max-height: 70vh; /* Limita à altura da tela */
 }
 
-/* Linha que organiza o botão de pixel e a imagem lado a lado */
+/* Linha que organiza os botões e a imagem lado a lado */
 .linha_visualizacao {
-  display: grid; /* Permite controlar melhor a posição do botão e da imagem */
-  grid-template-columns: 50px 1fr; /* Coluna pequena para o botão + coluna da imagem */
+  display: grid; 
+  grid-template-columns: 48px 1fr; /* Coluna dos botões + coluna da imagem */
   align-items: center; /* Centraliza verticalmente */
-  width: 100%; 
+  width: 100%;
+  column-gap: 8px; /* Espaço pequeno entre botões e imagem */
 }
 
 /* Organiza os botões laterais da imagem em coluna */
 .botoes_laterais_imagem {
   display: flex; /* Usa flexbox */
   flex-direction: column; /* Coloca os botões um embaixo do outro */
-  gap: 10px; /* Espaço entre os botões */
+  gap: 8px; /* Espaço entre os botões */
   align-items: center; /* Centraliza os botões */
-  justify-self: start; /* Deixa próximo da divisória das ferramentas */
+  justify-content: flex-start; /* Mantém os botões no topo da coluna */
+  align-self: start; /* Deixa os botões alinhados ao topo da imagem */
+  padding-top: 4px; /* Pequeno ajuste visual */
 }
 
 /* Botão de inspeção de pixel */
@@ -312,22 +315,22 @@ body {
 
 /* Área central de visualização */
 .area_visualizacao {
-  display: flex; /* Usa flexbox */
+  display: flex; 
   flex-direction: column; /* Organiza elementos em coluna */
-  gap: 10px; /* Espaço entre elementos */
+  gap: 10px; 
   align-items: center; /* Centraliza horizontalmente */
 }
 
 /* Título e status ocupam largura total */
 .area_visualizacao h1,
 .area_visualizacao p {
-  width: 100%; /* Ocupa toda a largura */
+  width: 100%;
 }
 
 /* Container DICOM */
 #visualizadorDicom {
   background: black; /* Fundo preto atrás do DICOM */
-  border-radius: 12px; /* Arredonda cantos */
+  border-radius: 0; /* Arredonda cantos */
   overflow: hidden; /* Esconde sobras */
   display: block; /* Exibe como bloco */
 }
@@ -339,7 +342,7 @@ body {
   height: auto; /* Mantém altura proporcional */
   max-width: 850px; /* Limita largura máxima */
   max-height: 65vh; /* Limita altura máxima */
-  border-radius: 12px; /* Arredonda cantos */
+  border-radius: 0; 
   background: black; /* Fundo preto atrás da imagem */
   object-fit: contain; /* Mantém proporção */
 }
@@ -563,16 +566,20 @@ body {
 
     <h1>Área de processamento</h1> <!-- Título da área central -->
 
-    <!-- Linha que coloca o botão de pixel ao lado da imagem -->
+    <!-- Linha que coloca os botões ao lado da imagem -->
     <div class="linha_visualizacao">
 
-      <button class="botao_pixel" id="botaoPixel" onclick="togglePixelInfo()" title="Visualizar pixel">
-        ⊕
-      </button> <!-- Botão para ativar/desativar visualização de informações do pixel -->
+      <div class="botoes_laterais_imagem"> <!-- Coluna dos botões laterais -->
 
-      <button class="botao_zoom" id="botaoZoom" onclick="toggleZoomImagem()" title="Ativar zoom">
-        ⌕
-      </button> <!-- Botão para ativar/desativar zoom -->
+        <button class="botao_pixel" id="botaoPixel" onclick="togglePixelInfo()" title="Visualizar pixel">
+          ⊕
+        </button> <!-- Botão para ativar/desativar visualização de informações do pixel -->
+
+        <button class="botao_zoom" id="botaoZoom" onclick="toggleZoomImagem()" title="Ativar zoom">
+          ⌕
+        </button> <!-- Botão para ativar/desativar zoom -->
+
+      </div> <!-- Fecha coluna dos botões -->
 
       <div class="visualizacao_box"> <!-- Caixa da imagem -->
 
