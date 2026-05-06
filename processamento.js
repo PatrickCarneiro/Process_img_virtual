@@ -14,6 +14,24 @@ const areaFluxograma = document.getElementById("areaFluxograma"); // Pega a áre
 
 const parametrosDiv = document.getElementById("parametros"); // Pega a área de parâmetros
 
+const botaoPixel = document.getElementById("botaoPixel"); // Pega o botão de inspeção de pixel
+
+const infoPixel = document.getElementById("infoPixel"); // Pega a caixa de informação do pixel
+
+let modoPixelAtivo = false; // Controla se o modo de visualizar pixel está ativo
+
+let imagemDicomAtual = null; // Guarda a imagem DICOM atual para consultar os pixels
+
+const botaoZoom = document.getElementById("botaoZoom"); // Pega o botão de zoom
+
+let modoZoomAtivo = false; // Controla se o modo zoom está ativo
+
+let zoomAtual = 1; // Guarda o nível atual de zoom
+
+const zoomMinimo = 1; // Zoom mínimo permitido
+
+const zoomMaximo = 8; // Zoom máximo permitido
+
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
@@ -24,11 +42,13 @@ cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
 
 cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
 
-function toggleMenu() { // Função para abrir/fechar o menu lateral
+
+// Função para abrir/fechar o menu lateral -----------
+function toggleMenu() { 
 
   document.getElementById("menulateral").classList.toggle("fechado"); // Adiciona ou remove a classe fechado
 
-} // Fecha toggleMenu
+} 
 
 function toggleAnalises() { // Função para abrir/fechar a aba de análises
 
@@ -383,6 +403,8 @@ function openFile(item) { // Função para abrir imagem selecionada
 
   statusText.innerText = "Abrindo: " + item.name; // Atualiza status
 
+  resetarZoom(); // Reseta o zoom sempre que abre outra imagem
+
   document.getElementById("arquivoAtual").innerText = item.name; // Atualiza nome na análise
 
   if (item.type === "dicom") { // Se for DICOM
@@ -415,6 +437,8 @@ function openFile(item) { // Função para abrir imagem selecionada
 
         cornerstone.displayImage(visualizadorDicom, image); // Exibe DICOM
 
+        imagemDicomAtual = image; // Guarda a imagem DICOM atual para leitura dos pixels
+
         cornerstone.resize(visualizadorDicom, true); // Ajusta visualização
 
         gerarAnaliseDicom(image); // Gera análise do DICOM
@@ -434,6 +458,8 @@ function openFile(item) { // Função para abrir imagem selecionada
   } else { // Se for imagem comum
 
     visualizadorDicom.style.display = "none"; // Esconde container DICOM
+
+    imagemDicomAtual = null; // Limpa imagem DICOM atual porque agora é imagem comum
 
     imagemNormal.style.display = "block"; // Mostra imagem comum
 
@@ -511,82 +537,217 @@ function gerarAnaliseImagemNormal(img) { // Função para calcular histograma de
 
   document.getElementById("maximo").innerText = max; // Mostra máximo
 
-} // Fecha gerarAnaliseImagemNormal
-
-function gerarAnaliseDicom(image) { // Função para calcular histograma DICOM
+} 
+// Função para calcular histograma DICOM
+function gerarAnaliseDicom(image) { 
 
   const pixels = image.getPixelData(); // Pega pixels do DICOM
-
   const hist = new Array(256).fill(0); // Cria histograma normalizado de 256 posições
-
   let soma = 0; // Soma dos pixels
-
   let min = Infinity; // Valor mínimo inicial
-
   let max = -Infinity; // Valor máximo inicial
-
   for (let i = 0; i < pixels.length; i++) { // Percorre todos os pixels
-
     const valor = pixels[i]; // Pega valor do pixel
-
     soma += valor; // Soma pixel
-
     if (valor < min) min = valor; // Atualiza mínimo
-
     if (valor > max) max = valor; // Atualiza máximo
-
-  } // Fecha for
-
+  } 
   for (let i = 0; i < pixels.length; i++) { // Percorre pixels novamente
-
     let normalizado = 0; // Valor inicial normalizado
-
     if (max !== min) { // Evita divisão por zero
-
       normalizado = Math.floor(((pixels[i] - min) / (max - min)) * 255); // Normaliza para 0 a 255
-
-    } // Fecha if
-
+    } 
     hist[normalizado]++; // Incrementa histograma
-
-  } // Fecha for
-
+  } 
   const canvas = document.getElementById("histograma"); // Pega canvas do histograma
-
   const ctx = canvas.getContext("2d"); // Pega contexto 2D
-
   canvas.width = canvas.offsetWidth; // Define largura real do canvas
-
   canvas.height = canvas.offsetHeight; // Define altura real do canvas
-
   desenharHistograma(hist, ctx, canvas); // Desenha histograma
-
   document.getElementById("media").innerText = (soma / pixels.length).toFixed(2); // Mostra média
-
   document.getElementById("minimo").innerText = min; // Mostra mínimo
-
   document.getElementById("maximo").innerText = max; // Mostra máximo
 
-} // Fecha gerarAnaliseDicom
-
-function desenharHistograma(hist, ctx, canvas) { // Função para desenhar histograma no canvas
+}
+// Função para desenhar histograma no canvas 
+function desenharHistograma(hist, ctx, canvas) { 
 
   ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpa canvas
-
   const maior = Math.max(...hist); // Encontra maior frequência do histograma
-
   const larguraBarra = canvas.width / hist.length; // Calcula largura de cada barra
-
   ctx.fillStyle = "rgba(192,132,252,0.8)"; // Define cor das barras
-
   hist.forEach((valor, i) => { // Percorre cada valor do histograma
-
     const altura = maior > 0 ? (valor / maior) * canvas.height : 0; // Calcula altura proporcional
-
     ctx.fillRect(i * larguraBarra, canvas.height - altura, larguraBarra, altura); // Desenha barra
+  }); 
 
-  }); // Fecha forEach
+}
+// Fecha a função do histograma no canvas ---------------------------------------------------------------------
 
-} // Fecha desenharHistograma
+// Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
+function togglePixelInfo() { // Função para ligar/desligar inspeção de pixel
+
+  modoPixelAtivo = !modoPixelAtivo; // Inverte o estado atual
+  if (modoPixelAtivo) { // Se ativou
+    botaoPixel.classList.add("ativo"); // Marca o botão como ativo
+    infoPixel.style.display = "block"; // Mostra a caixa de informações
+    infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem."; // Atualiza texto
+  } else { // Se desativou
+    botaoPixel.classList.remove("ativo"); // Remove marcação ativa
+    infoPixel.style.display = "none"; // Esconde a caixa de informações
+    infoPixel.innerText = "X: --- | Y: --- | Pixel: ---"; // Limpa informação
+  } 
+
+} 
+// Quando move o mouse sobre imagem comum
+imagemNormal.addEventListener("mousemove", function(event) { 
+
+  if (!modoPixelAtivo) return; // Só funciona se o modo pixel estiver ativo
+  if (!imagemNormal.src) return; // Se não tiver imagem carregada, para
+
+  const rect = imagemNormal.getBoundingClientRect(); // Pega posição e tamanho da imagem na tela
+  const escalaX = imagemNormal.naturalWidth / rect.width; // Calcula escala horizontal
+  const escalaY = imagemNormal.naturalHeight / rect.height; // Calcula escala vertical
+  const x = Math.floor((event.clientX - rect.left) * escalaX); // Calcula coordenada X real da imagem
+  const y = Math.floor((event.clientY - rect.top) * escalaY); // Calcula coordenada Y real da imagem
+
+  if (x < 0 || y < 0 || x >= imagemNormal.naturalWidth || y >= imagemNormal.naturalHeight) return; // Evita fora da imagem
+
+  const canvasTemp = document.createElement("canvas"); // Cria canvas temporário
+  const ctxTemp = canvasTemp.getContext("2d"); // Pega contexto do canvas temporário
+
+  canvasTemp.width = imagemNormal.naturalWidth; // Define largura original da imagem
+  canvasTemp.height = imagemNormal.naturalHeight; // Define altura original da imagem
+
+  ctxTemp.drawImage(imagemNormal, 0, 0); // Desenha imagem no canvas temporário
+
+  const pixel = ctxTemp.getImageData(x, y, 1, 1).data; // Pega o pixel na coordenada selecionada
+  const r = pixel[0]; // Valor do canal vermelho
+  const g = pixel[1]; // Valor do canal verde
+  const b = pixel[2]; // Valor do canal azul
+
+  if (r === g && g === b) { // Verifica se o pixel é de uma imagem em tons de cinza
+    infoPixel.innerText = `X: ${x} | Y: ${y} | Intensidade: ${r}`; // Mostra apenas um valor de intensidade
+  } else { // Caso seja imagem colorida/RGB
+
+    infoPixel.innerText = `X: ${x} | Y: ${y} | RGB: [${r}, ${g}, ${b}]`; // Mostra os três canais RGB
+
+  } 
+
+}); 
+// Quando move o mouse sobre DICOM
+visualizadorDicom.addEventListener("mousemove", function(event) { 
+
+  if (!modoPixelAtivo) return; 
+  if (!imagemDicomAtual) return; 
+
+  const rect = visualizadorDicom.getBoundingClientRect(); 
+  const escalaX = imagemDicomAtual.width / rect.width; 
+  const escalaY = imagemDicomAtual.height / rect.height;
+  const x = Math.floor((event.clientX - rect.left) * escalaX); 
+  const y = Math.floor((event.clientY - rect.top) * escalaY); 
+
+  if (x < 0 || y < 0 || x >= imagemDicomAtual.width || y >= imagemDicomAtual.height) return; 
+
+  const pixels = imagemDicomAtual.getPixelData(); // Pega array de pixels do DICOM
+  const indice = y * imagemDicomAtual.width + x; // Calcula índice do pixel no array
+
+  const valorPixel = pixels[indice]; // Pega valor do pixel
+
+  infoPixel.innerText = `X: ${x} | Y: ${y} | Intensidade: ${valorPixel}`; 
+
+});
+// Quando mouse sai da imagem comum
+imagemNormal.addEventListener("mouseleave", function() { 
+
+  if (modoPixelAtivo) { // Se modo estiver ativo
+    infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem."; // Reseta texto
+  } 
+
+}); 
+ // Quando mouse sai do DICOM
+visualizadorDicom.addEventListener("mouseleave", function() {
+
+  if (modoPixelAtivo) { 
+    infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem."; 
+  } 
+}); 
+// Fecha a parte da função de visualização de pixel --------------------------------------------------------
+
+// Funções do zoom -----------------------------------------------------------------------------------------
+function toggleZoomImagem() {  // Função para ligar/desligar modo de zoom
+
+  modoZoomAtivo = !modoZoomAtivo; 
+  if (modoZoomAtivo) { // Se ativou o zoom
+    botaoZoom.classList.add("ativo"); // Marca botão como ativo
+    visualizadorDicom.classList.add("zoom_ativo"); // Muda cursor no DICOM
+    imagemNormal.classList.add("zoom_ativo"); // Muda cursor na imagem comum
+    statusText.innerText = "Modo zoom ativo: posicione o mouse sobre a região desejada e use o scroll.";
+  } else { // Se desativou o zoom
+    botaoZoom.classList.remove("ativo"); // Remove botão ativo
+    visualizadorDicom.classList.remove("zoom_ativo"); // Remove cursor de zoom no DICOM
+    imagemNormal.classList.remove("zoom_ativo"); // Remove cursor de zoom na imagem comum
+    statusText.innerText = "Modo zoom desativado.";
+  } 
+
+} 
+// Aplica zoom usando o ponto onde o mouse está
+function aplicarZoomNoMouse(event, elemento) { 
+
+  if (!modoZoomAtivo) return; // Só funciona se o modo zoom estiver ativo
+  event.preventDefault(); // Impede a página de rolar enquanto usa o zoom
+  const rect = elemento.getBoundingClientRect(); // Pega posição e tamanho do elemento
+  const mouseX = event.clientX - rect.left; // Posição X do mouse dentro da imagem
+  const mouseY = event.clientY - rect.top; // Posição Y do mouse dentro da imagem
+  const origemX = (mouseX / rect.width) * 100; // Converte X para porcentage
+  const origemY = (mouseY / rect.height) * 100; // Converte Y para porcentagem
+  elemento.style.transformOrigin = `${origemX}% ${origemY}%`; // Define ponto de origem do zoom
+  if (event.deltaY < 0) { // Scroll para cima
+    zoomAtual += 0.2; // Aumenta zoom
+  } else { // Scroll para baixo
+    zoomAtual -= 0.2; // Diminui zoom
+  }
+  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limita zoom mínimo
+  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limita zoom máximo
+  elemento.style.transform = `scale(${zoomAtual})`; // Aplica zoom
+  statusText.innerText = `Zoom: ${zoomAtual.toFixed(1)}x`; // Mostra nível de zoom
+
+} 
+// Volta a imagem para o tamanho normal
+function resetarZoom() { 
+
+  zoomAtual = 1; // Reseta nível de zoom
+  imagemNormal.style.transform = "scale(1)"; // Reseta imagem comum
+  imagemNormal.style.transformOrigin = "center center"; // Reseta origem
+  visualizadorDicom.style.transform = "scale(1)"; // Reseta DICOM
+  visualizadorDicom.style.transformOrigin = "center center"; // Reseta origem
+  statusText.innerText = "Zoom resetado."; // Atualiza status
+
+} 
+// Zoom com scroll na imagem comum
+imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na imagem comum
+
+  aplicarZoomNoMouse(event, imagemNormal); // Aplica zoom na imagem comum
+
+}); 
+// Zoom com scroll no DICOM
+visualizadorDicom.addEventListener("wheel", function(event) { 
+
+  aplicarZoomNoMouse(event, visualizadorDicom); // Aplica zoom no DICOM
+
+}); 
+// Dois cliques na imagem comum
+imagemNormal.addEventListener("dblclick", function() { 
+
+  if (modoZoomAtivo) resetarZoom(); // Reseta zoom se modo ativo
+
+}); 
+// Dois cliques no DICOM
+visualizadorDicom.addEventListener("dblclick", function() { 
+
+  if (modoZoomAtivo) resetarZoom(); 
+
+}); 
+// Fecha a parte da função zoom --------------------------------------------------------
 
 loadFiles(); // Inicia carregamento dos arquivos salvos

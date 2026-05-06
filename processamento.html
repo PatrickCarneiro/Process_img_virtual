@@ -34,9 +34,7 @@ body {
   overflow-y: auto; /* Permite rolagem vertical da página */
 }
 
-/* ===================== */
 /* MENU LATERAL */
-/* ===================== */
 
 /* Estiliza o menu lateral */
 .menulateral {
@@ -83,16 +81,14 @@ body {
 
 /* Itens do menu */
 .menu-item {
-  padding: 12px; /* Espaçamento interno */
-  border-radius: 10px; /* Arredonda cantos */
-  margin-bottom: 10px; /* Espaço entre itens */
-  cursor: pointer; /* Mostra que é clicável */
-  background: rgba(255,255,255,0.06); /* Fundo branco transparente */
+  padding: 12px;
+  border-radius: 10px; 
+  margin-bottom: 10px; 
+  cursor: pointer; 
+  background: rgba(255,255,255,0.06); 
 }
-
-/* Efeito ao passar o mouse nos itens do menu */
 .menu-item:hover {
-  background: rgba(192,132,252,0.25); /* Muda para roxo transparente */
+  background: rgba(192,132,252,0.25); 
 }
 
 /* ===================== */
@@ -119,9 +115,7 @@ body {
   overflow: auto; /* Permite rolagem se o conteúdo passar do tamanho */
 }
 
-/* ===================== */
 /* FERRAMENTAS */
-/* ===================== */
 
 /* Título das categorias de ferramentas */
 .categoria-titulo {
@@ -216,23 +210,7 @@ body {
   background: rgba(192,132,252,0.55); /* Roxo mais forte */
 }
 
-/* ===================== */
-/* VISUALIZAÇÃO */
-/* ===================== */
-
-/* Área central de visualização */
-.area_visualizacao {
-  display: flex; /* Usa flexbox */
-  flex-direction: column; /* Organiza elementos em coluna */
-  gap: 10px; /* Espaço entre elementos */
-  align-items: center; /* Centraliza horizontalmente */
-}
-
-/* Título e status ocupam largura total */
-.area_visualizacao h1,
-.area_visualizacao p {
-  width: 100%; /* Ocupa toda a largura */
-}
+/* BOTÕES LATERAIS */
 
 /* Caixa onde a imagem é exibida */
 .visualizacao_box {
@@ -246,6 +224,104 @@ body {
   align-items: center; /* Centraliza verticalmente */
   max-width: 100%; /* Limita à largura disponível */
   max-height: 70vh; /* Limita à altura da tela */
+}
+
+/* Linha que organiza o botão de pixel e a imagem lado a lado */
+.linha_visualizacao {
+  display: grid; /* Permite controlar melhor a posição do botão e da imagem */
+  grid-template-columns: 50px 1fr; /* Coluna pequena para o botão + coluna da imagem */
+  align-items: center; /* Centraliza verticalmente */
+  width: 100%; 
+}
+
+/* Organiza os botões laterais da imagem em coluna */
+.botoes_laterais_imagem {
+  display: flex; /* Usa flexbox */
+  flex-direction: column; /* Coloca os botões um embaixo do outro */
+  gap: 10px; /* Espaço entre os botões */
+  align-items: center; /* Centraliza os botões */
+  justify-self: start; /* Deixa próximo da divisória das ferramentas */
+}
+
+/* Botão de inspeção de pixel */
+.botao_pixel {
+  width: 42px; 
+  height: 42px; 
+  border-radius: 50%; /* Deixa circular */
+  border: 1px solid rgba(192,132,252,0.55); 
+  background: rgba(192,132,252,0.18); 
+  color: white; 
+  font-size: 24px; 
+  cursor: pointer; 
+  transition: 0.3s;
+  justify-self: start; /* Deixa o botão mais próximo do painel de ferramentas */
+}
+.botao_pixel:hover {
+  background: rgba(192,132,252,0.35); /* Clareia o botão */
+  transform: scale(1.05); /* Aumenta levemente */
+}
+.botao_pixel.ativo {
+  background: rgba(192,132,252,0.55); /* Fundo mais forte quando ativo */
+  box-shadow: 0 0 12px rgba(192,132,252,0.65); /* Brilho roxo */
+}
+.info_pixel { /* Caixa que mostra o valor do pixel */
+  display: none;
+  margin-top: 8px; 
+  padding: 8px 14px; 
+  border-radius: 10px; 
+  background: rgba(255,255,255,0.06); 
+  border: 1px solid rgba(255,255,255,0.08); 
+  color: #ffffff; 
+  font-size: 13px; 
+  opacity: 0.85; 
+}
+
+/* Botão de zoom */
+.botao_zoom {
+  width: 42px; 
+  height: 42px; 
+  border-radius: 50%;
+  border: 1px solid rgba(192,132,252,0.55); 
+  background: rgba(192,132,252,0.18); 
+  color: white; 
+  font-size: 20px; 
+  cursor: pointer; 
+  transition: 0.3s;
+}
+.botao_zoom:hover {
+  background: rgba(192,132,252,0.35); 
+  transform: scale(1.05); 
+}
+.botao_zoom.ativo {
+  background: rgba(192,132,252,0.55); 
+  box-shadow: 0 0 12px rgba(192,132,252,0.65); 
+}
+.zoom_ativo {
+  cursor: zoom-in; /* Mostra cursor de zoom */
+}
+#imagemNormal { /* Suaviza o zoom da imagem comum */
+  transform-origin: center center; /* Origem inicial do zoom */
+  transition: transform 0.08s ease-out; /* Suaviza a ampliação */
+}
+#visualizadorDicom { /* Suaviza o zoom do DICOM */
+  transform-origin: center center;
+  transition: transform 0.08s ease-out; 
+}
+
+/* VISUALIZAÇÃO */
+
+/* Área central de visualização */
+.area_visualizacao {
+  display: flex; /* Usa flexbox */
+  flex-direction: column; /* Organiza elementos em coluna */
+  gap: 10px; /* Espaço entre elementos */
+  align-items: center; /* Centraliza horizontalmente */
+}
+
+/* Título e status ocupam largura total */
+.area_visualizacao h1,
+.area_visualizacao p {
+  width: 100%; /* Ocupa toda a largura */
 }
 
 /* Container DICOM */
@@ -321,9 +397,7 @@ body {
   background: rgba(255,80,80,0.45); /* Vermelho mais forte */
 }
 
-/* ===================== */
 /* IMAGENS EMBAIXO */
-/* ===================== */
 
 /* Área inferior com imagens selecionadas */
 .imagens_trabalho {
@@ -489,13 +563,31 @@ body {
 
     <h1>Área de processamento</h1> <!-- Título da área central -->
 
-    <div class="visualizacao_box"> <!-- Caixa da imagem -->
+    <!-- Linha que coloca o botão de pixel ao lado da imagem -->
+    <div class="linha_visualizacao">
 
-      <div id="visualizadorDicom"></div> <!-- Container para imagem DICOM -->
+      <button class="botao_pixel" id="botaoPixel" onclick="togglePixelInfo()" title="Visualizar pixel">
+        ⊕
+      </button> <!-- Botão para ativar/desativar visualização de informações do pixel -->
 
-      <img id="imagemNormal"> <!-- Elemento para imagem comum -->
+      <button class="botao_zoom" id="botaoZoom" onclick="toggleZoomImagem()" title="Ativar zoom">
+        ⌕
+      </button> <!-- Botão para ativar/desativar zoom -->
 
-    </div> <!-- Fecha caixa da imagem -->
+      <div class="visualizacao_box"> <!-- Caixa da imagem -->
+
+        <div id="visualizadorDicom"></div> <!-- Container para imagem DICOM -->
+
+        <img id="imagemNormal"> <!-- Elemento para imagem comum -->
+
+      </div> <!-- Fecha caixa da imagem -->
+
+    </div> <!-- Fecha linha_visualizacao -->
+
+    <!-- Caixa que mostra coordenada e valor do pixel -->
+    <div class="info_pixel" id="infoPixel">
+      X: --- | Y: --- | Pixel: ---
+    </div>
 
     <p id="status">Carregando arquivos...</p> <!-- Texto de status -->
 
