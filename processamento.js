@@ -590,5 +590,3 @@ function desenharHistograma(hist, ctx, canvas) { // Função para desenhar histo
 } // Fecha desenharHistograma
 
 loadFiles(); // Inicia carregamento dos arquivos salvos
-
-
