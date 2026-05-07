@@ -657,10 +657,10 @@ imagemNormal.addEventListener("mousemove", function(event) {
   const b = pixel[2]; // Valor do canal azul
 
   if (r === g && g === b) { // Verifica se o pixel é de uma imagem em tons de cinza
-    infoPixel.innerText = `X: ${x} | Y: ${y} | Intensidade: ${r}`; // Mostra apenas um valor de intensidade
+    infoPixel.innerText = `X: ${x + 1} | Y: ${y + 1} | Intensidade: ${r}`; // Mostra apenas um valor de intensidade
   } else { // Caso seja imagem colorida/RGB
 
-    infoPixel.innerText = `X: ${x} | Y: ${y} | RGB: [${r}, ${g}, ${b}]`; // Mostra os três canais RGB
+    infoPixel.innerText = `X: ${x + 1} | Y: ${y + 1} | RGB: [${r}, ${g}, ${b}]`; // Mostra os três canais RGB
 
   } 
 
@@ -684,7 +684,7 @@ visualizadorDicom.addEventListener("mousemove", function(event) {
 
   const valorPixel = pixels[indice]; // Pega valor do pixel
 
-  infoPixel.innerText = `X: ${x} | Y: ${y} | Intensidade: ${valorPixel}`; 
+  infoPixel.innerText = `X: ${x + 1} | Y: ${y + 1} | Intensidade: ${valorPixel}`; 
 
 });
 // Quando mouse sai da imagem comum
@@ -709,6 +709,11 @@ function toggleZoomImagem() {  // Função para ligar/desligar modo de zoom
 
   modoZoomAtivo = !modoZoomAtivo; 
   if (modoZoomAtivo) { // Se ativou o zoom
+    modoPanAtivo = false; // Desativa a mãozinha
+
+    botaoPan.classList.remove("ativo"); // Remove visual ativo da mãozinha
+    visualizacaoBox.classList.remove("pan_ativo"); // Remove cursor de mãozinha
+    visualizacaoBox.classList.remove("pan_arrastando"); // Remove cursor de arrastando
     botaoZoom.classList.add("ativo"); // Marca botão como ativo
     visualizadorDicom.classList.add("zoom_ativo"); // Muda cursor no DICOM
     imagemNormal.classList.add("zoom_ativo"); // Muda cursor na imagem comum
@@ -733,9 +738,9 @@ function aplicarZoomNoMouse(event, elemento) { // Aplica zoom real usando width 
   const proporcaoX = mouseX / elemento.offsetWidth; // Ponto relativo X antes do zoom
   const proporcaoY = mouseY / elemento.offsetHeight; // Ponto relativo Y antes do zoom
   if (event.deltaY < 0) { // Scroll para cima aumenta
-    zoomAtual *= 10; // Aumenta em escala multiplicativa
+    zoomAtual *= 5; // Aumenta em escala multiplicativa
   } else { // Scroll para baixo diminui
-    zoomAtual /= 10; // Diminui em escala multiplicativa
+    zoomAtual /= 5; // Diminui em escala multiplicativa
   }
   if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limite mínimo
   if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limite máximo
@@ -816,6 +821,10 @@ function togglePanImagem() {
   modoPanAtivo = !modoPanAtivo; // Inverte estado
   if (modoPanAtivo) { // Se ativou
     botaoPan.classList.add("ativo"); // Marca botão
+    modoZoomAtivo = false; // Desativa o modo zoom
+    botaoZoom.classList.remove("ativo"); // Remove o visual ativo do botão de zoom
+    visualizadorDicom.classList.remove("zoom_ativo"); // Remove cursor de zoom do DICOM
+    imagemNormal.classList.remove("zoom_ativo"); // Remove cursor de zoom da imagem comum
     visualizacaoBox.classList.add("pan_ativo"); // Muda cursor
     statusText.innerText = "Modo mãozinha ativo: clique e arraste para mover a imagem.";
   } else { // Se desativou
@@ -828,52 +837,54 @@ function togglePanImagem() {
 
 }
 // Começa a arrastar
-visualizacaoBox.addEventListener("mousedown", function(event) { 
+visualizacaoBox.addEventListener("mousedown", function(event) { // Quando pressiona o mouse dentro da caixa
 
-  if (!modoPanAtivo) return; // Só funciona se mãozinha estiver ativa
-  arrastandoImagem = true; // Ativa arrasto
-  inicioMouseX = event.clientX; // Salva X inicial
-  inicioMouseY = event.clientY; // Salva Y inicial
-  scrollInicialX = visualizacaoBox.scrollLeft; // Salva scroll X
-  scrollInicialY = visualizacaoBox.scrollTop; // Salva scroll Y
-  visualizacaoBox.classList.add("pan_arrastando"); // Cursor de arrastando
+  if (!modoPanAtivo) return; // Só funciona se a mãozinha estiver ativa
 
-});
+  event.preventDefault(); // Evita seleção/arrasto padrão do navegador
+
+  arrastandoImagem = true; // Começa a puxar a imagem
+
+  inicioMouseX = event.clientX; // Salva posição X inicial do mouse
+
+  inicioMouseY = event.clientY; // Salva posição Y inicial do mouse
+
+  scrollInicialX = visualizacaoBox.scrollLeft; // Salva posição horizontal inicial da caixa
+
+  scrollInicialY = visualizacaoBox.scrollTop; // Salva posição vertical inicial da caixa
+
+  visualizacaoBox.classList.add("pan_arrastando"); // Muda cursor para "puxando"
+
+}); 
 // Enquanto move o mouse
-document.addEventListener("mousemove", function(event) { // Enquanto move o mouse
+document.addEventListener("mousemove", function(event) { 
 
-  if (!arrastandoImagem) return; // Só se estiver arrastando
-  const dx = event.clientX - inicioMouseX; // Diferença X
-  const dy = event.clientY - inicioMouseY; // Diferença Y
-  visualizacaoBox.scrollLeft = scrollInicialX - dx; // Move horizontal
-  visualizacaoBox.scrollTop = scrollInicialY - dy; // Move vertical
+  if (!modoPanAtivo) return; // Só funciona se a mãozinha estiver ativa
+  if (!arrastandoImagem) return; // Só puxa se o mouse estiver pressionado
+  event.preventDefault(); // Evita comportamento padrão
+  const dx = event.clientX - inicioMouseX; // Diferença horizontal do mouse
+  const dy = event.clientY - inicioMouseY; // Diferença vertical do mouse
+  visualizacaoBox.scrollLeft = scrollInicialX - dx; // Move a imagem horizontalmente
+  visualizacaoBox.scrollTop = scrollInicialY - dy; // Move a imagem verticalmente
+
+}); 
+// Quando solta o botão do mouse
+document.addEventListener("mouseup", function() { // Quando solta o botão do mouse
+
+  if (!arrastandoImagem) return; // Se não estava arrastando, não faz nada
+  arrastandoImagem = false; // Para de puxar a imagem
+  visualizacaoBox.classList.remove("pan_arrastando"); // Volta cursor normal da mãozinha
 
 });
-// Solta o mouse
-document.addEventListener("mouseup", function() { 
+// Quando o mouse sai da caixa
+visualizacaoBox.addEventListener("mouseleave", function() { 
 
-  arrastandoImagem = false; // Para arrasto
+  if (!arrastandoImagem) return; // Se não estava arrastando, não faz nada
+  arrastandoImagem = false; // Para de puxar a imagem
   visualizacaoBox.classList.remove("pan_arrastando"); // Remove cursor de arrasto
 
 });
-// Permite zoom com scroll na imagem comum e no DICOM
-imagemNormal.addEventListener("wheel", function(event) {
-  aplicarZoomNoMouse(event, imagemNormal);
-});
-// Permite zoom com scroll no DICOM
-visualizadorDicom.addEventListener("wheel", function(event) {
-  aplicarZoomNoMouse(event, visualizadorDicom);
-});
-// Permite resetar zoom com dois cliques na imagem comum e no DICOM
-imagemNormal.addEventListener("dblclick", function() {
-  if (modoZoomAtivo) resetarZoom();
-});
-// Permite resetar zoom com dois cliques no DICOM
-visualizadorDicom.addEventListener("dblclick", function() {
-  if (modoZoomAtivo) resetarZoom();
-});
-// Fecha a função da mãozinha para arrastar a imagem ----------------------------------------------------------------
-
+// Fecha a parte da função de arrastar a imagem --------------------------------------------------------
 
 
 loadFiles(); // Inicia carregamento dos arquivos salvos
