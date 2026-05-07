@@ -26,11 +26,33 @@ const botaoZoom = document.getElementById("botaoZoom"); // Pega o botão de zoom
 
 let modoZoomAtivo = false; // Controla se o modo zoom está ativo
 
-let zoomAtual = 1; // Guarda o nível atual de zoom
+const botaoPan = document.getElementById("botaoPan"); // Pega o botão da mãozinha
 
-const zoomMinimo = 1; // Zoom mínimo permitido
+const visualizacaoBox = document.querySelector(".visualizacao_box"); // Caixa onde a imagem aparece
 
-const zoomMaximo = 100; // Zoom máximo permitido
+let modoPanAtivo = false; // Controla se a mãozinha está ativa
+
+let arrastandoImagem = false; // Controla se está arrastando
+
+let inicioMouseX = 0; // Posição inicial X do mouse
+
+let inicioMouseY = 0; // Posição inicial Y do mouse
+
+let scrollInicialX = 0; // Scroll horizontal inicial
+
+let scrollInicialY = 0; // Scroll vertical inicial
+
+let escalaBaseAtual = 1; // Escala automática inicial da imagem
+
+let zoomAtual = 1; // Zoom manual atual
+
+const zoomMinimo = 1; // Zoom mínimo
+
+const zoomMaximo = 80; // Pode aumentar bastante, parecido com MATLAB
+
+let larguraOriginalAtual = 0; // Largura original da imagem atual
+
+let alturaOriginalAtual = 0; // Altura original da imagem atual
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 
@@ -421,21 +443,24 @@ function openFile(item) { // Função para abrir imagem selecionada
 
       .then(function(image) { // Quando carregar
 
-        const escala = calcularEscalaAutomatica(image.width, image.height); // Calcula o aumento automático
+        larguraOriginalAtual = image.width; // Salva largura original do DICOM
 
-        visualizadorDicom.style.width = (image.width * escala) + "px"; // Aplica largura aumentada
+        alturaOriginalAtual = image.height; // Salva altura original do DICOM
 
-        visualizadorDicom.style.height = (image.height * escala) + "px"; // Aplica altura aumentada
+        escalaBaseAtual = calcularEscalaAutomatica(
+          larguraOriginalAtual,
+          alturaOriginalAtual
+        ); // Calcula escala automática inicial
+
+        zoomAtual = 1; // Reseta zoom manual
+
+        atualizarTamanhoImagemAtual(); // Aplica tamanho inicial
 
         cornerstone.displayImage(visualizadorDicom, image); // Exibe DICOM
 
-        imagemDicomAtual = image; // Guarda a imagem DICOM atual para leitura dos pixels
+        imagemDicomAtual = image; // Guarda imagem DICOM atual
 
-        cornerstone.resize(visualizadorDicom, true); // Ajusta visualização
-
-        gerarAnaliseDicom(image); // Gera análise do DICOM
-
-        statusText.innerText = "DICOM carregado: " + item.name; // Atualiza status
+        cornerstone.resize(visualizadorDicom, true); // Ajusta DICOM
 
       }) // Fecha then
 
@@ -461,14 +486,18 @@ function openFile(item) { // Função para abrir imagem selecionada
 
     imagemNormal.onload = function() { // Quando a imagem terminar de carregar
 
-      const escala = calcularEscalaAutomatica(
-        imagemNormal.naturalWidth,
-        imagemNormal.naturalHeight
-      ); // Calcula o aumento automático
+      larguraOriginalAtual = imagemNormal.naturalWidth; // Salva largura original
 
-      imagemNormal.style.width = (imagemNormal.naturalWidth * escala) + "px"; // Aplica largura aumentada
+      alturaOriginalAtual = imagemNormal.naturalHeight; // Salva altura original
 
-      imagemNormal.style.height = (imagemNormal.naturalHeight * escala) + "px"; // Aplica altura aumentada
+      escalaBaseAtual = calcularEscalaAutomatica(
+        larguraOriginalAtual,
+        alturaOriginalAtual
+      ); // Calcula escala automática inicial
+
+      zoomAtual = 1; // Reseta zoom manual
+
+      atualizarTamanhoImagemAtual(); // Aplica tamanho inicial
 
       gerarAnaliseImagemNormal(imagemNormal); // Gera análise da imagem
 
@@ -693,38 +722,39 @@ function toggleZoomImagem() {  // Função para ligar/desligar modo de zoom
 
 } 
 // Aplica zoom usando o ponto onde o mouse está
-function aplicarZoomNoMouse(event, elemento) { 
+function aplicarZoomNoMouse(event, elemento) { // Aplica zoom real usando width e height
 
-  if (!modoZoomAtivo) return; // Só funciona se o modo zoom estiver ativo
-  event.preventDefault(); // Impede a página de rolar enquanto usa o zoom
-  const rect = elemento.getBoundingClientRect(); // Pega posição e tamanho do elemento
-  const mouseX = event.clientX - rect.left; // Posição X do mouse dentro da imagem
-  const mouseY = event.clientY - rect.top; // Posição Y do mouse dentro da imagem
-  const origemX = (mouseX / rect.width) * 100; // Converte X para porcentage
-  const origemY = (mouseY / rect.height) * 100; // Converte Y para porcentagem
-  elemento.style.transformOrigin = `${origemX}% ${origemY}%`; // Define ponto de origem do zoom
-  if (event.deltaY < 0) { // Scroll para cima
-    zoomAtual += 0.2; // Aumenta zoom
-  } else { // Scroll para baixo
-    zoomAtual -= 0.2; // Diminui zoom
+  if (!modoZoomAtivo) return; // Só funciona se o zoom estiver ativo
+  event.preventDefault(); // Impede a rolagem da página
+  const box = visualizacaoBox; // Caixa de visualização
+  const rectBox = box.getBoundingClientRect(); // Posição da caixa na tela
+  const mouseX = event.clientX - rectBox.left + box.scrollLeft; // Posição X considerando scroll
+  const mouseY = event.clientY - rectBox.top + box.scrollTop; // Posição Y considerando scroll
+  const proporcaoX = mouseX / elemento.offsetWidth; // Ponto relativo X antes do zoom
+  const proporcaoY = mouseY / elemento.offsetHeight; // Ponto relativo Y antes do zoom
+  if (event.deltaY < 0) { // Scroll para cima aumenta
+    zoomAtual *= 1.25; // Aumenta em escala multiplicativa
+  } else { // Scroll para baixo diminui
+    zoomAtual /= 1.25; // Diminui em escala multiplicativa
   }
-  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limita zoom mínimo
-  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limita zoom máximo
-  elemento.style.transform = `scale(${zoomAtual})`; // Aplica zoom
-  statusText.innerText = `Zoom: ${zoomAtual.toFixed(1)}x`; // Mostra nível de zoom
+  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limite mínimo
+  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limite máximo
+  atualizarTamanhoImagemAtual(); // Aplica novo tamanho real
+  box.scrollLeft = proporcaoX * elemento.offsetWidth - (event.clientX - rectBox.left); // Mantém o ponto do mouse
+  box.scrollTop = proporcaoY * elemento.offsetHeight - (event.clientY - rectBox.top); // Mantém o ponto do mouse
+  statusText.innerText = `Zoom: ${zoomAtual.toFixed(2)}x`;
 
-} 
+}
 // Volta a imagem para o tamanho normal
-function resetarZoom() { 
+function resetarZoom() { // Volta ao zoom automático inicial
 
-  zoomAtual = 1; // Reseta nível de zoom
-  imagemNormal.style.transform = "scale(1)"; // Reseta imagem comum
-  imagemNormal.style.transformOrigin = "center center"; // Reseta origem
-  visualizadorDicom.style.transform = "scale(1)"; // Reseta DICOM
-  visualizadorDicom.style.transformOrigin = "center center"; // Reseta origem
-  statusText.innerText = "Zoom resetado."; // Atualiza status
+  zoomAtual = 1; // Reseta zoom manual
+  atualizarTamanhoImagemAtual(); // Volta para tamanho automático
+  visualizacaoBox.scrollLeft = 0; // Volta scroll horizontal
+  visualizacaoBox.scrollTop = 0; // Volta scroll vertical
+  statusText.innerText = "Zoom resetado.";
 
-} 
+}
 // Zoom com scroll na imagem comum
 imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na imagem comum
 
@@ -750,17 +780,100 @@ visualizadorDicom.addEventListener("dblclick", function() {
 
 }); 
 // Calcula o aumento automático
-function calcularEscalaAutomatica(larguraImagem, alturaImagem) { 
+function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
-  const limiteLargura = 850; // Largura máxima disponível para exibição
-  const limiteAltura = window.innerHeight * 0.65; // Altura máxima disponível na tela
-  const escalaLargura = limiteLargura / larguraImagem; // Quantas vezes pode aumentar pela largura
-  const escalaAltura = limiteAltura / alturaImagem; // Quantas vezes pode aumentar pela altura
+  const limiteLargura = visualizacaoBox.clientWidth - 30; // Limite de largura considerando margem
+  const limiteAltura = visualizacaoBox.clientHeight - 30;
+  const escalaLargura = limiteLargura / larguraImagem;
+  const escalaAltura = limiteAltura / alturaImagem; // Calcula escala para largura e altura 
   const escala = Math.min(escalaLargura, escalaAltura); // Usa a menor escala para não deformar nem cortar
-  console.log("Aumento automático:", escala.toFixed(2) + "x"); // Mostra no console
-  return escala; // Retorna o fator de aumento
-  
+
+  return escala;
+
 }
 // Fecha a parte da função zoom --------------------------------------------------------
+
+// Funções da mãozinha para arrastar a imagem ----------------------------------------------------------------
+function atualizarTamanhoImagemAtual() { // Atualiza o tamanho real da imagem exibida
+
+  const larguraFinal = larguraOriginalAtual * escalaBaseAtual * zoomAtual; // Calcula largura final
+  const alturaFinal = alturaOriginalAtual * escalaBaseAtual * zoomAtual; // Calcula altura final
+  if (imagemNormal.style.display === "block") { // Se imagem comum está visível
+    imagemNormal.style.width = larguraFinal + "px"; // Aplica largura real
+    imagemNormal.style.height = alturaFinal + "px"; // Aplica altura real
+  }
+  if (visualizadorDicom.style.display === "block") { // Se DICOM está visível
+    visualizadorDicom.style.width = larguraFinal + "px"; // Aplica largura real
+    visualizadorDicom.style.height = alturaFinal + "px"; // Aplica altura real
+    cornerstone.resize(visualizadorDicom, true); // Atualiza visualização DICOM
+
+  }
+
+}
+// Liga/desliga o modo mãozinha
+function togglePanImagem() { 
+
+  modoPanAtivo = !modoPanAtivo; // Inverte estado
+  if (modoPanAtivo) { // Se ativou
+    botaoPan.classList.add("ativo"); // Marca botão
+    visualizacaoBox.classList.add("pan_ativo"); // Muda cursor
+    statusText.innerText = "Modo mãozinha ativo: clique e arraste para mover a imagem.";
+  } else { // Se desativou
+    botaoPan.classList.remove("ativo"); // Remove marcação
+    visualizacaoBox.classList.remove("pan_ativo"); // Remove cursor
+    visualizacaoBox.classList.remove("pan_arrastando"); // Remove cursor arrastando
+    statusText.innerText = "Modo mãozinha desativado.";
+
+  }
+
+}
+// Começa a arrastar
+visualizacaoBox.addEventListener("mousedown", function(event) { 
+
+  if (!modoPanAtivo) return; // Só funciona se mãozinha estiver ativa
+  arrastandoImagem = true; // Ativa arrasto
+  inicioMouseX = event.clientX; // Salva X inicial
+  inicioMouseY = event.clientY; // Salva Y inicial
+  scrollInicialX = visualizacaoBox.scrollLeft; // Salva scroll X
+  scrollInicialY = visualizacaoBox.scrollTop; // Salva scroll Y
+  visualizacaoBox.classList.add("pan_arrastando"); // Cursor de arrastando
+
+});
+// Enquanto move o mouse
+document.addEventListener("mousemove", function(event) { // Enquanto move o mouse
+
+  if (!arrastandoImagem) return; // Só se estiver arrastando
+  const dx = event.clientX - inicioMouseX; // Diferença X
+  const dy = event.clientY - inicioMouseY; // Diferença Y
+  visualizacaoBox.scrollLeft = scrollInicialX - dx; // Move horizontal
+  visualizacaoBox.scrollTop = scrollInicialY - dy; // Move vertical
+
+});
+// Solta o mouse
+document.addEventListener("mouseup", function() { 
+
+  arrastandoImagem = false; // Para arrasto
+  visualizacaoBox.classList.remove("pan_arrastando"); // Remove cursor de arrasto
+
+});
+// Permite zoom com scroll na imagem comum e no DICOM
+imagemNormal.addEventListener("wheel", function(event) {
+  aplicarZoomNoMouse(event, imagemNormal);
+});
+// Permite zoom com scroll no DICOM
+visualizadorDicom.addEventListener("wheel", function(event) {
+  aplicarZoomNoMouse(event, visualizadorDicom);
+});
+// Permite resetar zoom com dois cliques na imagem comum e no DICOM
+imagemNormal.addEventListener("dblclick", function() {
+  if (modoZoomAtivo) resetarZoom();
+});
+// Permite resetar zoom com dois cliques no DICOM
+visualizadorDicom.addEventListener("dblclick", function() {
+  if (modoZoomAtivo) resetarZoom();
+});
+// Fecha a função da mãozinha para arrastar a imagem ----------------------------------------------------------------
+
+
 
 loadFiles(); // Inicia carregamento dos arquivos salvos
