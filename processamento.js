@@ -30,7 +30,7 @@ let zoomAtual = 1; // Guarda o nível atual de zoom
 
 const zoomMinimo = 1; // Zoom mínimo permitido
 
-const zoomMaximo = 8; // Zoom máximo permitido
+const zoomMaximo = 100; // Zoom máximo permitido
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 
