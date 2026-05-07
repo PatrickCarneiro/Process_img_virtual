@@ -48,7 +48,7 @@ let zoomAtual = 1; // Zoom manual atual
 
 const zoomMinimo = 1; // Zoom mínimo
 
-const zoomMaximo = 100; // Pode aumentar bastante, parecido com MATLAB
+const zoomMaximo = 1000; // Pode aumentar bastante, parecido com MATLAB
 
 let larguraOriginalAtual = 0; // Largura original da imagem atual
 
@@ -733,9 +733,9 @@ function aplicarZoomNoMouse(event, elemento) { // Aplica zoom real usando width 
   const proporcaoX = mouseX / elemento.offsetWidth; // Ponto relativo X antes do zoom
   const proporcaoY = mouseY / elemento.offsetHeight; // Ponto relativo Y antes do zoom
   if (event.deltaY < 0) { // Scroll para cima aumenta
-    zoomAtual *= 1.25; // Aumenta em escala multiplicativa
+    zoomAtual *= 10; // Aumenta em escala multiplicativa
   } else { // Scroll para baixo diminui
-    zoomAtual /= 1.25; // Diminui em escala multiplicativa
+    zoomAtual /= 10; // Diminui em escala multiplicativa
   }
   if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limite mínimo
   if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limite máximo
