@@ -48,7 +48,7 @@ let zoomAtual = 1; // Zoom manual atual
 
 const zoomMinimo = 1; // Zoom mínimo
 
-const zoomMaximo = 80; // Pode aumentar bastante, parecido com MATLAB
+const zoomMaximo = 100; // Pode aumentar bastante, parecido com MATLAB
 
 let larguraOriginalAtual = 0; // Largura original da imagem atual
 
