@@ -219,7 +219,9 @@ body {
   border-radius: 0;
   padding: 12px;
   overflow: auto; /* Permite andar na imagem quando ela estiver ampliada */
-  display: block; /* Importante para o scroll funcionar melhor */
+  display: flex; /* Importante para o scroll funcionar melhor */
+  justify-content: center; /* Centraliza na horizontal */
+  align-items: center; /* Centraliza na vertical */
   width: 100%;
   max-width: 100%;
   height: 70vh; /* Caixa fixa para navegar dentro */
@@ -308,6 +310,10 @@ body {
 #visualizadorDicom { /* Suaviza o zoom do DICOM */
   transform-origin: center center;
   transition: transform 0.08s ease-out; 
+}
+.visualizacao_box.zoom_aplicado {
+  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 /* Botão da mão */

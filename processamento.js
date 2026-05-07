@@ -48,7 +48,7 @@ let zoomAtual = 1; // Zoom manual atual
 
 const zoomMinimo = 1; // Zoom mínimo
 
-const zoomMaximo = 1000; // Pode aumentar bastante, parecido com MATLAB
+const zoomMaximo = 2000; // Pode aumentar bastante, parecido com MATLAB
 
 let larguraOriginalAtual = 0; // Largura original da imagem atual
 
@@ -738,9 +738,9 @@ function aplicarZoomNoMouse(event, elemento) { // Aplica zoom real usando width 
   const proporcaoX = mouseX / elemento.offsetWidth; // Ponto relativo X antes do zoom
   const proporcaoY = mouseY / elemento.offsetHeight; // Ponto relativo Y antes do zoom
   if (event.deltaY < 0) { // Scroll para cima aumenta
-    zoomAtual *= 5; // Aumenta em escala multiplicativa
+    zoomAtual *= 2; // Aumenta em escala multiplicativa
   } else { // Scroll para baixo diminui
-    zoomAtual /= 5; // Diminui em escala multiplicativa
+    zoomAtual /= 2; // Diminui em escala multiplicativa
   }
   if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limite mínimo
   if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limite máximo
@@ -811,7 +811,11 @@ function atualizarTamanhoImagemAtual() { // Atualiza o tamanho real da imagem ex
     visualizadorDicom.style.width = larguraFinal + "px"; // Aplica largura real
     visualizadorDicom.style.height = alturaFinal + "px"; // Aplica altura real
     cornerstone.resize(visualizadorDicom, true); // Atualiza visualização DICOM
-
+  }
+  if (zoomAtual > 1) {
+    visualizacaoBox.classList.add("zoom_aplicado");
+  } else {
+    visualizacaoBox.classList.remove("zoom_aplicado");
   }
 
 }
