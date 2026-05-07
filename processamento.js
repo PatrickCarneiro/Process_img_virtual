@@ -421,19 +421,11 @@ function openFile(item) { // Função para abrir imagem selecionada
 
       .then(function(image) { // Quando carregar
 
-        const limiteLargura = 850; // Largura máxima da imagem exibida
+        const escala = calcularEscalaAutomatica(image.width, image.height); // Calcula o aumento automático
 
-        const limiteAltura = window.innerHeight * 0.65; // Altura máxima proporcional à tela
+        visualizadorDicom.style.width = (image.width * escala) + "px"; // Aplica largura aumentada
 
-        const escala = Math.min( // Calcula escala proporcional
-          limiteLargura / image.width, // Escala baseada na largura
-          limiteAltura / image.height, // Escala baseada na altura
-          1 // Não aumenta imagem pequena
-        ); // Fecha Math.min
-
-        visualizadorDicom.style.width = (image.width * escala) + "px"; // Define largura escalada
-
-        visualizadorDicom.style.height = (image.height * escala) + "px"; // Define altura escalada
+        visualizadorDicom.style.height = (image.height * escala) + "px"; // Aplica altura aumentada
 
         cornerstone.displayImage(visualizadorDicom, image); // Exibe DICOM
 
@@ -468,6 +460,15 @@ function openFile(item) { // Função para abrir imagem selecionada
     imagemNormal.src = imageURL; // Define imagem no elemento img
 
     imagemNormal.onload = function() { // Quando a imagem terminar de carregar
+
+      const escala = calcularEscalaAutomatica(
+        imagemNormal.naturalWidth,
+        imagemNormal.naturalHeight
+      ); // Calcula o aumento automático
+
+      imagemNormal.style.width = (imagemNormal.naturalWidth * escala) + "px"; // Aplica largura aumentada
+
+      imagemNormal.style.height = (imagemNormal.naturalHeight * escala) + "px"; // Aplica altura aumentada
 
       gerarAnaliseImagemNormal(imagemNormal); // Gera análise da imagem
 
@@ -748,6 +749,18 @@ visualizadorDicom.addEventListener("dblclick", function() {
   if (modoZoomAtivo) resetarZoom(); 
 
 }); 
+// Calcula o aumento automático
+function calcularEscalaAutomatica(larguraImagem, alturaImagem) { 
+
+  const limiteLargura = 850; // Largura máxima disponível para exibição
+  const limiteAltura = window.innerHeight * 0.65; // Altura máxima disponível na tela
+  const escalaLargura = limiteLargura / larguraImagem; // Quantas vezes pode aumentar pela largura
+  const escalaAltura = limiteAltura / alturaImagem; // Quantas vezes pode aumentar pela altura
+  const escala = Math.min(escalaLargura, escalaAltura); // Usa a menor escala para não deformar nem cortar
+  console.log("Aumento automático:", escala.toFixed(2) + "x"); // Mostra no console
+  return escala; // Retorna o fator de aumento
+  
+}
 // Fecha a parte da função zoom --------------------------------------------------------
 
 loadFiles(); // Inicia carregamento dos arquivos salvos
