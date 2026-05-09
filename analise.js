@@ -85,6 +85,15 @@ function gerarAnaliseImagemNormal(img) { // Função para calcular histograma de
 
   let total = 0; // Contador de pixels
 
+  let histogramaAtual = []; // Guarda o histograma atual para redesenhar quando o usuário interagir
+
+  let faixaInicioHistograma = 0; // Faixa inicial exibida no histograma
+  let faixaFimHistograma = 255; 
+
+  let arrastandoHistograma = false; // Controla se o usuário está arrastando para selecionar uma região
+
+  let inicioArrasteHistograma = 0; // Guarda onde o arraste começou
+
   for (let i = 0; i < data.length; i += 4) { // Percorre pixels pulando de 4 em 4 RGBA
 
     const gray = Math.round((data[i] + data[i + 1] + data[i + 2]) / 3); // Converte RGB para cinza médio
@@ -144,14 +153,214 @@ function gerarAnaliseDicom(image) {
 // Função para desenhar histograma no canvas 
 function desenharHistograma(hist, ctx, canvas) { 
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpa canvas
-  const maior = Math.max(...hist); // Encontra maior frequência do histograma
-  const larguraBarra = canvas.width / hist.length; // Calcula largura de cada barra
-  ctx.fillStyle = "rgba(192,132,252,0.8)"; // Define cor das barras
-  hist.forEach((valor, i) => { // Percorre cada valor do histograma
-    const altura = maior > 0 ? (valor / maior) * canvas.height : 0; // Calcula altura proporcional
-    ctx.fillRect(i * larguraBarra, canvas.height - altura, larguraBarra, altura); // Desenha barra
-  }); 
+  histogramaAtual = hist; // Guarda o histograma atual
+  ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpa o canvas
+  const margemEsquerda = 55; // Espaço para o eixo Y
+  const margemDireita = 20; // Espaço à direita
+  const margemSuperior = 20; // Espaço em cima
+  const margemInferior = 45; // Espaço para o eixo X
+  const larguraGrafico = canvas.width - margemEsquerda - margemDireita; // Largura útil
+  const alturaGrafico = canvas.height - margemSuperior - margemInferior; // Altura útil
+  const inicio = faixaInicioHistograma; // Primeiro tom exibido
+  const fim = faixaFimHistograma; // Último tom exibido
+  const histVisivel = hist.slice(inicio, fim + 1); // Recorta só a faixa selecionada
+  const maior = Math.max(...histVisivel); // Maior quantidade da região visível
+  const quantidadeBarras = histVisivel.length; // Quantidade de colunas visíveis
+  const larguraBarra = larguraGrafico / quantidadeBarras; // Largura de cada coluna
+
+  
+  ctx.fillStyle = "black"; // Fundo do gráfico
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "rgba(255,255,255,0.12)"; // Grade horizontal
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i <= 5; i++) { // Grade horizontal
+    const y = margemSuperior + (alturaGrafico / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(margemEsquerda, y);
+    ctx.lineTo(canvas.width - margemDireita, y);
+    ctx.stroke();
+  }
+  for (let i = 0; i <= 5; i++) { // Grade vertical
+    const x = margemEsquerda + (larguraGrafico / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, margemSuperior);
+    ctx.lineTo(x, canvas.height - margemInferior);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(192,132,252,0.85)"; // Desenha as barras
+  histVisivel.forEach(function(valor, index) {
+    const altura = maior > 0 ? (valor / maior) * alturaGrafico : 0; // Altura proporcional ao maior valor
+    const x = margemEsquerda + index * larguraBarra; // Posição horizontal da barra
+    const y = margemSuperior + alturaGrafico - altura;
+    ctx.fillRect(x, y, Math.max(larguraBarra - 1, 1), altura); // Desenha a barra com um pequeno espaço entre elas
+  });
+  ctx.strokeStyle = "rgba(255,255,255,0.75)"; // Eixo X e Y
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); // Eixo Y
+  ctx.moveTo(margemEsquerda, margemSuperior);
+  ctx.lineTo(margemEsquerda, canvas.height - margemInferior);
+  ctx.stroke();
+  ctx.beginPath(); // Eixo X
+  ctx.moveTo(margemEsquerda, canvas.height - margemInferior);
+  ctx.lineTo(canvas.width - margemDireita, canvas.height - margemInferior);
+  ctx.stroke();
+
+  // Textos dos eixos
+  ctx.fillStyle = "white";
+  ctx.font = "12px Arial";
+  ctx.textAlign = "center";
+
+  for (let i = 0; i <= 5; i++) {
+    const valorTom = Math.round(inicio + ((fim - inicio) / 5) * i);
+    const x = margemEsquerda + (larguraGrafico / 5) * i;
+
+    ctx.fillText(valorTom, x, canvas.height - 20);
+  }
+
+  ctx.textAlign = "right";
+
+  for (let i = 0; i <= 5; i++) {
+    const valorY = Math.round((maior / 5) * (5 - i));
+    const y = margemSuperior + (alturaGrafico / 5) * i + 4;
+
+    ctx.fillText(valorY, margemEsquerda - 8, y);
+  }
+
+  // Título do eixo X
+  ctx.textAlign = "center";
+  ctx.fillText("Intensidade do pixel", margemEsquerda + larguraGrafico / 2, canvas.height - 5);
+
+  // Título do eixo Y girado
+  ctx.save();
+  ctx.translate(15, margemSuperior + alturaGrafico / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText("Quantidade de pixels", 0, 0);
+  ctx.restore();
+
+  // Atualiza texto da faixa visualizada
+  const faixaTexto = document.getElementById("faixaHistograma");
+
+  if (faixaTexto) {
+    faixaTexto.innerText = `Região visualizada: ${inicio} a ${fim}`;
+  }
+
+  ativarInteracaoHistograma(canvas); // Ativa tooltip e seleção
+
+}
+
+function ativarInteracaoHistograma(canvas) { // Ativa eventos interativos do histograma
+
+  if (canvas.dataset.interacaoAtiva === "true") return; // Evita adicionar eventos repetidos
+
+  canvas.dataset.interacaoAtiva = "true"; // Marca como já configurado
+
+  canvas.addEventListener("mousemove", function(event) {
+    mostrarTooltipHistograma(event, canvas);
+  });
+
+  canvas.addEventListener("mouseleave", function() {
+    const tooltip = document.getElementById("tooltipHistograma");
+
+    if (tooltip) {
+      tooltip.style.display = "none";
+    }
+  });
+
+  canvas.addEventListener("mousedown", function(event) {
+    arrastandoHistograma = true;
+    inicioArrasteHistograma = calcularTomPeloMouse(event, canvas);
+  });
+
+  canvas.addEventListener("mouseup", function(event) {
+
+    if (!arrastandoHistograma) return;
+
+    arrastandoHistograma = false;
+
+    const fimArraste = calcularTomPeloMouse(event, canvas);
+
+    const novoInicio = Math.min(inicioArrasteHistograma, fimArraste);
+    const novoFim = Math.max(inicioArrasteHistograma, fimArraste);
+
+    if (novoFim - novoInicio >= 2) {
+      faixaInicioHistograma = novoInicio;
+      faixaFimHistograma = novoFim;
+      redesenharHistogramaAtual();
+    }
+
+  });
+
+  canvas.addEventListener("dblclick", function() {
+    faixaInicioHistograma = 0;
+    faixaFimHistograma = 255;
+    redesenharHistogramaAtual();
+  });
+
+}
+
+function mostrarTooltipHistograma(event, canvas) { // Mostra informação da coluna ao passar o mouse
+
+  const tooltip = document.getElementById("tooltipHistograma");
+
+  if (!tooltip || histogramaAtual.length === 0) return;
+
+  const tom = calcularTomPeloMouse(event, canvas);
+
+  if (tom < faixaInicioHistograma || tom > faixaFimHistograma) {
+    tooltip.style.display = "none";
+    return;
+  }
+
+  const quantidade = histogramaAtual[tom];
+
+  tooltip.innerHTML = `
+    <strong>Tom:</strong> ${tom}<br>
+    <strong>Quantidade:</strong> ${quantidade} pixels
+  `;
+
+  tooltip.style.display = "block";
+  tooltip.style.left = event.clientX + 15 + "px";
+  tooltip.style.top = event.clientY + 15 + "px";
+
+}
+
+function calcularTomPeloMouse(event, canvas) { // Calcula qual tom de cinza está embaixo do mouse
+
+  const margemEsquerda = 55;
+  const margemDireita = 20;
+
+  const rect = canvas.getBoundingClientRect();
+
+  const xMouse = event.clientX - rect.left;
+
+  const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
+
+  let proporcao = (xMouse - margemEsquerda) / larguraGrafico;
+
+  if (proporcao < 0) proporcao = 0;
+  if (proporcao > 1) proporcao = 1;
+
+  const tom = Math.round(
+    faixaInicioHistograma + proporcao * (faixaFimHistograma - faixaInicioHistograma)
+  );
+
+  return tom;
+
+}
+
+function redesenharHistogramaAtual() { // Redesenha o histograma usando a faixa atual
+
+  const canvas = document.getElementById("histograma");
+
+  if (!canvas || histogramaAtual.length === 0) return;
+
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  desenharHistograma(histogramaAtual, ctx, canvas);
 
 }
 // Fecha a função do histograma no canvas ---------------------------------------------------------------------

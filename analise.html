@@ -1,128 +1,152 @@
 <style>
 
-/* Aba fechada de análises */
-.aba_analises {
-  position: fixed; /* Fixa na tela */
-  left: 250px; /* Começa depois do menu lateral */
-  right: 15px; /* Espaço à direita */
-  bottom: 0; /* Fica grudada embaixo */
-  height: 55px; /* Altura quando fechada */
-  background: rgba(10,20,40,0.98); 
-  color: white; 
-  border: 1px solid rgba(192,132,252,0.35); 
-  border-radius: 20px 20px 0 0; /* Arredonda só em cima */
-  transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease; /* Anima altura para subir */
-  overflow: hidden; /* Esconde conteúdo quando fechada */
-  z-index: 100; /* Fica acima dos outros elementos */
-}
+  /* Aba fechada de análises */
+  .aba_analises {
+    position: fixed; /* Fixa na tela */
+    left: 250px; /* Começa depois do menu lateral */
+    right: 15px; /* Espaço à direita */
+    bottom: 0; /* Fica grudada embaixo */
+    height: 55px; /* Altura quando fechada */
+    background: rgba(10,20,40,0.98); 
+    color: white; 
+    border: 1px solid rgba(192,132,252,0.35); 
+    border-radius: 20px 20px 0 0; /* Arredonda só em cima */
+    transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease; /* Anima altura para subir */
+    overflow: hidden; /* Esconde conteúdo quando fechada */
+    z-index: 100; /* Fica acima dos outros elementos */
+  }
 
-/* Aba aberta de análises */
-.aba_analises.aberta {
-  left: 0; /* Ocupa desde a esquerda */
-  right: 0; /* Ocupa até a direita */
-  bottom: 0; /* Continua presa embaixo */
-  width: 100vw; /* Ocupa toda a largura da tela */
-  height: 100vh; /* Cresce até ocupar toda a altura */
-  border-radius: 0; /* Remove arredondamento em tela cheia */
-}
+  /* Aba aberta de análises */
+  .aba_analises.aberta {
+    left: 0; /* Ocupa desde a esquerda */
+    right: 0; /* Ocupa até a direita */
+    bottom: 0; /* Continua presa embaixo */
+    width: 100vw; /* Ocupa toda a largura da tela */
+    height: 100vh; /* Cresce até ocupar toda a altura */
+    border-radius: 0; /* Remove arredondamento em tela cheia */
+  }
 
-/* Cabeçalho clicável da aba de análises */
-.cabecalho_analises {
-  height: 55px; /* Altura do cabeçalho */
-  padding: 15px 20px; 
-  cursor: pointer; 
-  background: rgba(192,132,252,0.15); 
-  display: flex; 
-  justify-content: space-between; /* Joga um para cada lado */
-  align-items: center; 
-}
+  /* Cabeçalho clicável da aba de análises */
+  .cabecalho_analises {
+    height: 55px; /* Altura do cabeçalho */
+    padding: 15px 20px; 
+    cursor: pointer; 
+    background: rgba(192,132,252,0.15); 
+    display: flex; 
+    justify-content: space-between; /* Joga um para cada lado */
+    align-items: center; 
+  }
 
-/* Conteúdo interno da análise */
-.conteudo_analises {
-  padding: 20px;
-  display: grid; /* Usa grid */
-  grid-template-columns: 1fr 300px; /* Histograma maior + métricas à direita */
-  gap: 20px; /* Espaço entre histograma e métricas */
-}
+  /* Conteúdo interno da análise */
+  .conteudo_analises {
+    padding: 20px;
+    display: grid; /* Usa grid */
+    grid-template-columns: 1fr 300px; /* Histograma maior + métricas à direita */
+    gap: 20px; /* Espaço entre histograma e métricas */
+  }
 
-/* Conteúdo quando a aba está aberta */
-.aba_analises.aberta .conteudo_analises {
-  height: calc(100vh - 55px); /* Ocupa a tela menos o cabeçalho */
-  overflow: auto; /* Permite rolagem interna */
-}
+  /* Conteúdo quando a aba está aberta */
+  .aba_analises.aberta .conteudo_analises {
+    height: calc(100vh - 55px); /* Ocupa a tela menos o cabeçalho */
+    overflow: auto; /* Permite rolagem interna */
+  }
 
-/* Canvas do histograma */
-#histograma {
-  width: 100%; /* Ocupa toda a largura disponível */
-  height: 75vh; /* Altura relativa à tela */
-  background: black; 
-  border-radius: 12px; 
-}
+  /* Canvas do histograma */
+  #histograma {
+    width: 100%; /* Ocupa toda a largura disponível */
+    height: 75vh; /* Altura relativa à tela */
+    background: black; 
+    border-radius: 12px; 
+  }
 
-/* Cards de métricas */
-.metrica {
-  background: rgba(255,255,255,0.06); 
-  padding: 10px;
-  border-radius: 10px; 
-  margin-bottom: 8px; 
-}
+  /* Cards de métricas */
+  .metrica {
+    background: rgba(255,255,255,0.06); 
+    padding: 10px;
+    border-radius: 10px; 
+    margin-bottom: 8px; 
+  }
 
+  <style>
   /* Área que guarda o histograma e os botões abaixo */
   .area_grafico_analise {
-    display: flex; /* Organiza em coluna */
-    flex-direction: column; /* Coloca histograma em cima e botões embaixo */
-    gap: 12px; /* Espaço entre histograma e botões */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;  /* Espaço entre o histograma, a faixa de texto e os botões */
+    position: relative;  /* Para posicionar a tooltip */
   }
 
   /* Área dos botões abaixo do histograma */
   .botoes_analise_imagem {
-    display: flex; /* Coloca os botões lado a lado */
-    justify-content: center; /* Centraliza os botões */
-    gap: 12px; /* Espaço entre os botões */
+    display: flex; 
+    justify-content: center;
+    gap: 12px;
   }
 
   /* Botões da aba de análise */
   .botao_analise {
-    padding: 10px 22px; /* Espaçamento interno */
-    border: 1px solid rgba(192,132,252,0.45); /* Borda roxa */
-    border-radius: 12px; /* Arredonda os cantos */
-    background: rgba(255,255,255,0.06); /* Fundo escuro transparente */
-    color: white; /* Texto branco */
-    cursor: pointer; /* Mostra cursor de clique */
-    font-family: Arial, sans-serif; /* Mantém fonte simples */
-    transition: 0.3s; /* Suaviza hover */
+    padding: 10px 22px;
+    border: 1px solid rgba(192,132,252,0.45);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    color: white;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    transition: 0.3s;
   }
-
-  /* Efeito ao passar o mouse */
   .botao_analise:hover {
-    background: rgba(192,132,252,0.25); /* Fundo roxo ao passar o mouse */
+    background: rgba(192,132,252,0.25);
+  }
+  .botao_analise.ativo {  /* Estilo para o botão ativo */
+    background: rgba(192,132,252,0.45);
+    box-shadow: 0 0 10px rgba(192,132,252,0.35);
   }
 
-  /* Botão ativo */
-  .botao_analise.ativo {
-    background: rgba(192,132,252,0.45); /* Fundo roxo mais forte */
-    box-shadow: 0 0 10px rgba(192,132,252,0.35); /* Brilho suave */
+  /* Texto mostrando a região selecionada do histograma */
+  .faixa_histograma {
+    text-align: center;
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  /* Caixa que aparece ao passar o mouse em cima da coluna */
+  .tooltip_histograma {
+    position: fixed;
+    display: none;
+    background: rgba(10,20,40,0.98);
+    color: white;
+    border: 1px solid rgba(192,132,252,0.55);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 0 12px rgba(0,0,0,0.45);
   }
 </style>
 
 <!-- Aba de análises -->
-<div class="aba_analises" id="abaAnalises"> <!-- Container da aba de análises -->
+<div class="aba_analises" id="abaAnalises">
 
-  <div class="cabecalho_analises" id="cabecalhoAnalises"> <!-- Cabeçalho clicável da aba -->
+  <div class="cabecalho_analises" id="cabecalhoAnalises">
 
-    <strong>Análises da imagem</strong> <!-- Título da aba -->
+    <strong>Análises da imagem</strong>
 
-    <span id="iconeAnalises">▲ Abrir análises</span> <!-- Texto/ícone da aba -->
+    <span id="iconeAnalises">▲ Abrir análises</span>
 
-  </div> <!-- Fecha cabeçalho -->
+  </div>
 
-  <div class="conteudo_analises"> <!-- Conteúdo da aba -->
+  <div class="conteudo_analises">
 
-    <div class="area_grafico_analise"> <!-- Área do histograma e dos botões -->
+    <div class="area_grafico_analise">
 
-      <canvas id="histograma"></canvas> <!-- Canvas onde o histograma será desenhado -->
+      <canvas id="histograma"></canvas>
 
-      <div class="botoes_analise_imagem"> <!-- Botões abaixo do histograma -->
+      <div class="faixa_histograma" id="faixaHistograma">
+        Região visualizada: 0 a 255
+      </div>
+
+      <div class="botoes_analise_imagem">
 
         <button class="botao_analise ativo" id="botaoHistograma">
           Histograma
@@ -132,22 +156,24 @@
           Mapa de pixel
         </button>
 
-      </div> <!-- Fecha botões -->
+      </div>
 
-    </div> <!-- Fecha área do gráfico -->
+      <div class="tooltip_histograma" id="tooltipHistograma"></div>
 
-    <div> <!-- Container das métricas -->
+    </div>
 
-      <div class="metrica">Média: <span id="media">---</span></div> <!-- Métrica média -->
+    <div>
 
-      <div class="metrica">Mínimo: <span id="minimo">---</span></div> <!-- Métrica mínimo -->
+      <div class="metrica">Média: <span id="media">---</span></div>
 
-      <div class="metrica">Máximo: <span id="maximo">---</span></div> <!-- Métrica máximo -->
+      <div class="metrica">Mínimo: <span id="minimo">---</span></div>
 
-      <div class="metrica">Arquivo atual: <span id="arquivoAtual">---</span></div> <!-- Nome do arquivo atual -->
+      <div class="metrica">Máximo: <span id="maximo">---</span></div>
 
-    </div> <!-- Fecha métricas -->
+      <div class="metrica">Arquivo atual: <span id="arquivoAtual">---</span></div>
 
-  </div> <!-- Fecha conteúdo da aba -->
+    </div>
 
-</div> <!-- Fecha aba de análises -->
+  </div>
+
+</div>
