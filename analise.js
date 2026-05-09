@@ -3,8 +3,17 @@
 // ======================================================================
 
 let histogramaAtual = [];
+let centrosHistogramaAtual = [];
 
 let histogramasImagemAtual = {
+  cinza: [],
+  r: [],
+  g: [],
+  b: [],
+  media: []
+};
+
+let centrosHistogramasImagemAtual = {
   cinza: [],
   r: [],
   g: [],
@@ -22,8 +31,8 @@ let limitesHistogramasImagemAtual = {
 
 let canalHistogramaAtual = "cinza";
 
-let faixaInicioHistograma = 0; // Índice inicial visível
-let faixaFimHistograma = 0; // Índice final visível
+let faixaInicioHistograma = 0;
+let faixaFimHistograma = 0;
 
 let intensidadeMinRealHistograma = 0;
 let intensidadeMaxRealHistograma = 0;
@@ -123,11 +132,6 @@ function gerarAnaliseImagemNormal(img) {
 
   if (!canvas) return;
 
-  const ctx = canvas.getContext("2d");
-
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-
   const tempCanvas = document.createElement("canvas");
   const tempCtx = tempCanvas.getContext("2d");
 
@@ -139,7 +143,7 @@ function gerarAnaliseImagemNormal(img) {
   const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
   const data = imageData.data;
 
-  let soma = 0;
+  let somaMedia = 0;
   let total = 0;
   let imagemRGB = false;
 
@@ -155,7 +159,10 @@ function gerarAnaliseImagemNormal(img) {
     const g = data[i + 1];
     const b = data[i + 2];
 
-    const media = Math.round((r + g + b) / 3);
+    // Igual ao MATLAB:
+    // mediaRGB_img = (R + G + B) / 3;
+    // Não arredonda, porque pode gerar valores decimais.
+    const media = (r + g + b) / 3;
 
     valoresCinza.push(media);
     valoresMedia.push(media);
@@ -163,7 +170,7 @@ function gerarAnaliseImagemNormal(img) {
     valoresG.push(g);
     valoresB.push(b);
 
-    soma += media;
+    somaMedia += media;
     total++;
 
     if (r !== g || g !== b) {
@@ -172,26 +179,34 @@ function gerarAnaliseImagemNormal(img) {
 
   }
 
-  const minMaxCinza = calcularMinMax(valoresCinza);
-  const minMaxMedia = calcularMinMax(valoresMedia);
-  const minMaxR = calcularMinMax(valoresR);
-  const minMaxG = calcularMinMax(valoresG);
-  const minMaxB = calcularMinMax(valoresB);
-
-  limitesHistogramasImagemAtual = {
-    cinza: minMaxCinza,
-    media: minMaxMedia,
-    r: minMaxR,
-    g: minMaxG,
-    b: minMaxB
-  };
+  const histCinzaObj = criarHistogramaTradicional(valoresCinza);
+  const histMediaObj = criarHistogramaTradicional(valoresMedia);
+  const histRObj = criarHistogramaTradicional(valoresR);
+  const histGObj = criarHistogramaTradicional(valoresG);
+  const histBObj = criarHistogramaTradicional(valoresB);
 
   histogramasImagemAtual = {
-    cinza: criarHistogramaPorValoresReais(valoresCinza, minMaxCinza.min, minMaxCinza.max),
-    media: criarHistogramaPorValoresReais(valoresMedia, minMaxMedia.min, minMaxMedia.max),
-    r: criarHistogramaPorValoresReais(valoresR, minMaxR.min, minMaxR.max),
-    g: criarHistogramaPorValoresReais(valoresG, minMaxG.min, minMaxG.max),
-    b: criarHistogramaPorValoresReais(valoresB, minMaxB.min, minMaxB.max)
+    cinza: histCinzaObj.hist,
+    media: histMediaObj.hist,
+    r: histRObj.hist,
+    g: histGObj.hist,
+    b: histBObj.hist
+  };
+
+  centrosHistogramasImagemAtual = {
+    cinza: histCinzaObj.centros,
+    media: histMediaObj.centros,
+    r: histRObj.centros,
+    g: histGObj.centros,
+    b: histBObj.centros
+  };
+
+  limitesHistogramasImagemAtual = {
+    cinza: { min: histCinzaObj.min, max: histCinzaObj.max },
+    media: { min: histMediaObj.min, max: histMediaObj.max },
+    r: { min: histRObj.min, max: histRObj.max },
+    g: { min: histGObj.min, max: histGObj.max },
+    b: { min: histBObj.min, max: histBObj.max }
   };
 
   const botoesRGB = document.getElementById("botoesCanaisRGB");
@@ -217,7 +232,7 @@ function gerarAnaliseImagemNormal(img) {
   desenharHistogramaAtual();
 
   atualizarMetricasAnalise(
-    soma,
+    somaMedia,
     total,
     limitesHistogramasImagemAtual[canalHistogramaAtual].min,
     limitesHistogramasImagemAtual[canalHistogramaAtual].max
@@ -236,25 +251,45 @@ function gerarAnaliseDicom(image) {
 
   if (!pixels || pixels.length === 0) return;
 
+  let slope = 1;
+  let intercept = 0;
+
+  // Cornerstone costuma disponibilizar esses campos em algumas imagens.
+  // Isso deixa mais parecido com o MATLAB usando RescaleSlope/RescaleIntercept.
+  if (image.slope !== undefined && image.slope !== null) {
+    slope = Number(image.slope);
+  }
+
+  if (image.intercept !== undefined && image.intercept !== null) {
+    intercept = Number(image.intercept);
+  }
+
+  const valoresDicom = [];
+
   let soma = 0;
-  let min = Infinity;
-  let max = -Infinity;
 
   for (let i = 0; i < pixels.length; i++) {
 
-    const valor = pixels[i];
+    const valorReal = Number(pixels[i]) * slope + intercept;
 
-    soma += valor;
+    valoresDicom.push(valorReal);
 
-    if (valor < min) min = valor;
-    if (valor > max) max = valor;
+    soma += valorReal;
 
   }
 
-  const hist = criarHistogramaPorPixelsDicom(pixels, min, max);
+  const histObj = criarHistogramaTradicional(valoresDicom);
 
   histogramasImagemAtual = {
-    cinza: hist,
+    cinza: histObj.hist,
+    media: [],
+    r: [],
+    g: [],
+    b: []
+  };
+
+  centrosHistogramasImagemAtual = {
+    cinza: histObj.centros,
     media: [],
     r: [],
     g: [],
@@ -262,8 +297,8 @@ function gerarAnaliseDicom(image) {
   };
 
   limitesHistogramasImagemAtual = {
-    cinza: { min: min, max: max },
-    media: { min: min, max: max },
+    cinza: { min: histObj.min, max: histObj.max },
+    media: { min: histObj.min, max: histObj.max },
     r: { min: 0, max: 0 },
     g: { min: 0, max: 0 },
     b: { min: 0, max: 0 }
@@ -279,7 +314,7 @@ function gerarAnaliseDicom(image) {
 
   desenharHistogramaAtual();
 
-  atualizarMetricasAnalise(soma, pixels.length, min, max);
+  atualizarMetricasAnalise(soma, valoresDicom.length, histObj.min, histObj.max);
 
 }
 
@@ -293,7 +328,9 @@ function selecionarCanalHistograma(canal) {
   if (!histogramasImagemAtual[canal] || histogramasImagemAtual[canal].length === 0) return;
 
   canalHistogramaAtual = canal;
+
   histogramaAtual = histogramasImagemAtual[canal];
+  centrosHistogramaAtual = centrosHistogramasImagemAtual[canal];
 
   intensidadeMinRealHistograma = limitesHistogramasImagemAtual[canal].min;
   intensidadeMaxRealHistograma = limitesHistogramasImagemAtual[canal].max;
@@ -325,15 +362,15 @@ function atualizarMetricasAnalise(soma, total, min, max) {
   const maximoElemento = document.getElementById("maximo");
 
   if (mediaElemento) {
-    mediaElemento.innerText = total > 0 ? (soma / total).toFixed(2) : "---";
+    mediaElemento.innerText = total > 0 ? formatarNumero(soma / total) : "---";
   }
 
   if (minimoElemento) {
-    minimoElemento.innerText = min !== Infinity ? min : "---";
+    minimoElemento.innerText = Number.isFinite(min) ? formatarNumero(min) : "---";
   }
 
   if (maximoElemento) {
-    maximoElemento.innerText = max !== -Infinity ? max : "---";
+    maximoElemento.innerText = Number.isFinite(max) ? formatarNumero(max) : "---";
   }
 
 }
@@ -401,7 +438,16 @@ function desenharHistograma(hist, ctx, canvas) {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  desenharGradeHistograma(ctx, canvas, margemEsquerda, margemDireita, margemSuperior, margemInferior, larguraGrafico, alturaGrafico);
+  desenharGradeHistograma(
+    ctx,
+    canvas,
+    margemEsquerda,
+    margemDireita,
+    margemSuperior,
+    margemInferior,
+    larguraGrafico,
+    alturaGrafico
+  );
 
   definirCorBarrasHistograma(ctx);
 
@@ -419,7 +465,17 @@ function desenharHistograma(hist, ctx, canvas) {
 
   }
 
-  desenharEixosHistograma(ctx, canvas, margemEsquerda, margemDireita, margemSuperior, margemInferior, larguraGrafico, alturaGrafico, maior);
+  desenharEixosHistograma(
+    ctx,
+    canvas,
+    margemEsquerda,
+    margemDireita,
+    margemSuperior,
+    margemInferior,
+    larguraGrafico,
+    alturaGrafico,
+    maior
+  );
 
   atualizarTextosHistograma(inicio, fim);
 
@@ -434,7 +490,16 @@ function desenharHistograma(hist, ctx, canvas) {
 // PARTES VISUAIS DO HISTOGRAMA
 // ======================================================================
 
-function desenharGradeHistograma(ctx, canvas, margemEsquerda, margemDireita, margemSuperior, margemInferior, larguraGrafico, alturaGrafico) {
+function desenharGradeHistograma(
+  ctx,
+  canvas,
+  margemEsquerda,
+  margemDireita,
+  margemSuperior,
+  margemInferior,
+  larguraGrafico,
+  alturaGrafico
+) {
 
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 1;
@@ -487,21 +552,34 @@ function definirCorBarrasHistograma(ctx) {
 }
 
 
-function desenharEixosHistograma(ctx, canvas, margemEsquerda, margemDireita, margemSuperior, margemInferior, larguraGrafico, alturaGrafico, maior) {
+function desenharEixosHistograma(
+  ctx,
+  canvas,
+  margemEsquerda,
+  margemDireita,
+  margemSuperior,
+  margemInferior,
+  larguraGrafico,
+  alturaGrafico,
+  maior
+) {
 
   ctx.strokeStyle = "rgba(255,255,255,0.8)";
   ctx.lineWidth = 1.5;
 
+  // Eixo Y
   ctx.beginPath();
   ctx.moveTo(margemEsquerda, margemSuperior);
   ctx.lineTo(margemEsquerda, canvas.height - margemInferior);
   ctx.stroke();
 
+  // Eixo X
   ctx.beginPath();
   ctx.moveTo(margemEsquerda, canvas.height - margemInferior);
   ctx.lineTo(canvas.width - margemDireita, canvas.height - margemInferior);
   ctx.stroke();
 
+  // Valores do eixo X
   ctx.fillStyle = "rgba(255,255,255,0.9)";
   ctx.font = "12px Arial";
   ctx.textAlign = "center";
@@ -516,10 +594,11 @@ function desenharEixosHistograma(ctx, canvas, margemEsquerda, margemDireita, mar
 
     const x = margemEsquerda + (larguraGrafico / 5) * i;
 
-    ctx.fillText(valorReal, x, canvas.height - 32);
+    ctx.fillText(formatarNumero(valorReal), x, canvas.height - 32);
 
   }
 
+  // Valores do eixo Y
   ctx.textAlign = "right";
 
   for (let i = 0; i <= 5; i++) {
@@ -532,16 +611,18 @@ function desenharEixosHistograma(ctx, canvas, margemEsquerda, margemDireita, mar
 
   }
 
+  // Título eixo X
   ctx.textAlign = "center";
   ctx.font = "13px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.95)";
 
   ctx.fillText(
-    "Intensidade do pixel",
+    "Intensidade real do pixel",
     margemEsquerda + larguraGrafico / 2,
     canvas.height - 10
   );
 
+  // Título eixo Y
   ctx.save();
 
   ctx.translate(18, margemSuperior + alturaGrafico / 2);
@@ -591,7 +672,7 @@ function atualizarTextosHistograma(inicio, fim) {
     const inicioReal = converterIndiceParaIntensidadeReal(inicio);
     const fimReal = converterIndiceParaIntensidadeReal(fim);
 
-    faixaTexto.innerText = `Intensidade de ${inicioReal} até ${fimReal}`;
+    faixaTexto.innerText = `Intensidade de ${formatarNumero(inicioReal)} até ${formatarNumero(fimReal)}`;
 
   }
 
@@ -824,7 +905,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const intensidadeReal = converterIndiceParaIntensidadeReal(indice);
 
   tooltip.innerHTML = `
-    <strong>Intensidade:</strong> ${intensidadeReal}<br>
+    <strong>Intensidade:</strong> ${formatarNumero(intensidadeReal)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
@@ -866,63 +947,147 @@ function calcularIndicePeloMouse(event, canvas) {
 // FUNÇÕES AUXILIARES
 // ======================================================================
 
-function criarHistogramaPorValoresReais(valores, min, max) {
+function criarHistogramaTradicional(valores) {
 
-  const tamanhoHistograma = max - min + 1;
-
-  const hist = new Array(tamanhoHistograma).fill(0);
+  const valoresValidos = [];
 
   for (let i = 0; i < valores.length; i++) {
-
-    const indice = valores[i] - min;
-
-    hist[indice]++;
-
+    if (Number.isFinite(valores[i])) {
+      valoresValidos.push(valores[i]);
+    }
   }
 
-  return hist;
-
-}
-
-
-function criarHistogramaPorPixelsDicom(pixels, min, max) {
-
-  const tamanhoHistograma = max - min + 1;
-
-  const hist = new Array(tamanhoHistograma).fill(0);
-
-  for (let i = 0; i < pixels.length; i++) {
-
-    const indice = pixels[i] - min;
-
-    hist[indice]++;
-
+  if (valoresValidos.length === 0) {
+    return {
+      hist: [],
+      centros: [],
+      min: 0,
+      max: 0
+    };
   }
-
-  return hist;
-
-}
-
-
-function calcularMinMax(valores) {
 
   let min = Infinity;
   let max = -Infinity;
 
-  for (let i = 0; i < valores.length; i++) {
+  for (let i = 0; i < valoresValidos.length; i++) {
 
-    const valor = valores[i];
+    const valor = valoresValidos[i];
 
     if (valor < min) min = valor;
     if (valor > max) max = valor;
 
   }
 
-  return { min: min, max: max };
+  if (min === max) {
+    return {
+      hist: [valoresValidos.length],
+      centros: [min],
+      min: min,
+      max: max
+    };
+  }
+
+  let valoresSaoInteiros = true;
+
+  for (let i = 0; i < valoresValidos.length; i++) {
+
+    if (!Number.isInteger(valoresValidos[i])) {
+      valoresSaoInteiros = false;
+      break;
+    }
+
+  }
+
+  // Igual à lógica do MATLAB:
+  // Se for inteiro e a faixa for até 65535, usa uma barra por intensidade real.
+  if (valoresSaoInteiros && (max - min <= 65535)) {
+
+    const tamanho = max - min + 1;
+
+    const hist = new Array(tamanho).fill(0);
+    const centros = new Array(tamanho);
+
+    for (let i = 0; i < tamanho; i++) {
+      centros[i] = min + i;
+    }
+
+    for (let i = 0; i < valoresValidos.length; i++) {
+
+      const indice = valoresValidos[i] - min;
+
+      hist[indice]++;
+
+    }
+
+    return {
+      hist: hist,
+      centros: centros,
+      min: min,
+      max: max
+    };
+
+  }
+
+  // Se tiver valores decimais, como média RGB, usa 256 bins mantendo a escala real.
+  const numBins = 256;
+
+  const hist = new Array(numBins).fill(0);
+  const centros = new Array(numBins);
+
+  const larguraBin = (max - min) / numBins;
+
+  for (let i = 0; i < numBins; i++) {
+    centros[i] = min + larguraBin * (i + 0.5);
+  }
+
+  for (let i = 0; i < valoresValidos.length; i++) {
+
+    let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
+
+    if (indice < 0) indice = 0;
+    if (indice >= numBins) indice = numBins - 1;
+
+    hist[indice]++;
+
+  }
+
+  return {
+    hist: hist,
+    centros: centros,
+    min: min,
+    max: max
+  };
 
 }
 
 
 function converterIndiceParaIntensidadeReal(indice) {
+
+  if (centrosHistogramaAtual && centrosHistogramaAtual.length > 0) {
+
+    const valor = centrosHistogramaAtual[indice];
+
+    if (Number.isFinite(valor)) {
+      return valor;
+    }
+
+  }
+
   return intensidadeMinRealHistograma + indice;
+
+}
+
+
+function formatarNumero(valor) {
+
+  if (!Number.isFinite(valor)) {
+    return "---";
+  }
+
+  if (Number.isInteger(valor)) {
+    return valor.toString();
+  }
+
+  return valor.toFixed(2);
+
 }
