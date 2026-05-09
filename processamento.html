@@ -216,15 +216,17 @@ body {
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 0;
   padding: 12px;
-  overflow: auto; /* Permite andar na imagem quando ela estiver ampliada */
-  display: flex; /* Importante para o scroll funcionar melhor */
-  justify-content: center; /* Centraliza na horizontal */
-  align-items: center; /* Centraliza na vertical */
+  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 100%;
   max-width: 100%;
-  height: 70vh; /* Caixa fixa para navegar dentro */
-}
-
+  height: 70vh;
+  min-width: 0;
+}  
 /* Linha que organiza os botões e a imagem lado a lado */
 .linha_visualizacao {
   display: grid; 
@@ -367,16 +369,19 @@ body {
   border-radius: 0;
   background: black;
   object-fit: contain;
-  user-select: none; /* Evita selecionar a imagem ao arrastar */
+  user-select: none;
+  flex: 0 0 auto;
 }
-
 /* Container Dicom */ 
 #visualizadorDicom {
   background: black;
   border-radius: 0;
   overflow: hidden;
-  display: block;
-  user-select: none; /* Evita seleção ao arrastar */
+  display: none;
+  user-select: none;
+  flex: 0 0 auto;
+  max-width: none;
+  max-height: none;
 }
 
 /* FLUXOGRAMA */

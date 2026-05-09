@@ -648,20 +648,26 @@ function aplicarZoomNoMouse(event, elemento) {
 function resetarZoom() {
 
   zoomAtual = 1; // Reseta zoom manual
-  if (imagemNormal.style.display === "block") {
-    atualizarTamanhoImagemAtual(); // Volta imagem comum para tamanho automático
-  }
+
+  // Volta imagem comum ou DICOM para o tamanho automático inicial
+  atualizarTamanhoImagemAtual();
+
+  // Se for DICOM, também reseta a translação do Cornerstone
   if (visualizadorDicom.style.display === "block") {
+
     const viewport = cornerstone.getViewport(visualizadorDicom);
-    viewport.scale = escalaDicomBase; // Volta para escala inicial do DICOM
-    viewport.translation.x = 0; // Centraliza horizontalmente
-    viewport.translation.y = 0; // Centraliza verticalmente
+
+    viewport.translation.x = 0;
+    viewport.translation.y = 0;
+
     cornerstone.setViewport(visualizadorDicom, viewport);
+    cornerstone.resize(visualizadorDicom, true);
   }
+
   visualizacaoBox.scrollLeft = 0;
   visualizacaoBox.scrollTop = 0;
-  statusText.innerText = "Zoom resetado.";
 
+  statusText.innerText = "Zoom resetado.";
 }
 // Zoom com scroll na imagem comum
 imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na imagem comum
@@ -703,7 +709,7 @@ function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
 // Funções da mãozinha para arrastar a imagem ----------------------------------------------------------------
 // Atualiza o tamanho real da imagem exibida
-function atualizarTamanhoImagemAtual() { // Atualiza o tamanho real da imagem exibida
+function atualizarTamanhoImagemAtual() {
 
   const larguraFinal = larguraOriginalAtual * escalaBaseAtual * zoomAtual;
   const alturaFinal = alturaOriginalAtual * escalaBaseAtual * zoomAtual;
@@ -722,6 +728,7 @@ function atualizarTamanhoImagemAtual() { // Atualiza o tamanho real da imagem ex
     visualizadorDicom.style.width = larguraFinal + "px";
     visualizadorDicom.style.height = alturaFinal + "px";
 
+    // Garante que o canvas interno do Cornerstone siga o tamanho da div
     cornerstone.resize(visualizadorDicom, true);
 
   }
