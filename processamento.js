@@ -438,6 +438,8 @@ function openFile(item) { // Função para abrir imagem selecionada
 
         cornerstone.resize(visualizadorDicom, true); // Ajusta DICOM
 
+        statusText.innerText = "DICOM carregado: " + item.name;
+
       }) // Fecha then
 
       .catch(function(error) { // Captura erro ao abrir DICOM

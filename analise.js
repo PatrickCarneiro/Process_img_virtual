@@ -12,68 +12,94 @@ let histogramasImagemAtual = { // Guarda os histogramas da imagem atual
 
 let canalHistogramaAtual = "cinza"; // Canal atual mostrado no histograma
 
-let faixaInicioHistograma = 0; // Faixa visível do histograma
-let faixaFimHistograma = 0;
-
-let arrastandoHistograma = false; // Controle do arraste no histograma
-let inicioArrasteHistograma = 0;
+let faixaInicioHistograma = 0; // Faixa inicial visível do histograma
+let faixaFimHistograma = 255; // Faixa final visível do histograma
 
 let arrastandoAlcaHistograma = null; // Pode ser "esquerda", "direita" ou null
 
 // Carrega o conteúdo visual da aba de análises a partir do arquivo analise.html
 function iniciarAnalise() {
+
   return fetch("analise.html")
+
     .then(function(resposta) {
+
       if (!resposta.ok) {
         throw new Error("Não foi possível carregar analise.html");
       }
+
       return resposta.text();
+
     })
+
     .then(function(html) {
+
       const areaAnalise = document.getElementById("areaAnalise");
-      areaAnalise.innerHTML = html;
+
+      if (areaAnalise) {
+        areaAnalise.innerHTML = html;
+      }
 
       const cabecalho = document.getElementById("cabecalhoAnalises");
+
       if (cabecalho) {
         cabecalho.addEventListener("click", toggleAnalises);
       }
+
     })
+
     .catch(function(error) {
+
       console.error(error);
+
       const areaAnalise = document.getElementById("areaAnalise");
-      areaAnalise.innerHTML = "<p style='color:white;'>Erro ao carregar a aba de análises.</p>";
+
+      if (areaAnalise) {
+        areaAnalise.innerHTML = "<p style='color:white;'>Erro ao carregar a aba de análises.</p>";
+      }
+
     });
+
 }
 
-function toggleAnalises() { // Função para abrir/fechar a aba de análises
+// Função para abrir/fechar a aba de análises
+function toggleAnalises() {
 
-  const aba = document.getElementById("abaAnalises"); // Pega o elemento da aba
+  const aba = document.getElementById("abaAnalises");
+  const icone = document.getElementById("iconeAnalises");
 
-  const icone = document.getElementById("iconeAnalises"); // Pega o texto/ícone da aba
+  if (!aba || !icone) return;
 
-  aba.classList.toggle("aberta"); // Adiciona ou remove a classe aberta
+  aba.classList.toggle("aberta");
 
-  if (aba.classList.contains("aberta")) { // Verifica se a aba está aberta
+  if (aba.classList.contains("aberta")) {
 
-    icone.innerText = "▼ Fechar análises"; // Muda o texto para fechar
+    icone.innerText = "▼ Fechar análises";
+    document.body.style.overflow = "hidden";
 
-    document.body.style.overflow = "hidden"; // Trava a rolagem da página por trás
+    // Redesenha o histograma quando a aba abre
+    // Isso evita problema de canvas com largura/altura errada
+    setTimeout(function() {
+      redesenharHistogramaAtual();
+    }, 100);
 
-  } else { // Caso a aba esteja fechada
+  } else {
 
-    icone.innerText = "▲ Abrir análises"; // Muda o texto para abrir
+    icone.innerText = "▲ Abrir análises";
+    document.body.style.overflowX = "hidden";
+    document.body.style.overflowY = "auto";
 
-    document.body.style.overflowX = "hidden"; // Mantém sem rolagem horizontal
+  }
 
-    document.body.style.overflowY = "auto"; // Reativa rolagem vertical
+}
 
-  } // Fecha if/else
-
-} // Fecha toggleAnalises
-
-function gerarAnaliseImagemNormal(img) { // Calcula histograma de imagem comum
+// Calcula histograma de imagem comum
+function gerarAnaliseImagemNormal(img) {
 
   const canvas = document.getElementById("histograma");
+
+  if (!canvas) return;
+
   const ctx = canvas.getContext("2d");
 
   canvas.width = canvas.offsetWidth;
@@ -118,6 +144,7 @@ function gerarAnaliseImagemNormal(img) { // Calcula histograma de imagem comum
     histB[b]++;
 
     soma += media;
+    total++;
 
     if (media < min) min = media;
     if (media > max) max = media;
@@ -140,20 +167,21 @@ function gerarAnaliseImagemNormal(img) { // Calcula histograma de imagem comum
 
   if (imagemRGB) {
 
-    botoesRGB.style.display = "flex";
+    if (botoesRGB) {
+      botoesRGB.style.display = "flex";
+    }
 
     canalHistogramaAtual = "media";
-
     marcarBotaoCanalAtivo("media");
-
     histogramaAtual = histogramasImagemAtual.media;
 
   } else {
 
-    botoesRGB.style.display = "none";
+    if (botoesRGB) {
+      botoesRGB.style.display = "none";
+    }
 
     canalHistogramaAtual = "cinza";
-
     histogramaAtual = histogramasImagemAtual.cinza;
 
   }
@@ -162,15 +190,16 @@ function gerarAnaliseImagemNormal(img) { // Calcula histograma de imagem comum
 
   desenharHistograma(histogramaAtual, ctx, canvas);
 
-  document.getElementById("media").innerText = (soma / total).toFixed(2);
-  document.getElementById("minimo").innerText = min;
-  document.getElementById("maximo").innerText = max;
+  atualizarMetricasAnalise(soma, total, min, max);
 
 }
-// Função para calcular histograma DICOM
-function gerarAnaliseDicom(image) { // Calcula histograma DICOM
+
+// Calcula histograma DICOM
+function gerarAnaliseDicom(image) {
 
   const pixels = image.getPixelData();
+
+  if (!pixels || pixels.length === 0) return;
 
   const hist = new Array(256).fill(0);
 
@@ -197,6 +226,9 @@ function gerarAnaliseDicom(image) { // Calcula histograma DICOM
       normalizado = Math.floor(((pixels[i] - min) / (max - min)) * 255);
     }
 
+    if (normalizado < 0) normalizado = 0;
+    if (normalizado > 255) normalizado = 255;
+
     hist[normalizado]++;
 
   }
@@ -221,6 +253,9 @@ function gerarAnaliseDicom(image) { // Calcula histograma DICOM
   definirFaixaAutomaticaHistograma(histogramaAtual);
 
   const canvas = document.getElementById("histograma");
+
+  if (!canvas) return;
+
   const ctx = canvas.getContext("2d");
 
   canvas.width = canvas.offsetWidth;
@@ -228,34 +263,58 @@ function gerarAnaliseDicom(image) { // Calcula histograma DICOM
 
   desenharHistograma(histogramaAtual, ctx, canvas);
 
-  document.getElementById("media").innerText = (soma / pixels.length).toFixed(2);
-  document.getElementById("minimo").innerText = min;
-  document.getElementById("maximo").innerText = max;
+  atualizarMetricasAnalise(soma, pixels.length, min, max);
 
 }
-// Função para desenhar histograma no canvas 
-function desenharHistograma(hist, ctx, canvas) { // Desenha histograma com eixos, títulos e faixa manual no eixo X
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpa o canvas
+// Atualiza os cards de média, mínimo e máximo
+function atualizarMetricasAnalise(soma, total, min, max) {
 
-  const margemEsquerda = 65; // Espaço para eixo Y
-  const margemDireita = 25; // Espaço à direita
-  const margemSuperior = 25; // Espaço superior
-  const margemInferior = 55; // Espaço para eixo X
+  const mediaElemento = document.getElementById("media");
+  const minimoElemento = document.getElementById("minimo");
+  const maximoElemento = document.getElementById("maximo");
 
-  const larguraGrafico = canvas.width - margemEsquerda - margemDireita; // Largura útil do gráfico
-  const alturaGrafico = canvas.height - margemSuperior - margemInferior; // Altura útil do gráfico
+  if (mediaElemento) {
+    mediaElemento.innerText = total > 0 ? (soma / total).toFixed(2) : "---";
+  }
 
-  const inicio = faixaInicioHistograma; // Início atual do eixo X
-  const fim = faixaFimHistograma; // Fim atual do eixo X
+  if (minimoElemento) {
+    minimoElemento.innerText = min !== Infinity ? min : "---";
+  }
 
-  const histVisivel = hist.slice(inicio, fim + 1); // Recorta só a faixa escolhida
+  if (maximoElemento) {
+    maximoElemento.innerText = max !== -Infinity ? max : "---";
+  }
 
-  const maior = Math.max(...histVisivel); // Maior frequência da faixa visível
+}
 
-  const quantidadeBarras = histVisivel.length; // Quantidade de barras visíveis
+// Desenha histograma com eixos, títulos e faixa manual no eixo X
+function desenharHistograma(hist, ctx, canvas) {
 
-  const larguraBarra = larguraGrafico / quantidadeBarras; // Largura de cada barra
+  if (!hist || hist.length === 0) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const margemEsquerda = 65;
+  const margemDireita = 25;
+  const margemSuperior = 25;
+  const margemInferior = 55;
+
+  const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
+  const alturaGrafico = canvas.height - margemSuperior - margemInferior;
+
+  if (larguraGrafico <= 0 || alturaGrafico <= 0) return;
+
+  const inicio = faixaInicioHistograma;
+  const fim = faixaFimHistograma;
+
+  const histVisivel = hist.slice(inicio, fim + 1);
+
+  const maior = Math.max(...histVisivel, 1);
+
+  const quantidadeBarras = histVisivel.length;
+
+  const larguraBarra = larguraGrafico / quantidadeBarras;
 
   // Fundo do gráfico
   ctx.fillStyle = "black";
@@ -300,10 +359,6 @@ function desenharHistograma(hist, ctx, canvas) { // Desenha histograma com eixos
   } else if (canalHistogramaAtual === "b") {
 
     ctx.fillStyle = "rgba(80,150,255,0.85)";
-
-  } else if (canalHistogramaAtual === "media") {
-
-    ctx.fillStyle = "rgba(192,132,252,0.85)";
 
   } else {
 
@@ -372,6 +427,7 @@ function desenharHistograma(hist, ctx, canvas) { // Desenha histograma com eixos
   ctx.textAlign = "center";
   ctx.font = "13px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.95)";
+
   ctx.fillText(
     "Intensidade do pixel",
     margemEsquerda + larguraGrafico / 2,
@@ -380,18 +436,32 @@ function desenharHistograma(hist, ctx, canvas) { // Desenha histograma com eixos
 
   // Título do eixo Y
   ctx.save();
+
   ctx.translate(18, margemSuperior + alturaGrafico / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center";
   ctx.font = "13px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.95)";
   ctx.fillText("Quantidade de pixels", 0, 0);
+
   ctx.restore();
 
-  // Atualiza título e subtítulo fora do canvas
+  atualizarTextosHistograma(inicio, fim);
+
+  configurarSeletorFaixaHistograma();
+
+  ativarInteracaoHistograma(canvas);
+
+}
+
+// Atualiza título e texto da faixa do histograma
+function atualizarTextosHistograma(inicio, fim) {
+
   const faixaTexto = document.getElementById("faixaHistograma");
   const tituloHistograma = document.getElementById("tituloHistograma");
   const subtituloHistograma = document.getElementById("subtituloHistograma");
+
+  let nomeCanal = "Escala de cinza";
 
   if (canalHistogramaAtual === "r") {
 
@@ -412,24 +482,21 @@ function desenharHistograma(hist, ctx, canvas) { // Desenha histograma com eixos
   }
 
   if (tituloHistograma) {
-
     tituloHistograma.innerText = `Histograma - ${nomeCanal}`;
+  }
 
+  if (subtituloHistograma) {
+    subtituloHistograma.innerText = "Passe o mouse sobre as barras para ver a quantidade de pixels.";
   }
 
   if (faixaTexto) {
-
     faixaTexto.innerText = `Intensidade de ${inicio} até ${fim}`;
-
   }
-
-  configurarSeletorFaixaHistograma(); // Atualiza as alças laterais abaixo do histograma
-
-  ativarInteracaoHistograma(canvas); // Mantém o tooltip ao passar o mouse
 
 }
 
-function ativarInteracaoHistograma(canvas) { // Ativa interação no histograma
+// Ativa interação no histograma
+function ativarInteracaoHistograma(canvas) {
 
   if (canvas.dataset.interacaoAtiva === "true") return;
 
@@ -451,7 +518,10 @@ function ativarInteracaoHistograma(canvas) { // Ativa interação no histograma
 
 }
 
-function trocarCanalHistograma(canal) { // Troca o canal do histograma RGB
+// Troca o canal do histograma RGB
+function trocarCanalHistograma(canal) {
+
+  if (!histogramasImagemAtual[canal]) return;
 
   canalHistogramaAtual = canal;
 
@@ -464,7 +534,9 @@ function trocarCanalHistograma(canal) { // Troca o canal do histograma RGB
   redesenharHistogramaAtual();
 
 }
-function marcarBotaoCanalAtivo(canal) { // Marca visualmente qual botão RGB está ativo
+
+// Marca visualmente qual botão RGB está ativo
+function marcarBotaoCanalAtivo(canal) {
 
   const botaoR = document.getElementById("botaoCanalR");
   const botaoG = document.getElementById("botaoCanalG");
@@ -482,27 +554,39 @@ function marcarBotaoCanalAtivo(canal) { // Marca visualmente qual botão RGB est
   if (canal === "media" && botaoMedia) botaoMedia.classList.add("ativo");
 
 }
-function definirFaixaAutomaticaHistograma(hist) { // Define automaticamente a faixa inicial do eixo X
+
+// Define automaticamente a faixa inicial do eixo X
+function definirFaixaAutomaticaHistograma(hist) {
+
+  if (!hist || hist.length === 0) {
+    faixaInicioHistograma = 0;
+    faixaFimHistograma = 255;
+    return;
+  }
 
   let inicio = 0;
   let fim = hist.length - 1;
 
   for (let i = 0; i < hist.length; i++) {
+
     if (hist[i] > 0) {
       inicio = i;
       break;
     }
+
   }
 
   for (let i = hist.length - 1; i >= 0; i--) {
+
     if (hist[i] > 0) {
       fim = i;
       break;
     }
+
   }
 
   if (fim <= inicio) {
-    fim = inicio + 1;
+    fim = Math.min(inicio + 1, hist.length - 1);
   }
 
   faixaInicioHistograma = inicio;
@@ -512,7 +596,8 @@ function definirFaixaAutomaticaHistograma(hist) { // Define automaticamente a fa
 
 }
 
-function mostrarTooltipHistograma(event, canvas) { // Mostra valor da coluna do histograma
+// Mostra valor da coluna do histograma
+function mostrarTooltipHistograma(event, canvas) {
 
   const tooltip = document.getElementById("tooltipHistograma");
 
@@ -523,12 +608,11 @@ function mostrarTooltipHistograma(event, canvas) { // Mostra valor da coluna do 
   if (tom < faixaInicioHistograma || tom > faixaFimHistograma) {
 
     tooltip.style.display = "none";
-
     return;
 
   }
 
-  const quantidade = histogramaAtual[tom];
+  const quantidade = histogramaAtual[tom] || 0;
 
   tooltip.innerHTML = `
     <strong>Intensidade:</strong> ${tom}<br>
@@ -540,16 +624,18 @@ function mostrarTooltipHistograma(event, canvas) { // Mostra valor da coluna do 
   tooltip.style.top = event.clientY + 15 + "px";
 
 }
-function calcularTomPeloMouse(event, canvas) { // Calcula a intensidade apontada pelo mouse
 
-  const margemEsquerda = 55;
-  const margemDireita = 20;
+// Calcula a intensidade apontada pelo mouse
+function calcularTomPeloMouse(event, canvas) {
+
+  const margemEsquerda = 65;
+  const margemDireita = 25;
 
   const rect = canvas.getBoundingClientRect();
 
   const xMouse = event.clientX - rect.left;
 
-  const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
+  const larguraGrafico = rect.width - margemEsquerda - margemDireita;
 
   let proporcao = (xMouse - margemEsquerda) / larguraGrafico;
 
@@ -563,7 +649,9 @@ function calcularTomPeloMouse(event, canvas) { // Calcula a intensidade apontada
   return tom;
 
 }
-function redesenharHistogramaAtual() { // Redesenha o histograma atual
+
+// Redesenha o histograma atual
+function redesenharHistogramaAtual() {
 
   const canvas = document.getElementById("histograma");
 
@@ -576,11 +664,10 @@ function redesenharHistogramaAtual() { // Redesenha o histograma atual
 
   desenharHistograma(histogramaAtual, ctx, canvas);
 
-  configurarSeletorFaixaHistograma();
-
 }
 
-function configurarSeletorFaixaHistograma() { // Configura as alças de seleção do eixo X
+// Configura as alças de seleção do eixo X
+function configurarSeletorFaixaHistograma() {
 
   const barra = document.getElementById("barraFaixaHistograma");
   const alcaEsquerda = document.getElementById("alcaEsquerdaHistograma");
@@ -588,88 +675,108 @@ function configurarSeletorFaixaHistograma() { // Configura as alças de seleçã
   const faixaSelecionada = document.getElementById("faixaSelecionadaHistograma");
 
   if (!barra || !alcaEsquerda || !alcaDireita || !faixaSelecionada) return;
-  if (histogramaAtual.length === 0) return;
+  if (!histogramaAtual || histogramaAtual.length === 0) return;
 
-  function atualizarVisualFaixa() {
-
-    const maximoIndice = histogramaAtual.length - 1;
-
-    const porcentagemInicio = (faixaInicioHistograma / maximoIndice) * 100;
-    const porcentagemFim = (faixaFimHistograma / maximoIndice) * 100;
-
-    alcaEsquerda.style.left = porcentagemInicio + "%";
-    alcaDireita.style.left = porcentagemFim + "%";
-
-    faixaSelecionada.style.left = porcentagemInicio + "%";
-    faixaSelecionada.style.width = (porcentagemFim - porcentagemInicio) + "%";
-
-  }
+  atualizarVisualFaixaHistograma();
 
   alcaEsquerda.onmousedown = function(event) {
+
     event.preventDefault();
     arrastandoAlcaHistograma = "esquerda";
+
   };
 
   alcaDireita.onmousedown = function(event) {
+
     event.preventDefault();
     arrastandoAlcaHistograma = "direita";
-  };
-
-  document.onmousemove = function(event) {
-
-    if (!arrastandoAlcaHistograma) return;
-
-    const rect = barra.getBoundingClientRect();
-
-    let proporcao = (event.clientX - rect.left) / rect.width;
-
-    if (proporcao < 0) proporcao = 0;
-    if (proporcao > 1) proporcao = 1;
-
-    const maximoIndice = histogramaAtual.length - 1;
-
-    let novoValor = Math.round(proporcao * maximoIndice);
-
-    if (arrastandoAlcaHistograma === "esquerda") {
-
-      if (novoValor >= faixaFimHistograma) {
-        novoValor = faixaFimHistograma - 1;
-      }
-
-      if (novoValor < 0) {
-        novoValor = 0;
-      }
-
-      faixaInicioHistograma = novoValor;
-
-    }
-
-    if (arrastandoAlcaHistograma === "direita") {
-
-      if (novoValor <= faixaInicioHistograma) {
-        novoValor = faixaInicioHistograma + 1;
-      }
-
-      if (novoValor > maximoIndice) {
-        novoValor = maximoIndice;
-      }
-
-      faixaFimHistograma = novoValor;
-
-    }
-
-    atualizarVisualFaixa();
-
-    redesenharHistogramaAtual();
 
   };
-
-  document.onmouseup = function() {
-    arrastandoAlcaHistograma = null;
-  };
-
-  atualizarVisualFaixa();
 
 }
 
-// Fecha a função do histograma no canvas ---------------------------------------------------------------------
+// Atualiza a posição visual das alças e da faixa selecionada
+function atualizarVisualFaixaHistograma() {
+
+  const alcaEsquerda = document.getElementById("alcaEsquerdaHistograma");
+  const alcaDireita = document.getElementById("alcaDireitaHistograma");
+  const faixaSelecionada = document.getElementById("faixaSelecionadaHistograma");
+
+  if (!alcaEsquerda || !alcaDireita || !faixaSelecionada) return;
+  if (!histogramaAtual || histogramaAtual.length === 0) return;
+
+  const maximoIndice = histogramaAtual.length - 1;
+
+  const porcentagemInicio = (faixaInicioHistograma / maximoIndice) * 100;
+  const porcentagemFim = (faixaFimHistograma / maximoIndice) * 100;
+
+  alcaEsquerda.style.left = porcentagemInicio + "%";
+  alcaDireita.style.left = porcentagemFim + "%";
+
+  faixaSelecionada.style.left = porcentagemInicio + "%";
+  faixaSelecionada.style.width = (porcentagemFim - porcentagemInicio) + "%";
+
+}
+
+// Movimento global do mouse para arrastar as alças do histograma
+document.addEventListener("mousemove", function(event) {
+
+  if (!arrastandoAlcaHistograma) return;
+
+  const barra = document.getElementById("barraFaixaHistograma");
+
+  if (!barra || !histogramaAtual || histogramaAtual.length === 0) return;
+
+  const rect = barra.getBoundingClientRect();
+
+  let proporcao = (event.clientX - rect.left) / rect.width;
+
+  if (proporcao < 0) proporcao = 0;
+  if (proporcao > 1) proporcao = 1;
+
+  const maximoIndice = histogramaAtual.length - 1;
+
+  let novoValor = Math.round(proporcao * maximoIndice);
+
+  if (arrastandoAlcaHistograma === "esquerda") {
+
+    if (novoValor >= faixaFimHistograma) {
+      novoValor = faixaFimHistograma - 1;
+    }
+
+    if (novoValor < 0) {
+      novoValor = 0;
+    }
+
+    faixaInicioHistograma = novoValor;
+
+  }
+
+  if (arrastandoAlcaHistograma === "direita") {
+
+    if (novoValor <= faixaInicioHistograma) {
+      novoValor = faixaInicioHistograma + 1;
+    }
+
+    if (novoValor > maximoIndice) {
+      novoValor = maximoIndice;
+    }
+
+    faixaFimHistograma = novoValor;
+
+  }
+
+  atualizarVisualFaixaHistograma();
+
+  redesenharHistogramaAtual();
+
+});
+
+// Solta as alças do histograma
+document.addEventListener("mouseup", function() {
+
+  arrastandoAlcaHistograma = null;
+
+});
+
+// Fecha a parte da função de análise da imagem
