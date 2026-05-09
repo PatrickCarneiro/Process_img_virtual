@@ -1,5 +1,3 @@
-// Arquivo responsável apenas pela aba e pelos cálculos de análise da imagem
-
 let histogramaAtual = []; // Histograma que está sendo mostrado no momento
 
 let histogramasImagemAtual = { // Guarda os histogramas da imagem atual
@@ -17,48 +15,20 @@ let faixaFimHistograma = 255; // Faixa final visível do histograma
 
 let arrastandoAlcaHistograma = null; // Pode ser "esquerda", "direita" ou null
 
-// Carrega o conteúdo visual da aba de análises a partir do arquivo analise.html
+// Carrega o conteúdo visual a partir do arquivo analise.html
 function iniciarAnalise() {
 
-  return fetch("analise.html")
-
-    .then(function(resposta) {
-
-      if (!resposta.ok) {
-        throw new Error("Não foi possível carregar analise.html");
-      }
-
-      return resposta.text();
-
-    })
-
-    .then(function(html) {
-
+  return fetch("analise.html") 
+        .then(function(html) { // Carrega o HTML da aba de análises
       const areaAnalise = document.getElementById("areaAnalise");
-
       if (areaAnalise) {
         areaAnalise.innerHTML = html;
       }
-
-      const cabecalho = document.getElementById("cabecalhoAnalises");
-
+      const cabecalho = document.getElementById("cabecalhoAnalises"); // Configura clique no cabeçalho para abrir/fechar análises
       if (cabecalho) {
         cabecalho.addEventListener("click", toggleAnalises);
       }
-
     })
-
-    .catch(function(error) {
-
-      console.error(error);
-
-      const areaAnalise = document.getElementById("areaAnalise");
-
-      if (areaAnalise) {
-        areaAnalise.innerHTML = "<p style='color:white;'>Erro ao carregar a aba de análises.</p>";
-      }
-
-    });
 
 }
 
