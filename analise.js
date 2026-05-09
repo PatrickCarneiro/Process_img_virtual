@@ -427,7 +427,7 @@ function desenharHistograma(hist, ctx, canvas) { // Desenha histograma com eixos
 
   if (faixaTexto) {
 
-    faixaTexto.innerText = `Eixo X exibido: ${inicio} até ${fim}`;
+    faixaTexto.innerText = `Intensidade de ${inicio} até ${fim}`;
 
   }
 
