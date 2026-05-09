@@ -11,7 +11,7 @@
     color: white; 
     border: 1px solid rgba(192,132,252,0.35); 
     border-radius: 20px 20px 0 0; /* Arredonda só em cima */
-    transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease; /* Anima altura para subir */
+    transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease;
     overflow: hidden; /* Esconde conteúdo quando fechada */
     z-index: 100; /* Fica acima dos outros elementos */
   }
@@ -51,6 +51,14 @@
     overflow: auto; /* Permite rolagem interna */
   }
 
+  /* Área que guarda o histograma, texto e botões */
+  .area_grafico_analise {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Espaço entre o histograma, a faixa de texto e os botões */
+    position: relative; /* Para posicionar elementos internos */
+  }
+
   /* Canvas do histograma */
   #histograma {
     width: 100%; /* Ocupa toda a largura disponível */
@@ -59,21 +67,42 @@
     border-radius: 12px; 
   }
 
-  /* Cards de métricas */
-  .metrica {
-    background: rgba(255,255,255,0.06); 
-    padding: 10px;
-    border-radius: 10px; 
-    margin-bottom: 8px; 
+  /* Texto mostrando a região selecionada do histograma */
+  .faixa_histograma {
+    text-align: center;
+    font-size: 13px;
+    opacity: 0.85;
   }
 
-  <style>
-  /* Área que guarda o histograma e os botões abaixo */
-  .area_grafico_analise {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;  /* Espaço entre o histograma, a faixa de texto e os botões */
-    position: relative;  /* Para posicionar a tooltip */
+  /* Botões dos canais RGB */
+  .botoes_canais_rgb {
+    display: none; /* Começa escondido e só aparece se a imagem for RGB */
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Botões dos canais: Vermelho, Verde, Azul e Média */
+  .botao_canal {
+    padding: 8px 18px;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    color: white;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    transition: 0.3s;
+  }
+
+  /* Efeito ao passar o mouse nos botões dos canais */
+  .botao_canal:hover {
+    background: rgba(192,132,252,0.25);
+  }
+
+  /* Botão de canal ativo */
+  .botao_canal.ativo {
+    background: rgba(192,132,252,0.45);
+    box-shadow: 0 0 10px rgba(192,132,252,0.35);
   }
 
   /* Área dos botões abaixo do histograma */
@@ -81,6 +110,7 @@
     display: flex; 
     justify-content: center;
     gap: 12px;
+    flex-wrap: wrap;
   }
 
   /* Botões da aba de análise */
@@ -94,19 +124,16 @@
     font-family: Arial, sans-serif;
     transition: 0.3s;
   }
+
+  /* Efeito ao passar o mouse */
   .botao_analise:hover {
     background: rgba(192,132,252,0.25);
   }
-  .botao_analise.ativo {  /* Estilo para o botão ativo */
+
+  /* Estilo para o botão ativo */
+  .botao_analise.ativo {
     background: rgba(192,132,252,0.45);
     box-shadow: 0 0 10px rgba(192,132,252,0.35);
-  }
-
-  /* Texto mostrando a região selecionada do histograma */
-  .faixa_histograma {
-    text-align: center;
-    font-size: 13px;
-    opacity: 0.85;
   }
 
   /* Caixa que aparece ao passar o mouse em cima da coluna */
@@ -123,6 +150,15 @@
     z-index: 9999;
     box-shadow: 0 0 12px rgba(0,0,0,0.45);
   }
+
+  /* Cards de métricas */
+  .metrica {
+    background: rgba(255,255,255,0.06); 
+    padding: 10px;
+    border-radius: 10px; 
+    margin-bottom: 8px; 
+  }
+
 </style>
 
 <!-- Aba de análises -->
@@ -143,7 +179,28 @@
       <canvas id="histograma"></canvas>
 
       <div class="faixa_histograma" id="faixaHistograma">
-        Região visualizada: 0 a 255
+        Região visualizada: ---
+      </div>
+
+      <!-- Botões dos canais RGB: só aparecem quando a imagem for RGB -->
+      <div class="botoes_canais_rgb" id="botoesCanaisRGB">
+
+        <button class="botao_canal ativo" id="botaoCanalR" onclick="trocarCanalHistograma('r')">
+          Vermelho
+        </button>
+
+        <button class="botao_canal" id="botaoCanalG" onclick="trocarCanalHistograma('g')">
+          Verde
+        </button>
+
+        <button class="botao_canal" id="botaoCanalB" onclick="trocarCanalHistograma('b')">
+          Azul
+        </button>
+
+        <button class="botao_canal" id="botaoCanalMedia" onclick="trocarCanalHistograma('media')">
+          Média
+        </button>
+
       </div>
 
       <div class="botoes_analise_imagem">
