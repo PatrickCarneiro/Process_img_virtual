@@ -91,9 +91,7 @@ body {
   background: rgba(192,132,252,0.25); 
 }
 
-/* ===================== */
 /* LAYOUT PRINCIPAL */
-/* ===================== */
 
 /* Área principal da página */
 .principal {
@@ -381,9 +379,7 @@ body {
   user-select: none; /* Evita seleção ao arrastar */
 }
 
-/* ===================== */
 /* FLUXOGRAMA */
-/* ===================== */
 
 /* Área onde os blocos do fluxo aparecem */
 #areaFluxograma {
@@ -428,8 +424,6 @@ body {
   color: white; /* Texto branco */
   cursor: pointer; /* Indica clique */
 }
-
-/* Hover do botão remover */
 .remover:hover {
   background: rgba(255,80,80,0.45); /* Vermelho mais forte */
 }
@@ -456,7 +450,6 @@ body {
   cursor: pointer; 
   transition: 0.3s; /* Suaviza hover */
 }
-
 .card_imagem:hover {
   background: rgba(192,132,252,0.18); /* Fundo roxo suave */
   transform: translateY(-3px); /* Sobe um pouco */
@@ -479,77 +472,6 @@ body {
   font-size: 12px; /* Texto pequeno */
   opacity: 0.8; /* Texto mais suave */
   word-break: break-word; /* Quebra nomes grandes */
-}
-
-/* ===================== */
-/* ABA DE ANÁLISES */
-/* ===================== */
-
-/* Aba fechada de análises */
-.aba_analises {
-  position: fixed; /* Fixa na tela */
-  left: 250px; /* Começa depois do menu lateral */
-  right: 15px; /* Espaço à direita */
-  bottom: 0; /* Fica grudada embaixo */
-  height: 55px; /* Altura quando fechada */
-  background: rgba(10,20,40,0.98); /* Fundo escuro */
-  color: white; /* Texto branco */
-  border: 1px solid rgba(192,132,252,0.35); /* Borda roxa */
-  border-radius: 20px 20px 0 0; /* Arredonda só em cima */
-  transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease; /* Anima altura para subir */
-  overflow: hidden; /* Esconde conteúdo quando fechada */
-  z-index: 100; /* Fica acima dos outros elementos */
-}
-
-/* Aba aberta de análises */
-.aba_analises.aberta {
-  left: 0; /* Ocupa desde a esquerda */
-  right: 0; /* Ocupa até a direita */
-  bottom: 0; /* Continua presa embaixo */
-  width: 100vw; /* Ocupa toda a largura da tela */
-  height: 100vh; /* Cresce até ocupar toda a altura */
-  border-radius: 0; /* Remove arredondamento em tela cheia */
-}
-
-/* Cabeçalho clicável da aba de análises */
-.cabecalho_analises {
-  height: 55px; /* Altura do cabeçalho */
-  padding: 15px 20px; /* Espaçamento interno */
-  cursor: pointer; /* Indica clique */
-  background: rgba(192,132,252,0.15); /* Fundo roxo transparente */
-  display: flex; /* Coloca título e ícone lado a lado */
-  justify-content: space-between; /* Joga um para cada lado */
-  align-items: center; /* Centraliza verticalmente */
-}
-
-/* Conteúdo interno da análise */
-.conteudo_analises {
-  padding: 20px; /* Espaçamento interno */
-  display: grid; /* Usa grid */
-  grid-template-columns: 1fr 300px; /* Histograma maior + métricas à direita */
-  gap: 20px; /* Espaço entre histograma e métricas */
-}
-
-/* Conteúdo quando a aba está aberta */
-.aba_analises.aberta .conteudo_analises {
-  height: calc(100vh - 55px); /* Ocupa a tela menos o cabeçalho */
-  overflow: auto; /* Permite rolagem interna */
-}
-
-/* Canvas do histograma */
-#histograma {
-  width: 100%; /* Ocupa toda a largura disponível */
-  height: 75vh; /* Altura relativa à tela */
-  background: black; /* Fundo preto */
-  border-radius: 12px; /* Arredonda cantos */
-}
-
-/* Cards de métricas */
-.metrica {
-  background: rgba(255,255,255,0.06); /* Fundo transparente */
-  padding: 10px; /* Espaçamento interno */
-  border-radius: 10px; /* Arredonda cantos */
-  margin-bottom: 8px; /* Espaço entre métricas */
 }
 
 </style> 

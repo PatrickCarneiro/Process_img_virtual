@@ -1,3 +1,110 @@
+<style>
+
+/* Aba fechada de análises */
+.aba_analises {
+  position: fixed; /* Fixa na tela */
+  left: 250px; /* Começa depois do menu lateral */
+  right: 15px; /* Espaço à direita */
+  bottom: 0; /* Fica grudada embaixo */
+  height: 55px; /* Altura quando fechada */
+  background: rgba(10,20,40,0.98); 
+  color: white; 
+  border: 1px solid rgba(192,132,252,0.35); 
+  border-radius: 20px 20px 0 0; /* Arredonda só em cima */
+  transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease; /* Anima altura para subir */
+  overflow: hidden; /* Esconde conteúdo quando fechada */
+  z-index: 100; /* Fica acima dos outros elementos */
+}
+
+/* Aba aberta de análises */
+.aba_analises.aberta {
+  left: 0; /* Ocupa desde a esquerda */
+  right: 0; /* Ocupa até a direita */
+  bottom: 0; /* Continua presa embaixo */
+  width: 100vw; /* Ocupa toda a largura da tela */
+  height: 100vh; /* Cresce até ocupar toda a altura */
+  border-radius: 0; /* Remove arredondamento em tela cheia */
+}
+
+/* Cabeçalho clicável da aba de análises */
+.cabecalho_analises {
+  height: 55px; /* Altura do cabeçalho */
+  padding: 15px 20px; 
+  cursor: pointer; 
+  background: rgba(192,132,252,0.15); 
+  display: flex; 
+  justify-content: space-between; /* Joga um para cada lado */
+  align-items: center; 
+}
+
+/* Conteúdo interno da análise */
+.conteudo_analises {
+  padding: 20px;
+  display: grid; /* Usa grid */
+  grid-template-columns: 1fr 300px; /* Histograma maior + métricas à direita */
+  gap: 20px; /* Espaço entre histograma e métricas */
+}
+
+/* Conteúdo quando a aba está aberta */
+.aba_analises.aberta .conteudo_analises {
+  height: calc(100vh - 55px); /* Ocupa a tela menos o cabeçalho */
+  overflow: auto; /* Permite rolagem interna */
+}
+
+/* Canvas do histograma */
+#histograma {
+  width: 100%; /* Ocupa toda a largura disponível */
+  height: 75vh; /* Altura relativa à tela */
+  background: black; 
+  border-radius: 12px; 
+}
+
+/* Cards de métricas */
+.metrica {
+  background: rgba(255,255,255,0.06); 
+  padding: 10px;
+  border-radius: 10px; 
+  margin-bottom: 8px; 
+}
+
+  /* Área que guarda o histograma e os botões abaixo */
+  .area_grafico_analise {
+    display: flex; /* Organiza em coluna */
+    flex-direction: column; /* Coloca histograma em cima e botões embaixo */
+    gap: 12px; /* Espaço entre histograma e botões */
+  }
+
+  /* Área dos botões abaixo do histograma */
+  .botoes_analise_imagem {
+    display: flex; /* Coloca os botões lado a lado */
+    justify-content: center; /* Centraliza os botões */
+    gap: 12px; /* Espaço entre os botões */
+  }
+
+  /* Botões da aba de análise */
+  .botao_analise {
+    padding: 10px 22px; /* Espaçamento interno */
+    border: 1px solid rgba(192,132,252,0.45); /* Borda roxa */
+    border-radius: 12px; /* Arredonda os cantos */
+    background: rgba(255,255,255,0.06); /* Fundo escuro transparente */
+    color: white; /* Texto branco */
+    cursor: pointer; /* Mostra cursor de clique */
+    font-family: Arial, sans-serif; /* Mantém fonte simples */
+    transition: 0.3s; /* Suaviza hover */
+  }
+
+  /* Efeito ao passar o mouse */
+  .botao_analise:hover {
+    background: rgba(192,132,252,0.25); /* Fundo roxo ao passar o mouse */
+  }
+
+  /* Botão ativo */
+  .botao_analise.ativo {
+    background: rgba(192,132,252,0.45); /* Fundo roxo mais forte */
+    box-shadow: 0 0 10px rgba(192,132,252,0.35); /* Brilho suave */
+  }
+</style>
+
 <!-- Aba de análises -->
 <div class="aba_analises" id="abaAnalises"> <!-- Container da aba de análises -->
 
@@ -11,7 +118,23 @@
 
   <div class="conteudo_analises"> <!-- Conteúdo da aba -->
 
-    <canvas id="histograma"></canvas> <!-- Canvas onde o histograma será desenhado -->
+    <div class="area_grafico_analise"> <!-- Área do histograma e dos botões -->
+
+      <canvas id="histograma"></canvas> <!-- Canvas onde o histograma será desenhado -->
+
+      <div class="botoes_analise_imagem"> <!-- Botões abaixo do histograma -->
+
+        <button class="botao_analise ativo" id="botaoHistograma">
+          Histograma
+        </button>
+
+        <button class="botao_analise" id="botaoMapaPixel">
+          Mapa de pixel
+        </button>
+
+      </div> <!-- Fecha botões -->
+
+    </div> <!-- Fecha área do gráfico -->
 
     <div> <!-- Container das métricas -->
 
