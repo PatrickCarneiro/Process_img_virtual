@@ -413,34 +413,31 @@ function openFile(item) { // Função para abrir imagem selecionada
 
     const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona ao loader
 
-    cornerstone.loadImage(imageId) // Carrega imagem DICOM
+    cornerstone.loadImage(imageId)
 
-      .then(function(image) { // Quando carregar
+      .then(function(image) {
 
-        larguraOriginalAtual = image.width; // Salva largura original do DICOM
-
-        alturaOriginalAtual = image.height; // Salva altura original do DICOM
+        larguraOriginalAtual = image.width;
+        alturaOriginalAtual = image.height;
 
         escalaBaseAtual = calcularEscalaAutomatica(
           larguraOriginalAtual,
           alturaOriginalAtual
-        ); // Calcula escala automática inicial
+        );
 
-        zoomAtual = 1; // Reseta zoom manual
+        zoomAtual = 1;
 
-        atualizarTamanhoImagemAtual(); // Aplica tamanho inicial
+        cornerstone.displayImage(visualizadorDicom, image); // Exibe primeiro
 
-        cornerstone.displayImage(visualizadorDicom, image); // Exibe DICOM
+        atualizarTamanhoImagemAtual(); // Depois ajusta o tamanho
 
-        imagemDicomAtual = image; // Guarda imagem DICOM atual
+        imagemDicomAtual = image;
 
-        gerarAnaliseDicom(image); // Gera análise do DICOM
-
-        cornerstone.resize(visualizadorDicom, true); // Ajusta DICOM
+        gerarAnaliseDicom(image);
 
         statusText.innerText = "DICOM carregado: " + item.name;
 
-      }) // Fecha then
+      })
 
       .catch(function(error) { // Captura erro ao abrir DICOM
 
@@ -600,26 +597,33 @@ function toggleZoomImagem() {  // Função para ligar/desligar modo de zoom
 
 } 
 // Aplica zoom usando o ponto onde o mouse está
-function aplicarZoomNoMouse(event, elemento) { // Aplica zoom real usando width e height
+// Aplica zoom usando o ponto onde o mouse está
+function aplicarZoomNoMouse(event, elemento) {
 
   if (!modoZoomAtivo) return; // Só funciona se o zoom estiver ativo
   event.preventDefault(); // Impede a rolagem da página
-  const box = visualizacaoBox; // Caixa de visualização
-  const rectBox = box.getBoundingClientRect(); // Posição da caixa na tela
-  const mouseX = event.clientX - rectBox.left + box.scrollLeft; // Posição X considerando scroll
-  const mouseY = event.clientY - rectBox.top + box.scrollTop; // Posição Y considerando scroll
-  const proporcaoX = mouseX / elemento.offsetWidth; // Ponto relativo X antes do zoom
-  const proporcaoY = mouseY / elemento.offsetHeight; // Ponto relativo Y antes do zoom
+  const box = visualizacaoBox; // Caixa onde a imagem aparece
+  const rectElemento = elemento.getBoundingClientRect(); // Posição real da imagem/DICOM na tela
+  const mouseDentroX = event.clientX - rectElemento.left; // X do mouse dentro da imagem
+  const mouseDentroY = event.clientY - rectElemento.top; // Y do mouse dentro da imagem
+  const proporcaoX = mouseDentroX / elemento.offsetWidth; // Proporção horizontal antes do zoom
+  const proporcaoY = mouseDentroY / elemento.offsetHeight; // Proporção vertical antes do zoom
+  const larguraAntes = elemento.offsetWidth; // Largura antes do zoom
+  const alturaAntes = elemento.offsetHeight; // Altura antes do zoom
   if (event.deltaY < 0) { // Scroll para cima aumenta
-    zoomAtual *= 2; // Aumenta em escala multiplicativa
+    zoomAtual *= 2;
   } else { // Scroll para baixo diminui
-    zoomAtual /= 2; // Diminui em escala multiplicativa
+    zoomAtual /= 2;
   }
   if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limite mínimo
   if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limite máximo
-  atualizarTamanhoImagemAtual(); // Aplica novo tamanho real
-  box.scrollLeft = proporcaoX * elemento.offsetWidth - (event.clientX - rectBox.left); // Mantém o ponto do mouse
-  box.scrollTop = proporcaoY * elemento.offsetHeight - (event.clientY - rectBox.top); // Mantém o ponto do mouse
+  atualizarTamanhoImagemAtual(); // Aplica novo tamanho
+  const larguraDepois = elemento.offsetWidth; // Largura depois do zoom
+  const alturaDepois = elemento.offsetHeight; // Altura depois do zoom
+  const diferencaX = proporcaoX * (larguraDepois - larguraAntes); // Diferença horizontal
+  const diferencaY = proporcaoY * (alturaDepois - alturaAntes); // Diferença vertical
+  box.scrollLeft += diferencaX; // Mantém o ponto do mouse
+  box.scrollTop += diferencaY; // Mantém o ponto do mouse
   statusText.innerText = `Zoom: ${zoomAtual.toFixed(2)}x`;
 
 }
@@ -672,18 +676,26 @@ function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 // Fecha a parte da função zoom --------------------------------------------------------
 
 // Funções da mãozinha para arrastar a imagem ----------------------------------------------------------------
-function atualizarTamanhoImagemAtual() { // Atualiza o tamanho real da imagem exibida
+// Atualiza o tamanho real da imagem exibida
+function atualizarTamanhoImagemAtual() {
 
   const larguraFinal = larguraOriginalAtual * escalaBaseAtual * zoomAtual; // Calcula largura final
   const alturaFinal = alturaOriginalAtual * escalaBaseAtual * zoomAtual; // Calcula altura final
   if (imagemNormal.style.display === "block") { // Se imagem comum está visível
-    imagemNormal.style.width = larguraFinal + "px"; // Aplica largura real
-    imagemNormal.style.height = alturaFinal + "px"; // Aplica altura real
+    imagemNormal.style.width = larguraFinal + "px"; // Aplica largura
+    imagemNormal.style.height = alturaFinal + "px"; // Aplica altura
   }
   if (visualizadorDicom.style.display === "block") { // Se DICOM está visível
-    visualizadorDicom.style.width = larguraFinal + "px"; // Aplica largura real
-    visualizadorDicom.style.height = alturaFinal + "px"; // Aplica altura real
-    cornerstone.resize(visualizadorDicom, true); // Atualiza visualização DICOM
+    visualizadorDicom.style.width = larguraFinal + "px"; // Aplica largura igual imagem normal
+    visualizadorDicom.style.height = alturaFinal + "px"; // Aplica altura igual imagem normal
+    // Atualiza o Cornerstone depois de mudar o tamanho da div
+    cornerstone.resize(visualizadorDicom, true);
+    // Garante que o canvas interno acompanhe exatamente o tamanho do container
+    const canvas = visualizadorDicom.querySelector("canvas");
+    if (canvas) {
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+    }
   }
   if (zoomAtual > 1) {
     visualizacaoBox.classList.add("zoom_aplicado");
