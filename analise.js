@@ -655,11 +655,11 @@ function desenharEixosHistograma(
       faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i
     );
 
-    const valorReal = obterCentroDoBin(indice);
+    const valorReal = Math.round(obterCentroDoBin(indice));
 
     const x = margemEsquerda + (larguraGrafico / 5) * i;
 
-    ctx.fillText(formatarNumero(valorReal), x, canvas.height - 32);
+    ctx.fillText(valorReal.toString(), x, canvas.height - 32);
 
   }
 
