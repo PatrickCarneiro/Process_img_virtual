@@ -50,7 +50,7 @@ let escalaDicomBase = 1; // Guarda a escala inicial do DICOM no Cornerstone
 
 const zoomMinimo = 1; // Zoom mínimo
 
-const zoomMaximo = 2000; // Pode aumentar bastante, parecido com MATLAB
+const zoomMaximo = 5000; // Pode aumentar bastante, parecido com MATLAB
 
 let larguraOriginalAtual = 0; // Largura original da imagem atual
 
@@ -672,17 +672,7 @@ imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na i
 // Zoom com scroll no DICOM
 visualizadorDicom.addEventListener("wheel", function(event) { 
 
-  if (!modoZoomAtivo) return; // Só funciona se o modo zoom estiver ativo
-  event.preventDefault(); // Impede rolagem da página
-  if (event.deltaY < 0) { // Scroll para cima aumenta
-    zoomAtual *= 2;
-  } else { // Scroll para baixo diminui
-    zoomAtual /= 2;
-  }
-  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo;
-  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo;
-  atualizarTamanhoImagemAtual(); // Aplica zoom pelo viewport do Cornerstone
-  statusText.innerText = `Zoom DICOM: ${zoomAtual.toFixed(2)}x`;
+  aplicarZoomNoMouse(event, visualizadorDicom); // Usa o mesmo comportamento da imagem normal
 
 });
 // Dois cliques na imagem comum
@@ -713,22 +703,29 @@ function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
 // Funções da mãozinha para arrastar a imagem ----------------------------------------------------------------
 // Atualiza o tamanho real da imagem exibida
-function atualizarTamanhoImagemAtual() { // Atualiza o tamanho da imagem exibida
+function atualizarTamanhoImagemAtual() { // Atualiza o tamanho real da imagem exibida
 
   const larguraFinal = larguraOriginalAtual * escalaBaseAtual * zoomAtual;
   const alturaFinal = alturaOriginalAtual * escalaBaseAtual * zoomAtual;
-  // Para imagem normal, continua usando width e height
+
+  // Imagem comum
   if (imagemNormal.style.display === "block") {
+
     imagemNormal.style.width = larguraFinal + "px";
     imagemNormal.style.height = alturaFinal + "px";
+
   }
-  // Para DICOM, NÃO muda width e height
-  // O zoom precisa ser feito pelo viewport do Cornerstone
+
+  // DICOM
   if (visualizadorDicom.style.display === "block") {
-    const viewport = cornerstone.getViewport(visualizadorDicom);
-    viewport.scale = escalaDicomBase * zoomAtual;
-    cornerstone.setViewport(visualizadorDicom, viewport);
+
+    visualizadorDicom.style.width = larguraFinal + "px";
+    visualizadorDicom.style.height = alturaFinal + "px";
+
+    cornerstone.resize(visualizadorDicom, true);
+
   }
+
   if (zoomAtual > 1) {
     visualizacaoBox.classList.add("zoom_aplicado");
   } else {
