@@ -393,35 +393,27 @@ function desenharHistograma(hist, ctx, canvas) { // Desenha histograma com eixos
   const tituloHistograma = document.getElementById("tituloHistograma");
   const subtituloHistograma = document.getElementById("subtituloHistograma");
 
-  let nomeCanal = "intensidade média";
-
   if (canalHistogramaAtual === "r") {
 
-    nomeCanal = "canal vermelho";
+    nomeCanal = "Canal Vermelho";
 
   } else if (canalHistogramaAtual === "g") {
 
-    nomeCanal = "canal verde";
+    nomeCanal = "Canal Verde";
 
   } else if (canalHistogramaAtual === "b") {
 
-    nomeCanal = "canal azul";
+    nomeCanal = "Canal Azul";
 
   } else if (canalHistogramaAtual === "media") {
 
-    nomeCanal = "média RGB";
+    nomeCanal = "Média RGB";
 
   }
 
   if (tituloHistograma) {
 
     tituloHistograma.innerText = `Histograma - ${nomeCanal}`;
-
-  }
-
-  if (subtituloHistograma) {
-
-    subtituloHistograma.innerText = `Frequência de pixels para cada intensidade no ${nomeCanal}`;
 
   }
 
