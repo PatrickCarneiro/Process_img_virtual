@@ -429,14 +429,23 @@ function openFile(item) { // Função para abrir imagem selecionada
 
         zoomAtual = 1;
 
-        cornerstone.displayImage(visualizadorDicom, image); // Exibe o DICOM primeiro
+        // Primeiro define o tamanho inicial do DICOM igual ao da imagem normal
+        const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
+        const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
 
-        cornerstone.resize(visualizadorDicom, true); // Ajusta uma única vez ao abrir
+        visualizadorDicom.style.width = larguraInicial + "px";
+        visualizadorDicom.style.height = alturaInicial + "px";
 
-        const viewport = cornerstone.getViewport(visualizadorDicom); // Pega visualização atual
+        // Agora exibe o DICOM já no tamanho correto
+        cornerstone.displayImage(visualizadorDicom, image);
 
-        escalaDicomBase = viewport.scale; // Salva a escala inicial correta do DICOM
+        // Ajusta o canvas interno do Cornerstone ao tamanho da div
+        cornerstone.resize(visualizadorDicom, true);
 
+        // Salva a escala inicial correta do Cornerstone
+        const viewport = cornerstone.getViewport(visualizadorDicom);
+
+        escalaDicomBase = viewport.scale;
         zoomAtual = 1; // Reseta zoom manual
 
         imagemDicomAtual = image; // Guarda imagem DICOM atual
