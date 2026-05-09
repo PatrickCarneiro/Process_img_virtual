@@ -51,20 +51,93 @@
     overflow: auto; /* Permite rolagem interna */
   }
 
-  /* Área que guarda o histograma, texto e botões */
+  /* Área que guarda o histograma, textos, controles e botões */
   .area_grafico_analise {
     display: flex;
     flex-direction: column;
-    gap: 12px; /* Espaço entre o histograma, a faixa de texto e os botões */
+    gap: 12px; /* Espaço entre os elementos */
     position: relative; /* Para posicionar elementos internos */
+  }
+
+  /* Título principal do histograma */
+  .titulo_histograma {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    margin-top: 4px;
+  }
+
+  /* Subtítulo do histograma */
+  .subtitulo_histograma {
+    text-align: center;
+    font-size: 13px;
+    opacity: 0.75;
+    margin-top: -6px;
   }
 
   /* Canvas do histograma */
   #histograma {
     width: 100%; /* Ocupa toda a largura disponível */
-    height: 75vh; /* Altura relativa à tela */
+    height: 65vh; /* Altura relativa à tela */
     background: black; 
     border-radius: 12px; 
+  }
+
+  /* Área geral do seletor de faixa */
+  .controle_faixa_histograma {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  /* Barra onde as laterais são puxadas */
+  .barra_faixa_histograma {
+    position: relative;
+    width: 100%;
+    height: 18px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 20px;
+    cursor: pointer;
+  }
+
+  /* Região selecionada dentro da barra */
+  .faixa_selecionada_histograma {
+    position: absolute;
+    height: 100%;
+    background: rgba(192,132,252,0.45);
+    border-radius: 20px;
+    left: 0%;
+    width: 100%;
+  }
+
+  /* Alças laterais para puxar */
+  .alca_faixa {
+    position: absolute;
+    top: 50%;
+    width: 16px;
+    height: 30px;
+    background: #c084fc;
+    border: 2px solid white;
+    border-radius: 8px;
+    transform: translate(-50%, -50%);
+    cursor: ew-resize;
+    z-index: 2;
+    box-shadow: 0 0 10px rgba(192,132,252,0.55);
+  }
+
+  /* Alça da esquerda */
+  .alca_faixa.esquerda {
+    left: 0%;
+  }
+
+  /* Alça da direita */
+  .alca_faixa.direita {
+    left: 100%;
   }
 
   /* Texto mostrando a região selecionada do histograma */
@@ -176,10 +249,32 @@
 
     <div class="area_grafico_analise">
 
+      <div class="titulo_histograma" id="tituloHistograma">
+        Histograma de Intensidades
+      </div>
+
+      <div class="subtitulo_histograma" id="subtituloHistograma">
+        Frequência de pixels por intensidade
+      </div>
+
       <canvas id="histograma"></canvas>
 
-      <div class="faixa_histograma" id="faixaHistograma">
-        Região visualizada: ---
+      <div class="controle_faixa_histograma">
+
+        <div class="barra_faixa_histograma" id="barraFaixaHistograma">
+
+          <div class="faixa_selecionada_histograma" id="faixaSelecionadaHistograma"></div>
+
+          <div class="alca_faixa esquerda" id="alcaEsquerdaHistograma"></div>
+
+          <div class="alca_faixa direita" id="alcaDireitaHistograma"></div>
+
+        </div>
+
+        <div class="faixa_histograma" id="faixaHistograma">
+          Eixo X exibido: ---
+        </div>
+
       </div>
 
       <!-- Botões dos canais RGB: só aparecem quando a imagem for RGB -->
