@@ -1,11 +1,9 @@
-// ======================================================================
 // VARIÁVEIS GLOBAIS
-// ======================================================================
 
-let histogramaAtual = [];
-let bordasHistogramaAtual = [];
+let histogramaAtual = []; // Array de contagens do histograma atualmente exibido
+let bordasHistogramaAtual = []; // Bordas dos bins do histograma atualmente exibido
 
-let histogramasImagemAtual = {
+let histogramasImagemAtual = { // Armazena os histogramas pré-calculados para cada canal da imagem atual
   cinza: null,
   r: null,
   g: null,
@@ -21,194 +19,121 @@ let faixaFimHistograma = 0;
 let arrastandoAlcaHistograma = null;
 
 
-// ======================================================================
-// CARREGAMENTO DA ABA DE ANÁLISE
-// ======================================================================
-
+// FUNÇÕES DA TELA DE ANÁLISE --------------------------------------------------------------------------------------------------------------
 function iniciarAnalise() {
 
-  return fetch("analise.html")
-
-    .then(function(resposta) {
-
+  return fetch("analise.html") // Carrega o conteúdo da aba de análises
+    .then(function(resposta) { // Verifica se a resposta foi bem-sucedida
       if (!resposta.ok) {
         throw new Error("Não foi possível carregar analise.html");
       }
-
       return resposta.text();
-
     })
-
-    .then(function(html) {
-
+    .then(function(html) { // Insere o conteúdo carregado na página e configura os eventos
       const areaAnalise = document.getElementById("areaAnalise");
-
       if (areaAnalise) {
         areaAnalise.innerHTML = html;
       }
-
       const cabecalho = document.getElementById("cabecalhoAnalises");
-
       if (cabecalho) {
         cabecalho.addEventListener("click", toggleAnalises);
       }
-
     })
-
-    .catch(function(error) {
-
+    .catch(function(error) { // Exibe mensagem de erro caso o carregamento falhe
       console.error(error);
-
       const areaAnalise = document.getElementById("areaAnalise");
-
       if (areaAnalise) {
         areaAnalise.innerHTML = "<p style='color:white;'>Erro ao carregar a aba de análises.</p>";
       }
-
     });
-
 }
-
-
-// ======================================================================
-// ABRIR E FECHAR ABA
-// ======================================================================
-
+// Função para abrir/fechar a aba de análises e configurar o estilo da página durante a abertura 
 function toggleAnalises() {
 
   const aba = document.getElementById("abaAnalises");
-  const icone = document.getElementById("iconeAnalises");
-
+  const icone = document.getElementById("iconeAnalises"); // Elemento do ícone que indica abrir/fechar
   if (!aba || !icone) return;
-
-  aba.classList.toggle("aberta");
-
+  aba.classList.toggle("aberta"); // Alterna a classe "aberta" para mostrar ou esconder a aba
   if (aba.classList.contains("aberta")) {
-
     icone.innerText = "▼ Fechar análises";
-    document.body.style.overflow = "hidden";
-
+    document.body.style.overflow = "hidden"; // Evita rolagem da página quando a aba estiver aberta
     setTimeout(function() {
       desenharHistogramaAtual();
     }, 100);
-
   } else {
-
     icone.innerText = "▲ Abrir análises";
     document.body.style.overflowX = "hidden";
     document.body.style.overflowY = "auto";
-
   }
-
 }
+// FIM FUNÇÕES DA TELA DE ANÁLISE -------------------------------------------------------------------------------------------------------------- 
 
-
-// ======================================================================
-// ANÁLISE DE IMAGEM NORMAL
-// ======================================================================
-
+// FUNÇÕES DO HISTOGRAMA --------------------------------------------------------------------------------------------------------------------------
 function gerarAnaliseImagemNormal(img) {
 
-  const tempCanvas = document.createElement("canvas");
-  const tempCtx = tempCanvas.getContext("2d");
-
+  const tempCanvas = document.createElement("canvas"); // Canvas temporário para extrair os dados de pixel da imagem
+  const tempCtx = tempCanvas.getContext("2d"); // Contexto 2D do canvas temporário
   tempCanvas.width = img.naturalWidth;
   tempCanvas.height = img.naturalHeight;
-
   tempCtx.drawImage(img, 0, 0);
-
-  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-  const data = imageData.data;
-
+  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height); // Obtém os dados de pixel da imagem desenhada no canvas temporário
+  const data = imageData.data; 
   const valoresR = [];
   const valoresG = [];
   const valoresB = [];
   const valoresMedia = [];
-
-  let imagemRGB = false;
-
-  for (let i = 0; i < data.length; i += 4) {
-
+  let imagemRGB = false; // Flag para verificar se a imagem é colorida (RGB) ou em escala de cinza
+  for (let i = 0; i < data.length; i += 4) { // Itera sobre os dados de pixel, considerando que cada pixel é representado por 4 valores (R, G, B, A)
     const r = data[i];
-    const g = data[i + 1];
+    const g = data[i + 1]; 
     const b = data[i + 2];
-
-    // Igual ao MATLAB:
-    // mediaRGB = (double(R) + double(G) + double(B)) / 3;
-    // Não arredonda.
-    const media = (r + g + b) / 3;
-
-    valoresR.push(r);
-    valoresG.push(g);
+    const media = (r + g + b) / 3; // Calcula a média dos canais RGB para obter a intensidade em escala de cinza
+    valoresR.push(r); // Armazena os valores do canal vermelho
+    valoresG.push(g); 
     valoresB.push(b);
     valoresMedia.push(media);
-
-    if (r !== g || g !== b) {
+    if (r !== g || g !== b) { // Verifica se os valores dos canais são diferentes, indicando que a imagem é colorida
       imagemRGB = true;
     }
-
   }
-
-  histogramasImagemAtual = {
+  histogramasImagemAtual = { // Cria os histogramas para cada canal usando a função criarHistograma
     cinza: criarHistograma(valoresMedia),
     media: criarHistograma(valoresMedia),
     r: criarHistograma(valoresR),
     g: criarHistograma(valoresG),
     b: criarHistograma(valoresB)
   };
-
-  const botoesRGB = document.getElementById("botoesCanaisRGB");
-
+  const botoesRGB = document.getElementById("botoesCanaisRGB"); // Elemento que contém os botões para selecionar os canais RGB
   if (imagemRGB) {
-
-    if (botoesRGB) {
+    if (botoesRGB) { // Exibe os botões de canais RGB se a imagem for colorida
       botoesRGB.style.display = "flex";
     }
-
-    selecionarCanalHistograma("media");
-
+    selecionarCanalHistograma("media"); // Seleciona o canal de média RGB para exibir inicialmente
   } else {
-
-    if (botoesRGB) {
+    if (botoesRGB) { // Esconde os botões de canais RGB se a imagem for em escala de cinza, pois não faz sentido mostrar os canais individuais
       botoesRGB.style.display = "none";
     }
-
     selecionarCanalHistograma("cinza");
-
   }
-
-  const histSelecionado = histogramasImagemAtual[canalHistogramaAtual];
-
-  atualizarMetricasAnalise(
-    histSelecionado.soma,
+  const histSelecionado = histogramasImagemAtual[canalHistogramaAtual]; // Obtém o histograma do canal atualmente selecionado para atualizar as métricas
+  atualizarMetricasAnalise( // Atualiza as métricas de média, mínimo e máximo com base no histograma do canal selecionado
+    histSelecionado.soma, 
     histSelecionado.total,
     histSelecionado.min,
     histSelecionado.max
   );
-
-  desenharHistogramaAtual();
-
+  desenharHistogramaAtual(); // Desenha o histograma do canal selecionado na tela
 }
-
-
-// ======================================================================
-// ANÁLISE DICOM
-// ======================================================================
-
+// Função específica para gerar o histograma a partir de uma imagem DICOM 
 function gerarAnaliseDicom(image) {
 
-  const pixels = image.getPixelData();
-
-  if (!pixels || pixels.length === 0) return;
-
+  const pixels = image.getPixelData(); // Obtém os dados de pixel da imagem DICOM usando a função getPixelData() da biblioteca Cornerstone, que retorna um array com os valores de intensidade dos pixels.
+  if (!pixels || pixels.length === 0) return; 
   const valores = [];
-
-  for (let i = 0; i < pixels.length; i++) {
+  for (let i = 0; i < pixels.length; i++) { // Itera sobre os dados de pixel e converte cada valor para número, armazenando em um array de valores
     valores.push(Number(pixels[i]));
   }
-
-  const histDicom = criarHistograma(valores);
-
+  const histDicom = criarHistograma(valores); 
   histogramasImagemAtual = {
     cinza: histDicom,
     media: null,
@@ -216,56 +141,36 @@ function gerarAnaliseDicom(image) {
     g: null,
     b: null
   };
-
-  const botoesRGB = document.getElementById("botoesCanaisRGB");
-
+  const botoesRGB = document.getElementById("botoesCanaisRGB"); 
   if (botoesRGB) {
     botoesRGB.style.display = "none";
   }
-
   selecionarCanalHistograma("cinza");
-
   atualizarMetricasAnalise(
     histDicom.soma,
     histDicom.total,
     histDicom.min,
     histDicom.max
   );
-
   desenharHistogramaAtual();
-
 }
-
-
-// ======================================================================
-// CRIAÇÃO DO HISTOGRAMA
-// ======================================================================
-
+// Função para criar o histograma a partir de um array de valores de intensidade, calculando as contagens e bordas dos bins, além de métricas como soma, mínimo e máximo
 function criarHistograma(valores) {
 
-  const valoresValidos = [];
-
+  const valoresValidos = []; 
   let soma = 0;
   let min = Infinity;
   let max = -Infinity;
-
-  for (let i = 0; i < valores.length; i++) {
-
+  for (let i = 0; i < valores.length; i++) { // Itera sobre o array de valores, verificando se cada valor é um número finito. Se for válido, é adicionado ao array de valores válidos e contribui para a soma, além de atualizar os valores mínimo e máximo encontrados.
     const valor = valores[i];
-
     if (Number.isFinite(valor)) {
-
       valoresValidos.push(valor);
       soma += valor;
-
       if (valor < min) min = valor;
       if (valor > max) max = valor;
-
     }
-
   }
-
-  if (valoresValidos.length === 0) {
+  if (valoresValidos.length === 0) { // Se não houver valores válidos, retorna um histograma vazio com métricas zeradas e tipo "vazio"
     return {
       contagens: [],
       bordas: [],
@@ -276,8 +181,7 @@ function criarHistograma(valores) {
       tipo: "vazio"
     };
   }
-
-  if (min === max) {
+  if (min === max) { // Se todos os valores forem iguais, cria um histograma com uma única barra representando essa intensidade, com bordas ajustadas para centralizar a barra e tipo "único"
     return {
       contagens: [valoresValidos.length],
       bordas: [min - 0.5, max + 0.5],
@@ -288,43 +192,24 @@ function criarHistograma(valores) {
       tipo: "unico"
     };
   }
-
-  let valoresSaoInteiros = true;
-
+  let valoresSaoInteiros = true; // Verifica se todos os valores válidos são inteiros, o que pode indicar que a imagem tem uma faixa de intensidade discreta (como 0-255 para 8 bits) e permitir um histograma com uma barra para cada intensidade real
   for (let i = 0; i < valoresValidos.length; i++) {
-
     if (!Number.isInteger(valoresValidos[i])) {
       valoresSaoInteiros = false;
       break;
     }
-
   }
-
-  // Se os valores forem inteiros e a faixa for aceitável:
-  // uma coluna para cada intensidade real.
-  // Exemplo:
-  // 8 bits  -> até 256 barras
-  // 12 bits -> até 4096 barras
-  // 16 bits -> até 65536 barras
-  if (valoresSaoInteiros && (max - min <= 65535)) {
-
-    const quantidadeBins = max - min + 1;
-
+  if (valoresSaoInteiros && (max - min <= 65535)) { // Se os valores forem inteiros e a faixa de intensidade for relativamente pequena (até 65536 níveis), cria um histograma com uma barra para cada valor inteiro real, usando o próprio valor como índice no array de contagens, e tipo "inteiro"
+    const quantidadeBins = max - min + 1; 
     const contagens = new Array(quantidadeBins).fill(0);
     const bordas = new Array(quantidadeBins + 1);
-
-    for (let i = 0; i <= quantidadeBins; i++) {
-      bordas[i] = min - 0.5 + i;
+    for (let i = 0; i <= quantidadeBins; i++) { // Define as bordas dos bins para que cada barra do histograma corresponda exatamente a um valor inteiro real, centralizando a barra no valor inteiro
+      bordas[i] = min - 0.5 + i; // Ajuste para centralizar a barra no valor inteiro, considerando que a barra tem largura1 1 e deve ir de (valor - 0.5) até (valor + 0.5)
     }
-
-    for (let i = 0; i < valoresValidos.length; i++) {
-
+    for (let i = 0; i < valoresValidos.length; i++) { // Itera sobre os valores válidos e incrementa a contagem do bin correspondente ao valor inteiro real, usando o próprio valor como índice ajustado pela subtração do mínimo para alinhar com o início do array de contagens
       const indice = valoresValidos[i] - min;
-
       contagens[indice]++;
-
     }
-
     return {
       contagens: contagens,
       bordas: bordas,
@@ -336,32 +221,21 @@ function criarHistograma(valores) {
     };
 
   }
-
-  // Se tiver valores decimais, como a média RGB:
-  // usa 256 bins mantendo a escala real.
-  const numBins = 256;
-
+  const numBins = 256;  // Se tiver valores decimais, como a média RGB, usa 256 bins mantendo a escala real.
   const contagens = new Array(numBins).fill(0);
-  const bordas = new Array(numBins + 1);
-
+  const bordas = new Array(numBins + 1); // 
   const larguraBin = (max - min) / numBins;
-
-  for (let i = 0; i <= numBins; i++) {
+  for (let i = 0; i <= numBins; i++) { // Define as bordas dos bins para o caso de valores decimais, dividindo a faixa de intensidade em 256 bins de largura igual, mantendo a escala real dos valores e tipo "decimal"
     bordas[i] = min + i * larguraBin;
   }
-
-  for (let i = 0; i < valoresValidos.length; i++) {
-
+  for (let i = 0; i < valoresValidos.length; i++) { // Itera sobre os valores válidos e calcula o índice do bin correspondente para cada valor decimal, usando a fórmula (valor - min) / larguraBin para determinar em qual bin o valor se encaixa, e incrementa a contagem do bin correspondente. Também garante que os índices fiquem dentro dos limites do array de contagens. 
     let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
-
     if (indice < 0) indice = 0;
-    if (indice >= numBins) indice = numBins - 1;
-
+    if (indice >= numBins) indice = numBins - 1; // Garante que o índice não ultrapasse o número de bins, o que pode acontecer devido a arredondamentos ou valores muito próximos do máximo
     contagens[indice]++;
 
   }
-
-  return {
+  return { // Retorna o histograma criado com as contagens, bordas, métricas de mínimo, máximo, soma e total de valores válidos, além do tipo indicando se é um histograma de inteiros ou decimais
     contagens: contagens,
     bordas: bordas,
     min: min,
@@ -372,50 +246,152 @@ function criarHistograma(valores) {
   };
 
 }
-
-
-// ======================================================================
-// SELEÇÃO DE CANAL
-// ======================================================================
-
+// Função para selecionar o canal do histograma a ser exibido, atualizando as variáveis globais e o estilo dos botões de seleção
 function selecionarCanalHistograma(canal) {
 
-  const histObj = histogramasImagemAtual[canal];
-
+  const histObj = histogramasImagemAtual[canal]; // Obtém o objeto do histograma correspondente ao canal selecionado a partir do objeto global histogramasImagemAtual
   if (!histObj || !histObj.contagens || histObj.contagens.length === 0) return;
-
   canalHistogramaAtual = canal;
-
   histogramaAtual = histObj.contagens;
   bordasHistogramaAtual = histObj.bordas;
-
   definirFaixaAutomaticaHistograma();
-
   marcarBotaoCanalAtivo(canal);
 
 }
-
-
-function trocarCanalHistograma(canal) {
+// Função para trocar o canal do histograma exibido, atualizando as métricas e redesenhando o histograma com base no canal selecionado
+function trocarCanalHistograma(canal) { 
 
   selecionarCanalHistograma(canal);
-
   const histSelecionado = histogramasImagemAtual[canalHistogramaAtual];
-
   if (histSelecionado) {
-
     atualizarMetricasAnalise(
       histSelecionado.soma,
       histSelecionado.total,
       histSelecionado.min,
       histSelecionado.max
     );
-
   }
-
   desenharHistogramaAtual();
 
 }
+// Função para desenhar o histograma atual no canvas, verificando se o canvas e os dados do histograma estão disponíveis
+function desenharHistogramaAtual() {
+
+  const canvas = document.getElementById("histograma"); // Obtém o elemento canvas onde o histograma será desenhado a partir do DOM usando seu ID "histograma"
+  if (!canvas || !histogramaAtual || histogramaAtual.length === 0) return;
+  const ctx = canvas.getContext("2d"); // Obtém o contexto 2D do canvas, que é a interface de desenho usada para renderizar o histograma no canvas
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight; 
+  desenharHistograma(ctx, canvas);
+
+}
+// Função para redesenhar o histograma atual, que pode ser chamada quando a faixa do histograma for alterada ou quando for necessário atualizar a visualização do histograma sem trocar o canal
+function redesenharHistogramaAtual() {
+  desenharHistogramaAtual();
+}
+// Função principal para desenhar o histograma no canvas, que recebe o contexto de desenho e o elemento canvas como parâmetros, e é responsável por renderizar as barras do histograma, os eixos, a grade e os textos informativos, além de configurar a interação com a faixa do histograma
+function desenharHistograma(ctx, canvas) {
+
+  const margemEsquerda = 65;
+  const margemDireita = 25;
+  const margemSuperior = 25;
+  const margemInferior = 55;
+  const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
+  const alturaGrafico = canvas.height - margemSuperior - margemInferior;
+  if (larguraGrafico <= 0 || alturaGrafico <= 0) return; 
+  const inicio = faixaInicioHistograma;
+  const fim = faixaFimHistograma;
+  const histVisivel = histogramaAtual.slice(inicio, fim + 1); // Obtém a parte do histograma que está dentro da faixa selecionada, usando os índices de início e fim para criar um subarray do histograma completo, que será o que realmente será desenhado no gráfico, permitindo que o usuário foque em uma faixa específica de intensidades.
+  if (histVisivel.length === 0) return;
+  let maior = 1; 
+  for (let i = 0; i < histVisivel.length; i++) {
+    if (histVisivel[i] > maior) {
+      maior = histVisivel[i];
+    }
+  }
+  const larguraBarra = larguraGrafico / histVisivel.length; // Calcula a largura de cada barra do histograma com base na largura disponível para o gráfico e no número de barras que serão desenhadas, que é igual ao comprimento do array histVisivel, garantindo que as barras se ajustem ao espaço disponível e sejam proporcionais à quantidade de dados exibidos.
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  desenharGradeHistograma( // Desenha a grade de fundo do histograma, que consiste em linhas horizontais e verticais para facilitar a leitura dos valores do histograma, usando uma cor clara e transparente para não interferir na visualização das barras, e é chamada antes de desenhar as barras para que a grade fique atrás delas.
+    ctx,
+    canvas,
+    margemEsquerda,
+    margemDireita,
+    margemSuperior,
+    margemInferior,
+    larguraGrafico,
+    alturaGrafico
+  );
+  definirCorBarrasHistograma(ctx); // Define a cor das barras do histograma com base no canal atualmente selecionado, usando cores diferentes para os canais RGB e uma cor neutra para a média ou escala de cinza, para facilitar a identificação visual do canal que está sendo exibido.
+  for (let i = 0; i < histVisivel.length; i++) {
+    const valor = histVisivel[i];
+    const altura = (valor / maior) * alturaGrafico;
+    const x = margemEsquerda + i * larguraBarra;
+    const y = margemSuperior + alturaGrafico - altura;
+    ctx.fillRect(x, y, Math.max(larguraBarra - 1, 1), altura);
+
+  }
+  desenharEixosHistograma( // Desenha os eixos X e Y do histograma, incluindo as linhas dos eixos, os valores de referência nos eixos, e os títulos dos eixos, usando uma cor mais forte para destacar os eixos em relação à grade, e é chamada após desenhar as barras para que os eixos fiquem sobre as barras, garantindo que sejam claramente visíveis.
+    ctx,
+    canvas,
+    margemEsquerda,
+    margemDireita,
+    margemSuperior,
+    margemInferior,
+    larguraGrafico,
+    alturaGrafico,
+    maior
+  );
+  atualizarTextosHistograma();
+  configurarSeletorFaixaHistograma();
+  ativarInteracaoHistograma(canvas);
+
+}
+// Função para desenhar a grade de fundo do histograma, que consiste em linhas horizontais e verticais para facilitar a leitura dos valores do histograma, usando uma cor clara e transparente para não interferir na visualização das barras, e é chamada antes de desenhar as barras para que a grade fique atrás delas.
+function desenharGradeHistograma( 
+  ctx,
+  canvas,
+  margemEsquerda,
+  margemDireita,
+  margemSuperior,
+  margemInferior,
+  larguraGrafico,
+  alturaGrafico
+) {
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = margemSuperior + (alturaGrafico / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(margemEsquerda, y);
+    ctx.lineTo(canvas.width - margemDireita, y);
+    ctx.stroke();
+  }
+  for (let i = 0; i <= 5; i++) {
+    const x = margemEsquerda + (larguraGrafico / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, margemSuperior);
+    ctx.lineTo(x, canvas.height - margemInferior);
+    ctx.stroke();
+  }
+}
+// Função para definir a cor das barras do histograma com base no canal atualmente selecionado
+function definirCorBarrasHistograma(ctx) {
+
+  if (canalHistogramaAtual === "r") {
+    ctx.fillStyle = "rgba(255,80,80,0.85)";
+  } else if (canalHistogramaAtual === "g") {
+    ctx.fillStyle = "rgba(80,255,140,0.85)";
+  } else if (canalHistogramaAtual === "b") {
+    ctx.fillStyle = "rgba(80,150,255,0.85)";
+  } else {
+    ctx.fillStyle = "rgba(192,132,252,0.85)";
+
+  }
+
+}
+
 
 
 // ======================================================================
@@ -443,178 +419,10 @@ function atualizarMetricasAnalise(soma, total, min, max) {
 }
 
 
-// ======================================================================
-// DESENHAR HISTOGRAMA
-// ======================================================================
-
-function desenharHistogramaAtual() {
-
-  const canvas = document.getElementById("histograma");
-
-  if (!canvas || !histogramaAtual || histogramaAtual.length === 0) return;
-
-  const ctx = canvas.getContext("2d");
-
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-
-  desenharHistograma(ctx, canvas);
-
-}
 
 
-function redesenharHistogramaAtual() {
-  desenharHistogramaAtual();
-}
 
 
-function desenharHistograma(ctx, canvas) {
-
-  const margemEsquerda = 65;
-  const margemDireita = 25;
-  const margemSuperior = 25;
-  const margemInferior = 55;
-
-  const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
-  const alturaGrafico = canvas.height - margemSuperior - margemInferior;
-
-  if (larguraGrafico <= 0 || alturaGrafico <= 0) return;
-
-  const inicio = faixaInicioHistograma;
-  const fim = faixaFimHistograma;
-
-  const histVisivel = histogramaAtual.slice(inicio, fim + 1);
-
-  if (histVisivel.length === 0) return;
-
-  let maior = 1;
-
-  for (let i = 0; i < histVisivel.length; i++) {
-
-    if (histVisivel[i] > maior) {
-      maior = histVisivel[i];
-    }
-
-  }
-
-  const larguraBarra = larguraGrafico / histVisivel.length;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  desenharGradeHistograma(
-    ctx,
-    canvas,
-    margemEsquerda,
-    margemDireita,
-    margemSuperior,
-    margemInferior,
-    larguraGrafico,
-    alturaGrafico
-  );
-
-  definirCorBarrasHistograma(ctx);
-
-  for (let i = 0; i < histVisivel.length; i++) {
-
-    const valor = histVisivel[i];
-
-    const altura = (valor / maior) * alturaGrafico;
-
-    const x = margemEsquerda + i * larguraBarra;
-    const y = margemSuperior + alturaGrafico - altura;
-
-    ctx.fillRect(x, y, Math.max(larguraBarra - 1, 1), altura);
-
-  }
-
-  desenharEixosHistograma(
-    ctx,
-    canvas,
-    margemEsquerda,
-    margemDireita,
-    margemSuperior,
-    margemInferior,
-    larguraGrafico,
-    alturaGrafico,
-    maior
-  );
-
-  atualizarTextosHistograma();
-
-  configurarSeletorFaixaHistograma();
-
-  ativarInteracaoHistograma(canvas);
-
-}
-
-
-// ======================================================================
-// PARTES VISUAIS DO HISTOGRAMA
-// ======================================================================
-
-function desenharGradeHistograma(
-  ctx,
-  canvas,
-  margemEsquerda,
-  margemDireita,
-  margemSuperior,
-  margemInferior,
-  larguraGrafico,
-  alturaGrafico
-) {
-
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 1;
-
-  for (let i = 0; i <= 5; i++) {
-
-    const y = margemSuperior + (alturaGrafico / 5) * i;
-
-    ctx.beginPath();
-    ctx.moveTo(margemEsquerda, y);
-    ctx.lineTo(canvas.width - margemDireita, y);
-    ctx.stroke();
-
-  }
-
-  for (let i = 0; i <= 5; i++) {
-
-    const x = margemEsquerda + (larguraGrafico / 5) * i;
-
-    ctx.beginPath();
-    ctx.moveTo(x, margemSuperior);
-    ctx.lineTo(x, canvas.height - margemInferior);
-    ctx.stroke();
-
-  }
-
-}
-
-
-function definirCorBarrasHistograma(ctx) {
-
-  if (canalHistogramaAtual === "r") {
-
-    ctx.fillStyle = "rgba(255,80,80,0.85)";
-
-  } else if (canalHistogramaAtual === "g") {
-
-    ctx.fillStyle = "rgba(80,255,140,0.85)";
-
-  } else if (canalHistogramaAtual === "b") {
-
-    ctx.fillStyle = "rgba(80,150,255,0.85)";
-
-  } else {
-
-    ctx.fillStyle = "rgba(192,132,252,0.85)";
-
-  }
-
-}
 
 
 function desenharEixosHistograma(
