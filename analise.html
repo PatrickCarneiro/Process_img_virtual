@@ -41,7 +41,7 @@
   .conteudo_analises {
     padding: 20px;
     display: grid; /* Usa grid */
-    grid-template-columns: 1fr 300px; /* Histograma maior + métricas à direita */
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); /* Histograma maior + métricas à direita */
     gap: 20px; /* Espaço entre histograma e métricas */
   }
 
@@ -230,7 +230,22 @@
     padding: 10px;
     border-radius: 10px; 
     margin-bottom: 8px; 
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
+
+  /* Nome do arquivo atual */
+  #arquivoAtual {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    color: #c084fc;
+    font-size: 13px;
+}
 
 </style>
 
@@ -313,13 +328,16 @@
     <div>
 
       <div class="metrica">Arquivo atual: <span id="arquivoAtual">---</span></div>
+
+      <div class="metrica">Tipo da imagem: <span id="tipoImagemAtual">---</span></div>
       
-      <div class="metrica">Média: <span id="media">---</span></div>
+      <div class="metrica">Máximo: <span id="maximo">---</span></div>
 
       <div class="metrica">Mínimo: <span id="minimo">---</span></div>
 
-      <div class="metrica">Máximo: <span id="maximo">---</span></div>
+      <div class="metrica">Média: <span id="media">---</span></div>
 
+      
     </div>
 
   </div>

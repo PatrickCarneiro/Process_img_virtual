@@ -71,6 +71,7 @@ function toggleAnalises() {
 // FUNÇÕES DO HISTOGRAMA --------------------------------------------------------------------------------------------------------------------------
 function gerarAnaliseImagemNormal(img) {
 
+  atualizarTipoImagemNormal(img);
   const tempCanvas = document.createElement("canvas"); // Canvas temporário para extrair os dados de pixel da imagem
   const tempCtx = tempCanvas.getContext("2d"); // Contexto 2D do canvas temporário
   tempCanvas.width = img.naturalWidth;
@@ -128,6 +129,10 @@ function gerarAnaliseImagemNormal(img) {
 function gerarAnaliseDicom(image) {
 
   const pixels = image.getPixelData(); // Obtém os dados de pixel da imagem DICOM usando a função getPixelData() da biblioteca Cornerstone, que retorna um array com os valores de intensidade dos pixels.
+  const tipoImagem = identificarTipoPelosPixels(pixels);
+  atualizarTipoImagemAtual(
+    "DICOM - " + tipoImagem + " - " + image.width + " x " + image.height
+  );
   if (!pixels || pixels.length === 0) return; 
   const valores = [];
   for (let i = 0; i < pixels.length; i++) { // Itera sobre os dados de pixel e converte cada valor para número, armazenando em um array de valores
@@ -259,18 +264,10 @@ function selecionarCanalHistograma(canal) {
 
 }
 // Função para trocar o canal do histograma exibido, atualizando as métricas e redesenhando o histograma com base no canal selecionado
-function trocarCanalHistograma(canal) { 
+function trocarCanalHistograma(canal) {
 
   selecionarCanalHistograma(canal);
-  const histSelecionado = histogramasImagemAtual[canalHistogramaAtual];
-  if (histSelecionado) {
-    atualizarMetricasAnalise(
-      histSelecionado.soma,
-      histSelecionado.total,
-      histSelecionado.min,
-      histSelecionado.max
-    );
-  }
+  atualizarMetricasDoCanalAtual();
   desenharHistogramaAtual();
 
 }
@@ -678,23 +675,84 @@ function formatarNumero(valor) {
 }
 // Fim das funções do histograma ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// Funções de métrica
+// Funções de métrica ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 function atualizarMetricasAnalise(soma, total, min, max) {
 
   const mediaElemento = document.getElementById("media");
   const minimoElemento = document.getElementById("minimo");
   const maximoElemento = document.getElementById("maximo");
-
   if (mediaElemento) {
     mediaElemento.innerText = total > 0 ? formatarNumero(soma / total) : "---";
   }
-
   if (minimoElemento) {
     minimoElemento.innerText = Number.isFinite(min) ? formatarNumero(min) : "---";
   }
-
   if (maximoElemento) {
     maximoElemento.innerText = Number.isFinite(max) ? formatarNumero(max) : "---";
   }
 
+}
+function atualizarTipoImagemAtual(texto) {
+  const tipoImagemAtual = document.getElementById("tipoImagemAtual");
+
+  if (tipoImagemAtual) {
+    tipoImagemAtual.innerText = texto;
+  }
+}
+
+async function identificarTipoArquivoImagem(arquivo) {
+  const nome = arquivo.name.toLowerCase();
+
+  if (nome.endsWith(".png")) {
+    const buffer = await arquivo.slice(0, 32).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    const bits = bytes[24];
+    const cor = bytes[25];
+
+    let canais = 1;
+
+    if (cor === 2) canais = 3;
+    if (cor === 4) canais = 2;
+    if (cor === 6) canais = 4;
+
+    return "PNG - " + bits + " bits - " + canais + " canal(is)";
+  }
+
+  if (nome.endsWith(".jpg") || nome.endsWith(".jpeg")) {
+    return "JPG - geralmente 8 bits por canal";
+  }
+
+  if (nome.endsWith(".tif") || nome.endsWith(".tiff")) {
+    return "TIFF - profundidade não identificada";
+  }
+
+  return "Imagem comum";
+}
+
+async function atualizarTipoImagemNormal(img, arquivo) {
+  const tipo = await identificarTipoArquivoImagem(arquivo);
+
+  atualizarTipoImagemAtual(
+    tipo + " - " + img.naturalWidth + " x " + img.naturalHeight
+  );
+}
+
+function identificarTipoPelosPixels(pixels) {
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (let i = 0; i < pixels.length; i++) {
+    const valor = Number(pixels[i]);
+
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
+  }
+
+  if (min >= 0 && max <= 255) return "uint8";
+  if (min >= 0 && max <= 4095) return "uint12";
+  if (min >= 0 && max <= 65535) return "uint16";
+  if (min >= -32768 && max <= 32767) return "int16";
+
+  return pixels.constructor.name;
 }

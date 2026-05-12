@@ -663,6 +663,7 @@ function resetarZoom() {
     cornerstone.setViewport(visualizadorDicom, viewport);
     cornerstone.resize(visualizadorDicom, true);
   }
+
   visualizacaoBox.scrollLeft = 0;
   visualizacaoBox.scrollTop = 0;
 
