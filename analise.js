@@ -616,99 +616,69 @@ function ativarInteracaoHistograma(canvas) {
 // Função para mostrar a tooltip do histograma, que exibe informações detalhadas sobre a barra do histograma sob o mouse, como a intensidade, a faixa de valores e a quantidade de pixels, usando um elemento de tooltip que é posicionado próximo ao mouse e atualizado conforme o mouse se move sobre o histograma, proporcionando uma experiência interativa e informativa para o usuário ao explorar os dados do histograma.
 function mostrarTooltipHistograma(event, canvas) {
 
-  const tooltip = document.getElementById("tooltipHistograma");
+  const tooltip = document.getElementById("tooltipHistograma"); 
   if (!tooltip || !histogramaAtual || histogramaAtual.length === 0) return;
-
   const indice = calcularIndicePeloMouse(event, canvas);
-
   if (indice < faixaInicioHistograma || indice > faixaFimHistograma) {
     tooltip.style.display = "none";
     return;
   }
-
-  const quantidade = histogramaAtual[indice] || 0;
-
+  const quantidade = histogramaAtual[indice] || 0; // Obtém a quantidade de pixels correspondente ao índice do bin sob o mouse, verificando se o valor existe no array do histograma e usando 0 como valor padrão caso o índice esteja fora dos limites do array, garantindo que a tooltip exiba uma quantidade válida mesmo quando o mouse estiver sobre uma área do histograma que não tem dados.
   const inicioBin = bordasHistogramaAtual[indice];
   const fimBin = bordasHistogramaAtual[indice + 1];
   const centroBin = obterCentroDoBin(indice);
-
   tooltip.innerHTML = `
-    <strong>Intensidade:</strong> ${formatarNumero(centroBin)}<br>
     <strong>Faixa:</strong> ${formatarNumero(inicioBin)} até ${formatarNumero(fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
-
   tooltip.style.display = "block";
   tooltip.style.left = event.clientX + 15 + "px";
   tooltip.style.top = event.clientY + 15 + "px";
 
 }
-
-
+// Função para calcular o índice do bin do histograma com base na posição do mouse no canvas, convertendo a posição do mouse em uma proporção da largura do gráfico e usando essa proporção para determinar qual índice do bin corresponde à posição do mouse, garantindo que a interação com a tooltip seja precisa e corresponda aos dados do histograma exibidos.
 function calcularIndicePeloMouse(event, canvas) {
-
   const margemEsquerda = 65;
   const margemDireita = 25;
-
   const rect = canvas.getBoundingClientRect();
-
   const xMouse = event.clientX - rect.left;
-
   const larguraGrafico = rect.width - margemEsquerda - margemDireita;
-
   if (larguraGrafico <= 0) return faixaInicioHistograma;
-
   let proporcao = (xMouse - margemEsquerda) / larguraGrafico;
-
   if (proporcao < 0) proporcao = 0;
   if (proporcao > 1) proporcao = 1;
-
   const indice = Math.round(
     faixaInicioHistograma + proporcao * (faixaFimHistograma - faixaInicioHistograma)
   );
-
   return indice;
 
 }
-
-
-// ======================================================================
-// FUNÇÕES AUXILIARES
-// ======================================================================
-
+// Função para obter o valor real correspondente ao centro do bin do histograma com base no índice do bin, usando as bordas do histograma para calcular o valor real correspondente ao centro do bin, o que é útil para exibir os valores corretos nos eixos e na tooltip do histograma, garantindo que a escala real dos valores seja mantida mesmo quando a faixa do histograma for ajustada.
 function obterCentroDoBin(indice) {
 
   if (!bordasHistogramaAtual || bordasHistogramaAtual.length < 2) return 0;
-
   if (indice < 0) indice = 0;
-
   if (indice >= bordasHistogramaAtual.length - 1) {
     indice = bordasHistogramaAtual.length - 2;
   }
-
   return (bordasHistogramaAtual[indice] + bordasHistogramaAtual[indice + 1]) / 2;
 
 }
-
-
+// Função para formatar um número para exibição, verificando se o valor é finito e se é um inteiro, e formatando com duas casas decimais apenas se for um número decimal, garantindo que os valores exibidos nas métricas e na tooltip do histograma sejam legíveis e adequados ao tipo de dado.
 function formatarNumero(valor) {
 
   if (!Number.isFinite(valor)) {
     return "---";
   }
-
   if (Number.isInteger(valor)) {
     return valor.toString();
   }
-
   return valor.toFixed(2);
 
 }
+// Fim das funções do histograma ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// ======================================================================
-// MÉTRICAS
-// ======================================================================
-
+// Funções de métrica
 function atualizarMetricasAnalise(soma, total, min, max) {
 
   const mediaElemento = document.getElementById("media");

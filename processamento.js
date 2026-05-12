@@ -663,11 +663,9 @@ function resetarZoom() {
     cornerstone.setViewport(visualizadorDicom, viewport);
     cornerstone.resize(visualizadorDicom, true);
   }
-
   visualizacaoBox.scrollLeft = 0;
   visualizacaoBox.scrollTop = 0;
 
-  statusText.innerText = "Zoom resetado.";
 }
 // Zoom com scroll na imagem comum
 imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na imagem comum
