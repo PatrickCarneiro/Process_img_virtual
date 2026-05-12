@@ -391,41 +391,9 @@ function definirCorBarrasHistograma(ctx) {
   }
 
 }
-
-
-
-// ======================================================================
-// MÉTRICAS
-// ======================================================================
-
-function atualizarMetricasAnalise(soma, total, min, max) {
-
-  const mediaElemento = document.getElementById("media");
-  const minimoElemento = document.getElementById("minimo");
-  const maximoElemento = document.getElementById("maximo");
-
-  if (mediaElemento) {
-    mediaElemento.innerText = total > 0 ? formatarNumero(soma / total) : "---";
-  }
-
-  if (minimoElemento) {
-    minimoElemento.innerText = Number.isFinite(min) ? formatarNumero(min) : "---";
-  }
-
-  if (maximoElemento) {
-    maximoElemento.innerText = Number.isFinite(max) ? formatarNumero(max) : "---";
-  }
-
-}
-
-
-
-
-
-
-
-
+// Função para desenhar os eixos X e Y do histograma, incluindo as linhas dos eixos, os valores de referência nos eixos, e os títulos dos eixos, usando uma cor mais forte para destacar os eixos em relação à grade, e é chamada após desenhar as barras para que os eixos fiquem sobre as barras, garantindo que sejam claramente visíveis.
 function desenharEixosHistograma(
+
   ctx,
   canvas,
   margemEsquerda,
@@ -435,93 +403,60 @@ function desenharEixosHistograma(
   larguraGrafico,
   alturaGrafico,
   maior
-) {
-
+) 
+{
   ctx.strokeStyle = "rgba(255,255,255,0.8)";
   ctx.lineWidth = 1.5;
-
-  // Eixo Y
-  ctx.beginPath();
+  ctx.beginPath(); // Eixo Y
   ctx.moveTo(margemEsquerda, margemSuperior);
   ctx.lineTo(margemEsquerda, canvas.height - margemInferior);
   ctx.stroke();
-
-  // Eixo X
-  ctx.beginPath();
+  ctx.beginPath(); // Eixo X
   ctx.moveTo(margemEsquerda, canvas.height - margemInferior);
   ctx.lineTo(canvas.width - margemDireita, canvas.height - margemInferior);
   ctx.stroke();
-
-  // Valores do eixo X
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillStyle = "rgba(255,255,255,0.9)"; // Valores do eixo X
   ctx.font = "12px Arial";
   ctx.textAlign = "center";
-
-  for (let i = 0; i <= 5; i++) {
-
-    const indice = Math.round(
-      faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i
+  for (let i = 0; i <= 5; i++) { // Calcula os índices correspondentes aos valores de referência no eixo X com base na faixa do histograma selecionada
+    const indice = Math.round(   // Calcula o índice do bin correspondente para cada valor de referência no eixo X, usando a fórmula que relaciona a posição do valor de referência na escala real com o índice do bin, arredondando para o inteiro mais próximo para obter o índice do bin que corresponde àquele valor de referência.
+      faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i 
     );
-
-    const valorReal = Math.round(obterCentroDoBin(indice));
-
+    const valorReal = Math.round(obterCentroDoBin(indice)); // Obtém o valor real correspondente ao índice do bin usando a função obterCentroDoBin, que calcula o centro do bin com base nas bordas do histograma, e arredonda para o inteiro mais próximo para exibir como valor de referência no eixo X.
     const x = margemEsquerda + (larguraGrafico / 5) * i;
-
     ctx.fillText(valorReal.toString(), x, canvas.height - 32);
-
   }
-
-  // Valores do eixo Y
-  ctx.textAlign = "right";
-
+  ctx.textAlign = "right"; // Valores do eixo Y
   for (let i = 0; i <= 5; i++) {
-
-    const valorY = Math.round((maior / 5) * (5 - i));
-
-    const y = margemSuperior + (alturaGrafico / 5) * i + 4;
-
-    ctx.fillText(valorY, margemEsquerda - 8, y);
-
+    const valorY = Math.round((maior / 5) * (5 - i)); // Calcula os valores de referência para o eixo Y com base no valor máximo do histograma visível, dividindo esse valor em 5 partes iguais para obter os valores de referência que serão exibidos no eixo Y, e arredondando para o inteiro mais próximo para exibir como valores de referência no eixo Y.
+    const y = margemSuperior + (alturaGrafico / 5) * i + 4; // Calcula a posição vertical (y) para cada valor de referência no eixo Y, posicionando o texto um pouco abaixo da linha correspondente para melhor legibilidade, usando a fórmula que relaciona a posição do valor de referência com a altura do gráfico e a margem superior.
+    ctx.fillText(valorY, margemEsquerda - 8, y); 
   }
-
-  // Título eixo X
-  ctx.textAlign = "center";
+  ctx.textAlign = "center"; // Título eixo X
   ctx.font = "13px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.95)";
-
   ctx.fillText(
-    "Intensidade real do pixel",
+    "Intensidade do pixel",
     margemEsquerda + larguraGrafico / 2,
     canvas.height - 10
-  );
-
-  // Título eixo Y
+  ); // Título eixo Y
   ctx.save();
-
   ctx.translate(18, margemSuperior + alturaGrafico / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center";
   ctx.font = "13px Arial";
   ctx.fillStyle = "rgba(255,255,255,0.95)";
   ctx.fillText("Quantidade de pixels", 0, 0);
-
   ctx.restore();
 
 }
-
-
-// ======================================================================
-// TEXTOS DO HISTOGRAMA
-// ======================================================================
-
+// Função para atualizar os textos informativos do histograma
 function atualizarTextosHistograma() {
 
   const faixaTexto = document.getElementById("faixaHistograma");
   const tituloHistograma = document.getElementById("tituloHistograma");
   const subtituloHistograma = document.getElementById("subtituloHistograma");
-
   let nomeCanal = "Escala de cinza";
-
   if (canalHistogramaAtual === "r") {
     nomeCanal = "Canal Vermelho";
   } else if (canalHistogramaAtual === "g") {
@@ -531,31 +466,17 @@ function atualizarTextosHistograma() {
   } else if (canalHistogramaAtual === "media") {
     nomeCanal = "Média RGB";
   }
-
   if (tituloHistograma) {
     tituloHistograma.innerText = `Histograma - ${nomeCanal}`;
   }
-
-  if (subtituloHistograma) {
-    subtituloHistograma.innerText = "Passe o mouse sobre as barras para ver a quantidade de pixels.";
-  }
-
   if (faixaTexto) {
-
     const inicioReal = obterCentroDoBin(faixaInicioHistograma);
     const fimReal = obterCentroDoBin(faixaFimHistograma);
-
     faixaTexto.innerText = `Intensidade de ${formatarNumero(inicioReal)} até ${formatarNumero(fimReal)}`;
-
   }
 
 }
-
-
-// ======================================================================
-// BOTÕES RGB
-// ======================================================================
-
+// Função para marcar o botão do canal ativo
 function marcarBotaoCanalAtivo(canal) {
 
   const botoes = [
@@ -563,214 +484,139 @@ function marcarBotaoCanalAtivo(canal) {
     document.getElementById("botaoCanalG"),
     document.getElementById("botaoCanalB"),
     document.getElementById("botaoCanalMedia")
-  ];
-
-  for (let i = 0; i < botoes.length; i++) {
-
+  ]; 
+  for (let i = 0; i < botoes.length; i++) { // Itera sobre os botões de seleção de canal e remove a classe "ativo" de todos eles para garantir que apenas o botão do canal atualmente selecionado fique marcado como ativo, usando um loop para percorrer o array de botões e verificar se cada botão existe antes de tentar remover a classe.
     if (botoes[i]) {
       botoes[i].classList.remove("ativo");
     }
-
   }
-
-  const mapaBotoes = {
+  const mapaBotoes = { // Cria um mapa associando os nomes dos canais aos seus respectivos elementos de botão no DOM, para facilitar a marcação do botão do canal ativo com base no nome do canal selecionado, usando um objeto onde as chaves são os nomes dos canais e os valores são os elementos de botão correspondentes obtidos pelo ID.
     r: document.getElementById("botaoCanalR"),
     g: document.getElementById("botaoCanalG"),
     b: document.getElementById("botaoCanalB"),
     media: document.getElementById("botaoCanalMedia")
   };
-
-  if (mapaBotoes[canal]) {
+  if (mapaBotoes[canal]) {  // Verifica se o botão correspondente ao canal selecionado existe no mapa e, se existir, adiciona a classe "ativo" a esse botão para marcar visualmente que ele é o canal atualmente selecionado, garantindo que o usuário possa identificar facilmente qual canal do histograma está sendo exibido.
     mapaBotoes[canal].classList.add("ativo");
   }
-
 }
-
-
-// ======================================================================
-// FAIXA DO HISTOGRAMA
-// ======================================================================
-
+// Função para obter o centro do bin do histograma com base no índice do bin, usando as bordas do histograma para calcular o valor real correspondente ao centro do bin, o que é útil para exibir os valores corretos nos eixos e na tooltip do histograma, garantindo que a escala real dos valores seja mantida mesmo quando a faixa do histograma for ajustada.
 function definirFaixaAutomaticaHistograma() {
 
-  if (!histogramaAtual || histogramaAtual.length === 0) {
+  if (!histogramaAtual || histogramaAtual.length === 0) { // Se o histograma atual não estiver definido ou estiver vazio, define a faixa do histograma para os valores padrão (0 a 255) e retorna, garantindo que haja uma faixa válida mesmo quando não houver dados no histograma.
     faixaInicioHistograma = 0;
     faixaFimHistograma = 0;
     return;
   }
-
   let inicio = 0;
   let fim = histogramaAtual.length - 1;
-
   for (let i = 0; i < histogramaAtual.length; i++) {
-
     if (histogramaAtual[i] > 0) {
       inicio = i;
       break;
     }
-
   }
-
   for (let i = histogramaAtual.length - 1; i >= 0; i--) {
-
     if (histogramaAtual[i] > 0) {
       fim = i;
       break;
     }
-
   }
-
   faixaInicioHistograma = inicio;
   faixaFimHistograma = fim;
-
   atualizarVisualFaixaHistograma();
 
 }
-
-
+// Variável global para controlar qual alça do seletor de faixa do histograma está sendo arrastada, podendo ser "esquerda", "direita" ou null quando nenhuma alça estiver sendo arrastada
 function configurarSeletorFaixaHistograma() {
 
   const alcaEsquerda = document.getElementById("alcaEsquerdaHistograma");
   const alcaDireita = document.getElementById("alcaDireitaHistograma");
-
   if (!alcaEsquerda || !alcaDireita) return;
-
   alcaEsquerda.onmousedown = function(event) {
-
     event.preventDefault();
     arrastandoAlcaHistograma = "esquerda";
-
   };
-
   alcaDireita.onmousedown = function(event) {
-
     event.preventDefault();
     arrastandoAlcaHistograma = "direita";
-
   };
 
 }
-
-
+// Função para atualizar a visualização da faixa selecionada no histograma, ajustando a posição das alças e da faixa selecionada com base nos índices de início e fim da faixa do histograma, convertendo esses índices em porcentagens para posicionar os elementos corretamente dentro do contêiner do histograma, garantindo que a representação visual da faixa selecionada corresponda aos dados do histograma.
 function atualizarVisualFaixaHistograma() {
 
   const alcaEsquerda = document.getElementById("alcaEsquerdaHistograma");
   const alcaDireita = document.getElementById("alcaDireitaHistograma");
   const faixaSelecionada = document.getElementById("faixaSelecionadaHistograma");
-
   if (!alcaEsquerda || !alcaDireita || !faixaSelecionada) return;
   if (!histogramaAtual || histogramaAtual.length === 0) return;
-
   const maximoIndice = histogramaAtual.length - 1;
-
-  if (maximoIndice <= 0) {
-
+  if (maximoIndice <= 0) { 
     alcaEsquerda.style.left = "0%";
     alcaDireita.style.left = "100%";
-
     faixaSelecionada.style.left = "0%";
     faixaSelecionada.style.width = "100%";
-
     return;
-
   }
-
   const porcentagemInicio = (faixaInicioHistograma / maximoIndice) * 100;
   const porcentagemFim = (faixaFimHistograma / maximoIndice) * 100;
-
   alcaEsquerda.style.left = porcentagemInicio + "%";
   alcaDireita.style.left = porcentagemFim + "%";
-
   faixaSelecionada.style.left = porcentagemInicio + "%";
   faixaSelecionada.style.width = (porcentagemFim - porcentagemInicio) + "%";
 
 }
-
-
-document.addEventListener("mousemove", function(event) {
-
+document.addEventListener("mousemove", function(event) { // Adiciona um listener para o evento de movimento do mouse, que é usado para atualizar a faixa do histograma quando o usuário arrasta as alças de seleção da faixa, verificando qual alça está sendo arrastada e ajustando os índices de início ou fim da faixa do histograma com base na posição do mouse em relação ao contêiner do histograma, garantindo que a faixa seja atualizada em tempo real conforme o usuário interage com as alças.
   if (!arrastandoAlcaHistograma) return;
-
   const barra = document.getElementById("barraFaixaHistograma");
-
   if (!barra || !histogramaAtual || histogramaAtual.length === 0) return;
-
   const maximoIndice = histogramaAtual.length - 1;
-
   if (maximoIndice <= 0) return;
-
   const rect = barra.getBoundingClientRect();
-
   let proporcao = (event.clientX - rect.left) / rect.width;
-
   if (proporcao < 0) proporcao = 0;
   if (proporcao > 1) proporcao = 1;
-
   let novoValor = Math.round(proporcao * maximoIndice);
-
   if (arrastandoAlcaHistograma === "esquerda") {
-
     if (novoValor > faixaFimHistograma) {
       novoValor = faixaFimHistograma;
     }
-
     faixaInicioHistograma = novoValor;
-
   }
-
   if (arrastandoAlcaHistograma === "direita") {
-
     if (novoValor < faixaInicioHistograma) {
       novoValor = faixaInicioHistograma;
     }
-
     faixaFimHistograma = novoValor;
-
   }
-
   atualizarVisualFaixaHistograma();
-
   desenharHistogramaAtual();
 
 });
-
-
 document.addEventListener("mouseup", function() {
   arrastandoAlcaHistograma = null;
 });
-
-
-// ======================================================================
-// TOOLTIP DO HISTOGRAMA
-// ======================================================================
-
+// Função para ativar a interação de tooltip no histograma, que exibe informações detalhadas sobre a barra do histograma sob o mouse, como a intensidade, a faixa de valores e a quantidade de pixels, usando um elemento de tooltip que é posicionado próximo ao mouse e atualizado conforme o mouse se move sobre o histograma, proporcionando uma experiência interativa e informativa para o usuário ao explorar os dados do histograma.
 function ativarInteracaoHistograma(canvas) {
 
   if (canvas.dataset.interacaoAtiva === "true") return;
-
   canvas.dataset.interacaoAtiva = "true";
-
   canvas.addEventListener("mousemove", function(event) {
     mostrarTooltipHistograma(event, canvas);
   });
-
   canvas.addEventListener("mouseleave", function() {
-
     const tooltip = document.getElementById("tooltipHistograma");
-
     if (tooltip) {
       tooltip.style.display = "none";
     }
-
   });
 
 }
-
-
+// Função para mostrar a tooltip do histograma, que exibe informações detalhadas sobre a barra do histograma sob o mouse, como a intensidade, a faixa de valores e a quantidade de pixels, usando um elemento de tooltip que é posicionado próximo ao mouse e atualizado conforme o mouse se move sobre o histograma, proporcionando uma experiência interativa e informativa para o usuário ao explorar os dados do histograma.
 function mostrarTooltipHistograma(event, canvas) {
 
   const tooltip = document.getElementById("tooltipHistograma");
-
   if (!tooltip || !histogramaAtual || histogramaAtual.length === 0) return;
 
   const indice = calcularIndicePeloMouse(event, canvas);
@@ -856,5 +702,29 @@ function formatarNumero(valor) {
   }
 
   return valor.toFixed(2);
+
+}
+
+// ======================================================================
+// MÉTRICAS
+// ======================================================================
+
+function atualizarMetricasAnalise(soma, total, min, max) {
+
+  const mediaElemento = document.getElementById("media");
+  const minimoElemento = document.getElementById("minimo");
+  const maximoElemento = document.getElementById("maximo");
+
+  if (mediaElemento) {
+    mediaElemento.innerText = total > 0 ? formatarNumero(soma / total) : "---";
+  }
+
+  if (minimoElemento) {
+    minimoElemento.innerText = Number.isFinite(min) ? formatarNumero(min) : "---";
+  }
+
+  if (maximoElemento) {
+    maximoElemento.innerText = Number.isFinite(max) ? formatarNumero(max) : "---";
+  }
 
 }
