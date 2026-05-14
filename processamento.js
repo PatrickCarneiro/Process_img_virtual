@@ -100,23 +100,41 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 function selecionarFerramenta(nome) {
 
-  parametrosDiv.style.display = "block"; // Mostra os parâmetros
-  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta escolhida é o filtro Gaussiano
+  parametrosDiv.style.display = "block"; // Mostra a área de parâmetros quando uma ferramenta é escolhida
+
+  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta escolhida foi o filtro Gaussiano
 
     parametrosDiv.innerHTML = `
-      <h4>Filtro Gaussiano</h4>
+      <h4>Parâmetros</h4>
+
       <label>Sigma</label>
-      <input type="number" id="param1" value="1" min="0.1" step="0.1"> 
+      <input 
+        type="number" 
+        id="param1" 
+        min="0.1" 
+        step="0.1" 
+        placeholder="Digite o sigma"
+      >
+
       <label>Tamanho do kernel</label>
-      <input type="number" id="param2" value="3" min="0" step="2"
+      <input 
+        type="number" 
+        id="param2" 
+        min="1" 
+        step="1" 
+        placeholder="Digite um valor ímpar"
+      >
+
       <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
         Aplicar
       </button>
     `;
+
     return;
   }
-  parametrosDiv.innerHTML = ` // Mostra os parâmetros
-    <h4>${nome}</h4> 
+
+  parametrosDiv.innerHTML = `
+    <h4>Parâmetros</h4>
     <label>Parâmetro 1</label>
     <input type="text" id="param1">
     <button class="botao-aplicar" onclick="aplicarFerramenta('${nome}')">
@@ -139,18 +157,15 @@ async function aplicarFerramenta(nome) {
   if (nome.includes("Gaussiano")) { // Caso a ferramenta seja o Filtro Gaussiano.
     const p1 = document.getElementById("param1");
     const p2 = document.getElementById("param2");
-    let sigma = p1 ? Number(p1.value) : 1;
-    let tamanhoKernel = p2 ? parseInt(p2.value) : 3;
-    if (!Number.isFinite(sigma) || sigma <= 0) { // Validação do sigma.
-      alert("Digite um valor de sigma maior que zero.");
+    const sigmaTexto = p1 ? p1.value.trim() : ""; // Pega o texto digitado no campo sigma
+    const kernelTexto = p2 ? p2.value.trim() : ""; // Pega o texto digitado no campo kernel
+    if (sigmaTexto === "") { // Obriga o usuário a digitar o sigma manualmente
+      alert("Digite o valor do sigma.");
       return;
     }
-    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 0) {
-      alert("Digite um tamanho de kernel maior ou igual a 0."); // Validação do kernel.
+    if (kernelTexto === "") { // Obriga o usuário a digitar o kernel manualmente
+      alert("Digite o tamanho do kernel.");
       return;
-    }
-    if (tamanhoKernel % 2 === 0) { // O kernel do filtro Gaussiano precisa ser ímpar.
-      tamanhoKernel = tamanhoKernel + 1;
     }
     const etapa = { // Cria uma etapa do pipeline.
       id: proximoIdEtapa++,
@@ -888,5 +903,5 @@ function carregarDicomOriginal(item) {
         reject(error);
       });
   });
-  
+
 }
