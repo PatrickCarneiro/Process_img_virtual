@@ -1,301 +1,193 @@
-// Arquivo responsável por aplicar o filtro Gaussiano na imagem exibida.
+
+// Arquivo responsável por aplicar o filtro Gaussiano usando OpenCV.js
 
 
-// FUNÇÃO PRINCIPAL
-// Essa função será chamada pelo processamento.js quando o usuário clicar em "Aplicar"
+// Função principal chamada pelo processamento.js
 function aplicarFiltroGaussiano(sigma, tamanhoKernel) {
 
-  sigma = Number(sigma); // Converte sigma para número
-  tamanhoKernel = parseInt(tamanhoKernel); // Converte tamanho do kernel para inteiro
-  if (!Number.isFinite(sigma) || sigma <= 0) { // Validação básica do sigma
-    alert("Digite um valor de sigma maior que zero.");
-    return;
+  sigma = Number(sigma); // Converte o sigma digitado para número
+  tamanhoKernel = parseInt(tamanhoKernel); // Converte o tamanho do kernel para número inteiro
+  if (!Number.isFinite(sigma) || sigma <= 0) { // Verifica se o sigma é válido e maior que zero
+    alert("Digite um valor de sigma maior que zero."); // Mostra alerta se o sigma estiver errado
+    return; // Para a função
   }
-  if (tamanhoKernel % 2 === 0) { // O kernel precisa ser ímpar, igual ao padrão usado em filtros espaciais
-    tamanhoKernel = tamanhoKernel + 1;
+  if (tamanhoKernel % 2 === 0) { // Verifica se o kernel é par
+    tamanhoKernel = tamanhoKernel + 1; // Transforma o kernel em ímpar, pois o filtro Gaussiano precisa de centro
   }
-  const kernel = criarKernelGaussiano1D(sigma, tamanhoKernel); // Cria o kernel Gaussiano 1D
-  if (imagemNormal.style.display === "block" && imagemNormal.src) { // Verifica se a imagem normal está sendo exibida
-    aplicarGaussianoImagemNormal(kernel);
-    return;
+  if (typeof cv === "undefined") { // Verifica se o OpenCV.js carregou
+    alert("OpenCV.js ainda não foi carregado."); // Mostra alerta se a biblioteca não estiver disponível
+    return; // Para a função
   }
-  if (visualizadorDicom.style.display === "block") { // Verifica se o DICOM está sendo exibido
-    aplicarGaussianoDicomVisivel(kernel);
-    return;
+  if (imagemNormal.style.display === "block" && imagemNormal.src) { // Verifica se existe uma imagem comum aberta
+    aplicarGaussianoOpenCVImagemNormal(sigma, tamanhoKernel); // Aplica o filtro na imagem comum
+    return; // Para a função
   }
-  alert("Nenhuma imagem carregada para aplicar o filtro.");
+  if (imagemDicomAtual) { // Se existe uma imagem DICOM atual carregada
+    aplicarGaussianoOpenCVDicomReal(sigma, tamanhoKernel); // Aplica o filtro nos pixels reais do DICOM
+    return; // Para a função
+  }
+  alert("Nenhuma imagem carregada para aplicar o filtro."); // Mostra aviso caso nenhuma imagem esteja aberta
 }
+// Função para aplicar filtro Gaussiano em imagem comum
+function aplicarGaussianoOpenCVImagemNormal(sigma, tamanhoKernel) {
 
-
-// ---------------------------------------------------------------------------------------------------------------------------------------------------------
-// CRIAÇÃO DO KERNEL GAUSSIANO
-// Este trecho replica em JavaScript a ideia do imgaussfilt do MATLAB: no MATLAB, o filtro Gaussiano cria uma máscara baseada em sigma e tamanho do filtro.
-// Aqui é criado um kernel Gaussiano 1D normalizado. Depois ele é aplicado em duas etapas: horizontal e vertical.
-// Isso imita a filtragem separável usada internamente pelo MATLAB para o filtro Gaussiano.
-// ---------------------------------------------------------------------------------------------------------------------------------------------------------
-function criarKernelGaussiano1D(sigma, tamanhoKernel) {
-
-  const kernel = []; 
-  const centro = Math.floor(tamanhoKernel / 2); 
-  let soma = 0;
-  for (let i = 0; i < tamanhoKernel; i++) { 
-    const x = i - centro;
-    const valor = Math.exp(-(x * x) / (2 * sigma * sigma)); // G(x) = exp(-(x²)/(2*sigma²))
-    kernel.push(valor);
-    soma += valor;
-  }
-  for (let i = 0; i < kernel.length; i++) {   // Normaliza o kernel para que a soma seja 1
-    kernel[i] = kernel[i] / soma; 
-  }
-  return kernel;
-
-}
-
-// -------------------------------------------------------------------------------------------------------------------------------------------------
-// APLICA FILTRO GAUSSIANO EM IMAGEM NORMAL
-// -------------------------------------------------------------------------------------------------------------------------------------------------
-function aplicarGaussianoImagemNormal(kernel) {
-
-  const canvasEntrada = document.createElement("canvas"); // Cria um canvas temporário para copiar a imagem original e acessar seus pixels
-  const ctxEntrada = canvasEntrada.getContext("2d"); // Pega o contexto 2D do canvas, que permite desenhar imagem e manipular pixels
-  canvasEntrada.width = imagemNormal.naturalWidth; // Define a largura do canvas igual à largura real da imagem carregada
-  canvasEntrada.height = imagemNormal.naturalHeight; // Define a altura do canvas igual à altura real da imagem carregada
-  ctxEntrada.drawImage(imagemNormal, 0, 0); // Desenha a imagem original dentro do canvas, começando na posição x = 0 e y = 0
-  const imageData = ctxEntrada.getImageData( // Obtém os dados dos pixels da imagem desenhada no canvas
-    0, // Coordenada x inicial da região que será lida
-    0, // Coordenada y inicial da região que será lida
-    canvasEntrada.width, // Largura da região lida, neste caso a imagem inteira
-    canvasEntrada.height // Altura da região lida, neste caso a imagem inteira
+  const canvasEntrada = document.createElement("canvas"); // Cria um canvas temporário de entrada
+  const ctxEntrada = canvasEntrada.getContext("2d"); // Pega o contexto 2D do canvas
+  canvasEntrada.width = imagemNormal.naturalWidth; // Define a largura igual à largura real da imagem
+  canvasEntrada.height = imagemNormal.naturalHeight; // Define a altura igual à altura real da imagem
+  ctxEntrada.drawImage(imagemNormal, 0, 0); // Desenha a imagem atual dentro do canvas
+  const src = cv.imread(canvasEntrada); // Lê o canvas como uma matriz OpenCV
+  const dst = new cv.Mat(); // Cria uma matriz vazia para receber a imagem filtrada
+  const ksize = new cv.Size(tamanhoKernel, tamanhoKernel); // Define o tamanho do kernel Gaussiano
+  // Esta linha replica no JavaScript/OpenCV o comportamento principal do imgaussfilt do MATLAB.
+  // O OpenCV aplica um filtro Gaussiano 2D na imagem usando o sigma e o tamanho do kernel informados.
+  // O parâmetro cv.BORDER_REPLICATE imita o padding 'replicate' usado como padrão no imgaussfilt.
+  cv.GaussianBlur(
+    src, // Imagem de entrada
+    dst, // Imagem de saída filtrada
+    ksize, // Tamanho do kernel, por exemplo 3x3, 5x5, 7x7
+    sigma, // Sigma no eixo X
+    sigma, // Sigma no eixo Y
+    cv.BORDER_REPLICATE // Repete os pixels da borda, semelhante ao MATLAB
   );
-  const filtrada = aplicarConvolucaoGaussianaSeparavel( // Aplica a convolução Gaussiana separável na imagem
-    imageData, // Dados dos pixels da imagem original
-    canvasEntrada.width, // Largura da imagem
-    canvasEntrada.height, // Altura da imagem
-    kernel // Kernel Gaussiano criado a partir do sigma e do tamanho digitado
-  );
-
-  const canvasSaida = document.createElement("canvas"); // Cria outro canvas temporário para montar a imagem já filtrada
-
-  const ctxSaida = canvasSaida.getContext("2d"); // Pega o contexto 2D do canvas de saída
-
-  canvasSaida.width = canvasEntrada.width; // Define a largura do canvas de saída igual à largura da imagem original
-
-  canvasSaida.height = canvasEntrada.height; // Define a altura do canvas de saída igual à altura da imagem original
-
-  ctxSaida.putImageData(filtrada, 0, 0); // Coloca os pixels filtrados dentro do canvas de saída na posição x = 0 e y = 0
-
-  imagemNormal.onload = function() { // Define uma função que será executada quando a imagem filtrada terminar de carregar no elemento imagemNormal
-
-    larguraOriginalAtual = imagemNormal.naturalWidth; // Atualiza a variável global com a largura real da nova imagem filtrada
-
-    alturaOriginalAtual = imagemNormal.naturalHeight; // Atualiza a variável global com a altura real da nova imagem filtrada
-
-    escalaBaseAtual = calcularEscalaAutomatica( // Calcula novamente a escala automática para ajustar a imagem filtrada na tela
-      larguraOriginalAtual, // Envia a largura da imagem filtrada para o cálculo da escala
-      alturaOriginalAtual // Envia a altura da imagem filtrada para o cálculo da escala
+  cv.imshow(canvasEntrada, dst); // Mostra a imagem filtrada de volta no canvas
+  imagemNormal.onload = function() { // Executa quando a imagem filtrada terminar de carregar
+    larguraOriginalAtual = imagemNormal.naturalWidth; // Atualiza a largura original
+    alturaOriginalAtual = imagemNormal.naturalHeight; // Atualiza a altura original
+    escalaBaseAtual = calcularEscalaAutomatica( // Recalcula a escala automática
+      larguraOriginalAtual, // Largura da imagem
+      alturaOriginalAtual // Altura da imagem
     );
-
-    zoomAtual = 1; // Reseta o zoom manual para 1, evitando manter zoom anterior após aplicar o filtro
-
-    atualizarTamanhoImagemAtual(); // Atualiza o tamanho visual da imagem na interface com base na escala e no zoom atuais
-
-    gerarAnaliseImagemNormal(imagemNormal); // Recalcula a análise da imagem, incluindo histograma, mínimo, máximo e média
-
-    statusText.innerText = "Filtro Gaussiano aplicado."; // Mostra uma mensagem informando que o filtro foi aplicado com sucesso
-
-  }; // Fecha a função onload
-
-  imagemNormal.src = canvasSaida.toDataURL(); // Converte o canvas filtrado em uma imagem base64 e coloca como nova fonte da imagem exibida
-  
-} // Fecha a função aplicarGaussianoImagemNormal
-
-
-// =================================================================================================
-// APLICA FILTRO GAUSSIANO NO DICOM VISÍVEL
-// Observação:
-// Aqui o filtro é aplicado sobre o canvas exibido pelo Cornerstone.
-// Ou seja, aplica no DICOM já renderizado na tela.
-// Para aplicar nos valores brutos reais do DICOM, seria necessário reconstruir uma imagem Cornerstone.
-// =================================================================================================
-function aplicarGaussianoDicomVisivel(kernel) {
-
-  const canvasDicom = visualizadorDicom.querySelector("canvas");
-
-  if (!canvasDicom) {
-    alert("Não foi possível acessar a imagem DICOM exibida.");
-    return;
-  }
-
-  const canvasEntrada = document.createElement("canvas");
-
-  const ctxEntrada = canvasEntrada.getContext("2d");
-
-  canvasEntrada.width = canvasDicom.width;
-  canvasEntrada.height = canvasDicom.height;
-
-  ctxEntrada.drawImage(canvasDicom, 0, 0);
-
-  const imageData = ctxEntrada.getImageData(
-    0,
-    0,
-    canvasEntrada.width,
-    canvasEntrada.height
-  );
-
-  const filtrada = aplicarConvolucaoGaussianaSeparavel(
-    imageData,
-    canvasEntrada.width,
-    canvasEntrada.height,
-    kernel
-  );
-
-  const canvasSaida = document.createElement("canvas");
-
-  const ctxSaida = canvasSaida.getContext("2d");
-
-  canvasSaida.width = canvasEntrada.width;
-  canvasSaida.height = canvasEntrada.height;
-
-  ctxSaida.putImageData(filtrada, 0, 0);
-
-  // Depois de filtrar o DICOM visível, a imagem filtrada passa a ser exibida como imagem comum.
-  // Isso permite visualizar imediatamente o efeito do filtro.
-  visualizadorDicom.style.display = "none";
-
-  imagemDicomAtual = null;
-
-  imagemNormal.style.display = "block";
-
-  imagemNormal.onload = function() {
-
-    larguraOriginalAtual = imagemNormal.naturalWidth;
-    alturaOriginalAtual = imagemNormal.naturalHeight;
-
-    escalaBaseAtual = calcularEscalaAutomatica(
-      larguraOriginalAtual,
-      alturaOriginalAtual
-    );
-
-    zoomAtual = 1;
-
-    atualizarTamanhoImagemAtual();
-
-    gerarAnaliseImagemNormal(imagemNormal);
-
-    statusText.innerText = "Filtro Gaussiano aplicado ao DICOM renderizado.";
+    zoomAtual = 1; // Reseta o zoom manual
+    atualizarTamanhoImagemAtual(); // Atualiza o tamanho da imagem na tela
+    gerarAnaliseImagemNormal(imagemNormal); // Recalcula histograma, mínimo, máximo e média
+    statusText.innerText = "Filtro Gaussiano aplicado com OpenCV.js."; // Atualiza o status
   };
+  imagemNormal.src = canvasEntrada.toDataURL(); // Converte o canvas filtrado em imagem e exibe na tela
+  src.delete(); // Libera memória da imagem de entrada
+  dst.delete(); // Libera memória da imagem de saída
 
-  imagemNormal.src = canvasSaida.toDataURL();
 }
+// FILTRO GAUSSIANO PARA DICOM REAL
+function aplicarGaussianoOpenCVDicomReal(sigma, tamanhoKernel) {
 
-
-// =================================================================================================
-// CONVOLUÇÃO GAUSSIANA SEPARÁVEL
-// Este trecho replica em JavaScript o processo do imgaussfilt no domínio espacial:
-// 1. Primeiro aplica o kernel Gaussiano na horizontal.
-// 2. Depois aplica o mesmo kernel na vertical.
-// Isso é equivalente a usar um filtro Gaussiano 2D, mas é mais eficiente.
-// Também usa padding do tipo "replicate", como o padrão do imgaussfilt.
-// =================================================================================================
-function aplicarConvolucaoGaussianaSeparavel(imageData, largura, altura, kernel) {
-
-  const entrada = imageData.data;
-
-  const temporario = new Float32Array(entrada.length);
-
-  const saida = new Uint8ClampedArray(entrada.length);
-
-  const raio = Math.floor(kernel.length / 2);
-
-  // -------------------------------------------------------------------------------------------------
-  // Primeira etapa: convolução horizontal
-  // Replicando a ideia do padding 'replicate' do MATLAB:
-  // quando o pixel calculado cai fora da imagem, usa o pixel mais próximo da borda.
-  // -------------------------------------------------------------------------------------------------
-  for (let y = 0; y < altura; y++) {
-
-    for (let x = 0; x < largura; x++) {
-
-      let somaR = 0;
-      let somaG = 0;
-      let somaB = 0;
-      let somaA = 0;
-
-      for (let k = -raio; k <= raio; k++) {
-
-        const xVizinho = limitarValor(x + k, 0, largura - 1);
-
-        const peso = kernel[k + raio];
-
-        const indice = (y * largura + xVizinho) * 4;
-
-        somaR += entrada[indice] * peso;
-        somaG += entrada[indice + 1] * peso;
-        somaB += entrada[indice + 2] * peso;
-        somaA += entrada[indice + 3] * peso;
-      }
-
-      const indiceAtual = (y * largura + x) * 4;
-
-      temporario[indiceAtual] = somaR;
-      temporario[indiceAtual + 1] = somaG;
-      temporario[indiceAtual + 2] = somaB;
-      temporario[indiceAtual + 3] = somaA;
-    }
+  const pixelsOriginais = imagemDicomAtual.getPixelData(); // Pega os pixels reais do DICOM
+  const largura = imagemDicomAtual.width; // Pega a largura real do DICOM
+  const altura = imagemDicomAtual.height; // Pega a altura real do DICOM
+  if (!pixelsOriginais || pixelsOriginais.length === 0) { // Verifica se os pixels existem
+    alert("Não foi possível acessar os pixels reais do DICOM."); // Mostra erro
+    return; // Para a função
   }
-
-  // -------------------------------------------------------------------------------------------------
-  // Segunda etapa: convolução vertical
-  // Essa etapa completa o filtro Gaussiano 2D usando o mesmo kernel 1D.
-  // -------------------------------------------------------------------------------------------------
-  for (let y = 0; y < altura; y++) {
-
-    for (let x = 0; x < largura; x++) {
-
-      let somaR = 0;
-      let somaG = 0;
-      let somaB = 0;
-      let somaA = 0;
-
-      for (let k = -raio; k <= raio; k++) {
-
-        const yVizinho = limitarValor(y + k, 0, altura - 1);
-
-        const peso = kernel[k + raio];
-
-        const indice = (yVizinho * largura + x) * 4;
-
-        somaR += temporario[indice] * peso;
-        somaG += temporario[indice + 1] * peso;
-        somaB += temporario[indice + 2] * peso;
-        somaA += temporario[indice + 3] * peso;
-      }
-
-      const indiceAtual = (y * largura + x) * 4;
-
-      saida[indiceAtual] = somaR;
-      saida[indiceAtual + 1] = somaG;
-      saida[indiceAtual + 2] = somaB;
-      saida[indiceAtual + 3] = somaA;
-    }
+  const pixelsFloat = new Float32Array(pixelsOriginais.length); // Cria array float para o OpenCV
+  for (let i = 0; i < pixelsOriginais.length; i++) { // Percorre todos os pixels
+    pixelsFloat[i] = Number(pixelsOriginais[i]); // Copia o valor real do pixel para float
   }
+  const src = cv.matFromArray(
+    altura, // Número de linhas da imagem
+    largura, // Número de colunas da imagem
+    cv.CV_32FC1, // Matriz com 1 canal e valores float
+    Array.from(pixelsFloat) // Dados reais do DICOM
+  );
+  const dst = new cv.Mat(); // Matriz que receberá o DICOM filtrado
+  const ksize = new cv.Size(tamanhoKernel, tamanhoKernel); // Define o tamanho do kernel
+  // Esta linha aplica o filtro Gaussiano diretamente nos valores reais do DICOM.
+  cv.GaussianBlur(
+    src, // Matriz DICOM original
+    dst, // Matriz DICOM filtrada
+    ksize, // Tamanho do kernel
+    sigma, // Sigma em X
+    sigma, // Sigma em Y
+    cv.BORDER_REPLICATE // Repete os pixels da borda
+  );
+  const pixelsFiltrados = new Float32Array(dst.data32F.length); // Cria array para guardar o resultado
+  for (let i = 0; i < dst.data32F.length; i++) { // Percorre o resultado do OpenCV
+    pixelsFiltrados[i] = dst.data32F[i]; // Copia cada pixel filtrado
+  }
+  exibirDicomFiltradoNoCornerstone(pixelsFiltrados, largura, altura);
+  atualizarAnaliseDicomFiltrado(pixelsFiltrados, largura, altura);
+  statusText.innerText = "Filtro Gaussiano aplicado nos valores reais do DICOM.";
+  src.delete(); // Libera memória da matriz original
+  dst.delete(); // Libera memória da matriz filtrada
 
-  return new ImageData(saida, largura, altura);
 }
+// EXIBE O DICOM FILTRADO COMO IMAGEM NA TELA
+function exibirDicomFiltradoNoCornerstone(pixelsFiltrados, largura, altura) {
 
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 0; i < pixelsFiltrados.length; i++) { 
+    const valor = pixelsFiltrados[i];
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
+  }
+  // Cria um novo objeto de imagem compatível com o Cornerstone
+  // A diferença é que o getPixelData() agora retorna os pixels filtrados,
+  const imagemFiltrada = {
+    imageId: "dicom_filtrado_gaussiano_" + Date.now(),
+    minPixelValue: min,
+    maxPixelValue: max,
+    slope: imagemDicomAtual.slope || 1,
+    intercept: imagemDicomAtual.intercept || 0,
+    windowCenter: (min + max) / 2,
+    windowWidth: max - min,
+    render: cornerstone.renderGrayscaleImage,
+    getPixelData: function() {
+      return pixelsFiltrados;
+    },
+    rows: altura,
+    columns: largura,
+    height: altura,
+    width: largura,
+    color: false,
+    rgba: false,
+    columnPixelSpacing: imagemDicomAtual.columnPixelSpacing || 1,
+    rowPixelSpacing: imagemDicomAtual.rowPixelSpacing || 1,
+    invert: imagemDicomAtual.invert || false,
+    sizeInBytes: pixelsFiltrados.length * pixelsFiltrados.BYTES_PER_ELEMENT
+  };
+  imagemDicomAtual = imagemFiltrada;   // Atualiza a variável global para que a próxima ferramenta use o DICOM filtrado
+  imagemNormal.style.display = "none"; // Garante que o visualizador DICOM continue sendo usado
+  visualizadorDicom.style.display = "block";
+  cornerstone.displayImage(visualizadorDicom, imagemFiltrada);   // Exibe a imagem filtrada no Cornerstone
+  cornerstone.resize(visualizadorDicom, true); // Ajusta o tamanho do visualizador
+  larguraOriginalAtual = largura; // Atualiza variáveis globais de tamanho
+  alturaOriginalAtual = altura;
+  escalaBaseAtual = calcularEscalaAutomatica(
+    larguraOriginalAtual,
+    alturaOriginalAtual
+  );
+  zoomAtual = 1;
 
-// =================================================================================================
-// FUNÇÃO AUXILIAR PARA PADDING REPLICATE
-// Se passar do limite da imagem, prende no valor mínimo ou máximo.
-// Exemplo:
-// x = -1 vira 0
-// x = largura vira largura - 1
-// =================================================================================================
-function limitarValor(valor, minimo, maximo) {
+}
+// ATUALIZA A ANÁLISE COM OS VALORES REAIS FILTRADOS DO DICOM
+function atualizarAnaliseDicomFiltrado(pixelsFiltrados, largura, altura) {
 
-  if (valor < minimo) return minimo;
-
-  if (valor > maximo) return maximo;
-
-  return valor;
+  atualizarTipoImagemAtual(
+    "DICOM filtrado - OpenCV.js - valores reais - " + largura + " x " + altura
+  ); // Atualiza texto do tipo de imagem
+  const valores = []; // Cria array comum para usar no histograma
+  for (let i = 0; i < pixelsFiltrados.length; i++) { // Percorre pixels filtrados
+    valores.push(Number(pixelsFiltrados[i])); // Adiciona valor ao array
+  }
+  const histDicom = criarHistograma(valores); // Cria histograma com os valores reais filtrados
+  histogramasImagemAtual = { // Atualiza objeto global de histogramas
+    cinza: histDicom, // Histograma principal em cinza
+    media: null, // Não usa média RGB
+    r: null, // Não usa canal vermelho
+    g: null, // Não usa canal verde
+    b: null // Não usa canal azul
+  };
+  const botoesRGB = document.getElementById("botoesCanaisRGB"); // Pega botões RGB
+  if (botoesRGB) { // Se os botões existem
+    botoesRGB.style.display = "none"; // Esconde, pois DICOM é monocanal
+  }
+  selecionarCanalHistograma("cinza"); // Seleciona canal cinza
+  atualizarMetricasAnalise( // Atualiza métricas numéricas
+    histDicom.soma, // Soma dos pixels
+    histDicom.total, // Total de pixels
+    histDicom.min, // Valor mínimo
+    histDicom.max // Valor máximo
+  );
+  desenharHistogramaAtual(); // Redesenha o histograma
+  
 }

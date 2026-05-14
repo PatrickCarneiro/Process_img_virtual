@@ -90,50 +90,24 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 } // Fecha toggleCategoria
 
-function selecionarFerramenta(nome) { // Função chamada ao clicar em uma ferramenta
-
-  parametrosDiv.style.display = "block"; // Mostra o painel de parâmetros
-
-  let html = `<h4>${nome}</h4>`; // Cria o título dos parâmetros
-
-  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta é filtro gaussiano
-
-    html += ` 
-      <label>Sigma</label>
-      <input type="number" id="param1" value="1" step="0.1">
-
-      <label>Tamanho do kernel</label>
-      <input type="number" id="param2" value="3">
-    `; // Campos específicos do filtro gaussiano
-
-  } else { // Caso seja outra ferramenta
-
-    html += `
-      <label>Parâmetro</label>
-      <input type="number" id="param1" value="3">
-    `; // Campo genérico
-
-  } // Fecha if/else
-
-  html += `<button class="botao-aplicar" onclick="aplicarFerramenta('${nome}')">Aplicar</button>`; // Botão aplicar
-
-  parametrosDiv.innerHTML = html; // Insere o HTML dos parâmetros na tela
-
-} // Fecha selecionarFerramenta
-
 function aplicarFerramenta(nome) { // Função chamada ao clicar em Aplicar
 
   const p1 = document.getElementById("param1"); // Pega o primeiro parâmetro
-
   const p2 = document.getElementById("param2"); // Pega o segundo parâmetro, se existir
-
-  let parametros = ""; // Cria texto vazio para os parâmetros
-
-  if (p1) parametros += `Parâmetro 1: ${p1.value}`; // Adiciona parâmetro 1 se existir
-
-  if (p2) parametros += `<br>Parâmetro 2: ${p2.value}`; // Adiciona parâmetro 2 se existir
-
-  addBlock(nome, parametros); // Adiciona a ferramenta ao fluxograma
+  let parametros = ""; // Texto que será mostrado no fluxograma
+  if (p1) parametros += `Parâmetro 1: ${p1.value}`; // Adiciona o primeiro parâmetro
+  if (p2) parametros += `<br>Parâmetro 2: ${p2.value}`; // Adiciona o segundo parâmetro
+  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta escolhida é o filtro Gaussiano
+    const sigma = p1 ? p1.value : 1; // Pega o sigma digitado ou usa 1 como padrão
+    const tamanhoKernel = p2 ? p2.value : 3; // Pega o kernel digitado ou usa 3 como padrão
+    aplicarFiltroGaussiano(sigma, tamanhoKernel); // Chama a função do arquivo gaussiano.js
+    addBlock( // Adiciona o filtro ao fluxograma
+      nome, // Nome da ferramenta
+      `Sigma: ${sigma}<br>Tamanho do kernel: ${tamanhoKernel}` // Parâmetros exibidos
+    );
+    return; // Para a função para não executar o addBlock genérico
+  }
+  addBlock(nome, parametros); // Mantém o comportamento antigo para outras ferramentas
 
 } // Fecha aplicarFerramenta
 
