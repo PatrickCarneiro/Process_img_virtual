@@ -90,6 +90,24 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 } // Fecha toggleCategoria
 
+function selecionarFerramenta(nome) {
+
+  if (nome.includes("Gaussiano")) {
+    parametrosDiv.style.display = "block";
+    parametrosDiv.innerHTML = `
+      <h4>Filtro Gaussiano</h4>
+      <label>Sigma</label>
+      <input type="number" id="param1" value="1" min="0.1" step="0.1">
+      <label>Tamanho do kernel</label>
+      <input type="number" id="param2" value="3" min="3" step="2">
+      <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
+        Aplicar
+      </button>
+    `;
+  }
+  
+}
+
 function aplicarFerramenta(nome) { // Função chamada ao clicar em Aplicar
 
   const p1 = document.getElementById("param1"); // Pega o primeiro parâmetro
