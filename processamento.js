@@ -100,38 +100,32 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 function selecionarFerramenta(nome) {
 
-  parametrosDiv.style.display = "block"; // Mostra a área de parâmetros quando uma ferramenta é escolhida
+  parametrosDiv.innerHTML = `
+    <h4>Parâmetros</h4>
 
-  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta escolhida foi o filtro Gaussiano
+    <label>Sigma</label>
+    <input 
+      type="number" 
+      id="param1" 
+      min="0.1" 
+      step="0.1" 
+      placeholder="Padrão: 1"
+    >
 
-    parametrosDiv.innerHTML = `
-      <h4>Parâmetros</h4>
+    <label>Tamanho do kernel</label>
+    <input 
+      type="number" 
+      id="param2" 
+      min="1" 
+      step="1" 
+      placeholder="Padrão: 3"
+    >
 
-      <label>Sigma</label>
-      <input 
-        type="number" 
-        id="param1" 
-        min="0.1" 
-        step="0.1" 
-        placeholder="Digite o sigma"
-      >
-
-      <label>Tamanho do kernel</label>
-      <input 
-        type="number" 
-        id="param2" 
-        min="1" 
-        step="1" 
-        placeholder="Digite um valor ímpar"
-      >
-
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
+    <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
+      Aplicar
+    </button>
+  `;
+ 
 
   parametrosDiv.innerHTML = `
     <h4>Parâmetros</h4>
@@ -157,8 +151,21 @@ async function aplicarFerramenta(nome) {
   if (nome.includes("Gaussiano")) { // Caso a ferramenta seja o Filtro Gaussiano.
     const p1 = document.getElementById("param1");
     const p2 = document.getElementById("param2");
-    const sigmaTexto = p1 ? p1.value.trim() : ""; // Pega o texto digitado no campo sigma
-    const kernelTexto = p2 ? p2.value.trim() : ""; // Pega o texto digitado no campo kernel
+    const sigmaTexto = p1 ? p1.value.trim() : ""; // Pega o valor digitado no campo sigma
+    const kernelTexto = p2 ? p2.value.trim() : ""; // Pega o valor digitado no campo kernel
+    let sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto); // Se não digitar sigma, usa 1 como padrão
+    let tamanhoKernel = kernelTexto === "" ? 3 : parseInt(kernelTexto); // Se não digitar kernel, usa 3 como padrão
+    if (!Number.isFinite(sigma) || sigma <= 0) { // Verifica se o sigma é válido
+      alert("Digite um valor de sigma maior que zero.");
+      return;
+    }
+    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel <= 0) { // Verifica se o kernel é válido
+      alert("Digite um tamanho de kernel maior que zero.");
+      return;
+    }
+    if (tamanhoKernel % 2 === 0) { // Verifica se o kernel é par
+      tamanhoKernel = tamanhoKernel + 1; // Se for par, transforma automaticamente no próximo ímpar
+    }
     if (sigmaTexto === "") { // Obriga o usuário a digitar o sigma manualmente
       alert("Digite o valor do sigma.");
       return;
