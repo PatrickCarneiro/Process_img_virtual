@@ -22,6 +22,14 @@ let modoPixelAtivo = false; // Controla se o modo de visualizar pixel está ativ
 
 let imagemDicomAtual = null; // Guarda a imagem DICOM atual para consultar os pixels
 
+let imagensProcessamento = []; // Guarda as imagens de trabalho no fluxograma
+
+let imagemAtualSelecionada = null; // Guarda qual imagem está aberta na tela neste momento.
+
+let pipelineFerramentas = []; // Guarda o pipeline de ferramentas do fluxograma
+
+let proximoIdEtapa = 1; // Guarda o id da próxima etapa no fluxograma
+
 const botaoZoom = document.getElementById("botaoZoom"); // Pega o botão de zoom
 
 let modoZoomAtivo = false; // Controla se o modo zoom está ativo
@@ -92,120 +100,118 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 function selecionarFerramenta(nome) {
 
-  if (nome.includes("Gaussiano")) {
-    parametrosDiv.style.display = "block";
+  parametrosDiv.style.display = "block"; // Mostra os parâmetros
+  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta escolhida é o filtro Gaussiano
+
     parametrosDiv.innerHTML = `
       <h4>Filtro Gaussiano</h4>
       <label>Sigma</label>
-      <input type="number" id="param1" value="1" min="0.1" step="0.1">
+      <input type="number" id="param1" value="1" min="0.1" step="0.1"> 
       <label>Tamanho do kernel</label>
-      <input type="number" id="param2" value="3" min="3" step="2">
+      <input type="number" id="param2" value="3" min="0" step="2"
       <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
         Aplicar
       </button>
     `;
+    return;
   }
-  
+  parametrosDiv.innerHTML = ` // Mostra os parâmetros
+    <h4>${nome}</h4> 
+    <label>Parâmetro 1</label>
+    <input type="text" id="param1">
+    <button class="botao-aplicar" onclick="aplicarFerramenta('${nome}')">
+      Aplicar
+    </button>
+  `;
+
 }
 
-function aplicarFerramenta(nome) { // Função chamada ao clicar em Aplicar
+async function aplicarFerramenta(nome) {
 
-  const p1 = document.getElementById("param1"); // Pega o primeiro parâmetro
-  const p2 = document.getElementById("param2"); // Pega o segundo parâmetro, se existir
-  let parametros = ""; // Texto que será mostrado no fluxograma
-  if (p1) parametros += `Parâmetro 1: ${p1.value}`; // Adiciona o primeiro parâmetro
-  if (p2) parametros += `<br>Parâmetro 2: ${p2.value}`; // Adiciona o segundo parâmetro
-  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta escolhida é o filtro Gaussiano
-    const sigma = p1 ? p1.value : 1; // Pega o sigma digitado ou usa 1 como padrão
-    const tamanhoKernel = p2 ? p2.value : 3; // Pega o kernel digitado ou usa 3 como padrão
-    aplicarFiltroGaussiano(sigma, tamanhoKernel); // Chama a função do arquivo gaussiano.js
-    addBlock( // Adiciona o filtro ao fluxograma
-      nome, // Nome da ferramenta
-      `Sigma: ${sigma}<br>Tamanho do kernel: ${tamanhoKernel}` // Parâmetros exibidos
-    );
-    return; // Para a função para não executar o addBlock genérico
+  if (imagensProcessamento.length === 0) {  // Verifica se existem imagens carregadas.
+    alert("Nenhuma imagem carregada para processar.");
+    return;
   }
-  addBlock(nome, parametros); // Mantém o comportamento antigo para outras ferramentas
+  if (typeof cv === "undefined") {   // Verifica se o OpenCV carregou.
+    alert("OpenCV.js ainda não foi carregado.");
+    return;
+  }
+  if (nome.includes("Gaussiano")) { // Caso a ferramenta seja o Filtro Gaussiano.
+    const p1 = document.getElementById("param1");
+    const p2 = document.getElementById("param2");
+    let sigma = p1 ? Number(p1.value) : 1;
+    let tamanhoKernel = p2 ? parseInt(p2.value) : 3;
+    if (!Number.isFinite(sigma) || sigma <= 0) { // Validação do sigma.
+      alert("Digite um valor de sigma maior que zero.");
+      return;
+    }
+    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 0) {
+      alert("Digite um tamanho de kernel maior ou igual a 0."); // Validação do kernel.
+      return;
+    }
+    if (tamanhoKernel % 2 === 0) { // O kernel do filtro Gaussiano precisa ser ímpar.
+      tamanhoKernel = tamanhoKernel + 1;
+    }
+    const etapa = { // Cria uma etapa do pipeline.
+      id: proximoIdEtapa++,
+      nome: "Filtro Gaussiano",
+      parametros: {
+        sigma: sigma,
+        tamanhoKernel: tamanhoKernel
+      }
+    };
+    pipelineFerramentas.push(etapa); // Adiciona a etapa à lista de ferramentas aplicadas.
+    await recalcularTodasAsImagens();// Recalcula todas as imagens desde a original.
+    desenharFluxograma(); // Atualiza o fluxograma visual.
+    statusText.innerText = "Filtro Gaussiano aplicado em todas as imagens.";
+    return;
+  }
+  alert("Ferramenta ainda não implementada no pipeline.");
 
-} // Fecha aplicarFerramenta
+}
 
-function addBlock(name, parametros) { // Função para criar bloco no fluxograma
+function desenharFluxograma() {
 
-  if (areaFluxograma.querySelector("p")) { // Verifica se existe mensagem inicial
+  areaFluxograma.innerHTML = ""; // Limpa toda a área do fluxograma.
+  if (pipelineFerramentas.length === 0) { // Se não existir nenhuma ferramenta aplicada, mostra a mensagem inicial.
+    return;
+  }
+  pipelineFerramentas.forEach(function(etapa, index) { // Percorre todas as etapas do pipeline.
+    if (index > 0) { // Se não for o primeiro bloco, adiciona uma seta antes.
+      const seta = document.createElement("div");
+      seta.className = "seta";
+      seta.innerText = "↓";
+      areaFluxograma.appendChild(seta);
+    }
+    const bloco = document.createElement("div"); // Cria o bloco visual da ferramenta.
+    bloco.className = "bloco_fluxo"; 
+    let textoParametros = ""; // Monta o texto dos parâmetros.
+    if (etapa.nome.includes("Gaussiano")) { // Caso seja o Filtro Gaussiano
+      textoParametros = `
+        Sigma: ${etapa.parametros.sigma}<br>
+        Tamanho do kernel: ${etapa.parametros.tamanhoKernel}
+      `;
+    }
+    bloco.innerHTML = `
+      <strong>${etapa.nome}</strong>
+      <div class="bloco_parametros">${textoParametros}</div>
+      <button class="remover" onclick="removerEtapaPipeline(${etapa.id})">
+        Remover
+      </button>
+    `;
+    areaFluxograma.appendChild(bloco);
+  });
 
-    areaFluxograma.innerHTML = ""; // Remove mensagem inicial
+}
+async function removerEtapaPipeline(idEtapa) {
 
-  } // Fecha if
+  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) { // Remove do array a etapa que possui o ID selecionado.
+    return etapa.id !== idEtapa;
+  });
+  await recalcularTodasAsImagens(); // Recalcula todas as imagens.
+  desenharFluxograma(); // Redesenha o fluxograma sem a etapa removida.
 
-  const quantidade = areaFluxograma.querySelectorAll(".bloco_fluxo").length; // Conta blocos existentes
-
-  if (quantidade > 0) { // Se já existe algum bloco
-
-    const seta = document.createElement("div"); // Cria uma div para seta
-
-    seta.className = "seta"; // Define classe da seta
-
-    seta.innerText = "↓"; // Define símbolo da seta
-
-    areaFluxograma.appendChild(seta); // Adiciona seta no fluxograma
-
-  } // Fecha if
-
-  const bloco = document.createElement("div"); // Cria div do bloco
-
-  bloco.className = "bloco_fluxo"; // Define classe do bloco
-
-  bloco.innerHTML = ` 
-    <strong>${name}</strong>
-    <div class="bloco_parametros">${parametros}</div>
-    <button class="remover">Remover</button>
-  `; // Define conteúdo do bloco
-
-  bloco.querySelector(".remover").onclick = function() { // Define ação do botão remover
-
-    bloco.remove(); // Remove o bloco
-
-    atualizarSetas(); // Reorganiza as setas
-
-  }; // Fecha função do botão remover
-
-  areaFluxograma.appendChild(bloco); // Adiciona bloco no fluxograma
-
-} // Fecha addBlock
-
-function atualizarSetas() { // Função para atualizar setas após remover bloco
-
-  const blocos = Array.from(areaFluxograma.querySelectorAll(".bloco_fluxo")); // Pega todos os blocos
-
-  areaFluxograma.innerHTML = ""; // Limpa o fluxograma
-
-  if (blocos.length === 0) { // Se não sobrou nenhum bloco
-
-    areaFluxograma.innerHTML = '<p style="opacity: 0.6;">Aplique uma ferramenta para montar o fluxo.</p>'; // Mostra mensagem inicial
-
-    return; // Para a função
-
-  } // Fecha if
-
-  blocos.forEach((bloco, index) => { // Percorre cada bloco
-
-    if (index > 0) { // Se não for o primeiro bloco
-
-      const seta = document.createElement("div"); // Cria seta
-
-      seta.className = "seta"; // Define classe
-
-      seta.innerText = "↓"; // Define símbolo
-
-      areaFluxograma.appendChild(seta); // Adiciona seta
-
-    } // Fecha if
-
-    areaFluxograma.appendChild(bloco); // Adiciona bloco novamente
-
-  }); // Fecha forEach
-
-} // Fecha atualizarSetas
+}
 
 function openDatabase() { // Função para abrir/criar o banco IndexedDB
 
@@ -284,86 +290,92 @@ function getFiles(db) { // Função para pegar arquivos da store files
   }); // Fecha Promise
 
 } // Fecha getFiles
+// Função para carregar arquivos
+async function loadFiles() { 
 
-async function loadFiles() { // Função para carregar arquivos salvos
+  try {
+    const db = await openDatabase(); // Abre o banco IndexedDB
+    const files = await getFiles(db);
+    if (files.length === 0) {
+      statusText.innerText = "Nenhum arquivo encontrado.";
+      return;
+    }
+    imagensProcessamento = files.map(function(item, index) { // Mapeia os arquivos para o array imagensProcessamento
+      return {
+        idProcessamento: index + 1,
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        file: item.file,
+        resultado: null
+      };
+    });
+    await recalcularTodasAsImagens(); 
+    desenharCardsImagensTrabalho();
+    if (imagensProcessamento.length > 0) {
+      openFile(imagensProcessamento[0]);
+    }
+    statusText.innerText = "Arquivos carregados.";
+  } catch (error) {
+    console.error(error);
+    statusText.innerText = "Erro ao carregar arquivos.";
+  }
+}
 
-  try { // Tenta executar o carregamento
+function desenharCardsImagensTrabalho() {
 
-    const db = await openDatabase(); // Abre o banco
+  imagensTrabalho.innerHTML = "";
 
-    const files = await getFiles(db); // Busca arquivos da store files
+  imagensProcessamento.forEach(function(item) {
+    criarCardImagem(item);
+  });
+}
 
-    if (files.length === 0) { // Se não houver arquivos
 
-      statusText.innerText = "Nenhum arquivo encontrado."; // Mostra mensagem
+// =================================================================================================
+// CRIA O CARD DE UMA IMAGEM
+// =================================================================================================
 
-      return; // Para a função
+function criarCardImagem(item) {
 
-    } // Fecha if
+  const card = document.createElement("div"); // Cria um card
+  card.className = "card_imagem";
+  if (item.type === "image") { // Se for imagem comum, mostra a miniatura do resultado atual.
+    const img = document.createElement("img");
+    if (item.resultado && item.resultado.tipo === "image") {
+      img.src = item.resultado.dataURL;
+    } else {
+      img.src = URL.createObjectURL(item.file);
+    }
 
-    imagensTrabalho.innerHTML = ""; // Limpa a área das imagens
+    card.appendChild(img);
+  }
+  if (item.type === "dicom") { // Se for DICOM, cria uma caixa para renderizar a miniatura.
+    const dicomBox = document.createElement("div");
+    dicomBox.className = "dicom_thumb";
+    card.appendChild(dicomBox);
+    if (item.resultado && item.resultado.tipo === "dicom") {
+      try {
+        cornerstone.enable(dicomBox);
+        cornerstone.displayImage(dicomBox, item.resultado.imagem);
+        cornerstone.resize(dicomBox, true);
+      } catch (error) {
+        dicomBox.innerText = "DICOM";
+      }
+    } else {
+      renderDicomThumbnail(item, dicomBox);
+    }
+  }
+  const nome = document.createElement("div");
+  nome.className = "nome_arquivo";
+  nome.innerText = item.name;
+  card.appendChild(nome);
+  card.onclick = function() {  // Ao clicar no card, abre a imagem já processada.
+    openFile(item);
+  };
+  imagensTrabalho.appendChild(card);
 
-    files.forEach((item) => { // Percorre todos os arquivos
-
-      criarCardImagem(item); // Cria card da imagem
-
-    }); // Fecha forEach
-
-    openFile(files[0]); // Abre o primeiro arquivo automaticamente
-
-  } catch (error) { // Captura erro
-
-    console.error(error); // Mostra erro no console
-
-    statusText.innerText = "Erro ao carregar arquivos."; // Mostra erro na tela
-
-  } // Fecha try/catch
-
-} // Fecha loadFiles
-
-function criarCardImagem(item) { // Função para criar card de imagem
-
-  const card = document.createElement("div"); // Cria div do card
-
-  card.className = "card_imagem"; // Define classe do card
-
-  if (item.type === "dicom") { // Verifica se é DICOM
-
-    const dicomBox = document.createElement("div"); // Cria div para miniatura DICOM
-
-    dicomBox.className = "dicom_thumb"; // Define classe da miniatura
-
-    card.appendChild(dicomBox); // Coloca miniatura dentro do card
-
-    renderDicomThumbnail(item, dicomBox); // Renderiza miniatura DICOM
-
-  } else { // Caso seja imagem comum
-
-    const img = document.createElement("img"); // Cria tag img
-
-    img.src = URL.createObjectURL(item.file); // Cria URL temporária para a imagem
-
-    card.appendChild(img); // Coloca imagem no card
-
-  } // Fecha if/else
-
-  const nome = document.createElement("div"); // Cria div do nome
-
-  nome.className = "nome_arquivo"; // Define classe do nome
-
-  nome.innerText = item.name; // Define nome do arquivo
-
-  card.appendChild(nome); // Coloca nome no card
-
-  card.onclick = function() { // Define clique no card
-
-    openFile(item); // Abre a imagem clicada
-
-  }; // Fecha onclick
-
-  imagensTrabalho.appendChild(card); // Adiciona card na área inferior
-
-} // Fecha criarCardImagem
+}
 
 async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
 
@@ -389,109 +401,88 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 
 } // Fecha renderDicomThumbnail
 
-function openFile(item) { // Função para abrir imagem selecionada
+function openFile(item) {
 
-  statusText.innerText = "Abrindo: " + item.name; // Atualiza status
-
-  resetarZoom(); // Reseta o zoom sempre que abre outra imagem
-
-  document.getElementById("arquivoAtual").innerText = item.name; // Atualiza nome na análise
-
-  if (item.type === "dicom") { // Se for DICOM
-
-    imagemNormal.style.display = "none"; // Esconde imagem comum
-
-    visualizadorDicom.style.display = "block"; // Mostra container DICOM
-
-    const dicomFile = new File([item.file], item.name); // Recria arquivo DICOM
-
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona ao loader
-
+  imagemAtualSelecionada = item; // Define imagem atual selecionada
+  statusText.innerText = "Abrindo: " + item.name;
+  resetarZoom(); 
+  const arquivoAtual = document.getElementById("arquivoAtual");
+  if (arquivoAtual) {
+    arquivoAtual.innerText = item.name;
+  }
+  if (item.type === "image") { // Abrir imagem normal
+    visualizadorDicom.style.display = "none";
+    imagemDicomAtual = null;
+    imagemNormal.style.display = "block";
+    if (item.resultado && item.resultado.tipo === "image") { // Usa o imagem processada se existir
+      imagemNormal.src = item.resultado.dataURL;
+    } else {
+      imagemNormal.src = URL.createObjectURL(item.file);
+    }
+    imagemNormal.onload = function() { // Executa quando a imagem filtrada terminar de carregar
+      larguraOriginalAtual = imagemNormal.naturalWidth;
+      alturaOriginalAtual = imagemNormal.naturalHeight;
+      escalaBaseAtual = calcularEscalaAutomatica(
+        larguraOriginalAtual,
+        alturaOriginalAtual
+      );
+      zoomAtual = 1;
+      atualizarTamanhoImagemAtual();
+      gerarAnaliseImagemNormal(imagemNormal);
+      statusText.innerText = "Imagem carregada: " + item.name;
+    };
+    return;
+  }
+  if (item.type === "dicom") { // Abrir DICOM
+    imagemNormal.style.display = "none";
+    visualizadorDicom.style.display = "block";
+    if (item.resultado && item.resultado.tipo === "dicom") {
+      const imagem = item.resultado.imagem;
+      imagemDicomAtual = imagem;
+      larguraOriginalAtual = imagem.width;
+      alturaOriginalAtual = imagem.height;
+      escalaBaseAtual = calcularEscalaAutomatica(
+        larguraOriginalAtual,
+        alturaOriginalAtual
+      );
+      zoomAtual = 1;
+      const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
+      const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+      visualizadorDicom.style.width = larguraInicial + "px";
+      visualizadorDicom.style.height = alturaInicial + "px";
+      cornerstone.displayImage(visualizadorDicom, imagem);
+      cornerstone.resize(visualizadorDicom, true);
+      gerarAnaliseDicom(imagem);
+      statusText.innerText = "DICOM carregado: " + item.name;
+      return;
+    }
+    const dicomFile = new File([item.file], item.name); // Se ainda não houver resultado, carrega o DICOM original.
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
     cornerstone.loadImage(imageId)
-
       .then(function(image) {
-
+        imagemDicomAtual = image;
         larguraOriginalAtual = image.width;
         alturaOriginalAtual = image.height;
-
         escalaBaseAtual = calcularEscalaAutomatica(
           larguraOriginalAtual,
           alturaOriginalAtual
         );
-
         zoomAtual = 1;
-
-        // Primeiro define o tamanho inicial do DICOM igual ao da imagem normal
         const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
         const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
-
         visualizadorDicom.style.width = larguraInicial + "px";
         visualizadorDicom.style.height = alturaInicial + "px";
-
-        // Agora exibe o DICOM já no tamanho correto
         cornerstone.displayImage(visualizadorDicom, image);
-
-        // Ajusta o canvas interno do Cornerstone ao tamanho da div
         cornerstone.resize(visualizadorDicom, true);
-
-        // Salva a escala inicial correta do Cornerstone
-        const viewport = cornerstone.getViewport(visualizadorDicom);
-
-        escalaDicomBase = viewport.scale;
-        zoomAtual = 1; // Reseta zoom manual
-
-        imagemDicomAtual = image; // Guarda imagem DICOM atual
-
-        gerarAnaliseDicom(image); // Gera análise do DICOM
-
+        gerarAnaliseDicom(image);
         statusText.innerText = "DICOM carregado: " + item.name;
-
       })
-
-      .catch(function(error) { // Captura erro ao abrir DICOM
-
-        console.error(error); // Mostra erro no console
-
-        statusText.innerText = "Erro ao abrir DICOM."; // Mostra erro na tela
-
-      }); // Fecha catch
-
-  } else { // Se for imagem comum
-
-    visualizadorDicom.style.display = "none"; // Esconde container DICOM
-
-    imagemDicomAtual = null; // Limpa imagem DICOM atual porque agora é imagem comum
-
-    imagemNormal.style.display = "block"; // Mostra imagem comum
-
-    const imageURL = URL.createObjectURL(item.file); // Cria URL temporária da imagem
-
-    imagemNormal.src = imageURL; // Define imagem no elemento img
-
-    imagemNormal.onload = function() { // Quando a imagem terminar de carregar
-
-      larguraOriginalAtual = imagemNormal.naturalWidth; // Salva largura original
-
-      alturaOriginalAtual = imagemNormal.naturalHeight; // Salva altura original
-
-      escalaBaseAtual = calcularEscalaAutomatica(
-        larguraOriginalAtual,
-        alturaOriginalAtual
-      ); // Calcula escala automática inicial
-
-      zoomAtual = 1; // Reseta zoom manual
-
-      atualizarTamanhoImagemAtual(); // Aplica tamanho inicial
-
-      gerarAnaliseImagemNormal(imagemNormal); // Gera análise da imagem
-
-    }; // Fecha onload
-
-    statusText.innerText = "Imagem carregada: " + item.name; // Atualiza status
-
-  } // Fecha if/else
-
-} // Fecha openFile
+      .catch(function(error) {
+        console.error(error);
+        statusText.innerText = "Erro ao abrir DICOM.";
+      });
+  }
+}
 
 // Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
 function togglePixelInfo() { // Função para ligar/desligar inspeção de pixel
@@ -802,5 +793,100 @@ visualizacaoBox.addEventListener("mouseleave", function() {
 });
 // Fecha a parte da função de arrastar a imagem --------------------------------------------------------
 
+// Recalcula todas as imagens processadas.
+async function recalcularTodasAsImagens() {
 
-// O carregamento dos arquivos agora é iniciado no processamento.html, depois que analise.html é carregado.
+  for (const item of imagensProcessamento) {   // Percorre todas as imagens carregadas.
+    if (item.type === "image") { // Se for imagem normal, recalcula usando canvas.
+      item.resultado = await processarImagemNormalPeloPipeline(item);
+    }
+    if (item.type === "dicom") { // Se for DICOM, recalcula usando pixels reais.
+      item.resultado = await processarDicomPeloPipeline(item);
+    }
+  }
+  // Atualiza os cards da parte inferior para mostrar os resultados atuais.
+  desenharCardsImagensTrabalho();
+  if (imagemAtualSelecionada) { // Se alguma imagem estava aberta, reabre a mesma imagem já atualizada.
+    const imagemAtualizada = imagensProcessamento.find(function(item) {
+      return item.idProcessamento === imagemAtualSelecionada.idProcessamento;
+    });
+    if (imagemAtualizada) {
+      openFile(imagemAtualizada);
+    }
+  }
+}
+// Processa uma imagem normal usando o pipeline de ferramentas.
+async function processarImagemNormalPeloPipeline(item) {
+
+  let canvasAtual = await criarCanvasOriginalImagemNormal(item.file); // Começa sempre pela imagem original.
+  for (const etapa of pipelineFerramentas) { // Aplica cada ferramenta na ordem do fluxograma.
+    if (etapa.nome.includes("Gaussiano")) { 
+      canvasAtual = aplicarGaussianoEmCanvas(
+        canvasAtual,
+        etapa.parametros.sigma,
+        etapa.parametros.tamanhoKernel
+      );
+    }
+  }
+  return { // Retorna o resultado final como DataURL para exibir no <img>.
+    tipo: "image",
+    dataURL: canvasAtual.toDataURL("image/png"),
+    largura: canvasAtual.width,
+    altura: canvasAtual.height
+  };
+}
+// Processa um DICOM usando o pipeline de ferramentas.
+async function processarDicomPeloPipeline(item) {
+
+  let imagemAtual = await carregarDicomOriginal(item); // Começa sempre pelo DICOM original.
+  for (const etapa of pipelineFerramentas) { // Aplica cada ferramenta na ordem do fluxograma.
+    if (etapa.nome.includes("Gaussiano")) {
+      imagemAtual = aplicarGaussianoEmDicom(
+        imagemAtual,
+        etapa.parametros.sigma,
+        etapa.parametros.tamanhoKernel
+      );
+    }
+  }
+  return {
+    tipo: "dicom",
+    imagem: imagemAtual
+  };
+
+}
+// Cria um canvas com a imagem original.
+function criarCanvasOriginalImagemNormal(file) {
+
+  return new Promise(function(resolve, reject) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas);
+    };
+    img.onerror = function(error) {
+      reject(error);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+}
+// Carrega um DICOM original.
+function carregarDicomOriginal(item) {
+
+  return new Promise(function(resolve, reject) {
+    const dicomFile = new File([item.file], item.name);
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+    cornerstone.loadImage(imageId)
+      .then(function(image) {
+        resolve(image);
+      })
+      .catch(function(error) {
+        reject(error);
+      });
+  });
+  
+}

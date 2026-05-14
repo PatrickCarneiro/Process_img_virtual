@@ -126,7 +126,7 @@ function gerarAnaliseImagemNormal(img) {
   desenharHistogramaAtual(); // Desenha o histograma do canal selecionado na tela
 }
 // Função específica para gerar o histograma a partir de uma imagem DICOM 
-function gerarAnaliseDicom(image) {
+function gerarAnaliseDicom(image) {    
 
   const pixels = image.getPixelData(); // Obtém os dados de pixel da imagem DICOM usando a função getPixelData() da biblioteca Cornerstone, que retorna um array com os valores de intensidade dos pixels.
   const tipoImagem = identificarTipoPelosPixels(pixels);
