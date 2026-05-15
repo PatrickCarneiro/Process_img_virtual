@@ -453,17 +453,27 @@ function openFile(item) {
     } else {
       imagemNormal.src = URL.createObjectURL(item.file);
     }
-    imagemNormal.onload = function() { // Executa quando a imagem filtrada terminar de carregar
-      larguraOriginalAtual = imagemNormal.naturalWidth;
-      alturaOriginalAtual = imagemNormal.naturalHeight;
+    imagemNormal.onload = function() {
+
+      larguraOriginalAtual = imagemNormal.naturalWidth; // Pega largura real da imagem
+      alturaOriginalAtual = imagemNormal.naturalHeight; // Pega altura real da imagem
+
       escalaBaseAtual = calcularEscalaAutomatica(
         larguraOriginalAtual,
         alturaOriginalAtual
-      );
-      zoomAtual = 1;
-      atualizarTamanhoImagemAtual();
-      gerarAnaliseImagemNormal(imagemNormal);
-      statusText.innerText = "Imagem carregada: " + item.name;
+      ); // Calcula escala para caber na tela
+
+      zoomAtual = 1; // Reseta zoom
+
+      atualizarTamanhoImagemAtual(); // Mostra a imagem rapidamente na tela
+
+      statusText.innerText = "Imagem carregada: " + item.name + ". Calculando análise...";
+
+      setTimeout(function() {
+        gerarAnaliseImagemNormal(imagemNormal); // Calcula histograma depois da imagem já aparecer
+        statusText.innerText = "Imagem carregada: " + item.name;
+      }, 50);
+
     };
     return;
   }
@@ -506,11 +516,17 @@ function openFile(item) {
         const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
         visualizadorDicom.style.width = larguraInicial + "px";
         visualizadorDicom.style.height = alturaInicial + "px";
-        cornerstone.displayImage(visualizadorDicom, image);
-        cornerstone.resize(visualizadorDicom, true);
-        gerarAnaliseDicom(image);
-        statusText.innerText = "DICOM carregado: " + item.name;
+        cornerstone.displayImage(visualizadorDicom, image); // Mostra o DICOM primeiro
+        cornerstone.resize(visualizadorDicom, true); // Ajusta o tamanho
+
+        statusText.innerText = "DICOM carregado: " + item.name + ". Calculando análise...";
+
+        setTimeout(function() {
+          gerarAnaliseDicom(image); // Calcula histograma depois
+          statusText.innerText = "DICOM carregado: " + item.name;
+        }, 50);
       })
+
       .catch(function(error) {
         console.error(error);
         statusText.innerText = "Erro ao abrir DICOM.";
