@@ -95,8 +95,6 @@ function toggleAnalises() {
 
 function gerarAnaliseImagemNormal(img, arquivo) {
 
-  atualizarTipoImagemNormal(img, arquivo); // Atualiza o tipo da imagem na aba
-
   const tempCanvas = document.createElement("canvas"); // Cria um canvas temporário
   const tempCtx = tempCanvas.getContext("2d"); // Pega o contexto 2D
 
@@ -107,6 +105,12 @@ function gerarAnaliseImagemNormal(img, arquivo) {
 
   const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height); // Pega os pixels
   const data = imageData.data; // Array RGBA da imagem
+
+  const tipoImagem = identificarTipoPelosPixels(data); // Identifica o tipo no estilo MATLAB
+
+    atualizarTipoImagemAtual(
+      tipoImagem + " - " + img.naturalWidth + " x " + img.naturalHeight
+    );
 
   const valoresR = []; // Guarda valores do canal vermelho
   const valoresG = []; // Guarda valores do canal verde
@@ -1020,23 +1024,65 @@ async function atualizarTipoImagemNormal(img, arquivo) {
 
 function identificarTipoPelosPixels(pixels) {
 
+  if (!pixels || pixels.length === 0) {
+    return "vazio";
+  }
+
   let min = Infinity;
   let max = -Infinity;
+  let temDecimal = false;
 
   for (let i = 0; i < pixels.length; i++) {
 
     const valor = Number(pixels[i]);
 
+    if (!Number.isFinite(valor)) continue;
+
     if (valor < min) min = valor;
     if (valor > max) max = valor;
 
+    if (!Number.isInteger(valor)) {
+      temDecimal = true;
+    }
+
   }
 
-  if (min >= 0 && max <= 255) return "uint8";
-  if (min >= 0 && max <= 4095) return "uint12";
-  if (min >= 0 && max <= 65535) return "uint16";
-  if (min >= -32768 && max <= 32767) return "int16";
+  if (min === Infinity || max === -Infinity) {
+    return "vazio";
+  }
 
-  return pixels.constructor.name;
+  if (!temDecimal && min >= 0 && max <= 1) {
+    return "logical";
+  }
+
+  if (pixels instanceof Uint8Array || pixels instanceof Uint8ClampedArray) {
+    return "uint8";
+  }
+
+  if (pixels instanceof Uint16Array) {
+    return "uint16";
+  }
+
+  if (pixels instanceof Float32Array || pixels instanceof Float64Array) {
+    return "double";
+  }
+
+  if (temDecimal) {
+    return "double";
+  }
+
+  if (min >= 0 && max <= 255) {
+    return "uint8";
+  }
+
+  if (min >= 0 && max <= 65535) {
+    return "uint16";
+  }
+
+  if (min >= -32768 && max <= 32767) {
+    return "int16";
+  }
+
+  return "double";
 
 }
