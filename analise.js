@@ -183,7 +183,9 @@ function gerarAnaliseDicom(image) {
   const tipoImagem = identificarTipoPelosPixels(pixels); // Identifica uint8, uint12, uint16 etc.
 
   atualizarTipoImagemAtual(
-    "DICOM - " + tipoImagem + " - " + image.width + " x " + image.height
+    "DICOM - " + tipoImagem,
+    image.width,
+    image.height
   );
 
   const valores = [];
@@ -250,6 +252,7 @@ function criarHistograma(valores) {
       max: 0,
       soma: 0,
       total: 0,
+      moda: NaN,
       tipo: "vazio"
     };
 
@@ -264,6 +267,7 @@ function criarHistograma(valores) {
       max: max,
       soma: soma,
       total: valoresValidos.length,
+      moda: min,
       tipo: "unico"
     };
 
@@ -295,6 +299,16 @@ function criarHistograma(valores) {
       contagens[indice]++;
     }
 
+    let indiceModa = 0;
+
+    for (let i = 1; i < contagens.length; i++) {
+      if (contagens[i] > contagens[indiceModa]) {
+        indiceModa = i;
+      }
+    }
+
+    const moda = min + indiceModa;
+
     return {
       contagens: contagens,
       bordas: bordas,
@@ -302,6 +316,7 @@ function criarHistograma(valores) {
       max: max,
       soma: soma,
       total: valoresValidos.length,
+      moda: moda,
       tipo: "inteiro"
     };
 
@@ -327,15 +342,26 @@ function criarHistograma(valores) {
 
   }
 
+  let indiceModa = 0;
+
+  for (let i = 1; i < contagens.length; i++) {
+    if (contagens[i] > contagens[indiceModa]) {
+      indiceModa = i;
+    }
+  }
+
+  const moda = (bordas[indiceModa] + bordas[indiceModa + 1]) / 2;
+
   return {
-    contagens: contagens,
-    bordas: bordas,
-    min: min,
-    max: max,
-    soma: soma,
-    total: valoresValidos.length,
-    tipo: "decimal"
-  };
+      contagens: contagens,
+      bordas: bordas,
+      min: min,
+      max: max,
+      soma: soma,
+      total: valoresValidos.length,
+      moda: moda,
+      tipo: "decimal"
+    };
 
 }
 
@@ -375,7 +401,8 @@ function atualizarMetricasDoCanalAtual() {
     histSelecionado.soma,
     histSelecionado.total,
     histSelecionado.min,
-    histSelecionado.max
+    histSelecionado.max,
+    histSelecionado.moda
   );
 
 }
@@ -944,11 +971,12 @@ function formatarNumero(valor) {
 
 // FUNÇÕES DE MÉTRICAS
 
-function atualizarMetricasAnalise(soma, total, min, max) {
+function atualizarMetricasAnalise(soma, total, min, max, moda) {
 
   const mediaElemento = document.getElementById("media");
   const minimoElemento = document.getElementById("minimo");
   const maximoElemento = document.getElementById("maximo");
+  const modaElemento = document.getElementById("moda");
 
   if (mediaElemento) {
     mediaElemento.innerText = total > 0 ? formatarNumero(soma / total) : "---";
@@ -962,14 +990,23 @@ function atualizarMetricasAnalise(soma, total, min, max) {
     maximoElemento.innerText = Number.isFinite(max) ? formatarNumero(max) : "---";
   }
 
+  if (modaElemento) {
+    modaElemento.innerText = Number.isFinite(moda) ? formatarNumero(moda) : "---";
+  }
+
 }
 
-function atualizarTipoImagemAtual(texto) {
+function atualizarTipoImagemAtual(tipo, largura, altura) {
 
   const tipoImagemAtual = document.getElementById("tipoImagemAtual");
+  const dimensaoImagemAtual = document.getElementById("dimensaoImagemAtual");
 
   if (tipoImagemAtual) {
-    tipoImagemAtual.innerText = texto;
+    tipoImagemAtual.innerText = tipo;
+  }
+
+  if (dimensaoImagemAtual) {
+    dimensaoImagemAtual.innerText = largura + " x " + altura;
   }
 
 }
@@ -1017,7 +1054,9 @@ async function atualizarTipoImagemNormal(img, arquivo) {
   const tipo = await identificarTipoArquivoImagem(arquivo);
 
   atualizarTipoImagemAtual(
-    tipo + " - " + img.naturalWidth + " x " + img.naturalHeight
+    tipo,
+    img.naturalWidth,
+    img.naturalHeight
   );
 
 }
