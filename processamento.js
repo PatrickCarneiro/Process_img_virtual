@@ -146,28 +146,42 @@ function selecionarFerramenta(nome) {
 
 async function aplicarFerramenta(nome) {
 
-  if (imagensProcessamento.length === 0) {  // Verifica se existem imagens carregadas.
+  if (imagensProcessamento.length === 0) { // Verifica se existem imagens carregadas
     alert("Nenhuma imagem carregada para processar.");
     return;
   }
-  if (typeof cv === "undefined") {   // Verifica se o OpenCV carregou.
+
+  if (typeof cv === "undefined") { // Verifica se o OpenCV carregou
     alert("OpenCV.js ainda não foi carregado.");
     return;
   }
-  if (nome.includes("Gaussiano")) { // Caso a ferramenta seja o Filtro Gaussiano.
-    const p1 = document.getElementById("param1");
-    const p2 = document.getElementById("param2");
-    const sigmaTexto = p1 ? p1.value.trim() : ""; // Pega o texto digitado no campo sigma
-    const kernelTexto = p2 ? p2.value.trim() : ""; // Pega o texto digitado no campo kernel
-    if (sigmaTexto === "") { // Obriga o usuário a digitar o sigma manualmente
-      alert("Digite o valor do sigma.");
+
+  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta é o Filtro Gaussiano
+
+    const p1 = document.getElementById("param1"); // Pega o campo sigma
+    const p2 = document.getElementById("param2"); // Pega o campo kernel
+
+    const sigmaTexto = p1 ? p1.value.trim() : ""; // Pega o valor digitado no sigma
+    const kernelTexto = p2 ? p2.value.trim() : ""; // Pega o valor digitado no kernel
+
+    let sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto); // Se vazio, usa padrão 1
+    let tamanhoKernel = kernelTexto === "" ? 3 : parseInt(kernelTexto); // Se vazio, usa padrão 3
+
+    if (!Number.isFinite(sigma) || sigma <= 0) { // Valida o sigma
+      alert("Digite um sigma válido maior que zero.");
       return;
     }
-    if (kernelTexto === "") { // Obriga o usuário a digitar o kernel manualmente
-      alert("Digite o tamanho do kernel.");
+
+    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 1) { // Valida o kernel
+      alert("Digite um tamanho de kernel válido.");
       return;
     }
-    const etapa = { // Cria uma etapa do pipeline.
+
+    if (tamanhoKernel % 2 === 0) { // Se o kernel for par
+      tamanhoKernel = tamanhoKernel + 1; // Transforma em ímpar
+    }
+
+    const etapa = { // Cria uma nova etapa do fluxograma
       id: proximoIdEtapa++,
       nome: "Filtro Gaussiano",
       parametros: {
@@ -175,14 +189,19 @@ async function aplicarFerramenta(nome) {
         tamanhoKernel: tamanhoKernel
       }
     };
-    pipelineFerramentas.push(etapa); // Adiciona a etapa à lista de ferramentas aplicadas.
-    await recalcularTodasAsImagens();// Recalcula todas as imagens desde a original.
-    desenharFluxograma(); // Atualiza o fluxograma visual.
-    statusText.innerText = "Filtro Gaussiano aplicado em todas as imagens.";
+
+    pipelineFerramentas.push(etapa); // Adiciona a etapa ao pipeline
+
+    await recalcularTodasAsImagens(); // Aplica o pipeline em todas as imagens
+
+    desenharFluxograma(); // Desenha o bloco no fluxograma
+
+    statusText.innerText = "Filtro Gaussiano aplicado em todas as imagens."; // Atualiza o status
+
     return;
   }
-  alert("Ferramenta ainda não implementada no pipeline.");
 
+  alert("Ferramenta ainda não implementada no pipeline.");
 }
 
 function desenharFluxograma() {
