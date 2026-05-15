@@ -176,7 +176,7 @@ function gerarAnaliseDicom(image) {
 
   if (!pixels || pixels.length === 0) return;
 
-  const tipoImagem = identificarTipoPelosPixels(pixels); // Identifica uint8, uint12, uint16, single, double etc.
+  const tipoImagem = identificarTipoPelosPixels(pixels); // Identifica uint8, uint12, uint16 etc.
 
   atualizarTipoImagemAtual(
     "DICOM - " + tipoImagem + " - " + image.width + " x " + image.height
@@ -185,10 +185,10 @@ function gerarAnaliseDicom(image) {
   const valores = [];
 
   for (let i = 0; i < pixels.length; i++) {
-    valores.push(Number(pixels[i]));
+    valores.push(Number(pixels[i])); // Converte os pixels para número
   }
 
-  const histDicom = criarHistograma(valores);
+  const histDicom = criarHistograma(valores); // Cria histograma do DICOM
 
   histogramasImagemAtual = {
     cinza: histDicom,
@@ -201,7 +201,7 @@ function gerarAnaliseDicom(image) {
   const botoesRGB = document.getElementById("botoesCanaisRGB");
 
   if (botoesRGB) {
-    botoesRGB.style.display = "none";
+    botoesRGB.style.display = "none"; // DICOM fica sem botões RGB
   }
 
   selecionarCanalHistograma("cinza");
@@ -1010,161 +1010,33 @@ async function identificarTipoArquivoImagem(arquivo) {
 
 async function atualizarTipoImagemNormal(img, arquivo) {
 
-  let tipo = "Imagem comum";
-
-  if (arquivo && arquivo.name) {
-
-    const nome = arquivo.name.toLowerCase();
-
-    if (nome.endsWith(".png")) {
-      tipo = await identificarTipoPNG(arquivo);
-    } else if (nome.endsWith(".jpg") || nome.endsWith(".jpeg")) {
-      tipo = "JPG - uint8";
-    } else if (nome.endsWith(".tif") || nome.endsWith(".tiff")) {
-      tipo = "TIFF - tipo original não preservado pelo canvas";
-    } else {
-      tipo = "Imagem comum - tipo convertido pelo navegador";
-    }
-
-  } else {
-    tipo = "Imagem comum - tipo convertido pelo navegador";
-  }
+  const tipo = await identificarTipoArquivoImagem(arquivo);
 
   atualizarTipoImagemAtual(
     tipo + " - " + img.naturalWidth + " x " + img.naturalHeight
   );
 
 }
+
 function identificarTipoPelosPixels(pixels) {
 
-  if (!pixels || pixels.length === 0) { // Verifica se existe array de pixels
-    return "indefinido";
-  }
+  let min = Infinity;
+  let max = -Infinity;
 
-  const construtor = pixels.constructor.name; // Pega o tipo original do array, quando existir
+  for (let i = 0; i < pixels.length; i++) {
 
-  let min = Infinity; // Menor valor encontrado
-  let max = -Infinity; // Maior valor encontrado
-  let temDecimal = false; // Verifica se existe valor decimal
-  let apenasZeroUm = true; // Verifica se todos os valores são 0 ou 1
+    const valor = Number(pixels[i]);
 
-  for (let i = 0; i < pixels.length; i++) { // Percorre todos os pixels
-
-    const valor = Number(pixels[i]); // Converte o valor para número
-
-    if (!Number.isFinite(valor)) { // Se tiver NaN ou infinito
-      continue;
-    }
-
-    if (valor < min) min = valor; // Atualiza mínimo
-    if (valor > max) max = valor; // Atualiza máximo
-
-    if (!Number.isInteger(valor)) { // Se não for inteiro
-      temDecimal = true; // Marca como decimal
-    }
-
-    if (valor !== 0 && valor !== 1) { // Se aparecer valor diferente de 0 e 1
-      apenasZeroUm = false; // Não é logical
-    }
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
 
   }
 
-  if (min === Infinity || max === -Infinity) { // Caso nenhum pixel válido seja encontrado
-    return "indefinido";
-  }
+  if (min >= 0 && max <= 255) return "uint8";
+  if (min >= 0 && max <= 4095) return "uint12";
+  if (min >= 0 && max <= 65535) return "uint16";
+  if (min >= -32768 && max <= 32767) return "int16";
 
-  if (apenasZeroUm) { // Se só tem 0 e 1
-    return "logical";
-  }
-
-  if (temDecimal) { // Se tem valores decimais
-
-    if (construtor === "Float32Array") {
-      return "single";
-    }
-
-    if (construtor === "Float64Array") {
-      return "double";
-    }
-
-    return "float";
-
-  }
-
-  if (construtor === "Uint8Array") {
-    return "uint8";
-  }
-
-  if (construtor === "Uint16Array") {
-
-    if (min >= 0 && max <= 4095) {
-      return "uint12";
-    }
-
-    return "uint16";
-
-  }
-
-  if (construtor === "Int16Array") {
-    return "int16";
-  }
-
-  if (construtor === "Uint32Array") {
-    return "uint32";
-  }
-
-  if (construtor === "Int32Array") {
-    return "int32";
-  }
-
-  if (min >= 0 && max <= 255) {
-    return "uint8";
-  }
-
-  if (min >= 0 && max <= 4095) {
-    return "uint12";
-  }
-
-  if (min >= 0 && max <= 65535) {
-    return "uint16";
-  }
-
-  if (min >= -32768 && max <= 32767) {
-    return "int16";
-  }
-
-  return construtor;
-
-}´
-
-async function identificarTipoPNG(arquivo) {
-
-  const buffer = await arquivo.slice(0, 32).arrayBuffer(); // Lê o cabeçalho do PNG
-  const bytes = new Uint8Array(buffer); // Converte para bytes
-
-  const bitDepth = bytes[24]; // Profundidade de bits do PNG
-  const colorType = bytes[25]; // Tipo de cor do PNG
-
-  let canais = 1;
-
-  if (colorType === 0) {
-    canais = 1; // Tons de cinza
-  } else if (colorType === 2) {
-    canais = 3; // RGB
-  } else if (colorType === 3) {
-    canais = 1; // Paleta
-  } else if (colorType === 4) {
-    canais = 2; // Cinza + alfa
-  } else if (colorType === 6) {
-    canais = 4; // RGBA
-  }
-
-  let tipo = "uint" + bitDepth;
-
-  if (bitDepth === 1) {
-    tipo = "logical";
-  }
-
-  return "PNG - " + tipo + " - " + canais + " canal(is)";
+  return pixels.constructor.name;
 
 }
