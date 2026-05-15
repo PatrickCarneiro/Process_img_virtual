@@ -47,6 +47,12 @@ function iniciarAnalise() {
         cabecalho.addEventListener("click", toggleAnalises); // Adiciona clique para abrir e fechar
       }
 
+      const botaoMapaPixel = document.getElementById("botaoMapaPixel"); // Pega o botão Mapa de pixel
+
+      if (botaoMapaPixel) {
+        botaoMapaPixel.addEventListener("click", exportarMapaPixelAtual); // Ao clicar, baixa o mapa de pixels
+      }
+
     })
     .catch(function(error) {
 
@@ -1124,4 +1130,177 @@ function identificarTipoPelosPixels(pixels) {
 
   return "double";
 
+}
+
+// FUNÇÃO PRINCIPAL PARA EXPORTAR O MAPA DE PIXEL DA IMAGEM ATUAL
+function exportarMapaPixelAtual() {
+
+  if (!imagemAtualSelecionada) { // Verifica se existe uma imagem aberta no momento
+    alert("Nenhuma imagem aberta para gerar o mapa de pixel.");
+    return;
+  }
+
+  if (imagemAtualSelecionada.type === "dicom") { // Se a imagem atual for DICOM
+    exportarMapaPixelDicom(); // Exporta usando os pixels reais do DICOM
+    return;
+  }
+
+  if (imagemAtualSelecionada.type === "image") { // Se a imagem atual for imagem comum
+    exportarMapaPixelImagemNormal(); // Exporta usando os pixels do canvas
+    return;
+  }
+
+  alert("Tipo de imagem não reconhecido.");
+}
+
+
+// EXPORTA MAPA DE PIXEL DE IMAGEM COMUM
+function exportarMapaPixelImagemNormal() {
+
+  if (!imagemNormal || !imagemNormal.src) { // Verifica se a imagem comum está carregada
+    alert("Nenhuma imagem comum carregada.");
+    return;
+  }
+
+  const canvas = document.createElement("canvas"); // Cria um canvas temporário
+  const ctx = canvas.getContext("2d"); // Pega o contexto 2D
+
+  canvas.width = imagemNormal.naturalWidth; // Define largura real da imagem
+  canvas.height = imagemNormal.naturalHeight; // Define altura real da imagem
+
+  ctx.drawImage(imagemNormal, 0, 0); // Desenha a imagem atual no canvas
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // Pega os pixels RGBA
+  const data = imageData.data; // Array com R, G, B e A
+
+  let imagemRGB = false; // Controla se a imagem tem canais diferentes
+
+  for (let i = 0; i < data.length; i += 4) { // Percorre os pixels
+    const r = data[i]; // Canal vermelho
+    const g = data[i + 1]; // Canal verde
+    const b = data[i + 2]; // Canal azul
+
+    if (r !== g || g !== b) { // Se algum canal for diferente
+      imagemRGB = true; // Considera imagem RGB
+      break;
+    }
+  }
+
+  const linhas = []; // Guarda as linhas do arquivo CSV
+
+  for (let y = 0; y < canvas.height; y++) { // Percorre as linhas da imagem
+
+    const linha = []; // Guarda os valores da linha atual
+
+    for (let x = 0; x < canvas.width; x++) { // Percorre as colunas da imagem
+
+      const indice = (y * canvas.width + x) * 4; // Calcula posição do pixel no array RGBA
+
+      const r = data[indice]; // Valor do canal vermelho
+      const g = data[indice + 1]; // Valor do canal verde
+      const b = data[indice + 2]; // Valor do canal azul
+
+      if (imagemRGB) { // Se for RGB
+        const media = (r + g + b) / 3; // Calcula média dos canais
+        linha.push(formatarValorMapaPixel(media)); // Salva a média como intensidade
+      } else { // Se for tons de cinza
+        linha.push(r); // Salva o valor direto
+      }
+
+    }
+
+    linhas.push(linha.join(";")); // Junta a linha separando por ponto e vírgula
+  }
+
+  const nomeArquivo = criarNomeArquivoMapaPixel("mapa_pixel_imagem"); // Cria nome do arquivo
+  baixarCSV(linhas.join("\n"), nomeArquivo); // Baixa o arquivo CSV
+}
+
+
+// EXPORTA MAPA DE PIXEL DE DICOM
+function exportarMapaPixelDicom() {
+
+  if (!imagemDicomAtual) { // Verifica se existe DICOM atual
+    alert("Nenhum DICOM carregado.");
+    return;
+  }
+
+  const pixels = imagemDicomAtual.getPixelData(); // Pega os pixels reais do DICOM
+  const largura = imagemDicomAtual.width; // Pega a largura da imagem
+  const altura = imagemDicomAtual.height; // Pega a altura da imagem
+
+  if (!pixels || pixels.length === 0) { // Verifica se existem pixels
+    alert("Não foi possível acessar os pixels do DICOM.");
+    return;
+  }
+
+  const linhas = []; // Guarda as linhas do arquivo CSV
+
+  for (let y = 0; y < altura; y++) { // Percorre as linhas da imagem
+
+    const linha = []; // Guarda os valores da linha atual
+
+    for (let x = 0; x < largura; x++) { // Percorre as colunas da imagem
+
+      const indice = y * largura + x; // Calcula a posição do pixel
+      linha.push(formatarValorMapaPixel(pixels[indice])); // Salva o valor real do pixel
+
+    }
+
+    linhas.push(linha.join(";")); // Junta a linha separando por ponto e vírgula
+  }
+
+  const nomeArquivo = criarNomeArquivoMapaPixel("mapa_pixel_dicom"); // Cria nome do arquivo
+  baixarCSV(linhas.join("\n"), nomeArquivo); // Baixa o arquivo CSV
+}
+
+
+// FORMATA O VALOR DO PIXEL PARA O CSV
+function formatarValorMapaPixel(valor) {
+
+  const numero = Number(valor); // Converte para número
+
+  if (!Number.isFinite(numero)) { // Se não for número válido
+    return ""; // Retorna vazio
+  }
+
+  if (Number.isInteger(numero)) { // Se for inteiro
+    return numero.toString(); // Retorna sem casas decimais
+  }
+
+  return numero.toFixed(4).replace(".", ","); // Retorna decimal com vírgula para abrir melhor no Excel BR
+}
+
+
+// CRIA O NOME DO ARQUIVO CSV
+function criarNomeArquivoMapaPixel(prefixo) {
+
+  let nomeBase = "imagem"; // Nome padrão
+
+  if (imagemAtualSelecionada && imagemAtualSelecionada.name) { // Se existir nome da imagem
+    nomeBase = imagemAtualSelecionada.name; // Usa o nome real
+  }
+
+  nomeBase = nomeBase.replace(/\.[^/.]+$/, ""); // Remove extensão
+  nomeBase = nomeBase.replace(/[^a-zA-Z0-9_-]/g, "_"); // Remove caracteres problemáticos
+
+  return prefixo + "_" + nomeBase + ".csv"; // Retorna nome final
+}
+
+
+// BAIXA O ARQUIVO CSV
+function baixarCSV(conteudo, nomeArquivo) {
+
+  const conteudoComBom = "\uFEFF" + conteudo; // Adiciona BOM para o Excel reconhecer acentos e separador
+  const blob = new Blob([conteudoComBom], { type: "text/csv;charset=utf-8;" }); // Cria arquivo CSV
+  const url = URL.createObjectURL(blob); // Cria link temporário
+
+  const link = document.createElement("a"); // Cria elemento de download
+  link.href = url; // Define o arquivo
+  link.download = nomeArquivo; // Define o nome
+  document.body.appendChild(link); // Adiciona na página
+  link.click(); // Clica automaticamente para baixar
+  document.body.removeChild(link); // Remove o link
+
+  URL.revokeObjectURL(url); // Libera memória
 }
