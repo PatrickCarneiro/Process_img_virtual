@@ -115,7 +115,9 @@ function gerarAnaliseImagemNormal(img, arquivo) {
   const tipoImagem = identificarTipoPelosPixels(data); // Identifica o tipo no estilo MATLAB
 
     atualizarTipoImagemAtual(
-      tipoImagem + " - " + img.naturalWidth + " x " + img.naturalHeight
+      tipoImagem,
+      img.naturalHeight,
+      img.naturalWidth
     );
 
   const valoresR = []; // Guarda valores do canal vermelho
@@ -190,8 +192,8 @@ function gerarAnaliseDicom(image) {
 
   atualizarTipoImagemAtual(
     "DICOM - " + tipoImagem,
-    image.width,
-    image.height
+    image.height,
+    image.width 
   );
 
   const valores = [];
@@ -1002,7 +1004,7 @@ function atualizarMetricasAnalise(soma, total, min, max, moda) {
 
 }
 
-function atualizarTipoImagemAtual(tipo, largura, altura) {
+function atualizarTipoImagemAtual(tipo, altura, largura) {
 
   const tipoImagemAtual = document.getElementById("tipoImagemAtual");
   const dimensaoImagemAtual = document.getElementById("dimensaoImagemAtual");
@@ -1012,7 +1014,7 @@ function atualizarTipoImagemAtual(tipo, largura, altura) {
   }
 
   if (dimensaoImagemAtual) {
-    dimensaoImagemAtual.innerText = largura + " x " + altura;
+    dimensaoImagemAtual.innerText = altura + " x " + largura;
   }
 
 }
@@ -1061,8 +1063,8 @@ async function atualizarTipoImagemNormal(img, arquivo) {
 
   atualizarTipoImagemAtual(
     tipo,
-    img.naturalWidth,
-    img.naturalHeight
+    img.naturalHeight,
+    img.naturalWidth
   );
 
 }
@@ -1287,7 +1289,7 @@ function criarNomeArquivoMapaPixel(prefixo) {
   return prefixo + "_" + nomeBase + ".csv"; // Retorna nome final
 }
 
-
+[]
 // BAIXA O ARQUIVO CSV
 function baixarCSV(conteudo, nomeArquivo) {
 
