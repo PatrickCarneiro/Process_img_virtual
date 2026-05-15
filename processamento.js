@@ -100,42 +100,43 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 function selecionarFerramenta(nome) {
 
+  parametrosDiv.style.display = "block"; // Mostra a área de parâmetros quando a ferramenta é escolhida
+
+  if (nome === "Filtro Gaussiano") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <label>Sigma</label>
+      <input 
+        type="number" 
+        id="param1" 
+        min="0.1" 
+        step="0.1" 
+        placeholder="Padrão: 1"
+      >
+
+      <label>Tamanho do kernel</label>
+      <input 
+        type="number" 
+        id="param2" 
+        min="1" 
+        step="1" 
+        placeholder="Padrão: 3"
+      >
+
+      <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
   parametrosDiv.innerHTML = `
     <h4>Parâmetros</h4>
-
-    <label>Sigma</label>
-    <input 
-      type="number" 
-      id="param1" 
-      min="0.1" 
-      step="0.1" 
-      placeholder="Padrão: 1"
-    >
-
-    <label>Tamanho do kernel</label>
-    <input 
-      type="number" 
-      id="param2" 
-      min="1" 
-      step="1" 
-      placeholder="Padrão: 3"
-    >
-
-    <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
-      Aplicar
-    </button>
+    <p>Ferramenta ainda não configurada.</p>
   `;
- 
-
-  parametrosDiv.innerHTML = `
-    <h4>Parâmetros</h4>
-    <label>Parâmetro 1</label>
-    <input type="text" id="param1">
-    <button class="botao-aplicar" onclick="aplicarFerramenta('${nome}')">
-      Aplicar
-    </button>
-  `;
-
 }
 
 async function aplicarFerramenta(nome) {
@@ -165,14 +166,6 @@ async function aplicarFerramenta(nome) {
     }
     if (tamanhoKernel % 2 === 0) { // Verifica se o kernel é par
       tamanhoKernel = tamanhoKernel + 1; // Se for par, transforma automaticamente no próximo ímpar
-    }
-    if (sigmaTexto === "") { // Obriga o usuário a digitar o sigma manualmente
-      alert("Digite o valor do sigma.");
-      return;
-    }
-    if (kernelTexto === "") { // Obriga o usuário a digitar o kernel manualmente
-      alert("Digite o tamanho do kernel.");
-      return;
     }
     const etapa = { // Cria uma etapa do pipeline.
       id: proximoIdEtapa++,
@@ -352,77 +345,82 @@ function desenharCardsImagensTrabalho() {
     criarCardImagem(item);
   });
 }
+// Função para renderizar miniaturas DICOM
+async function renderDicomThumbnail(item, container) {
 
+  try {
 
-// =================================================================================================
-// CRIA O CARD DE UMA IMAGEM
-// =================================================================================================
+    cornerstone.enable(container); // Habilita o elemento para o Cornerstone
 
-function criarCardImagem(item) {
+    const dicomFile = new File([item.file], item.name); // Recria o arquivo DICOM
 
-  const card = document.createElement("div"); // Cria um card
-  card.className = "card_imagem";
-  if (item.type === "image") { // Se for imagem comum, mostra a miniatura do resultado atual.
-    const img = document.createElement("img");
-    if (item.resultado && item.resultado.tipo === "image") {
-      img.src = item.resultado.dataURL;
-    } else {
-      img.src = URL.createObjectURL(item.file);
-    }
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona o arquivo ao loader
 
-    card.appendChild(img);
+    const image = await cornerstone.loadImage(imageId); // Carrega a imagem DICOM
+
+    const viewport = cornerstone.getDefaultViewportForImage(container, image); // Cria um viewport padrão
+
+    viewport.voi.windowCenter = image.windowCenter || ((image.minPixelValue + image.maxPixelValue) / 2); // Ajusta o centro da janela
+
+    viewport.voi.windowWidth = image.windowWidth || Math.max(1, image.maxPixelValue - image.minPixelValue); // Ajusta a largura da janela
+
+    viewport.invert = image.invert || false; // Mantém a inversão original, se existir
+
+    const escalaX = container.clientWidth / image.width; // Calcula escala horizontal
+
+    const escalaY = container.clientHeight / image.height; // Calcula escala vertical
+
+    viewport.scale = Math.min(escalaX, escalaY) * 0.95; // Ajusta para caber no card
+
+    cornerstone.displayImage(container, image, viewport); // Exibe o DICOM com contraste ajustado
+
+    cornerstone.resize(container, true); // Redimensiona dentro do card
+
+  } catch (error) {
+
+    console.error(error); // Mostra o erro no console
+
+    container.innerText = "DICOM"; // Mostra texto se não conseguir renderizar
   }
-  if (item.type === "dicom") { // Se for DICOM, cria uma caixa para renderizar a miniatura.
-    const dicomBox = document.createElement("div");
-    dicomBox.className = "dicom_thumb";
-    card.appendChild(dicomBox);
-    if (item.resultado && item.resultado.tipo === "dicom") {
-      try {
-        cornerstone.enable(dicomBox);
-        cornerstone.displayImage(dicomBox, item.resultado.imagem);
-        cornerstone.resize(dicomBox, true);
-      } catch (error) {
-        dicomBox.innerText = "DICOM";
-      }
-    } else {
-      renderDicomThumbnail(item, dicomBox);
-    }
-  }
-  const nome = document.createElement("div");
-  nome.className = "nome_arquivo";
-  nome.innerText = item.name;
-  card.appendChild(nome);
-  card.onclick = function() {  // Ao clicar no card, abre a imagem já processada.
-    openFile(item);
-  };
-  imagensTrabalho.appendChild(card);
-
 }
+// Função para renderizar miniaturas DICOM
+async function renderDicomThumbnail(item, container) {
 
-async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
+  try {
 
-  try { // Tenta renderizar
+    cornerstone.enable(container); // Habilita o elemento para o Cornerstone
 
-    cornerstone.enable(container); // Habilita container no Cornerstone
+    const dicomFile = new File([item.file], item.name); // Recria o arquivo DICOM
 
-    const dicomFile = new File([item.file], item.name); // Recria arquivo DICOM
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona o arquivo ao loader
 
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona arquivo ao loader
+    const image = await cornerstone.loadImage(imageId); // Carrega a imagem DICOM
 
-    const image = await cornerstone.loadImage(imageId); // Carrega imagem DICOM
+    const viewport = cornerstone.getDefaultViewportForImage(container, image); // Cria um viewport padrão
 
-    cornerstone.displayImage(container, image); // Mostra imagem no container
+    viewport.voi.windowCenter = image.windowCenter || ((image.minPixelValue + image.maxPixelValue) / 2); // Ajusta o centro da janela
 
-    cornerstone.resize(container, true); // Ajusta tamanho
+    viewport.voi.windowWidth = image.windowWidth || Math.max(1, image.maxPixelValue - image.minPixelValue); // Ajusta a largura da janela
 
-  } catch { // Se der erro
+    viewport.invert = image.invert || false; // Mantém a inversão original, se existir
 
-    container.innerText = "DICOM"; // Mostra texto DICOM
+    const escalaX = container.clientWidth / image.width; // Calcula escala horizontal
 
-  } // Fecha try/catch
+    const escalaY = container.clientHeight / image.height; // Calcula escala vertical
 
-} // Fecha renderDicomThumbnail
+    viewport.scale = Math.min(escalaX, escalaY) * 0.95; // Ajusta para caber no card
 
+    cornerstone.displayImage(container, image, viewport); // Exibe o DICOM com contraste ajustado
+
+    cornerstone.resize(container, true); // Redimensiona dentro do card
+
+  } catch (error) {
+
+    console.error(error); // Mostra o erro no console
+
+    container.innerText = "DICOM"; // Mostra texto se não conseguir renderizar
+  }
+}
 function openFile(item) {
 
   imagemAtualSelecionada = item; // Define imagem atual selecionada
