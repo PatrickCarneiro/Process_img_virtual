@@ -345,82 +345,60 @@ function desenharCardsImagensTrabalho() {
     criarCardImagem(item);
   });
 }
-// Função para renderizar miniaturas DICOM
+// Função para renderizar a miniatura de um arquivo DICOM
 async function renderDicomThumbnail(item, container) {
 
   try {
 
-    cornerstone.enable(container); // Habilita o elemento para o Cornerstone
+    // Limpa o conteúdo anterior do card
+    container.innerHTML = "";
 
-    const dicomFile = new File([item.file], item.name); // Recria o arquivo DICOM
+    // Garante tamanho mínimo para o Cornerstone conseguir desenhar
+    container.style.width = "100%";
+    container.style.height = "120px";
 
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona o arquivo ao loader
+    // Habilita o container no Cornerstone
+    cornerstone.enable(container);
 
-    const image = await cornerstone.loadImage(imageId); // Carrega a imagem DICOM
+    // Recria o arquivo DICOM salvo no IndexedDB
+    const dicomFile = new File([item.file], item.name);
 
-    const viewport = cornerstone.getDefaultViewportForImage(container, image); // Cria um viewport padrão
+    // Cria o imageId usado pelo loader WADO
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
 
-    viewport.voi.windowCenter = image.windowCenter || ((image.minPixelValue + image.maxPixelValue) / 2); // Ajusta o centro da janela
+    // Carrega a imagem DICOM original
+    const image = await cornerstone.loadImage(imageId);
 
-    viewport.voi.windowWidth = image.windowWidth || Math.max(1, image.maxPixelValue - image.minPixelValue); // Ajusta a largura da janela
+    // Primeiro exibe a imagem normalmente
+    cornerstone.displayImage(container, image);
 
-    viewport.invert = image.invert || false; // Mantém a inversão original, se existir
+    // Agora pega o viewport já criado pelo Cornerstone
+    const viewport = cornerstone.getViewport(container);
 
-    const escalaX = container.clientWidth / image.width; // Calcula escala horizontal
+    // Ajusta contraste/janela para não ficar tudo preto
+    const min = image.minPixelValue;
+    const max = image.maxPixelValue;
 
-    const escalaY = container.clientHeight / image.height; // Calcula escala vertical
+    viewport.voi.windowCenter = image.windowCenter || ((min + max) / 2);
+    viewport.voi.windowWidth = image.windowWidth || Math.max(1, max - min);
 
-    viewport.scale = Math.min(escalaX, escalaY) * 0.95; // Ajusta para caber no card
+    // Mantém inversão original
+    viewport.invert = image.invert || false;
 
-    cornerstone.displayImage(container, image, viewport); // Exibe o DICOM com contraste ajustado
+    // Aplica o viewport ajustado
+    cornerstone.setViewport(container, viewport);
 
-    cornerstone.resize(container, true); // Redimensiona dentro do card
-
-  } catch (error) {
-
-    console.error(error); // Mostra o erro no console
-
-    container.innerText = "DICOM"; // Mostra texto se não conseguir renderizar
-  }
-}
-// Função para renderizar miniaturas DICOM
-async function renderDicomThumbnail(item, container) {
-
-  try {
-
-    cornerstone.enable(container); // Habilita o elemento para o Cornerstone
-
-    const dicomFile = new File([item.file], item.name); // Recria o arquivo DICOM
-
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona o arquivo ao loader
-
-    const image = await cornerstone.loadImage(imageId); // Carrega a imagem DICOM
-
-    const viewport = cornerstone.getDefaultViewportForImage(container, image); // Cria um viewport padrão
-
-    viewport.voi.windowCenter = image.windowCenter || ((image.minPixelValue + image.maxPixelValue) / 2); // Ajusta o centro da janela
-
-    viewport.voi.windowWidth = image.windowWidth || Math.max(1, image.maxPixelValue - image.minPixelValue); // Ajusta a largura da janela
-
-    viewport.invert = image.invert || false; // Mantém a inversão original, se existir
-
-    const escalaX = container.clientWidth / image.width; // Calcula escala horizontal
-
-    const escalaY = container.clientHeight / image.height; // Calcula escala vertical
-
-    viewport.scale = Math.min(escalaX, escalaY) * 0.95; // Ajusta para caber no card
-
-    cornerstone.displayImage(container, image, viewport); // Exibe o DICOM com contraste ajustado
-
-    cornerstone.resize(container, true); // Redimensiona dentro do card
+    // Redimensiona para o card
+    cornerstone.resize(container, true);
 
   } catch (error) {
 
-    console.error(error); // Mostra o erro no console
+    console.error("Erro ao renderizar miniatura DICOM:", error);
 
-    container.innerText = "DICOM"; // Mostra texto se não conseguir renderizar
+    container.innerText = "DICOM";
   }
 }
+// Função para abrir um arquivo
 function openFile(item) {
 
   imagemAtualSelecionada = item; // Define imagem atual selecionada
