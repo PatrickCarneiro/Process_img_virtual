@@ -762,6 +762,8 @@ function atualizarTextosHistograma() {
 
   }
 
+}  
+
 function marcarBotaoCanalAtivo(canal) {
 
   const botoes = [
@@ -1368,7 +1370,6 @@ function criarNomeArquivoMapaPixel(prefixo) {
   return prefixo + "_" + nomeBase + ".csv"; // Retorna nome final
 }
 
-[]
 // BAIXA O ARQUIVO CSV
 function baixarCSV(conteudo, nomeArquivo) {
 
