@@ -340,6 +340,59 @@ function criarHistograma(valores) {
 
 }
 
+function obterInicioBin(indice) {
+
+  if (!bordasHistogramaAtual || bordasHistogramaAtual.length === 0) {
+    return 0;
+  }
+
+  if (indice < 0) {
+    indice = 0;
+  }
+
+  if (indice >= bordasHistogramaAtual.length - 1) {
+    indice = bordasHistogramaAtual.length - 2;
+  }
+
+  return Math.round(bordasHistogramaAtual[indice]);
+
+}
+
+// Função para obter o fim do bin
+function obterFimBin(indice) {
+
+  if (!bordasHistogramaAtual || bordasHistogramaAtual.length === 0) {
+    return 0;
+  }
+
+  if (indice < 0) {
+    indice = 0;
+  }
+
+  if (indice >= bordasHistogramaAtual.length - 1) {
+    indice = bordasHistogramaAtual.length - 2;
+  }
+
+  const inicio = bordasHistogramaAtual[indice];
+  const proximoInicio = bordasHistogramaAtual[indice + 1];
+
+  if (proximoInicio === inicio) {
+    return Math.round(inicio);
+  }
+
+  return Math.round(proximoInicio - 1);
+
+}
+
+function obterCentroDoBinInteiro(indice) {
+
+  const inicio = obterInicioBin(indice);
+  const fim = obterFimBin(indice);
+
+  return Math.round((inicio + fim) / 2);
+
+}
+
 // FUNÇÕES PARA TROCAR CANAIS DO HISTOGRAMA
 
 function selecionarCanalHistograma(canal) {
@@ -569,10 +622,10 @@ function desenharEixosHistograma(
       faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i
     );
 
-    const valorReal = obterCentroDoBin(indice);
+    const valorReal = obterCentroDoBinInteiro(indice);
     const x = margemEsquerda + (larguraGrafico / 5) * i;
 
-    ctx.fillText(formatarNumero(valorReal), x, canvas.height - 32);
+    ctx.fillText(valorReal.toString(), x, canvas.height - 32);
 
   }
 
@@ -639,16 +692,15 @@ function atualizarTextosHistograma() {
 
   if (faixaTexto) {
 
-    const inicioReal = obterCentroDoBin(faixaInicioHistograma);
-    const fimReal = obterCentroDoBin(faixaFimHistograma);
+    const inicioReal = obterInicioBin(faixaInicioHistograma);
+    const fimReal = obterFimBin(faixaFimHistograma);
 
     faixaTexto.innerText =
-      "Intensidade de " + formatarNumero(inicioReal) + " até " + formatarNumero(fimReal);
+      "Intensidade de " + inicioReal + " até " + fimReal;
 
   }
 
 }
-
 function marcarBotaoCanalAtivo(canal) {
 
   const botoes = [
@@ -872,11 +924,11 @@ function mostrarTooltipHistograma(event, canvas) {
   }
 
   const quantidade = histogramaAtual[indice] || 0;
-  const inicioBin = bordasHistogramaAtual[indice];
-  const fimBin = bordasHistogramaAtual[indice + 1];
+  const inicioBin = obterInicioBin(indice);
+  const fimBin = obterFimBin(indice);
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${formatarNumero(inicioBin)} até ${formatarNumero(fimBin)}<br>
+    <strong>Faixa:</strong> ${inicioBin} até ${fimBin}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
