@@ -443,6 +443,7 @@ function criarHistograma(valores) {
     moda: moda,
     tipo: "continuo"
   };
+}
 
 function formatarNumeroEixoX(valor) {
 
