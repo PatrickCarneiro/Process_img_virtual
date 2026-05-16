@@ -8,6 +8,23 @@ const imagemNormal = document.getElementById("imagemNormal"); // Pega a imagem c
 
 const statusText = document.getElementById("status"); // Pega o texto de status
 
+// Cria a barra de progresso do processamento
+const barraProcessamentoContainer = document.createElement("div");
+barraProcessamentoContainer.id = "barraProcessamentoContainer";
+barraProcessamentoContainer.style.display = "none";
+
+barraProcessamentoContainer.innerHTML = `
+  <div id="barraProcessamentoTexto">Processando imagens...</div>
+  <div id="barraProcessamentoFundo">
+    <div id="barraProcessamento"></div>
+  </div>
+`;
+
+statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
+
+const barraProcessamento = document.getElementById("barraProcessamento");
+const barraProcessamentoTexto = document.getElementById("barraProcessamentoTexto");
+
 const imagensTrabalho = document.getElementById("imagensTrabalho"); // Pega a área das imagens de trabalho
 
 const areaFluxograma = document.getElementById("areaFluxograma"); // Pega a área do fluxograma
@@ -844,20 +861,54 @@ visualizacaoBox.addEventListener("mouseleave", function() {
 // Recalcula todas as imagens processadas.
 async function recalcularTodasAsImagens() {
 
-  for (const item of imagensProcessamento) {   // Percorre todas as imagens carregadas.
-    if (item.type === "image") { // Se for imagem normal, recalcula usando canvas.
+  // Mostra a barra de progresso
+  barraProcessamentoContainer.style.display = "block";
+  barraProcessamento.style.width = "0%";
+  barraProcessamentoTexto.innerText = "Processando imagens... 0%";
+
+  const total = imagensProcessamento.length;
+
+  for (let i = 0; i < total; i++) {
+
+    const item = imagensProcessamento[i];
+
+    statusText.innerText = `Processando ${i + 1} de ${total}: ${item.name}`;
+
+    if (item.type === "image") {
       item.resultado = await processarImagemNormalPeloPipeline(item);
     }
-    if (item.type === "dicom") { // Se for DICOM, recalcula usando pixels reais.
+
+    if (item.type === "dicom") {
       item.resultado = await processarDicomPeloPipeline(item);
     }
+
+    const porcentagem = Math.round(((i + 1) / total) * 100);
+
+    barraProcessamento.style.width = porcentagem + "%";
+    barraProcessamentoTexto.innerText = `Processando imagens... ${porcentagem}%`;
+
+    // Dá tempo para o navegador atualizar a barra visualmente
+    await new Promise(function(resolve) {
+      requestAnimationFrame(resolve);
+    });
   }
-  // Atualiza os cards da parte inferior para mostrar os resultados atuais.
+
+  barraProcessamentoTexto.innerText = "Processamento concluído!";
+  statusText.innerText = "Processamento concluído.";
+
+  setTimeout(function() {
+    barraProcessamentoContainer.style.display = "none";
+    barraProcessamento.style.width = "0%";
+  }, 800);
+
+  // Atualiza os cards da parte inferior
   desenharCardsImagensTrabalho();
-  if (imagemAtualSelecionada) { // Se alguma imagem estava aberta, reabre a mesma imagem já atualizada.
+
+  if (imagemAtualSelecionada) {
     const imagemAtualizada = imagensProcessamento.find(function(item) {
       return item.idProcessamento === imagemAtualSelecionada.idProcessamento;
     });
+
     if (imagemAtualizada) {
       openFile(imagemAtualizada);
     }
