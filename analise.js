@@ -237,7 +237,7 @@ function criarHistograma(valores) {
 
   for (let i = 0; i < valores.length; i++) {
 
-    const valor = valores[i];
+    const valor = Number(valores[i]);
 
     if (Number.isFinite(valor)) {
 
@@ -281,58 +281,13 @@ function criarHistograma(valores) {
 
   }
 
-  let valoresSaoInteiros = true;
-
-  for (let i = 0; i < valoresValidos.length; i++) {
-
-    if (!Number.isInteger(valoresValidos[i])) {
-      valoresSaoInteiros = false;
-      break;
-    }
-
-  }
-
-  if (valoresSaoInteiros && (max - min <= 65535)) {
-
-    const quantidadeBins = max - min + 1;
-    const contagens = new Array(quantidadeBins).fill(0);
-    const bordas = new Array(quantidadeBins + 1);
-
-    for (let i = 0; i <= quantidadeBins; i++) {
-      bordas[i] = min - 0.5 + i;
-    }
-
-    for (let i = 0; i < valoresValidos.length; i++) {
-      const indice = valoresValidos[i] - min;
-      contagens[indice]++;
-    }
-
-    let indiceModa = 0;
-
-    for (let i = 1; i < contagens.length; i++) {
-      if (contagens[i] > contagens[indiceModa]) {
-        indiceModa = i;
-      }
-    }
-
-    const moda = min + indiceModa;
-
-    return {
-      contagens: contagens,
-      bordas: bordas,
-      min: min,
-      max: max,
-      soma: soma,
-      total: valoresValidos.length,
-      moda: moda,
-      tipo: "inteiro"
-    };
-
-  }
-
+  // Número fixo de bins, parecido com um histograma agrupado
+  // Se quiser mais parecido visualmente com MATLAB, pode testar 100, 128 ou 256
   const numBins = 256;
+
   const contagens = new Array(numBins).fill(0);
   const bordas = new Array(numBins + 1);
+
   const larguraBin = (max - min) / numBins;
 
   for (let i = 0; i <= numBins; i++) {
@@ -361,18 +316,17 @@ function criarHistograma(valores) {
   const moda = (bordas[indiceModa] + bordas[indiceModa + 1]) / 2;
 
   return {
-      contagens: contagens,
-      bordas: bordas,
-      min: min,
-      max: max,
-      soma: soma,
-      total: valoresValidos.length,
-      moda: moda,
-      tipo: "decimal"
-    };
+    contagens: contagens,
+    bordas: bordas,
+    min: min,
+    max: max,
+    soma: soma,
+    total: valoresValidos.length,
+    moda: moda,
+    tipo: "agrupado"
+  };
 
 }
-
 
 // FUNÇÕES PARA TROCAR CANAIS DO HISTOGRAMA
 
