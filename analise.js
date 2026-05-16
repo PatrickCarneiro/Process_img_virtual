@@ -270,7 +270,7 @@ function criarHistograma(valores) {
 
     return {
       contagens: [valoresValidos.length],
-      bordas: [min - 0.5, max + 0.5],
+      bordas: [Math.floor(min), Math.ceil(max) + 1],
       min: min,
       max: max,
       soma: soma,
@@ -281,25 +281,38 @@ function criarHistograma(valores) {
 
   }
 
-  // Número fixo de bins, parecido com um histograma agrupado
-  // Se quiser mais parecido visualmente com MATLAB, pode testar 100, 128 ou 256
-  const numBins = 256;
+  const minInteiro = Math.floor(min);
+  const maxInteiro = Math.ceil(max);
 
-  const contagens = new Array(numBins).fill(0);
-  const bordas = new Array(numBins + 1);
+  const numBinsDesejado = 256;
 
-  const larguraBin = (max - min) / numBins;
+  const intervaloTotal = maxInteiro - minInteiro + 1;
 
-  for (let i = 0; i <= numBins; i++) {
-    bordas[i] = min + i * larguraBin;
+  let larguraBinInteira = Math.ceil(intervaloTotal / numBinsDesejado);
+
+  if (larguraBinInteira < 1) {
+    larguraBinInteira = 1;
   }
+
+  const quantidadeBins = Math.ceil(intervaloTotal / larguraBinInteira);
+
+  const contagens = new Array(quantidadeBins).fill(0);
+  const bordas = new Array(quantidadeBins + 1);
+
+  for (let i = 0; i <= quantidadeBins; i++) {
+    bordas[i] = minInteiro + i * larguraBinInteira;
+  }
+
+  bordas[quantidadeBins] = maxInteiro + 1;
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
+    const valor = valoresValidos[i];
+
+    let indice = Math.floor((valor - minInteiro) / larguraBinInteira);
 
     if (indice < 0) indice = 0;
-    if (indice >= numBins) indice = numBins - 1;
+    if (indice >= quantidadeBins) indice = quantidadeBins - 1;
 
     contagens[indice]++;
 
@@ -313,7 +326,7 @@ function criarHistograma(valores) {
     }
   }
 
-  const moda = (bordas[indiceModa] + bordas[indiceModa + 1]) / 2;
+  const moda = Math.round((bordas[indiceModa] + bordas[indiceModa + 1] - 1) / 2);
 
   return {
     contagens: contagens,
@@ -323,25 +336,8 @@ function criarHistograma(valores) {
     soma: soma,
     total: valoresValidos.length,
     moda: moda,
-    tipo: "agrupado"
+    tipo: "agrupado_inteiro"
   };
-
-}
-
-// FUNÇÕES PARA TROCAR CANAIS DO HISTOGRAMA
-
-function selecionarCanalHistograma(canal) {
-
-  const histObj = histogramasImagemAtual[canal]; // Pega o histograma do canal escolhido
-
-  if (!histObj || !histObj.contagens || histObj.contagens.length === 0) return;
-
-  canalHistogramaAtual = canal; // Atualiza o canal atual
-  histogramaAtual = histObj.contagens; // Atualiza as contagens atuais
-  bordasHistogramaAtual = histObj.bordas; // Atualiza as bordas atuais
-
-  definirFaixaAutomaticaHistograma(); // Ajusta a faixa automaticamente
-  marcarBotaoCanalAtivo(canal); // Marca o botão ativo
 
 }
 
