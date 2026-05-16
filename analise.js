@@ -452,7 +452,11 @@ function formatarNumeroEixoX(valor) {
     return "---";
   }
 
-  return Math.round(valor).toString();
+  if (Number.isInteger(valor)) {
+    return valor.toString();
+  }
+
+  return valor.toFixed(2);
 
 }
 
@@ -755,11 +759,11 @@ function atualizarTextosHistograma() {
 
   if (faixaTexto) {
 
-    const inicioReal = obterCentroDoBin(faixaInicioHistograma);
-    const fimReal = obterCentroDoBin(faixaFimHistograma);
+    const inicioBin = bordasHistogramaAtual[faixaInicioHistograma];
+    const fimBin = bordasHistogramaAtual[faixaFimHistograma + 1];
 
     faixaTexto.innerText =
-      "Intensidade de " + formatarNumeroEixoX(inicioReal) + " até " + formatarNumeroEixoX(fimReal);
+      "Intensidade de " + Math.floor(inicioBin) + " até " + Math.ceil(fimBin);
 
   }
 
@@ -992,7 +996,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const fimBin = bordasHistogramaAtual[indice + 1];
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${formatarNumeroEixoX(inicioBin)} até ${formatarNumeroEixoX(fimBin)}<br>
+    <strong>Faixa:</strong> ${Math.floor(inicioBin)} até ${Math.ceil(fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
