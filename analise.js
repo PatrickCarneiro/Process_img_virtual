@@ -234,6 +234,7 @@ function criarHistograma(valores) {
   let soma = 0;
   let min = Infinity;
   let max = -Infinity;
+  let temDecimal = false;
 
   for (let i = 0; i < valores.length; i++) {
 
@@ -246,6 +247,10 @@ function criarHistograma(valores) {
 
       if (valor < min) min = valor;
       if (valor > max) max = valor;
+
+      if (!Number.isInteger(valor)) {
+        temDecimal = true;
+      }
 
     }
 
@@ -281,12 +286,125 @@ function criarHistograma(valores) {
 
   }
 
-  // Número fixo de bins, parecido com um histograma agrupado
-  // Se quiser mais parecido visualmente com MATLAB, pode testar 100, 128 ou 256
-  const numBins = 256;
+  // =====================================================
+  // HISTOGRAMA ESTILO MATLAB PARA DADOS INTEIROS
+  // Equivalente visual ao histogram(X,'BinMethod','integers')
+  // Cada valor inteiro recebe uma barra.
+  // Exemplo: 5, 6, 7, ..., 1500, 2000 etc.
+  // =====================================================
 
-  const contagens = new Array(numBins).fill(0);
-  const bordas = new Array(numBins + 1);
+  const limiteMaximoBins = 65536;
+
+  let contagens = [];
+  let bordas = [];
+  let moda = NaN;
+
+  if (!temDecimal) {
+
+    const minInt = Math.floor(min);
+    const maxInt = Math.ceil(max);
+
+    const quantidadeBinsNecessaria = maxInt - minInt + 1;
+
+    // Caso normal: uma barra para cada intensidade inteira
+    if (quantidadeBinsNecessaria <= limiteMaximoBins) {
+
+      contagens = new Array(quantidadeBinsNecessaria).fill(0);
+      bordas = new Array(quantidadeBinsNecessaria + 1);
+
+      // MATLAB no modo integers usa bordas no meio dos inteiros:
+      // valor 5 fica entre 4.5 e 5.5
+      for (let i = 0; i <= quantidadeBinsNecessaria; i++) {
+        bordas[i] = minInt - 0.5 + i;
+      }
+
+      for (let i = 0; i < valoresValidos.length; i++) {
+        const indice = valoresValidos[i] - minInt;
+
+        if (indice >= 0 && indice < contagens.length) {
+          contagens[indice]++;
+        }
+      }
+
+      let indiceModa = 0;
+
+      for (let i = 1; i < contagens.length; i++) {
+        if (contagens[i] > contagens[indiceModa]) {
+          indiceModa = i;
+        }
+      }
+
+      moda = minInt + indiceModa;
+
+      return {
+        contagens: contagens,
+        bordas: bordas,
+        min: min,
+        max: max,
+        soma: soma,
+        total: valoresValidos.length,
+        moda: moda,
+        tipo: "inteiros"
+      };
+
+    }
+
+    // Caso a faixa seja muito grande: limita em até 65536 bins,
+    // parecido com a proteção do MATLAB
+    const larguraBin = Math.ceil(quantidadeBinsNecessaria / limiteMaximoBins);
+    const numBins = Math.ceil(quantidadeBinsNecessaria / larguraBin);
+
+    contagens = new Array(numBins).fill(0);
+    bordas = new Array(numBins + 1);
+
+    for (let i = 0; i <= numBins; i++) {
+      bordas[i] = minInt - 0.5 + i * larguraBin;
+    }
+
+    for (let i = 0; i < valoresValidos.length; i++) {
+
+      let indice = Math.floor((valoresValidos[i] - (minInt - 0.5)) / larguraBin);
+
+      if (indice < 0) indice = 0;
+      if (indice >= numBins) indice = numBins - 1;
+
+      contagens[indice]++;
+
+    }
+
+    let indiceModa = 0;
+
+    for (let i = 1; i < contagens.length; i++) {
+      if (contagens[i] > contagens[indiceModa]) {
+        indiceModa = i;
+      }
+    }
+
+    moda = Math.round((bordas[indiceModa] + bordas[indiceModa + 1]) / 2);
+
+    return {
+      contagens: contagens,
+      bordas: bordas,
+      min: min,
+      max: max,
+      soma: soma,
+      total: valoresValidos.length,
+      moda: moda,
+      tipo: "inteiros_agrupado"
+    };
+
+  }
+
+  // =====================================================
+  // CASO TENHA DECIMAIS
+  // Exemplo: média RGB pode gerar valores como 120.33
+  // Aqui usa binagem automática simples, parecida com histograma contínuo.
+  // =====================================================
+
+  const numBins = Math.min(256, limiteMaximoBins);
+
+  contagens = new Array(numBins).fill(0);
+  bordas = new Array(numBins + 1);
 
   const larguraBin = (max - min) / numBins;
 
@@ -313,7 +431,7 @@ function criarHistograma(valores) {
     }
   }
 
-  const moda = (bordas[indiceModa] + bordas[indiceModa + 1]) / 2;
+  moda = (bordas[indiceModa] + bordas[indiceModa + 1]) / 2;
 
   return {
     contagens: contagens,
@@ -323,8 +441,18 @@ function criarHistograma(valores) {
     soma: soma,
     total: valoresValidos.length,
     moda: moda,
-    tipo: "agrupado"
+    tipo: "continuo"
   };
+
+}
+
+function formatarNumeroEixoX(valor) {
+
+  if (!Number.isFinite(valor)) {
+    return "---";
+  }
+
+  return Math.round(valor).toString();
 
 }
 
@@ -560,7 +688,7 @@ function desenharEixosHistograma(
     const valorReal = obterCentroDoBin(indice);
     const x = margemEsquerda + (larguraGrafico / 5) * i;
 
-    ctx.fillText(formatarNumero(valorReal), x, canvas.height - 32);
+    ctx.fillText(formatarNumeroEixoX(valorReal), x, canvas.height - 32);
 
   }
 
@@ -631,7 +759,7 @@ function atualizarTextosHistograma() {
     const fimReal = obterCentroDoBin(faixaFimHistograma);
 
     faixaTexto.innerText =
-      "Intensidade de " + formatarNumero(inicioReal) + " até " + formatarNumero(fimReal);
+      "Intensidade de " + formatarNumeroEixoX(inicioReal) + " até " + formatarNumeroEixoX(fimReal);
 
   }
 
@@ -864,7 +992,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const fimBin = bordasHistogramaAtual[indice + 1];
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${formatarNumero(inicioBin)} até ${formatarNumero(fimBin)}<br>
+    <strong>Faixa:</strong> ${formatarNumeroEixoX(inicioBin)} até ${formatarNumeroEixoX(fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
