@@ -758,7 +758,7 @@ function atualizarTextosHistograma() {
     const fimBin = bordasHistogramaAtual[faixaFimHistograma + 1];
 
     faixaTexto.innerText =
-      "Intensidade de " + Math.floor(inicioBin) + " até " + Math.floor(fimBin);
+      "Intensidade de " + formatarFaixaDecimalBin(inicioBin, fimBin);
 
   }
 
@@ -991,7 +991,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const fimBin = bordasHistogramaAtual[indice + 1];
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${Math.floor(inicioBin)} até ${Math.floor(fimBin)}<br>
+    <strong>Faixa:</strong> ${formatarFaixaDecimalBin(inicioBin, fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
@@ -1368,6 +1368,18 @@ function criarNomeArquivoMapaPixel(prefixo) {
   nomeBase = nomeBase.replace(/[^a-zA-Z0-9_-]/g, "_"); // Remove caracteres problemáticos
 
   return prefixo + "_" + nomeBase + ".csv"; // Retorna nome final
+}
+function formatarFaixaDecimalBin(inicioBin, fimBin) {
+
+  if (!Number.isFinite(inicioBin) || !Number.isFinite(fimBin)) {
+    return "---";
+  }
+
+  const inicio = Math.floor(inicioBin);
+  const fim = Math.floor(fimBin) - 0.01;
+
+  return inicio + " até " + fim.toFixed(2);
+
 }
 
 // BAIXA O ARQUIVO CSV
