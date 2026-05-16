@@ -341,6 +341,23 @@ function criarHistograma(valores) {
 
 }
 
+// FUNÇÕES PARA TROCAR CANAIS DO HISTOGRAMA
+
+function selecionarCanalHistograma(canal) {
+
+  const histObj = histogramasImagemAtual[canal]; // Pega o histograma do canal escolhido
+
+  if (!histObj || !histObj.contagens || histObj.contagens.length === 0) return;
+
+  canalHistogramaAtual = canal; // Atualiza o canal atual
+  histogramaAtual = histObj.contagens; // Atualiza as contagens atuais
+  bordasHistogramaAtual = histObj.bordas; // Atualiza as bordas atuais
+
+  definirFaixaAutomaticaHistograma(); // Ajusta a faixa automaticamente
+  marcarBotaoCanalAtivo(canal); // Marca o botão ativo
+
+}
+
 function trocarCanalHistograma(canal) {
 
   selecionarCanalHistograma(canal); // Troca o canal
