@@ -395,15 +395,21 @@ function criarHistograma(valores) {
 
   }
 
+  // =====================================================
+  // CASO TENHA DECIMAIS
+  // Exemplo: média RGB pode gerar valores como 120.33
+  // Aqui usa binagem automática simples, parecida com histograma contínuo.
+  // =====================================================
+
   const minBin = Math.floor(min);
   const maxBin = Math.ceil(max);
 
-  const quantidadeBinsNecessaria = maxBin - minBin;
+  const numBins = maxBin - minBin;
 
-  contagens = new Array(quantidadeBinsNecessaria).fill(0);
-  bordas = new Array(quantidadeBinsNecessaria + 1);
+  contagens = new Array(numBins).fill(0);
+  bordas = new Array(numBins + 1);
 
-  for (let i = 0; i <= quantidadeBinsNecessaria; i++) {
+  for (let i = 0; i <= numBins; i++) {
     bordas[i] = minBin + i;
   }
 
@@ -412,9 +418,7 @@ function criarHistograma(valores) {
     let indice = Math.floor(valoresValidos[i] - minBin);
 
     if (indice < 0) indice = 0;
-    if (indice >= quantidadeBinsNecessaria) {
-      indice = quantidadeBinsNecessaria - 1;
-    }
+    if (indice >= numBins) indice = numBins - 1;
 
     contagens[indice]++;
 
@@ -440,6 +444,7 @@ function criarHistograma(valores) {
     moda: moda,
     tipo: "continuo"
   };
+
 function formatarNumeroEixoX(valor) {
 
   if (!Number.isFinite(valor)) {
@@ -675,10 +680,14 @@ function desenharEixosHistograma(
 
   for (let i = 0; i <= 5; i++) {
 
-    const indice = Math.round(
-      faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i
-    );
+   const quantidadeBinsVisiveis = faixaFimHistograma - faixaInicioHistograma + 1;
 
+  let indice = faixaInicioHistograma + Math.floor(proporcao * quantidadeBinsVisiveis);
+
+  if (indice > faixaFimHistograma) {
+    indice = faixaFimHistograma;
+  }
+  
     const valorReal = obterCentroDoBin(indice);
     const x = margemEsquerda + (larguraGrafico / 5) * i;
 
