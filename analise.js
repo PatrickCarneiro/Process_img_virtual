@@ -395,29 +395,26 @@ function criarHistograma(valores) {
 
   }
 
-  // =====================================================
-  // CASO TENHA DECIMAIS
-  // Exemplo: média RGB pode gerar valores como 120.33
-  // Aqui usa binagem automática simples, parecida com histograma contínuo.
-  // =====================================================
+  const minBin = Math.floor(min);
+  const maxBin = Math.ceil(max);
 
-  const numBins = Math.min(256, limiteMaximoBins);
+  const quantidadeBinsNecessaria = maxBin - minBin;
 
-  contagens = new Array(numBins).fill(0);
-  bordas = new Array(numBins + 1);
+  contagens = new Array(quantidadeBinsNecessaria).fill(0);
+  bordas = new Array(quantidadeBinsNecessaria + 1);
 
-  const larguraBin = (max - min) / numBins;
-
-  for (let i = 0; i <= numBins; i++) {
-    bordas[i] = min + i * larguraBin;
+  for (let i = 0; i <= quantidadeBinsNecessaria; i++) {
+    bordas[i] = minBin + i;
   }
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
+    let indice = Math.floor(valoresValidos[i] - minBin);
 
     if (indice < 0) indice = 0;
-    if (indice >= numBins) indice = numBins - 1;
+    if (indice >= quantidadeBinsNecessaria) {
+      indice = quantidadeBinsNecessaria - 1;
+    }
 
     contagens[indice]++;
 
@@ -443,20 +440,13 @@ function criarHistograma(valores) {
     moda: moda,
     tipo: "continuo"
   };
-
-}
-
 function formatarNumeroEixoX(valor) {
 
   if (!Number.isFinite(valor)) {
     return "---";
   }
 
-  if (Number.isInteger(valor)) {
-    return valor.toString();
-  }
-
-  return valor.toFixed(2);
+  return Math.round(valor).toString();
 
 }
 
@@ -996,7 +986,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const fimBin = bordasHistogramaAtual[indice + 1];
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${Math.floor(inicioBin)} até ${Math.ceil(fimBin)}<br>
+    <strong>Faixa:</strong> ${Math.round(inicioBin)} até ${Math.round(fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
