@@ -414,7 +414,7 @@ function criarHistograma(valores) {
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    let indice = Math.floor(valoresValidos[i] - minBin);
+    let indice = Math.floor(valoresValidos[i]) - minBin;
 
     if (indice < 0) indice = 0;
     if (indice >= numBins) indice = numBins - 1;
@@ -431,7 +431,7 @@ function criarHistograma(valores) {
     }
   }
 
-  moda = (bordas[indiceModa] + bordas[indiceModa + 1]) / 2;
+  moda = minBin + indiceModa;
 
   return {
     contagens: contagens,
@@ -451,11 +451,7 @@ function formatarNumeroEixoX(valor) {
     return "---";
   }
 
-  if (Number.isInteger(valor)) {
-    return valor.toString();
-  }
-
-  return valor.toFixed(2);
+  return Math.floor(valor).toString();
 
 }
 
@@ -762,11 +758,9 @@ function atualizarTextosHistograma() {
     const fimBin = bordasHistogramaAtual[faixaFimHistograma + 1];
 
     faixaTexto.innerText =
-      "Intensidade de " + Math.floor(inicioBin) + " até " + Math.ceil(fimBin);
+      "Intensidade de " + Math.floor(inicioBin) + " até " + Math.floor(fimBin);
 
   }
-
-}
 
 function marcarBotaoCanalAtivo(canal) {
 
@@ -995,7 +989,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const fimBin = bordasHistogramaAtual[indice + 1];
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${Math.floor(inicioBin)} até ${Math.ceil(fimBin)}<br>
+    <strong>Faixa:</strong> ${Math.floor(inicioBin)} até ${Math.floor(fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
