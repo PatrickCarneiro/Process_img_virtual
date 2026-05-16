@@ -268,9 +268,11 @@ function criarHistograma(valores) {
 
   if (min === max) {
 
+    const valorInteiro = Math.round(min);
+
     return {
       contagens: [valoresValidos.length],
-      bordas: [Math.floor(min), Math.ceil(max) + 1],
+      bordas: [valorInteiro, valorInteiro],
       min: min,
       max: max,
       soma: soma,
@@ -285,7 +287,6 @@ function criarHistograma(valores) {
   const maxInteiro = Math.ceil(max);
 
   const numBinsDesejado = 256;
-
   const intervaloTotal = maxInteiro - minInteiro + 1;
 
   let larguraBinInteira = Math.ceil(intervaloTotal / numBinsDesejado);
@@ -302,8 +303,6 @@ function criarHistograma(valores) {
   for (let i = 0; i <= quantidadeBins; i++) {
     bordas[i] = minInteiro + i * larguraBinInteira;
   }
-
-  bordas[quantidadeBins] = maxInteiro + 1;
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
@@ -326,7 +325,7 @@ function criarHistograma(valores) {
     }
   }
 
-  const moda = Math.round((bordas[indiceModa] + bordas[indiceModa + 1] - 1) / 2);
+  const moda = Math.round((bordas[indiceModa] + obterFimBin(indiceModa)) / 2);
 
   return {
     contagens: contagens,
