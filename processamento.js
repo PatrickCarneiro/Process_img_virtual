@@ -8,17 +8,21 @@ const imagemNormal = document.getElementById("imagemNormal"); // Pega a imagem c
 
 const statusText = document.getElementById("status"); // Pega o texto de status
 
-// Cria a barra de progresso do processamento
-const barraProcessamentoContainer = document.createElement("span");
+const barraProcessamentoContainer = document.createElement("div");
 barraProcessamentoContainer.id = "barraProcessamentoContainer";
 barraProcessamentoContainer.style.display = "none";
 
 barraProcessamentoContainer.innerHTML = `
-  <span id="barraProcessamentoFundo">
-    <span id="barraProcessamento"></span>
-  </span>
+  <div id="barraProcessamentoFundo">
+    <div id="barraProcessamento"></div>
+  </div>
   <span id="barraProcessamentoTexto">0%</span>
 `;
+
+statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
+
+const barraProcessamento = document.getElementById("barraProcessamento");
+const barraProcessamentoTexto = document.getElementById("barraProcessamentoTexto");
 
 statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
 
@@ -861,8 +865,7 @@ visualizacaoBox.addEventListener("mouseleave", function() {
 // Recalcula todas as imagens processadas.
 async function recalcularTodasAsImagens() {
 
-  // Mostra a barra de progresso
-  barraProcessamentoContainer.style.display = "block";
+  barraProcessamentoContainer.style.display = "inline-flex";
   barraProcessamento.style.width = "0%";
   barraProcessamentoTexto.innerText = "0%";
 
@@ -885,23 +888,23 @@ async function recalcularTodasAsImagens() {
     const porcentagem = Math.round(((i + 1) / total) * 100);
 
     barraProcessamento.style.width = porcentagem + "%";
-    barraProcessamentoTexto.innerText = `${porcentagem}%`;
+    barraProcessamentoTexto.innerText = porcentagem + "%";
 
-    // Dá tempo para o navegador atualizar a barra visualmente
     await new Promise(function(resolve) {
       requestAnimationFrame(resolve);
     });
   }
 
-  barraProcessamentoTexto.innerText = "100%";
   statusText.innerText = "Processamento concluído.";
+  barraProcessamento.style.width = "100%";
+  barraProcessamentoTexto.innerText = "100%";
 
   setTimeout(function() {
     barraProcessamentoContainer.style.display = "none";
     barraProcessamento.style.width = "0%";
-  }, 800);
+    barraProcessamentoTexto.innerText = "0%";
+  }, 900);
 
-  // Atualiza os cards da parte inferior
   desenharCardsImagensTrabalho();
 
   if (imagemAtualSelecionada) {
