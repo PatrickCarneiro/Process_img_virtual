@@ -9,15 +9,15 @@ const imagemNormal = document.getElementById("imagemNormal"); // Pega a imagem c
 const statusText = document.getElementById("status"); // Pega o texto de status
 
 // Cria a barra de progresso do processamento
-const barraProcessamentoContainer = document.createElement("div");
+const barraProcessamentoContainer = document.createElement("span");
 barraProcessamentoContainer.id = "barraProcessamentoContainer";
 barraProcessamentoContainer.style.display = "none";
 
 barraProcessamentoContainer.innerHTML = `
-  <div id="barraProcessamentoTexto">Processando imagens...</div>
-  <div id="barraProcessamentoFundo">
-    <div id="barraProcessamento"></div>
-  </div>
+  <span id="barraProcessamentoFundo">
+    <span id="barraProcessamento"></span>
+  </span>
+  <span id="barraProcessamentoTexto">0%</span>
 `;
 
 statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
@@ -864,7 +864,7 @@ async function recalcularTodasAsImagens() {
   // Mostra a barra de progresso
   barraProcessamentoContainer.style.display = "block";
   barraProcessamento.style.width = "0%";
-  barraProcessamentoTexto.innerText = "Processando imagens... 0%";
+  barraProcessamentoTexto.innerText = "0%";
 
   const total = imagensProcessamento.length;
 
@@ -885,7 +885,7 @@ async function recalcularTodasAsImagens() {
     const porcentagem = Math.round(((i + 1) / total) * 100);
 
     barraProcessamento.style.width = porcentagem + "%";
-    barraProcessamentoTexto.innerText = `Processando imagens... ${porcentagem}%`;
+    barraProcessamentoTexto.innerText = `${porcentagem}%`;
 
     // Dá tempo para o navegador atualizar a barra visualmente
     await new Promise(function(resolve) {
@@ -893,7 +893,7 @@ async function recalcularTodasAsImagens() {
     });
   }
 
-  barraProcessamentoTexto.innerText = "Processamento concluído!";
+  barraProcessamentoTexto.innerText = "100%";
   statusText.innerText = "Processamento concluído.";
 
   setTimeout(function() {
