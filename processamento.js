@@ -365,50 +365,48 @@ function desenharCardsImagensTrabalho() {
   });
 }
 
-
-// =================================================================================================
-// CRIA O CARD DE UMA IMAGEM
-// =================================================================================================
+// Função para criar um card de imagem
 
 function criarCardImagem(item) {
 
   const card = document.createElement("div"); // Cria um card
   card.className = "card_imagem";
-  if (item.type === "image") { // Se for imagem comum, mostra a miniatura do resultado atual.
+
+  // Se for imagem comum, mostra SEMPRE a miniatura da imagem original
+  if (item.type === "image") {
+
     const img = document.createElement("img");
-    if (item.resultado && item.resultado.tipo === "image") {
-      img.src = item.resultado.dataURL;
-    } else {
-      img.src = URL.createObjectURL(item.file);
-    }
+
+    // Usa sempre o arquivo original, não o resultado processado
+    img.src = URL.createObjectURL(item.file);
 
     card.appendChild(img);
   }
-  if (item.type === "dicom") { // Se for DICOM, cria uma caixa para renderizar a miniatura.
+
+  // Se for DICOM, mostra SEMPRE a miniatura do DICOM original
+  if (item.type === "dicom") {
+
     const dicomBox = document.createElement("div");
     dicomBox.className = "dicom_thumb";
+
     card.appendChild(dicomBox);
-    if (item.resultado && item.resultado.tipo === "dicom") {
-      try {
-        cornerstone.enable(dicomBox);
-        cornerstone.displayImage(dicomBox, item.resultado.imagem);
-        cornerstone.resize(dicomBox, true);
-      } catch (error) {
-        dicomBox.innerText = "DICOM";
-      }
-    } else {
-      renderDicomThumbnail(item, dicomBox);
-    }
+
+    // Renderiza sempre o DICOM original na miniatura
+    renderDicomThumbnail(item, dicomBox);
   }
+
   const nome = document.createElement("div");
   nome.className = "nome_arquivo";
   nome.innerText = item.name;
+
   card.appendChild(nome);
-  card.onclick = function() {  // Ao clicar no card, abre a imagem já processada.
+
+  // Ao clicar no card, continua abrindo a imagem processada na tela principal
+  card.onclick = function() {
     openFile(item);
   };
-  imagensTrabalho.appendChild(card);
 
+  imagensTrabalho.appendChild(card);
 }
 
 async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
