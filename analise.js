@@ -401,21 +401,20 @@ function criarHistograma(valores) {
   // Aqui usa binagem automática simples, parecida com histograma contínuo.
   // =====================================================
 
-  const minBin = Math.floor(min);
-  const maxBin = Math.ceil(max);
-
-  const numBins = maxBin - minBin;
+  const numBins = Math.min(256, limiteMaximoBins);
 
   contagens = new Array(numBins).fill(0);
   bordas = new Array(numBins + 1);
 
+  const larguraBin = (max - min) / numBins;
+
   for (let i = 0; i <= numBins; i++) {
-    bordas[i] = minBin + i;
+    bordas[i] = min + i * larguraBin;
   }
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    let indice = Math.floor(valoresValidos[i] - minBin);
+    let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
 
     if (indice < 0) indice = 0;
     if (indice >= numBins) indice = numBins - 1;
@@ -445,13 +444,19 @@ function criarHistograma(valores) {
     tipo: "continuo"
   };
 
+}
+
 function formatarNumeroEixoX(valor) {
 
   if (!Number.isFinite(valor)) {
     return "---";
   }
 
-  return Math.round(valor).toString();
+  if (Number.isInteger(valor)) {
+    return valor.toString();
+  }
+
+  return valor.toFixed(2);
 
 }
 
@@ -680,14 +685,10 @@ function desenharEixosHistograma(
 
   for (let i = 0; i <= 5; i++) {
 
-   const quantidadeBinsVisiveis = faixaFimHistograma - faixaInicioHistograma + 1;
+    const indice = Math.round(
+      faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i
+    );
 
-  let indice = faixaInicioHistograma + Math.floor(proporcao * quantidadeBinsVisiveis);
-
-  if (indice > faixaFimHistograma) {
-    indice = faixaFimHistograma;
-  }
-  
     const valorReal = obterCentroDoBin(indice);
     const x = margemEsquerda + (larguraGrafico / 5) * i;
 
@@ -995,7 +996,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const fimBin = bordasHistogramaAtual[indice + 1];
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${Math.round(inicioBin)} até ${Math.round(fimBin)}<br>
+    <strong>Faixa:</strong> ${Math.floor(inicioBin)} até ${Math.ceil(fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
