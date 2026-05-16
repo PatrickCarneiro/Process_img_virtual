@@ -268,11 +268,9 @@ function criarHistograma(valores) {
 
   if (min === max) {
 
-    const valorInteiro = Math.round(min);
-
     return {
       contagens: [valoresValidos.length],
-      bordas: [valorInteiro, valorInteiro],
+      bordas: [Math.floor(min), Math.ceil(max) + 1],
       min: min,
       max: max,
       soma: soma,
@@ -287,6 +285,7 @@ function criarHistograma(valores) {
   const maxInteiro = Math.ceil(max);
 
   const numBinsDesejado = 256;
+
   const intervaloTotal = maxInteiro - minInteiro + 1;
 
   let larguraBinInteira = Math.ceil(intervaloTotal / numBinsDesejado);
@@ -303,6 +302,8 @@ function criarHistograma(valores) {
   for (let i = 0; i <= quantidadeBins; i++) {
     bordas[i] = minInteiro + i * larguraBinInteira;
   }
+
+  bordas[quantidadeBins] = maxInteiro + 1;
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
@@ -325,7 +326,7 @@ function criarHistograma(valores) {
     }
   }
 
-  const moda = Math.round((bordas[indiceModa] + obterFimBin(indiceModa)) / 2);
+  const moda = Math.round((bordas[indiceModa] + bordas[indiceModa + 1] - 1) / 2);
 
   return {
     contagens: contagens,
@@ -337,76 +338,6 @@ function criarHistograma(valores) {
     moda: moda,
     tipo: "agrupado_inteiro"
   };
-
-}
-
-function obterInicioBin(indice) {
-
-  if (!bordasHistogramaAtual || bordasHistogramaAtual.length === 0) {
-    return 0;
-  }
-
-  if (indice < 0) {
-    indice = 0;
-  }
-
-  if (indice >= bordasHistogramaAtual.length - 1) {
-    indice = bordasHistogramaAtual.length - 2;
-  }
-
-  return Math.round(bordasHistogramaAtual[indice]);
-
-}
-
-// Função para obter o fim do bin
-function obterFimBin(indice) {
-
-  if (!bordasHistogramaAtual || bordasHistogramaAtual.length === 0) {
-    return 0;
-  }
-
-  if (indice < 0) {
-    indice = 0;
-  }
-
-  if (indice >= bordasHistogramaAtual.length - 1) {
-    indice = bordasHistogramaAtual.length - 2;
-  }
-
-  const inicio = bordasHistogramaAtual[indice];
-  const proximoInicio = bordasHistogramaAtual[indice + 1];
-
-  if (proximoInicio === inicio) {
-    return Math.round(inicio);
-  }
-
-  return Math.round(proximoInicio - 1);
-
-}
-
-function obterCentroDoBinInteiro(indice) {
-
-  const inicio = obterInicioBin(indice);
-  const fim = obterFimBin(indice);
-
-  return Math.round((inicio + fim) / 2);
-
-}
-
-// FUNÇÕES PARA TROCAR CANAIS DO HISTOGRAMA
-
-function selecionarCanalHistograma(canal) {
-
-  const histObj = histogramasImagemAtual[canal]; // Pega o histograma do canal escolhido
-
-  if (!histObj || !histObj.contagens || histObj.contagens.length === 0) return;
-
-  canalHistogramaAtual = canal; // Atualiza o canal atual
-  histogramaAtual = histObj.contagens; // Atualiza as contagens atuais
-  bordasHistogramaAtual = histObj.bordas; // Atualiza as bordas atuais
-
-  definirFaixaAutomaticaHistograma(); // Ajusta a faixa automaticamente
-  marcarBotaoCanalAtivo(canal); // Marca o botão ativo
 
 }
 
@@ -622,10 +553,10 @@ function desenharEixosHistograma(
       faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i
     );
 
-    const valorReal = obterCentroDoBinInteiro(indice);
+    const valorReal = obterCentroDoBin(indice);
     const x = margemEsquerda + (larguraGrafico / 5) * i;
 
-    ctx.fillText(valorReal.toString(), x, canvas.height - 32);
+    ctx.fillText(formatarNumero(valorReal), x, canvas.height - 32);
 
   }
 
@@ -692,15 +623,16 @@ function atualizarTextosHistograma() {
 
   if (faixaTexto) {
 
-    const inicioReal = obterInicioBin(faixaInicioHistograma);
-    const fimReal = obterFimBin(faixaFimHistograma);
+    const inicioReal = obterCentroDoBin(faixaInicioHistograma);
+    const fimReal = obterCentroDoBin(faixaFimHistograma);
 
     faixaTexto.innerText =
-      "Intensidade de " + inicioReal + " até " + fimReal;
+      "Intensidade de " + formatarNumero(inicioReal) + " até " + formatarNumero(fimReal);
 
   }
 
 }
+
 function marcarBotaoCanalAtivo(canal) {
 
   const botoes = [
@@ -924,11 +856,11 @@ function mostrarTooltipHistograma(event, canvas) {
   }
 
   const quantidade = histogramaAtual[indice] || 0;
-  const inicioBin = obterInicioBin(indice);
-  const fimBin = obterFimBin(indice);
+  const inicioBin = bordasHistogramaAtual[indice];
+  const fimBin = bordasHistogramaAtual[indice + 1];
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${inicioBin} até ${fimBin}<br>
+    <strong>Faixa:</strong> ${formatarNumero(inicioBin)} até ${formatarNumero(fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
