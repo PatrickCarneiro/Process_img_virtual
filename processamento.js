@@ -24,11 +24,6 @@ statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
 const barraProcessamento = document.getElementById("barraProcessamento");
 const barraProcessamentoTexto = document.getElementById("barraProcessamentoTexto");
 
-statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
-
-const barraProcessamento = document.getElementById("barraProcessamento");
-const barraProcessamentoTexto = document.getElementById("barraProcessamentoTexto");
-
 const imagensTrabalho = document.getElementById("imagensTrabalho"); // Pega a área das imagens de trabalho
 
 const areaFluxograma = document.getElementById("areaFluxograma"); // Pega a área do fluxograma
