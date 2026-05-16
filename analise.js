@@ -1216,24 +1216,101 @@ function identificarTipoPelosPixels(pixels) {
 }
 
 // FUNÇÃO PRINCIPAL PARA EXPORTAR O MAPA DE PIXEL DA IMAGEM ATUAL
-function exportarMapaPixelAtual() {
+// EXPORTA MAPA DE PIXEL DE IMAGEM COMUM
+function exportarMapaPixelImagemNormal() {
 
-  if (!imagemAtualSelecionada) { // Verifica se existe uma imagem aberta no momento
-    alert("Nenhuma imagem aberta para gerar o mapa de pixel.");
+  if (!imagemNormal || !imagemNormal.src) { // Verifica se a imagem comum está carregada
+    alert("Nenhuma imagem comum carregada.");
     return;
   }
 
-  if (imagemAtualSelecionada.type === "dicom") { // Se a imagem atual for DICOM
-    exportarMapaPixelDicom(); // Exporta usando os pixels reais do DICOM
-    return;
+  const canvas = document.createElement("canvas"); // Cria um canvas temporário
+  const ctx = canvas.getContext("2d"); // Pega o contexto 2D
+
+  canvas.width = imagemNormal.naturalWidth; // Define largura real da imagem
+  canvas.height = imagemNormal.naturalHeight; // Define altura real da imagem
+
+  ctx.drawImage(imagemNormal, 0, 0); // Desenha a imagem atual no canvas
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // Pega os pixels RGBA
+  const data = imageData.data; // Array com R, G, B e A
+
+  let imagemRGB = false; // Controla se a imagem tem canais diferentes
+
+  for (let i = 0; i < data.length; i += 4) {
+
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+
+    if (r !== g || g !== b) {
+      imagemRGB = true;
+      break;
+    }
+
   }
 
-  if (imagemAtualSelecionada.type === "image") { // Se a imagem atual for imagem comum
-    exportarMapaPixelImagemNormal(); // Exporta usando os pixels do canvas
-    return;
+  const linhas = []; // Guarda as linhas do arquivo CSV
+
+  for (let y = 0; y < canvas.height; y++) {
+
+    const linha = []; // Guarda os valores da linha atual
+
+    for (let x = 0; x < canvas.width; x++) {
+
+      const indice = (y * canvas.width + x) * 4;
+
+      const r = data[indice];
+      const g = data[indice + 1];
+      const b = data[indice + 2];
+
+      let valorPixel;
+
+      // Se a imagem for RGB, exporta conforme o botão/canal selecionado
+      if (imagemRGB) {
+
+        if (canalHistogramaAtual === "r") {
+          valorPixel = r; // Matriz do canal vermelho
+        } 
+        
+        else if (canalHistogramaAtual === "g") {
+          valorPixel = g; // Matriz do canal verde
+        } 
+        
+        else if (canalHistogramaAtual === "b") {
+          valorPixel = b; // Matriz do canal azul
+        } 
+        
+        else {
+          valorPixel = (r + g + b) / 3; // Matriz da média RGB
+        }
+
+      } 
+      
+      // Se for escala de cinza, usa o próprio valor do pixel
+      else {
+        valorPixel = r;
+      }
+
+      linha.push(formatarValorMapaPixel(valorPixel));
+
+    }
+
+    linhas.push(linha.join(";"));
   }
 
-  alert("Tipo de imagem não reconhecido.");
+  let nomeCanal = "cinza";
+
+  if (imagemRGB) {
+    if (canalHistogramaAtual === "r") nomeCanal = "vermelho";
+    else if (canalHistogramaAtual === "g") nomeCanal = "verde";
+    else if (canalHistogramaAtual === "b") nomeCanal = "azul";
+    else nomeCanal = "media_rgb";
+  }
+
+  const nomeArquivo = criarNomeArquivoMapaPixel("mapa_pixel_" + nomeCanal);
+
+  baixarCSV(linhas.join("\n"), nomeArquivo);
 }
 
 
