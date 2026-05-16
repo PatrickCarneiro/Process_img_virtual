@@ -400,21 +400,21 @@ function criarHistograma(valores) {
   // Exemplo: média RGB pode gerar valores como 120.33
   // Aqui usa binagem automática simples, parecida com histograma contínuo.
   // =====================================================
+  const minBin = Math.floor(min);
+  const maxBin = Math.ceil(max);
 
-  const numBins = Math.min(256, limiteMaximoBins);
+  const numBins = maxBin - minBin;
 
   contagens = new Array(numBins).fill(0);
   bordas = new Array(numBins + 1);
 
-  const larguraBin = (max - min) / numBins;
-
   for (let i = 0; i <= numBins; i++) {
-    bordas[i] = min + i * larguraBin;
+    bordas[i] = minBin + i;
   }
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
+    let indice = Math.floor(valoresValidos[i] - minBin);
 
     if (indice < 0) indice = 0;
     if (indice >= numBins) indice = numBins - 1;
@@ -443,8 +443,6 @@ function criarHistograma(valores) {
     moda: moda,
     tipo: "continuo"
   };
-
-}
 
 function formatarNumeroEixoX(valor) {
 
