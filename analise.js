@@ -315,9 +315,8 @@ function criarHistograma(valores) {
       // MATLAB no modo integers usa bordas no meio dos inteiros:
       // valor 5 fica entre 4.5 e 5.5
       for (let i = 0; i <= quantidadeBinsNecessaria; i++) {
-        bordas[i] = minInt - 0.5 + i;
+        bordas[i] = minInt + i;
       }
-
       for (let i = 0; i < valoresValidos.length; i++) {
         const indice = valoresValidos[i] - minInt;
 
@@ -358,12 +357,12 @@ function criarHistograma(valores) {
     bordas = new Array(numBins + 1);
 
     for (let i = 0; i <= numBins; i++) {
-      bordas[i] = minInt - 0.5 + i * larguraBin;
+      bordas[i] = minInt + i * larguraBin;
     }
 
     for (let i = 0; i < valoresValidos.length; i++) {
 
-      let indice = Math.floor((valoresValidos[i] - (minInt - 0.5)) / larguraBin);
+      let indice = Math.floor((valoresValidos[i] - minInt) / larguraBin);
 
       if (indice < 0) indice = 0;
       if (indice >= numBins) indice = numBins - 1;
@@ -1412,7 +1411,7 @@ function formatarFaixaDecimalBin(inicioBin, fimBin) {
   }
 
   const inicio = Math.floor(inicioBin);
-  const fim = Math.floor(fimBin) - 0.01;
+  const fim = fimBin - 0.01;
 
   return inicio + " até " + fim.toFixed(2);
 
