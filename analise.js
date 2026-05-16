@@ -268,11 +268,9 @@ function criarHistograma(valores) {
 
   if (min === max) {
 
-    const valorInteiro = Math.round(min);
-
     return {
       contagens: [valoresValidos.length],
-      bordas: [valorInteiro, valorInteiro],
+      bordas: [min - 0.5, max + 0.5],
       min: min,
       max: max,
       soma: soma,
@@ -283,35 +281,25 @@ function criarHistograma(valores) {
 
   }
 
-  const minInteiro = Math.floor(min);
-  const maxInteiro = Math.ceil(max);
+  // Número fixo de bins, parecido com um histograma agrupado
+  // Se quiser mais parecido visualmente com MATLAB, pode testar 100, 128 ou 256
+  const numBins = 256;
 
-  const numBinsDesejado = 256;
-  const intervaloTotal = maxInteiro - minInteiro + 1;
+  const contagens = new Array(numBins).fill(0);
+  const bordas = new Array(numBins + 1);
 
-  let larguraBinInteira = Math.ceil(intervaloTotal / numBinsDesejado);
+  const larguraBin = (max - min) / numBins;
 
-  if (larguraBinInteira < 1) {
-    larguraBinInteira = 1;
-  }
-
-  const quantidadeBins = Math.ceil(intervaloTotal / larguraBinInteira);
-
-  const contagens = new Array(quantidadeBins).fill(0);
-  const bordas = new Array(quantidadeBins + 1);
-
-  for (let i = 0; i <= quantidadeBins; i++) {
-    bordas[i] = minInteiro + i * larguraBinInteira;
+  for (let i = 0; i <= numBins; i++) {
+    bordas[i] = min + i * larguraBin;
   }
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    const valor = valoresValidos[i];
-
-    let indice = Math.floor((valor - minInteiro) / larguraBinInteira);
+    let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
 
     if (indice < 0) indice = 0;
-    if (indice >= quantidadeBins) indice = quantidadeBins - 1;
+    if (indice >= numBins) indice = numBins - 1;
 
     contagens[indice]++;
 
@@ -325,7 +313,7 @@ function criarHistograma(valores) {
     }
   }
 
-  const moda = Math.round((bordas[indiceModa] + obterFimBin(indiceModa)) / 2);
+  const moda = (bordas[indiceModa] + bordas[indiceModa + 1]) / 2;
 
   return {
     contagens: contagens,
@@ -335,7 +323,7 @@ function criarHistograma(valores) {
     soma: soma,
     total: valoresValidos.length,
     moda: moda,
-    tipo: "agrupado_inteiro"
+    tipo: "agrupado"
   };
 
 }
