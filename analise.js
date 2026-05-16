@@ -268,9 +268,11 @@ function criarHistograma(valores) {
 
   if (min === max) {
 
+    const valorInteiro = Math.round(min);
+
     return {
       contagens: [valoresValidos.length],
-      bordas: [Math.floor(min), Math.ceil(max) + 1],
+      bordas: [valorInteiro, valorInteiro],
       min: min,
       max: max,
       soma: soma,
@@ -285,7 +287,6 @@ function criarHistograma(valores) {
   const maxInteiro = Math.ceil(max);
 
   const numBinsDesejado = 256;
-
   const intervaloTotal = maxInteiro - minInteiro + 1;
 
   let larguraBinInteira = Math.ceil(intervaloTotal / numBinsDesejado);
@@ -302,8 +303,6 @@ function criarHistograma(valores) {
   for (let i = 0; i <= quantidadeBins; i++) {
     bordas[i] = minInteiro + i * larguraBinInteira;
   }
-
-  bordas[quantidadeBins] = maxInteiro + 1;
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
@@ -326,7 +325,7 @@ function criarHistograma(valores) {
     }
   }
 
-  const moda = Math.round((bordas[indiceModa] + bordas[indiceModa + 1] - 1) / 2);
+  const moda = Math.round((bordas[indiceModa] + obterFimBin(indiceModa)) / 2);
 
   return {
     contagens: contagens,
@@ -338,6 +337,23 @@ function criarHistograma(valores) {
     moda: moda,
     tipo: "agrupado_inteiro"
   };
+
+}
+
+// FUNÇÕES PARA TROCAR CANAIS DO HISTOGRAMA
+
+function selecionarCanalHistograma(canal) {
+
+  const histObj = histogramasImagemAtual[canal]; // Pega o histograma do canal escolhido
+
+  if (!histObj || !histObj.contagens || histObj.contagens.length === 0) return;
+
+  canalHistogramaAtual = canal; // Atualiza o canal atual
+  histogramaAtual = histObj.contagens; // Atualiza as contagens atuais
+  bordasHistogramaAtual = histObj.bordas; // Atualiza as bordas atuais
+
+  definirFaixaAutomaticaHistograma(); // Ajusta a faixa automaticamente
+  marcarBotaoCanalAtivo(canal); // Marca o botão ativo
 
 }
 
