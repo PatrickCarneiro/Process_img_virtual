@@ -123,23 +123,37 @@ function selecionarFerramenta(nome) {
     parametrosDiv.innerHTML = `
       <h4>Parâmetros</h4>
 
-      <label>Sigma</label>
-      <input 
-        type="number" 
-        id="param1" 
-        min="0.1" 
-        step="0.1" 
-        placeholder="Digite o sigma"
-      >
+      <div class="campo_parametro_info">
+        <label>Sigma</label>
 
-      <label>Tamanho do kernel</label>
-      <input 
-        type="number" 
-        id="param2" 
-        min="1" 
-        step="1" 
-        placeholder="Digite um valor ímpar"
-      >
+        <input 
+          type="number" 
+          id="param1" 
+          min="0.1" 
+          step="0.1" 
+          placeholder="Digite o sigma"
+        >
+
+        <div class="caixa_info_parametro">
+          O sigma deve ser maior que 0.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Tamanho do kernel</label>
+
+        <input 
+          type="number" 
+          id="param2" 
+          min="1" 
+          step="1" 
+          placeholder="Digite um valor ímpar"
+        >
+
+        <div class="caixa_info_parametro">
+          O tamanho do kernel deve ser ímpar e maior que 0.
+        </div>
+      </div>
 
       <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
         Aplicar
@@ -157,6 +171,8 @@ function selecionarFerramenta(nome) {
       Aplicar
     </button>
   `;
+  
+  
 
 }
 
