@@ -495,49 +495,50 @@ function openFile(item) {
     imagemNormal.style.display = "none";
     visualizadorDicom.style.display = "block";
 
-  if (item.resultado && item.resultado.tipo === "dicom") {
+    if (item.resultado && item.resultado.tipo === "dicom") {
 
-    const imagem = item.resultado.imagem;
+      const imagem = item.resultado.imagem;
 
-    imagemDicomAtual = imagem;
+      imagemDicomAtual = imagem;
 
-    larguraOriginalAtual = imagem.width;
-    alturaOriginalAtual = imagem.height;
+      larguraOriginalAtual = imagem.width;
+      alturaOriginalAtual = imagem.height;
 
-    escalaBaseAtual = calcularEscalaAutomatica(
-      larguraOriginalAtual,
-      alturaOriginalAtual
-    );
+      escalaBaseAtual = calcularEscalaAutomatica(
+        larguraOriginalAtual,
+        alturaOriginalAtual
+      );
 
-    zoomAtual = 1;
+      zoomAtual = 1;
 
-    const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
-    const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+      const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
+      const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
 
-    visualizadorDicom.style.width = larguraInicial + "px";
-    visualizadorDicom.style.height = alturaInicial + "px";
+      visualizadorDicom.style.width = larguraInicial + "px";
+      visualizadorDicom.style.height = alturaInicial + "px";
 
-    cornerstone.displayImage(visualizadorDicom, imagem);
+      cornerstone.displayImage(visualizadorDicom, imagem);
 
-    const viewport = cornerstone.getViewport(visualizadorDicom);
+      const viewport = cornerstone.getViewport(visualizadorDicom);
 
-    viewport.voi = {
-      windowCenter: imagem.windowCenter,
-      windowWidth: imagem.windowWidth
-    };
+      viewport.voi = {
+        windowCenter: imagem.windowCenter,
+        windowWidth: imagem.windowWidth
+      };
 
-    viewport.invert = imagem.invert || false;
-    viewport.scale = escalaBaseAtual;
+      viewport.invert = imagem.invert || false;
+      viewport.scale = escalaBaseAtual;
 
-    cornerstone.setViewport(visualizadorDicom, viewport);
-    cornerstone.resize(visualizadorDicom, true);
+      cornerstone.setViewport(visualizadorDicom, viewport);
+      cornerstone.resize(visualizadorDicom, true);
 
-    gerarAnaliseDicom(imagem);
+      gerarAnaliseDicom(imagem);
 
-    statusText.innerText = "DICOM carregado: " + item.name;
+      statusText.innerText = "DICOM carregado: " + item.name;
 
-    return;
-}
+      return;
+    }
+  }
 }
 
 // Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
