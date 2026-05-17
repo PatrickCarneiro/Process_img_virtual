@@ -76,36 +76,63 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel) {
 // Função para criar uma nova imagem DICOM compatível com Cornerstone
 function criarImagemDicomAPartirPixels(pixels, largura, altura, imagemBase, imageId) { 
 
-  let min = Infinity; // Inicializa o menor valor encontrado
-  let max = -Infinity; // Inicializa o maior valor encontrado
-  for (let i = 0; i < pixels.length; i++) { // Percorre todos os pixels
-    const valor = pixels[i]; // Guarda o valor do pixel atual
-    if (valor < min) min = valor; // Atualiza o valor mínimo
-    if (valor > max) max = valor; // Atualiza o valor máximo
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (let i = 0; i < pixels.length; i++) {
+    const valor = Number(pixels[i]);
+
+    if (!Number.isFinite(valor)) continue;
+
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
   }
-  const imagemNova = { // Cria o objeto da nova imagem DICOM
-    imageId: imageId, // Define o identificador da imagem
-    minPixelValue: min, // Define o menor valor de pixel
-    maxPixelValue: max, // Define o maior valor de pixel
-    slope: imagemBase.slope || 1, // Mantém o slope original ou usa 1
-    intercept: imagemBase.intercept || 0, // Mantém o intercept original ou usa 0
-    windowCenter: (min + max) / 2, // Define o centro da janela
-    windowWidth: max - min, // Define a largura da janela
-    render: cornerstone.renderGrayscaleImage, // Define o renderizador em escala de cinza
-    getPixelData: function() { // Função usada pelo Cornerstone para buscar os pixels filtrados
-      return pixels; // Retorna os pixels filtrados
+
+  if (min === Infinity || max === -Infinity) {
+    min = 0;
+    max = 1;
+  }
+
+  if (min === max) {
+    max = min + 1;
+  }
+
+  const windowCenter = (min + max) / 2;
+  const windowWidth = max - min;
+
+  const imagemNova = {
+    imageId: imageId,
+
+    minPixelValue: min,
+    maxPixelValue: max,
+
+    slope: 1,
+    intercept: 0,
+
+    windowCenter: windowCenter,
+    windowWidth: windowWidth,
+
+    render: cornerstone.renderGrayscaleImage,
+
+    getPixelData: function() {
+      return pixels;
     },
-    rows: altura, // Define o número de linhas
-    columns: largura, // Define o número de colunas
-    height: altura, // Define a altura da imagem
-    width: largura, // Define a largura da imagem
-    color: false, // Indica que a imagem não é colorida
-    rgba: false, // Indica que a imagem não está em RGBA
-    columnPixelSpacing: imagemBase.columnPixelSpacing || 1, // Mantém o espaçamento entre colunas ou usa 1
-    rowPixelSpacing: imagemBase.rowPixelSpacing || 1, // Mantém o espaçamento entre linhas ou usa 1
-    invert: imagemBase.invert || false, // Mantém a inversão original ou usa falso
-    sizeInBytes: pixels.length * pixels.BYTES_PER_ELEMENT // Calcula o tamanho da imagem em bytes
+
+    rows: altura,
+    columns: largura,
+    height: altura,
+    width: largura,
+
+    color: false,
+    rgba: false,
+
+    columnPixelSpacing: imagemBase.columnPixelSpacing || 1,
+    rowPixelSpacing: imagemBase.rowPixelSpacing || 1,
+
+    invert: imagemBase.invert || false,
+
+    sizeInBytes: pixels.length * pixels.BYTES_PER_ELEMENT
   };
-  return imagemNova; // Retorna a nova imagem DICOM
-  
+
+  return imagemNova;
 }

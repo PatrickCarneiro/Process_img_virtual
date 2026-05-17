@@ -494,58 +494,50 @@ function openFile(item) {
   if (item.type === "dicom") { // Abrir DICOM
     imagemNormal.style.display = "none";
     visualizadorDicom.style.display = "block";
-    if (item.resultado && item.resultado.tipo === "dicom") {
-      const imagem = item.resultado.imagem;
-      imagemDicomAtual = imagem;
-      larguraOriginalAtual = imagem.width;
-      alturaOriginalAtual = imagem.height;
-      escalaBaseAtual = calcularEscalaAutomatica(
-        larguraOriginalAtual,
-        alturaOriginalAtual
-      );
-      zoomAtual = 1;
-      const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
-      const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
-      visualizadorDicom.style.width = larguraInicial + "px";
-      visualizadorDicom.style.height = alturaInicial + "px";
-      cornerstone.displayImage(visualizadorDicom, imagem);
-      cornerstone.resize(visualizadorDicom, true);
-      gerarAnaliseDicom(imagem);
-      statusText.innerText = "DICOM carregado: " + item.name;
-      return;
-    }
-    const dicomFile = new File([item.file], item.name); // Se ainda não houver resultado, carrega o DICOM original.
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
-    cornerstone.loadImage(imageId)
-      .then(function(image) {
-        imagemDicomAtual = image;
-        larguraOriginalAtual = image.width;
-        alturaOriginalAtual = image.height;
-        escalaBaseAtual = calcularEscalaAutomatica(
-          larguraOriginalAtual,
-          alturaOriginalAtual
-        );
-        zoomAtual = 1;
-        const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
-        const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
-        visualizadorDicom.style.width = larguraInicial + "px";
-        visualizadorDicom.style.height = alturaInicial + "px";
-        cornerstone.displayImage(visualizadorDicom, image); // Mostra o DICOM primeiro
-        cornerstone.resize(visualizadorDicom, true); // Ajusta o tamanho
 
-        statusText.innerText = "DICOM carregado: " + item.name + ". Calculando análise...";
+  if (item.resultado && item.resultado.tipo === "dicom") {
 
-        setTimeout(function() {
-          gerarAnaliseDicom(image); // Calcula histograma depois
-          statusText.innerText = "DICOM carregado: " + item.name;
-        }, 50);
-      })
+    const imagem = item.resultado.imagem;
 
-      .catch(function(error) {
-        console.error(error);
-        statusText.innerText = "Erro ao abrir DICOM.";
-      });
-  }
+    imagemDicomAtual = imagem;
+
+    larguraOriginalAtual = imagem.width;
+    alturaOriginalAtual = imagem.height;
+
+    escalaBaseAtual = calcularEscalaAutomatica(
+      larguraOriginalAtual,
+      alturaOriginalAtual
+    );
+
+    zoomAtual = 1;
+
+    const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
+    const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+
+    visualizadorDicom.style.width = larguraInicial + "px";
+    visualizadorDicom.style.height = alturaInicial + "px";
+
+    cornerstone.displayImage(visualizadorDicom, imagem);
+
+    const viewport = cornerstone.getViewport(visualizadorDicom);
+
+    viewport.voi = {
+      windowCenter: imagem.windowCenter,
+      windowWidth: imagem.windowWidth
+    };
+
+    viewport.invert = imagem.invert || false;
+    viewport.scale = escalaBaseAtual;
+
+    cornerstone.setViewport(visualizadorDicom, viewport);
+    cornerstone.resize(visualizadorDicom, true);
+
+    gerarAnaliseDicom(imagem);
+
+    statusText.innerText = "DICOM carregado: " + item.name;
+
+    return;
+}
 }
 
 // Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
