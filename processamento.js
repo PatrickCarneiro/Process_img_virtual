@@ -80,6 +80,8 @@ let larguraOriginalAtual = 0; // Largura original da imagem atual
 
 let alturaOriginalAtual = 0; // Altura original da imagem atual
 
+let ferramentaSelecionadaAtual = null;
+
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
@@ -116,9 +118,22 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 function selecionarFerramenta(nome) {
 
-  parametrosDiv.style.display = "block"; // Mostra a área de parâmetros quando uma ferramenta é escolhida
+  // Se clicar novamente na mesma ferramenta, fecha a caixa de parâmetros
+  if (
+    ferramentaSelecionadaAtual === nome && 
+    parametrosDiv.style.display === "block"
+  ) {
+    parametrosDiv.style.display = "none";
+    parametrosDiv.innerHTML = "";
+    ferramentaSelecionadaAtual = null;
+    return;
+  }
 
-  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta escolhida foi o filtro Gaussiano
+  // Se clicar em outra ferramenta, abre/troca os parâmetros
+  ferramentaSelecionadaAtual = nome;
+  parametrosDiv.style.display = "block";
+
+  if (nome.includes("Gaussiano")) {
 
     parametrosDiv.innerHTML = `
       <h4>Parâmetros</h4>
@@ -167,13 +182,11 @@ function selecionarFerramenta(nome) {
     <h4>Parâmetros</h4>
     <label>Parâmetro 1</label>
     <input type="text" id="param1">
+
     <button class="botao-aplicar" onclick="aplicarFerramenta('${nome}')">
       Aplicar
     </button>
   `;
-  
-  
-
 }
 
 async function aplicarFerramenta(nome) {
