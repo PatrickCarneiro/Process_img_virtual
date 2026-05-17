@@ -30,26 +30,37 @@ function aplicarGaussianoEmCanvas(canvasEntrada, sigma, tamanhoKernel) {
 // Funcão para aplicar o filtro Gaussiano em uma imagem DICOM
 function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel) { 
 
-  tamanhoKernel = parseInt(tamanhoKernel); // Garante que o tamanho do kernel seja inteiro
-  if (tamanhoKernel % 2 === 0) { // Verifica se o kernel é par
-    tamanhoKernel = tamanhoKernel + 1; // Transforma o kernel em ímpar
+  sigma = Number(sigma);
+
+  tamanhoKernel = parseInt(tamanhoKernel);
+
+  if (tamanhoKernel % 2 === 0) {
+    tamanhoKernel = tamanhoKernel + 1;
   }
-  const pixelsOriginais = imagemEntrada.getPixelData(); // Pega os pixels reais da imagem DICOM
-  const largura = imagemEntrada.width; // Pega a largura da imagem DICOM
-  const altura = imagemEntrada.height; // Pega a altura da imagem DICOM
-  const pixelsFloat = new Float32Array(pixelsOriginais.length); // Cria um array Float32 para preservar os valores reais
-  for (let i = 0; i < pixelsOriginais.length; i++) { // Percorre todos os pixels originais
-    pixelsFloat[i] = Number(pixelsOriginais[i]); // Copia cada pixel para o array em formato numérico
+
+  const pixelsOriginais = imagemEntrada.getPixelData();
+
+  const largura = imagemEntrada.width;
+  const altura = imagemEntrada.height;
+
+  const pixelsFloat = new Float32Array(pixelsOriginais.length);
+
+  for (let i = 0; i < pixelsOriginais.length; i++) {
+    pixelsFloat[i] = Number(pixelsOriginais[i]);
   }
-  const src = cv.matFromArray( // Cria uma matriz OpenCV com uma camada em escala de cinza
+
+  const src = cv.matFromArray(
     altura,
     largura,
     cv.CV_32FC1,
     Array.from(pixelsFloat)
   );
-  const dst = new cv.Mat(); // Cria a matriz de saída
-  const ksize = new cv.Size(tamanhoKernel, tamanhoKernel); // Define o tamanho do kernel
-  cv.GaussianBlur( // Aplica o filtro Gaussiano nos valores reais do DICOM
+
+  const dst = new cv.Mat();
+
+  const ksize = new cv.Size(tamanhoKernel, tamanhoKernel);
+
+  cv.GaussianBlur(
     src,
     dst,
     ksize,
@@ -57,13 +68,51 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel) {
     sigma,
     cv.BORDER_REPLICATE
   );
-  const pixelsFiltrados = new Float32Array(dst.data32F.length); // Cria um array para armazenar os pixels filtrados
-  for (let i = 0; i < dst.data32F.length; i++) { // Percorre todos os pixels resultantes
-    pixelsFiltrados[i] = dst.data32F[i]; // Copia cada valor filtrado para o novo array
+
+  let pixelsFiltrados;
+
+  if (pixelsOriginais instanceof Uint8Array) {
+    pixelsFiltrados = new Uint8Array(dst.data32F.length);
+  } 
+  
+  else if (pixelsOriginais instanceof Uint16Array) {
+    pixelsFiltrados = new Uint16Array(dst.data32F.length);
+  } 
+  
+  else if (pixelsOriginais instanceof Int16Array) {
+    pixelsFiltrados = new Int16Array(dst.data32F.length);
+  } 
+  
+  else {
+    pixelsFiltrados = new Uint16Array(dst.data32F.length);
   }
-  src.delete(); // Libera a memória da matriz de entrada
-  dst.delete(); // Libera a memória da matriz de saída
-  return criarImagemDicomAPartirPixels( // Cria e retorna uma nova imagem DICOM compatível com Cornerstone
+
+  for (let i = 0; i < dst.data32F.length; i++) {
+
+    let valor = Math.round(dst.data32F[i]);
+
+    if (pixelsFiltrados instanceof Uint8Array) {
+      if (valor < 0) valor = 0;
+      if (valor > 255) valor = 255;
+    }
+
+    if (pixelsFiltrados instanceof Uint16Array) {
+      if (valor < 0) valor = 0;
+      if (valor > 65535) valor = 65535;
+    }
+
+    if (pixelsFiltrados instanceof Int16Array) {
+      if (valor < -32768) valor = -32768;
+      if (valor > 32767) valor = 32767;
+    }
+
+    pixelsFiltrados[i] = valor;
+  }
+
+  src.delete();
+  dst.delete();
+
+  return criarImagemDicomAPartirPixels(
     pixelsFiltrados,
     largura,
     altura,
@@ -72,7 +121,6 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel) {
   );
 
 }
-
 // Função para criar uma nova imagem DICOM compatível com Cornerstone
 function criarImagemDicomAPartirPixels(pixels, largura, altura, imagemBase, imageId) { 
 
@@ -98,7 +146,7 @@ function criarImagemDicomAPartirPixels(pixels, largura, altura, imagemBase, imag
   }
 
   const windowCenter = (min + max) / 2;
-  const windowWidth = max - min;
+  const windowWidth = Math.max(max - min, 1); 
 
   const imagemNova = {
     imageId: imageId,
@@ -111,6 +159,10 @@ function criarImagemDicomAPartirPixels(pixels, largura, altura, imagemBase, imag
 
     windowCenter: windowCenter,
     windowWidth: windowWidth,
+
+      voiLUTFunction: "LINEAR",
+      modalityLUT: undefined,
+      voiLUT: undefined,
 
     render: cornerstone.renderGrayscaleImage,
 
