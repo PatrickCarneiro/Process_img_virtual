@@ -482,7 +482,6 @@ function openFile(item) {
 
   imagemAtualSelecionada = item; // Define imagem atual selecionada
   statusText.innerText = "Abrindo: " + item.name;
-  resetarZoom(); 
   const arquivoAtual = document.getElementById("arquivoAtual");
   if (arquivoAtual) {
     arquivoAtual.innerText = item.name;
@@ -491,15 +490,17 @@ function openFile(item) {
     visualizadorDicom.style.display = "none";
     imagemDicomAtual = null;
 
-    // Mostra o espaço da imagem, mas deixa invisível enquanto carrega
-    imagemNormal.style.display = "block";
-    imagemNormal.style.visibility = "hidden";
-    if (item.resultado && item.resultado.tipo === "image") { // Usa o imagem processada se existir
+    imagemNormal.style.display = "none";
+
+    if (item.resultado && item.resultado.tipo === "image") {
       imagemNormal.src = item.resultado.dataURL;
     } else {
       imagemNormal.src = URL.createObjectURL(item.file);
     }
+      
     imagemNormal.onload = function() {
+
+      resetarZoom();
 
       larguraOriginalAtual = imagemNormal.naturalWidth; // Pega largura real da imagem
       alturaOriginalAtual = imagemNormal.naturalHeight; // Pega altura real da imagem
@@ -511,18 +512,16 @@ function openFile(item) {
 
       zoomAtual = 1; // Reseta zoom
 
-      atualizarTamanhoImagemAtual(); // Mostra a imagem rapidamente na tela
-      imagemNormal.style.visibility = "visible";
-      statusText.innerText = "Imagem carregada: " + item.name + ". Calculando análise...";
+      atualizarTamanhoImagemAtual();
 
-      setTimeout(function() {
-        gerarAnaliseImagemNormal(imagemNormal); // Calcula histograma depois da imagem já aparecer
-        statusText.innerText = "Imagem carregada: " + item.name;
-      }, 50);
+      imagemNormal.style.display = "block";
 
+      gerarAnaliseImagemNormal(imagemNormal);
     };
+
     return;
   }
+  
   if (item.type === "dicom") { // Abrir DICOM
     imagemNormal.style.display = "none";
     visualizadorDicom.style.display = "block";
