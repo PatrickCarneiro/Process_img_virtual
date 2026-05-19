@@ -480,58 +480,30 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 
 function openFile(item) {
 
-  imagemAtualSelecionada = item; // Define imagem atual selecionada
+  imagemAtualSelecionada = item;
   statusText.innerText = "Abrindo: " + item.name;
-  resetarZoom(); 
+
   const arquivoAtual = document.getElementById("arquivoAtual");
   if (arquivoAtual) {
     arquivoAtual.innerText = item.name;
   }
-  if (item.type === "image") { // Abrir imagem normal
+
+  if (item.type === "image") {
+
     visualizadorDicom.style.display = "none";
     imagemDicomAtual = null;
-    imagemNormal.style.display = "block";
-    if (item.resultado && item.resultado.tipo === "image") { // Usa o imagem processada se existir
-      imagemNormal.src = item.resultado.dataURL;
-    } else {
-      imagemNormal.src = URL.createObjectURL(item.file);
-    }
+
+    // Esconde a imagem enquanto ela ainda está carregando
+    imagemNormal.style.display = "none";
+
+    // Limpa tamanho antigo para não aparecer com zoom errado
+    imagemNormal.style.width = "0px";
+    imagemNormal.style.height = "0px";
+
     imagemNormal.onload = function() {
 
-      larguraOriginalAtual = imagemNormal.naturalWidth; // Pega largura real da imagem
-      alturaOriginalAtual = imagemNormal.naturalHeight; // Pega altura real da imagem
-
-      escalaBaseAtual = calcularEscalaAutomatica(
-        larguraOriginalAtual,
-        alturaOriginalAtual
-      ); // Calcula escala para caber na tela
-
-      zoomAtual = 1; // Reseta zoom
-
-      atualizarTamanhoImagemAtual(); // Mostra a imagem rapidamente na tela
-
-      statusText.innerText = "Imagem carregada: " + item.name + ". Calculando análise...";
-
-      setTimeout(function() {
-        gerarAnaliseImagemNormal(imagemNormal); // Calcula histograma depois da imagem já aparecer
-        statusText.innerText = "Imagem carregada: " + item.name;
-      }, 50);
-
-    };
-    return;
-  }
-  if (item.type === "dicom") { // Abrir DICOM
-    imagemNormal.style.display = "none";
-    visualizadorDicom.style.display = "block";
-
-    if (item.resultado && item.resultado.tipo === "dicom") {
-
-      const imagem = item.resultado.imagem;
-
-      imagemDicomAtual = imagem;
-
-      larguraOriginalAtual = imagem.width;
-      alturaOriginalAtual = imagem.height;
+      larguraOriginalAtual = imagemNormal.naturalWidth;
+      alturaOriginalAtual = imagemNormal.naturalHeight;
 
       escalaBaseAtual = calcularEscalaAutomatica(
         larguraOriginalAtual,
@@ -540,33 +512,36 @@ function openFile(item) {
 
       zoomAtual = 1;
 
-      const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
-      const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+      // Agora sim mostra a imagem já no tamanho correto
+      imagemNormal.style.display = "block";
+      atualizarTamanhoImagemAtual();
 
-      visualizadorDicom.style.width = larguraInicial + "px";
-      visualizadorDicom.style.height = alturaInicial + "px";
+      visualizacaoBox.scrollLeft = 0;
+      visualizacaoBox.scrollTop = 0;
 
-      cornerstone.displayImage(visualizadorDicom, imagem);
+      statusText.innerText = "Imagem carregada: " + item.name + ". Calculando análise.";
 
-      const viewport = cornerstone.getViewport(visualizadorDicom);
+      setTimeout(function() {
+        gerarAnaliseImagemNormal(imagemNormal);
+        statusText.innerText = "Imagem carregada: " + item.name;
+      }, 50);
 
-      viewport.voi = {
-        windowCenter: imagem.windowCenter,
-        windowWidth: imagem.windowWidth
-      };
+    };
 
-      viewport.invert = imagem.invert || false;
-      viewport.scale = escalaBaseAtual;
-
-      cornerstone.setViewport(visualizadorDicom, viewport);
-      cornerstone.resize(visualizadorDicom, true);
-
-      gerarAnaliseDicom(imagem);
-
-      statusText.innerText = "DICOM carregado: " + item.name;
-
-      return;
+    if (item.resultado && item.resultado.tipo === "image") {
+      imagemNormal.src = item.resultado.dataURL;
+    } else {
+      imagemNormal.src = URL.createObjectURL(item.file);
     }
+
+    return;
+  }
+
+  if (item.type === "dicom") {
+    imagemNormal.style.display = "none";
+    visualizadorDicom.style.display = "block";
+
+    // mantém seu código DICOM daqui para baixo
   }
 }
 
