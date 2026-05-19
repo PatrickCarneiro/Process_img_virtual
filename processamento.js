@@ -487,44 +487,66 @@ function openFile(item) {
     arquivoAtual.innerText = item.name;
   }
   if (item.type === "image") {
-  visualizadorDicom.style.display = "none";
-  imagemDicomAtual = null;
+    visualizadorDicom.style.display = "none";
+    imagemDicomAtual = null;
 
-  // Esconde visualmente, mas mantém a imagem existindo para calcular tamanho
-  imagemNormal.style.display = "block";
-  imagemNormal.style.visibility = "hidden";
-
-  if (item.resultado && item.resultado.tipo === "image") {
-    imagemNormal.src = item.resultado.dataURL;
-  } else {
-    imagemNormal.src = URL.createObjectURL(item.file);
-  }
-    
-  imagemNormal.onload = function() {
-
-    larguraOriginalAtual = imagemNormal.naturalWidth;
-    alturaOriginalAtual = imagemNormal.naturalHeight;
-
-    escalaBaseAtual = calcularEscalaAutomatica(
-      larguraOriginalAtual,
-      alturaOriginalAtual
-    );
-
+    // Garante que o zoom não fique ativado visualmente
+    modoZoomAtivo = false;
     zoomAtual = 1;
 
-    atualizarTamanhoImagemAtual();
+    if (botaoZoom) {
+      botaoZoom.classList.remove("ativo");
+    }
 
-    visualizacaoBox.scrollLeft = 0;
-    visualizacaoBox.scrollTop = 0;
+    imagemNormal.classList.remove("zoom_ativo");
+    visualizadorDicom.classList.remove("zoom_ativo");
 
-    // Agora mostra já no tamanho certo
-    imagemNormal.style.visibility = "visible";
+    // Mostra a imagem, mas invisível até ajustar o tamanho correto
+    imagemNormal.style.display = "block";
+    imagemNormal.style.visibility = "hidden";
 
-    gerarAnaliseImagemNormal(imagemNormal);
-  };
+    // Limpa tamanho anterior
+    imagemNormal.style.width = "";
+    imagemNormal.style.height = "";
 
-  return;
-}
+    if (item.resultado && item.resultado.tipo === "image") {
+      imagemNormal.src = item.resultado.dataURL;
+    } else {
+      imagemNormal.src = URL.createObjectURL(item.file);
+    }
+
+    imagemNormal.onload = function() {
+
+      larguraOriginalAtual = imagemNormal.naturalWidth;
+      alturaOriginalAtual = imagemNormal.naturalHeight;
+
+      escalaBaseAtual = calcularEscalaAutomatica(
+        larguraOriginalAtual,
+        alturaOriginalAtual
+      );
+
+      zoomAtual = 1;
+
+      // Igual ao DICOM: calcula o tamanho inicial e aplica direto
+      const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
+      const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+
+      imagemNormal.style.width = larguraInicial + "px";
+      imagemNormal.style.height = alturaInicial + "px";
+
+      visualizacaoBox.scrollLeft = 0;
+      visualizacaoBox.scrollTop = 0;
+
+      // Só aparece depois de já estar no tamanho normal
+      imagemNormal.style.visibility = "visible";
+
+      gerarAnaliseImagemNormal(imagemNormal);
+
+      statusText.innerText = "Imagem carregada: " + item.name;
+    };
+
+    return;
+  }
   
   if (item.type === "dicom") { // Abrir DICOM
     imagemNormal.style.display = "none";
