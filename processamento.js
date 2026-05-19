@@ -226,12 +226,13 @@ async function aplicarFerramenta(nome) {
       tamanhoKernel = tamanhoKernel + 1; // Transforma em ímpar
     }
 
-    const etapa = { // Cria uma nova etapa do fluxograma
+    const etapa = {
       id: proximoIdEtapa++,
       nome: "Filtro Gaussiano",
       parametros: {
         sigma: sigma,
-        tamanhoKernel: tamanhoKernel
+        tamanhoKernel: tamanhoKernel,
+        ignorarZero: deveIgnorarPixelZeroFerramentas()
       }
     };
 
@@ -268,7 +269,8 @@ function desenharFluxograma() {
     if (etapa.nome.includes("Gaussiano")) { // Caso seja o Filtro Gaussiano
       textoParametros = `
         Sigma: ${etapa.parametros.sigma}<br>
-        Tamanho do kernel: ${etapa.parametros.tamanhoKernel}
+        Tamanho do kernel: ${etapa.parametros.tamanhoKernel}<br>
+        Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
     bloco.innerHTML = `
@@ -972,7 +974,8 @@ async function processarImagemNormalPeloPipeline(item) {
       canvasAtual = aplicarGaussianoEmCanvas(
         canvasAtual,
         etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel
+        etapa.parametros.tamanhoKernel,
+        etapa.parametros.ignorarZero
       );
     }
   }
@@ -992,7 +995,8 @@ async function processarDicomPeloPipeline(item) {
       imagemAtual = aplicarGaussianoEmDicom(
         imagemAtual,
         etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel
+        etapa.parametros.tamanhoKernel,
+        etapa.parametros.ignorarZero
       );
     }
   }
@@ -1036,5 +1040,15 @@ function carregarDicomOriginal(item) {
         reject(error);
       });
   });
+
+}
+
+function deveIgnorarPixelZeroFerramentas() {
+
+  const check = document.getElementById("checkIgnorarZeroFerramentas");
+
+  if (!check) return false;
+
+  return check.checked;
 
 }
