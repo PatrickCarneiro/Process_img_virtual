@@ -3,6 +3,18 @@
 let histogramaAtual = []; // Guarda as contagens do histograma que está sendo exibido
 let bordasHistogramaAtual = []; // Guarda as bordas dos bins do histograma atual
 
+let ignorarPixelZeroAnalise = false; // Controla se pixels de intensidade 0 serão ignorados
+
+let dadosOriginaisAnaliseAtual = {
+  tipo: null,
+  imagemRGB: false,
+  cinza: [],
+  media: [],
+  r: [],
+  g: [],
+  b: []
+};
+
 let histogramasImagemAtual = { // Guarda os histogramas calculados da imagem atual
   cinza: null,
   r: null,
@@ -53,6 +65,8 @@ function iniciarAnalise() {
         botaoMapaPixel.addEventListener("click", exportarMapaPixelAtual); // Ao clicar, baixa o mapa de pixels
       }
 
+      criarControleIgnorarPixelZero();
+
     })
     .catch(function(error) {
 
@@ -93,6 +107,106 @@ function toggleAnalises() {
     document.body.style.overflowY = "auto";
 
   }
+
+}
+
+function criarControleIgnorarPixelZero() {
+
+  if (document.getElementById("controleIgnorarZero")) return;
+
+  const modaElemento = document.getElementById("moda");
+
+  if (!modaElemento || !modaElemento.parentElement) return;
+
+  const caixa = document.createElement("div");
+
+  caixa.id = "controleIgnorarZero";
+
+  caixa.style.marginTop = "10px";
+  caixa.style.padding = "10px";
+  caixa.style.borderRadius = "10px";
+  caixa.style.background = "rgba(255,255,255,0.06)";
+  caixa.style.border = "1px solid rgba(255,255,255,0.08)";
+  caixa.style.fontSize = "13px";
+  caixa.style.color = "white";
+
+  caixa.innerHTML = `
+    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+      <input type="checkbox" id="checkIgnorarPixelZero">
+      Ignorar pixels com intensidade 0
+    </label>
+  `;
+
+  modaElemento.parentElement.insertAdjacentElement("afterend", caixa);
+
+  const check = document.getElementById("checkIgnorarPixelZero");
+
+  if (check) {
+    check.addEventListener("change", function() {
+      ignorarPixelZeroAnalise = check.checked;
+      recalcularAnaliseComFiltroZero();
+    });
+  }
+
+}
+
+
+function criarHistogramaComFiltroZero(valores) {
+
+  if (!ignorarPixelZeroAnalise) {
+    return criarHistograma(valores);
+  }
+
+  const valoresSemZero = [];
+
+  for (let i = 0; i < valores.length; i++) {
+
+    const valor = Number(valores[i]);
+
+    if (Number.isFinite(valor) && valor !== 0) {
+      valoresSemZero.push(valor);
+    }
+
+  }
+
+  return criarHistograma(valoresSemZero);
+
+}
+
+
+function recalcularAnaliseComFiltroZero() {
+
+  if (!dadosOriginaisAnaliseAtual || !dadosOriginaisAnaliseAtual.tipo) return;
+
+  if (dadosOriginaisAnaliseAtual.tipo === "normal") {
+
+    histogramasImagemAtual = {
+      cinza: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.cinza),
+      media: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.media),
+      r: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.r),
+      g: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.g),
+      b: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.b)
+    };
+
+  }
+
+  if (dadosOriginaisAnaliseAtual.tipo === "dicom") {
+
+    const histDicom = criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.cinza);
+
+    histogramasImagemAtual = {
+      cinza: histDicom,
+      media: null,
+      r: null,
+      g: null,
+      b: null
+    };
+
+  }
+
+  selecionarCanalHistograma(canalHistogramaAtual);
+  atualizarMetricasDoCanalAtual();
+  desenharHistogramaAtual();
 
 }
 
@@ -146,12 +260,22 @@ function gerarAnaliseImagemNormal(img, arquivo) {
 
   }
 
+  dadosOriginaisAnaliseAtual = {
+    tipo: "normal",
+    imagemRGB: imagemRGB,
+    cinza: valoresMedia,
+    media: valoresMedia,
+    r: valoresR,
+    g: valoresG,
+    b: valoresB
+  };
+
   histogramasImagemAtual = {
-    cinza: criarHistograma(valoresMedia),
-    media: criarHistograma(valoresMedia),
-    r: criarHistograma(valoresR),
-    g: criarHistograma(valoresG),
-    b: criarHistograma(valoresB)
+    cinza: criarHistogramaComFiltroZero(valoresMedia),
+    media: criarHistogramaComFiltroZero(valoresMedia),
+    r: criarHistogramaComFiltroZero(valoresR),
+    g: criarHistogramaComFiltroZero(valoresG),
+    b: criarHistogramaComFiltroZero(valoresB)
   };
 
   const botoesRGB = document.getElementById("botoesCanaisRGB"); // Área dos botões RGB
@@ -202,7 +326,17 @@ function gerarAnaliseDicom(image) {
     valores.push(Number(pixels[i])); // Converte os pixels para número
   }
 
-  const histDicom = criarHistograma(valores); // Cria histograma do DICOM
+  dadosOriginaisAnaliseAtual = {
+    tipo: "dicom",
+    imagemRGB: false,
+    cinza: valores,
+    media: [],
+    r: [],
+    g: [],
+    b: []
+  };
+
+  const histDicom = criarHistogramaComFiltroZero(valores);
 
   histogramasImagemAtual = {
     cinza: histDicom,
