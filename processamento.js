@@ -490,31 +490,25 @@ function openFile(item) {
     visualizadorDicom.style.display = "none";
     imagemDicomAtual = null;
 
-    // Garante que o zoom não fique ativado visualmente
+    // Desativa zoom e mãozinha ao abrir imagem
     modoZoomAtivo = false;
+    modoPanAtivo = false;
     zoomAtual = 1;
 
-    if (botaoZoom) {
-      botaoZoom.classList.remove("ativo");
-    }
+    if (botaoZoom) botaoZoom.classList.remove("ativo");
+    if (botaoPan) botaoPan.classList.remove("ativo");
 
     imagemNormal.classList.remove("zoom_ativo");
     visualizadorDicom.classList.remove("zoom_ativo");
+    visualizacaoBox.classList.remove("zoom_aplicado");
+    visualizacaoBox.classList.remove("pan_ativo");
+    visualizacaoBox.classList.remove("pan_arrastando");
 
-    // Mostra a imagem, mas invisível até ajustar o tamanho correto
-    imagemNormal.style.display = "block";
+    // Esconde completamente enquanto carrega
+    imagemNormal.style.display = "none";
     imagemNormal.style.visibility = "hidden";
 
-    // Limpa tamanho anterior
-    imagemNormal.style.width = "";
-    imagemNormal.style.height = "";
-
-    if (item.resultado && item.resultado.tipo === "image") {
-      imagemNormal.src = item.resultado.dataURL;
-    } else {
-      imagemNormal.src = URL.createObjectURL(item.file);
-    }
-
+    // Importante: define o onload ANTES do src
     imagemNormal.onload = function() {
 
       larguraOriginalAtual = imagemNormal.naturalWidth;
@@ -527,23 +521,30 @@ function openFile(item) {
 
       zoomAtual = 1;
 
-      // Igual ao DICOM: calcula o tamanho inicial e aplica direto
       const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
       const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
 
+      // Aplica o tamanho antes de mostrar
       imagemNormal.style.width = larguraInicial + "px";
       imagemNormal.style.height = alturaInicial + "px";
 
       visualizacaoBox.scrollLeft = 0;
       visualizacaoBox.scrollTop = 0;
 
-      // Só aparece depois de já estar no tamanho normal
+      // Agora sim mostra já ajustada
+      imagemNormal.style.display = "block";
       imagemNormal.style.visibility = "visible";
 
       gerarAnaliseImagemNormal(imagemNormal);
 
       statusText.innerText = "Imagem carregada: " + item.name;
     };
+
+    if (item.resultado && item.resultado.tipo === "image") {
+      imagemNormal.src = item.resultado.dataURL;
+    } else {
+      imagemNormal.src = URL.createObjectURL(item.file);
+    }
 
     return;
   }
