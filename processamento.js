@@ -488,15 +488,16 @@ function openFile(item) {
     arquivoAtual.innerText = item.name;
   }
 
+  // =====================================================
+  // ABRIR IMAGEM NORMAL
+  // =====================================================
   if (item.type === "image") {
 
     visualizadorDicom.style.display = "none";
     imagemDicomAtual = null;
 
-    // Esconde a imagem enquanto ela ainda está carregando
+    // Esconde enquanto carrega para evitar o "zoom/piscada"
     imagemNormal.style.display = "none";
-
-    // Limpa tamanho antigo para não aparecer com zoom errado
     imagemNormal.style.width = "0px";
     imagemNormal.style.height = "0px";
 
@@ -512,7 +513,6 @@ function openFile(item) {
 
       zoomAtual = 1;
 
-      // Agora sim mostra a imagem já no tamanho correto
       imagemNormal.style.display = "block";
       atualizarTamanhoImagemAtual();
 
@@ -525,7 +525,6 @@ function openFile(item) {
         gerarAnaliseImagemNormal(imagemNormal);
         statusText.innerText = "Imagem carregada: " + item.name;
       }, 50);
-
     };
 
     if (item.resultado && item.resultado.tipo === "image") {
@@ -537,12 +536,89 @@ function openFile(item) {
     return;
   }
 
+  // =====================================================
+  // ABRIR DICOM
+  // =====================================================
   if (item.type === "dicom") {
+
     imagemNormal.style.display = "none";
+    imagemNormal.removeAttribute("src");
+
     visualizadorDicom.style.display = "block";
 
-    // mantém seu código DICOM daqui para baixo
+    resetarZoom();
+
+    if (item.resultado && item.resultado.tipo === "dicom") {
+
+      const imagem = item.resultado.imagem;
+
+      mostrarDicomNaTela(imagem, item.name);
+      return;
+    }
+
+    const dicomFile = new File([item.file], item.name);
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+
+    cornerstone.loadImage(imageId).then(function(imagem) {
+
+      imagemDicomAtual = imagem;
+
+      mostrarDicomNaTela(imagem, item.name);
+
+    }).catch(function(error) {
+
+      console.error(error);
+      statusText.innerText = "Erro ao carregar DICOM: " + item.name;
+
+    });
+
+    return;
   }
+}
+
+function mostrarDicomNaTela(imagem, nomeArquivo) {
+
+  imagemDicomAtual = imagem;
+
+  larguraOriginalAtual = imagem.width;
+  alturaOriginalAtual = imagem.height;
+
+  escalaBaseAtual = calcularEscalaAutomatica(
+    larguraOriginalAtual,
+    alturaOriginalAtual
+  );
+
+  zoomAtual = 1;
+
+  const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
+  const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+
+  visualizadorDicom.style.width = larguraInicial + "px";
+  visualizadorDicom.style.height = alturaInicial + "px";
+
+  cornerstone.displayImage(visualizadorDicom, imagem);
+
+  const viewport = cornerstone.getViewport(visualizadorDicom);
+
+  viewport.voi = {
+    windowCenter: imagem.windowCenter,
+    windowWidth: imagem.windowWidth
+  };
+
+  viewport.invert = imagem.invert || false;
+  viewport.scale = escalaBaseAtual;
+  viewport.translation.x = 0;
+  viewport.translation.y = 0;
+
+  cornerstone.setViewport(visualizadorDicom, viewport);
+  cornerstone.resize(visualizadorDicom, true);
+
+  visualizacaoBox.scrollLeft = 0;
+  visualizacaoBox.scrollTop = 0;
+
+  gerarAnaliseDicom(imagem);
+
+  statusText.innerText = "DICOM carregado: " + nomeArquivo;
 }
 
 // Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
