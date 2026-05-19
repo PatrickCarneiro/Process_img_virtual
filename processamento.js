@@ -487,40 +487,44 @@ function openFile(item) {
     arquivoAtual.innerText = item.name;
   }
   if (item.type === "image") {
-    visualizadorDicom.style.display = "none";
-    imagemDicomAtual = null;
+  visualizadorDicom.style.display = "none";
+  imagemDicomAtual = null;
 
-    imagemNormal.style.display = "none";
+  // Esconde visualmente, mas mantém a imagem existindo para calcular tamanho
+  imagemNormal.style.display = "block";
+  imagemNormal.style.visibility = "hidden";
 
-    if (item.resultado && item.resultado.tipo === "image") {
-      imagemNormal.src = item.resultado.dataURL;
-    } else {
-      imagemNormal.src = URL.createObjectURL(item.file);
-    }
-      
-    imagemNormal.onload = function() {
-
-      resetarZoom();
-
-      larguraOriginalAtual = imagemNormal.naturalWidth; // Pega largura real da imagem
-      alturaOriginalAtual = imagemNormal.naturalHeight; // Pega altura real da imagem
-
-      escalaBaseAtual = calcularEscalaAutomatica(
-        larguraOriginalAtual,
-        alturaOriginalAtual
-      ); // Calcula escala para caber na tela
-
-      zoomAtual = 1; // Reseta zoom
-
-      atualizarTamanhoImagemAtual();
-
-      imagemNormal.style.display = "block";
-
-      gerarAnaliseImagemNormal(imagemNormal);
-    };
-
-    return;
+  if (item.resultado && item.resultado.tipo === "image") {
+    imagemNormal.src = item.resultado.dataURL;
+  } else {
+    imagemNormal.src = URL.createObjectURL(item.file);
   }
+    
+  imagemNormal.onload = function() {
+
+    larguraOriginalAtual = imagemNormal.naturalWidth;
+    alturaOriginalAtual = imagemNormal.naturalHeight;
+
+    escalaBaseAtual = calcularEscalaAutomatica(
+      larguraOriginalAtual,
+      alturaOriginalAtual
+    );
+
+    zoomAtual = 1;
+
+    atualizarTamanhoImagemAtual();
+
+    visualizacaoBox.scrollLeft = 0;
+    visualizacaoBox.scrollTop = 0;
+
+    // Agora mostra já no tamanho certo
+    imagemNormal.style.visibility = "visible";
+
+    gerarAnaliseImagemNormal(imagemNormal);
+  };
+
+  return;
+}
   
   if (item.type === "dicom") { // Abrir DICOM
     imagemNormal.style.display = "none";
