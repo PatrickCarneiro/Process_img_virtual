@@ -183,31 +183,24 @@ function selecionarFerramenta(nome) {
       <h4>Parâmetros</h4>
 
       <div class="campo_parametro_info">
-        <label>Kernel [M N]</label>
+        <label>Tamanho do kernel</label>
 
         <input 
           type="text" 
           id="param1" 
-          placeholder="Ex: 3 ou 10 11 ou [10 11]"
+          placeholder="Ex: 3, 5 ou 7"
         >
 
         <div class="caixa_info_parametro">
-          Digite um valor único para kernel quadrado, como 3, 
-          ou dois valores separados por espaço, como 10 11.
+          No modo rápido, o filtro usa cv.medianBlur. 
+          Por isso, aceita apenas kernel quadrado, ímpar e maior que 1.
+          Exemplos válidos: 3, 5, 7.
         </div>
       </div>
 
-      <div class="campo_parametro_info">
-        <label>Preenchimento das bordas</label>
-
-        <select id="param2">
-          <option value="zeros">zeros</option>
-          <option value="symmetric">symmetric</option>
-        </select>
-
-        <div class="caixa_info_parametro">
-          zeros é o padrão do MATLAB. symmetric espelha a imagem nas bordas.
-        </div>
+      <div class="caixa_info_parametro">
+        Comparação no MATLAB: use medfilt2(I, [k k], 'symmetric').
+        O modo rápido não usa o padrão 'zeros' do medfilt2.
       </div>
 
       <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Mediana')">
@@ -293,15 +286,13 @@ async function aplicarFerramenta(nome) {
   if (nome.includes("Mediana")) {
 
     const p1 = document.getElementById("param1");
-    const p2 = document.getElementById("param2");
 
     const kernelTexto = p1 ? p1.value.trim() : "";
-    const padopt = p2 ? p2.value : "zeros";
 
     const kernel = interpretarKernelMediana(kernelTexto);
 
     if (!kernel.valido) {
-      alert("Digite um kernel válido. Exemplos: 3, 5, 10 11 ou [10 11].");
+      alert(kernel.motivo || "Digite um kernel válido. Exemplos: 3, 5 ou 7.");
       return;
     }
 
@@ -309,9 +300,7 @@ async function aplicarFerramenta(nome) {
       id: proximoIdEtapa++,
       nome: "Filtro Mediana",
       parametros: {
-        linhasKernel: kernel.linhas,
-        colunasKernel: kernel.colunas,
-        padopt: padopt,
+        tamanhoKernel: kernel.tamanhoKernel,
         ignorarZero: deveIgnorarPixelZeroFerramentas()
       }
     };
@@ -355,8 +344,9 @@ function desenharFluxograma() {
     }
     if (etapa.nome.includes("Mediana")) {
       textoParametros = `
-        Kernel: [${etapa.parametros.linhasKernel} ${etapa.parametros.colunasKernel}]<br>
-        Borda: ${etapa.parametros.padopt}<br>
+        Kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
+        Método: cv.medianBlur - modo rápido<br>
+        MATLAB aproximado: medfilt2(I, [${etapa.parametros.tamanhoKernel} ${etapa.parametros.tamanhoKernel}], 'symmetric')<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
@@ -1067,13 +1057,10 @@ async function processarImagemNormalPeloPipeline(item) {
         etapa.parametros.ignorarZero
       );
     }
-
     if (etapa.nome.includes("Mediana")) { 
       canvasAtual = aplicarMedianaEmCanvas(
         canvasAtual,
-        etapa.parametros.linhasKernel,
-        etapa.parametros.colunasKernel,
-        etapa.parametros.padopt,
+        etapa.parametros.tamanhoKernel,
         etapa.parametros.ignorarZero
       );
     }
@@ -1106,9 +1093,7 @@ async function processarDicomPeloPipeline(item) {
     if (etapa.nome.includes("Mediana")) {
       imagemAtual = aplicarMedianaEmDicom(
         imagemAtual,
-        etapa.parametros.linhasKernel,
-        etapa.parametros.colunasKernel,
-        etapa.parametros.padopt,
+        etapa.parametros.tamanhoKernel,
         etapa.parametros.ignorarZero
       );
     }
