@@ -92,6 +92,12 @@ cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
 
 cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
 
+const kernel = interpretarKernelMediana(kernelTexto);
+
+if (!kernel.valido) {
+  alert("Digite um kernel válido. Exemplos: 3, 5, 10 11 ou [10 11].");
+  return;
+}
 
 // Função para abrir/fechar o menu lateral -----------
 function toggleMenu() { 
@@ -177,6 +183,48 @@ function selecionarFerramenta(nome) {
 
     return;
   }
+  
+  if (nome.includes("Mediana")) {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+        <label>Kernel [M N]</label>
+
+        <input 
+          type="text" 
+          id="param1" 
+          placeholder="Ex: 3 ou 10 11 ou [10 11]"
+        >
+
+        <div class="caixa_info_parametro">
+          Digite um valor único para kernel quadrado, como 3, 
+          ou dois valores separados por espaço, como 10 11.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Preenchimento das bordas</label>
+
+        <select id="param2">
+          <option value="zeros">zeros</option>
+          <option value="symmetric">symmetric</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          zeros é o padrão do MATLAB. symmetric espelha a imagem nas bordas.
+        </div>
+      </div>
+
+      <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Mediana')">
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
 
   parametrosDiv.innerHTML = `
     <h4>Parâmetros</h4>
@@ -188,6 +236,8 @@ function selecionarFerramenta(nome) {
     </button>
   `;
 }
+
+
 
 async function aplicarFerramenta(nome) {
 
@@ -247,6 +297,43 @@ async function aplicarFerramenta(nome) {
     return;
   }
 
+  if (nome.includes("Mediana")) {
+
+    const p1 = document.getElementById("param1");
+    const p2 = document.getElementById("param2");
+
+    const kernelTexto = p1 ? p1.value.trim() : "";
+    const padopt = p2 ? p2.value : "zeros";
+
+    const kernel = interpretarKernelMediana(kernelTexto);
+
+    if (!kernel.valido) {
+      alert("Digite um kernel válido. Exemplos: 3, 5, 10 11 ou [10 11].");
+      return;
+    }
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Filtro Mediana",
+      parametros: {
+        linhasKernel: kernel.linhas,
+        colunasKernel: kernel.colunas,
+        padopt: padopt,
+        ignorarZero: deveIgnorarPixelZeroFerramentas()
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await recalcularTodasAsImagens();
+
+    desenharFluxograma();
+
+    statusText.innerText = "Filtro Mediana aplicado em todas as imagens.";
+
+    return;
+  }
+
   alert("Ferramenta ainda não implementada no pipeline.");
 }
 
@@ -270,6 +357,13 @@ function desenharFluxograma() {
       textoParametros = `
         Sigma: ${etapa.parametros.sigma}<br>
         Tamanho do kernel: ${etapa.parametros.tamanhoKernel}<br>
+        Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+    if (etapa.nome.includes("Mediana")) {
+      textoParametros = `
+        Kernel: [${etapa.parametros.linhasKernel} ${etapa.parametros.colunasKernel}]<br>
+        Borda: ${etapa.parametros.padopt}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
