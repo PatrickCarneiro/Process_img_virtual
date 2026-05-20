@@ -92,13 +92,6 @@ cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
 
 cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
 
-const kernel = interpretarKernelMediana(kernelTexto);
-
-if (!kernel.valido) {
-  alert("Digite um kernel válido. Exemplos: 3, 5, 10 11 ou [10 11].");
-  return;
-}
-
 // Função para abrir/fechar o menu lateral -----------
 function toggleMenu() { 
 
@@ -1062,8 +1055,10 @@ async function recalcularTodasAsImagens() {
 // Processa uma imagem normal usando o pipeline de ferramentas.
 async function processarImagemNormalPeloPipeline(item) {
 
-  let canvasAtual = await criarCanvasOriginalImagemNormal(item.file); // Começa sempre pela imagem original.
-  for (const etapa of pipelineFerramentas) { // Aplica cada ferramenta na ordem do fluxograma.
+  let canvasAtual = await criarCanvasOriginalImagemNormal(item.file);
+
+  for (const etapa of pipelineFerramentas) {
+
     if (etapa.nome.includes("Gaussiano")) { 
       canvasAtual = aplicarGaussianoEmCanvas(
         canvasAtual,
@@ -1072,28 +1067,33 @@ async function processarImagemNormalPeloPipeline(item) {
         etapa.parametros.ignorarZero
       );
     }
+
+    if (etapa.nome.includes("Mediana")) { 
+      canvasAtual = aplicarMedianaEmCanvas(
+        canvasAtual,
+        etapa.parametros.linhasKernel,
+        etapa.parametros.colunasKernel,
+        etapa.parametros.padopt,
+        etapa.parametros.ignorarZero
+      );
+    }
   }
-  if (etapa.nome.includes("Mediana")) { 
-    canvasAtual = aplicarMedianaEmCanvas(
-      canvasAtual,
-      etapa.parametros.linhasKernel,
-      etapa.parametros.colunasKernel,
-      etapa.parametros.padopt,
-      etapa.parametros.ignorarZero
-    );
-  }
-  return { // Retorna o resultado final como DataURL para exibir no <img>.
+
+  return {
     tipo: "image",
     dataURL: canvasAtual.toDataURL("image/png"),
     largura: canvasAtual.width,
     altura: canvasAtual.height
   };
 }
+
 // Processa um DICOM usando o pipeline de ferramentas.
 async function processarDicomPeloPipeline(item) {
 
-  let imagemAtual = await carregarDicomOriginal(item); // Começa sempre pelo DICOM original.
-  for (const etapa of pipelineFerramentas) { // Aplica cada ferramenta na ordem do fluxograma.
+  let imagemAtual = await carregarDicomOriginal(item);
+
+  for (const etapa of pipelineFerramentas) {
+
     if (etapa.nome.includes("Gaussiano")) {
       imagemAtual = aplicarGaussianoEmDicom(
         imagemAtual,
@@ -1102,6 +1102,7 @@ async function processarDicomPeloPipeline(item) {
         etapa.parametros.ignorarZero
       );
     }
+
     if (etapa.nome.includes("Mediana")) {
       imagemAtual = aplicarMedianaEmDicom(
         imagemAtual,
@@ -1110,13 +1111,13 @@ async function processarDicomPeloPipeline(item) {
         etapa.parametros.padopt,
         etapa.parametros.ignorarZero
       );
-}
+    }
   }
+
   return {
     tipo: "dicom",
     imagem: imagemAtual
   };
-
 }
 // Cria um canvas com a imagem original.
 function criarCanvasOriginalImagemNormal(file) {
