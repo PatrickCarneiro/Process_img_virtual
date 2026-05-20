@@ -1073,6 +1073,15 @@ async function processarImagemNormalPeloPipeline(item) {
       );
     }
   }
+  if (etapa.nome.includes("Mediana")) { 
+    canvasAtual = aplicarMedianaEmCanvas(
+      canvasAtual,
+      etapa.parametros.linhasKernel,
+      etapa.parametros.colunasKernel,
+      etapa.parametros.padopt,
+      etapa.parametros.ignorarZero
+    );
+  }
   return { // Retorna o resultado final como DataURL para exibir no <img>.
     tipo: "image",
     dataURL: canvasAtual.toDataURL("image/png"),
@@ -1093,6 +1102,15 @@ async function processarDicomPeloPipeline(item) {
         etapa.parametros.ignorarZero
       );
     }
+    if (etapa.nome.includes("Mediana")) {
+      imagemAtual = aplicarMedianaEmDicom(
+        imagemAtual,
+        etapa.parametros.linhasKernel,
+        etapa.parametros.colunasKernel,
+        etapa.parametros.padopt,
+        etapa.parametros.ignorarZero
+      );
+}
   }
   return {
     tipo: "dicom",
