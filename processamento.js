@@ -588,7 +588,7 @@ function criarCardImagem(item) {
       await processarImagemSelecionada(item);
     }
 
-    openFile(item);
+    await openFile(item);
   };
 
   imagensTrabalho.appendChild(card);
@@ -764,56 +764,7 @@ async function openFile(item) {
     return;
   }
 }
-  
-  if (item.type === "dicom") { // Abrir DICOM
-    imagemNormal.style.display = "none";
-    visualizadorDicom.style.display = "block";
 
-    if (item.resultado && item.resultado.tipo === "dicom") {
-
-      const imagem = item.resultado.imagem;
-
-      imagemDicomAtual = imagem;
-
-      larguraOriginalAtual = imagem.width;
-      alturaOriginalAtual = imagem.height;
-
-      escalaBaseAtual = calcularEscalaAutomatica(
-        larguraOriginalAtual,
-        alturaOriginalAtual
-      );
-
-      zoomAtual = 1;
-
-      const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
-      const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
-
-      visualizadorDicom.style.width = larguraInicial + "px";
-      visualizadorDicom.style.height = alturaInicial + "px";
-
-      cornerstone.displayImage(visualizadorDicom, imagem);
-
-      const viewport = cornerstone.getViewport(visualizadorDicom);
-
-      viewport.voi = {
-        windowCenter: imagem.windowCenter,
-        windowWidth: imagem.windowWidth
-      };
-
-      viewport.invert = imagem.invert || false;
-      viewport.scale = escalaBaseAtual;
-
-      cornerstone.setViewport(visualizadorDicom, viewport);
-      cornerstone.resize(visualizadorDicom, true);
-
-      gerarAnaliseDicom(imagem);
-
-      statusText.innerText = "DICOM carregado: " + item.name;
-
-      return;
-    }
-  }
-}
 
 // Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
 function togglePixelInfo() { // Função para ligar/desligar inspeção de pixel
