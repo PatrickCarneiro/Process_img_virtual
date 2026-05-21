@@ -676,8 +676,6 @@ async function openFile(item) {
       imagemNormal.style.display = "block";
       imagemNormal.style.visibility = "visible";
 
-      gerarAnaliseImagemNormal(imagemNormal);
-
       statusText.innerText = "Imagem carregada: " + item.name;
     };
 
@@ -753,8 +751,6 @@ async function openFile(item) {
 
     cornerstone.setViewport(visualizadorDicom, viewport);
     cornerstone.resize(visualizadorDicom, true);
-
-    gerarAnaliseDicom(imagem);
 
     visualizacaoBox.scrollLeft = 0;
     visualizacaoBox.scrollTop = 0;

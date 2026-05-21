@@ -5,6 +5,8 @@ let bordasHistogramaAtual = []; // Guarda as bordas dos bins do histograma atual
 
 let ignorarPixelZeroAnalise = false; // Controla se pixels de intensidade 0 serão ignorados
 
+let analiseCarregada = false;
+
 let dadosOriginaisAnaliseAtual = {
   tipo: null,
   imagemRGB: false,
@@ -30,6 +32,82 @@ let faixaFimHistograma = 0; // Índice final da faixa exibida no histograma
 
 let arrastandoAlcaHistograma = null; // Controla qual alça da faixa está sendo arrastada
 
+
+async function abrirAnaliseSobDemanda() {
+
+  if (!analiseCarregada) {
+
+    await iniciarAnalise();
+
+    analiseCarregada = true;
+
+    const botaoInicial = document.getElementById("botaoAbrirAnaliseInicial");
+
+    if (botaoInicial) {
+      botaoInicial.style.display = "none";
+    }
+  }
+
+  const aba = document.getElementById("abaAnalises");
+  const icone = document.getElementById("iconeAnalises");
+
+  if (!aba || !icone) return;
+
+  aba.classList.toggle("aberta");
+
+  if (aba.classList.contains("aberta")) {
+
+    icone.innerText = "▼ Fechar análises";
+
+    document.body.style.overflow = "hidden";
+
+    if (typeof atualizarAnaliseDaImagemAtual === "function") {
+      await atualizarAnaliseDaImagemAtual();
+    }
+
+    setTimeout(function() {
+      desenharHistogramaAtual();
+    }, 100);
+
+  } else {
+
+    icone.innerText = "▲ Abrir análises";
+
+    document.body.style.overflowX = "hidden";
+    document.body.style.overflowY = "auto";
+
+  }
+}
+
+async function atualizarAnaliseDaImagemAtual() {
+
+  if (!analiseCarregada) return;
+
+  if (typeof imagemAtualSelecionada === "undefined") return;
+  if (!imagemAtualSelecionada) return;
+
+  const item = imagemAtualSelecionada;
+
+  if (item.type === "image") {
+
+    const imagemNormal = document.getElementById("imagemNormal");
+
+    if (imagemNormal && imagemNormal.src) {
+      gerarAnaliseImagemNormal(imagemNormal);
+    }
+
+    return;
+  }
+
+  if (item.type === "dicom") {
+
+    if (typeof imagemDicomAtual !== "undefined" && imagemDicomAtual) {
+      gerarAnaliseDicom(imagemDicomAtual);
+    }
+
+    return;
+  }
+}
 
 // FUNÇÕES DA TELA DE ANÁLISE
 
