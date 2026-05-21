@@ -222,39 +222,39 @@ function selecionarFerramenta(nome) {
 
 async function aplicarFerramenta(nome) {
 
-  if (imagensProcessamento.length === 0) { // Verifica se existem imagens carregadas
+  if (imagensProcessamento.length === 0) {
     alert("Nenhuma imagem carregada para processar.");
     return;
   }
 
-  if (typeof cv === "undefined") { // Verifica se o OpenCV carregou
+  if (typeof cv === "undefined") {
     alert("OpenCV.js ainda não foi carregado.");
     return;
   }
 
-  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta é o Filtro Gaussiano
+  if (nome.includes("Gaussiano")) {
 
-    const p1 = document.getElementById("param1"); // Pega o campo sigma
-    const p2 = document.getElementById("param2"); // Pega o campo kernel
+    const p1 = document.getElementById("param1");
+    const p2 = document.getElementById("param2");
 
-    const sigmaTexto = p1 ? p1.value.trim() : ""; // Pega o valor digitado no sigma
-    const kernelTexto = p2 ? p2.value.trim() : ""; // Pega o valor digitado no kernel
+    const sigmaTexto = p1 ? p1.value.trim() : "";
+    const kernelTexto = p2 ? p2.value.trim() : "";
 
-    let sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto); // Se vazio, usa padrão 1
-    let tamanhoKernel = kernelTexto === "" ? 3 : parseInt(kernelTexto); // Se vazio, usa padrão 3
+    let sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto);
+    let tamanhoKernel = kernelTexto === "" ? 3 : parseInt(kernelTexto);
 
-    if (!Number.isFinite(sigma) || sigma <= 0) { // Valida o sigma
+    if (!Number.isFinite(sigma) || sigma <= 0) {
       alert("Digite um sigma válido maior que zero.");
       return;
     }
 
-    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 1) { // Valida o kernel
+    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 1) {
       alert("Digite um tamanho de kernel válido.");
       return;
     }
 
-    if (tamanhoKernel % 2 === 0) { // Se o kernel for par
-      tamanhoKernel = tamanhoKernel + 1; // Transforma em ímpar
+    if (tamanhoKernel % 2 === 0) {
+      tamanhoKernel = tamanhoKernel + 1;
     }
 
     const etapa = {
@@ -283,7 +283,6 @@ async function aplicarFerramenta(nome) {
   if (nome.includes("Mediana")) {
 
     const p1 = document.getElementById("param1");
-
     const kernelTexto = p1 ? p1.value.trim() : "";
 
     const kernel = interpretarKernelMediana(kernelTexto);
@@ -312,10 +311,11 @@ async function aplicarFerramenta(nome) {
     desenharFluxograma();
 
     statusText.innerText = "Filtro Mediana aplicado na imagem selecionada.";
+    return;
+  }
 
   alert("Ferramenta ainda não implementada no pipeline.");
 }
-
 function desenharFluxograma() {
 
   areaFluxograma.innerHTML = ""; // Limpa toda a área do fluxograma.
