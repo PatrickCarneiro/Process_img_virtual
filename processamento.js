@@ -500,9 +500,7 @@ async function processarImagemSelecionada(item) {
 
   if (!item) return null;
 
-  barraProcessamentoContainer.style.display = "inline-flex";
-  barraProcessamento.style.width = "0%";
-  barraProcessamentoTexto.innerText = "0%";
+  mostrarBarraProcessamento();
 
   statusText.innerText = "Processando imagem selecionada: " + item.name;
 
@@ -520,8 +518,7 @@ async function processarImagemSelecionada(item) {
 
   item.processado = true;
 
-  barraProcessamento.style.width = "100%";
-  barraProcessamentoTexto.innerText = "100%";
+  atualizarBarraProcessamento(100);
 
   statusText.innerText = "Processamento concluído: " + item.name;
 
@@ -1134,18 +1131,20 @@ async function processarImagemNormalPeloPipeline(item) {
   for (const etapa of pipelineFerramentas) {
 
     if (etapa.nome.includes("Gaussiano")) { 
-      canvasAtual = aplicarGaussianoEmCanvas(
+      canvasAtual = await aplicarGaussianoEmCanvas(
         canvasAtual,
         etapa.parametros.sigma,
         etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero
+        etapa.parametros.ignorarZero,
+        atualizarBarraProcessamento
       );
     }
     if (etapa.nome.includes("Mediana")) { 
-      canvasAtual = aplicarMedianaEmCanvas(
+      canvasAtual = await aplicarMedianaEmCanvas(
         canvasAtual,
         etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero
+        etapa.parametros.ignorarZero,
+        atualizarBarraProcessamento
       );
     }
   }
@@ -1166,19 +1165,21 @@ async function processarDicomPeloPipeline(item) {
   for (const etapa of pipelineFerramentas) {
 
     if (etapa.nome.includes("Gaussiano")) {
-      imagemAtual = aplicarGaussianoEmDicom(
+      imagemAtual = await aplicarGaussianoEmDicom(
         imagemAtual,
         etapa.parametros.sigma,
         etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero
+        etapa.parametros.ignorarZero,
+        atualizarBarraProcessamento
       );
     }
 
     if (etapa.nome.includes("Mediana")) {
-      imagemAtual = aplicarMedianaEmDicom(
+      imagemAtual = await aplicarMedianaEmDicom(
         imagemAtual,
         etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero
+        etapa.parametros.ignorarZero,
+        atualizarBarraProcessamento
       );
     }
   }
@@ -1233,4 +1234,32 @@ function deveIgnorarPixelZeroFerramentas() {
 
   return check.checked;
 
+}
+
+function mostrarBarraProcessamento() {
+  barraProcessamentoContainer.style.display = "inline-flex";
+  atualizarBarraProcessamento(0);
+}
+
+function atualizarBarraProcessamento(porcentagem) {
+  porcentagem = Math.round(porcentagem);
+
+  if (porcentagem < 0) porcentagem = 0;
+  if (porcentagem > 100) porcentagem = 100;
+
+  barraProcessamento.style.width = porcentagem + "%";
+  barraProcessamentoTexto.innerText = porcentagem + "%";
+}
+
+function esconderBarraProcessamento() {
+  setTimeout(function() {
+    barraProcessamentoContainer.style.display = "none";
+    atualizarBarraProcessamento(0);
+  }, 700);
+}
+
+function esperarAtualizacaoTela() {
+  return new Promise(function(resolve) {
+    requestAnimationFrame(resolve);
+  });
 }

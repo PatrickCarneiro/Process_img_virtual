@@ -1,18 +1,84 @@
-// Função para aplicar o filtro Gaussiano em uma imagem Canvas
-function aplicarGaussianoEmCanvas(canvasEntrada, sigma, tamanhoKernel, ignorarZero) {
+// =====================================================
+// FILTRO GAUSSIANO
+// Usa cv.GaussianBlur do OpenCV.js
+// =====================================================
 
-  sigma = Number(sigma); // Garante que o sigma esteja no formato numérico
-  tamanhoKernel = parseInt(tamanhoKernel); // Garante que o tamanho do kernel seja inteiro
-  if (tamanhoKernel % 2 === 0) { // Verifica se o kernel é par
-    tamanhoKernel = tamanhoKernel + 1; // Transforma o kernel em ímpar
+
+// Pequena pausa para o navegador conseguir atualizar a barra
+function esperarAtualizacaoGaussiano() {
+  return new Promise(function(resolve) {
+    requestAnimationFrame(resolve);
+  });
+}
+
+
+// Atualiza a barra somente se a função existir
+function atualizarProgressoGaussiano(atualizarProgresso, porcentagem) {
+  if (typeof atualizarProgresso === "function") {
+    atualizarProgresso(porcentagem);
   }
+}
+
+
+// Garante que o sigma e kernel estejam corretos
+function ajustarParametrosGaussiano(sigma, tamanhoKernel) {
+
+  sigma = Number(sigma);
+  tamanhoKernel = parseInt(tamanhoKernel);
+
+  if (!Number.isFinite(sigma) || sigma <= 0) {
+    sigma = 1;
+  }
+
+  if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 1) {
+    tamanhoKernel = 3;
+  }
+
+  if (tamanhoKernel % 2 === 0) {
+    tamanhoKernel = tamanhoKernel + 1;
+  }
+
+  return {
+    sigma: sigma,
+    tamanhoKernel: tamanhoKernel
+  };
+}
+
+
+// =====================================================
+// GAUSSIANO EM CANVAS
+// =====================================================
+async function aplicarGaussianoEmCanvas(canvasEntrada, sigma, tamanhoKernel, ignorarZero, atualizarProgresso) {
+
+  const parametros = ajustarParametrosGaussiano(sigma, tamanhoKernel);
+
+  sigma = parametros.sigma;
+  tamanhoKernel = parametros.tamanhoKernel;
+
   if (ignorarZero) {
-    return aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKernel);
+    return await aplicarGaussianoEmCanvasIgnorandoZero(
+      canvasEntrada,
+      sigma,
+      tamanhoKernel,
+      atualizarProgresso
+    );
   }
-  const src = cv.imread(canvasEntrada); // Lê o canvas como matriz OpenCV
-  const dst = new cv.Mat(); // Cria a matriz de saída
-  const ksize = new cv.Size(tamanhoKernel, tamanhoKernel); // Define o tamanho do kernel
-  cv.GaussianBlur( // Aplica o filtro Gaussiano
+
+  atualizarProgressoGaussiano(atualizarProgresso, 10);
+  await esperarAtualizacaoGaussiano();
+
+  const src = cv.imread(canvasEntrada);
+
+  atualizarProgressoGaussiano(atualizarProgresso, 35);
+  await esperarAtualizacaoGaussiano();
+
+  const dst = new cv.Mat();
+  const ksize = new cv.Size(tamanhoKernel, tamanhoKernel);
+
+  atualizarProgressoGaussiano(atualizarProgresso, 50);
+  await esperarAtualizacaoGaussiano();
+
+  cv.GaussianBlur(
     src,
     dst,
     ksize,
@@ -20,30 +86,49 @@ function aplicarGaussianoEmCanvas(canvasEntrada, sigma, tamanhoKernel, ignorarZe
     sigma,
     cv.BORDER_REPLICATE
   );
-  const canvasSaida = document.createElement("canvas"); // Cria um novo canvas para guardar o resultado
-  canvasSaida.width = canvasEntrada.width; // Define a largura do canvas de saída
-  canvasSaida.height = canvasEntrada.height; // Define a altura do canvas de saída
-  cv.imshow(canvasSaida, dst); // Mostra o resultado filtrado no canvas de saída
-  src.delete(); // Libera a memória da matriz de entrada
-  dst.delete(); // Libera a memória da matriz de saída
-  return canvasSaida; // Retorna o canvas filtrado
 
+  atualizarProgressoGaussiano(atualizarProgresso, 75);
+  await esperarAtualizacaoGaussiano();
+
+  const canvasSaida = document.createElement("canvas");
+  canvasSaida.width = canvasEntrada.width;
+  canvasSaida.height = canvasEntrada.height;
+
+  cv.imshow(canvasSaida, dst);
+
+  atualizarProgressoGaussiano(atualizarProgresso, 95);
+  await esperarAtualizacaoGaussiano();
+
+  src.delete();
+  dst.delete();
+
+  atualizarProgressoGaussiano(atualizarProgresso, 100);
+
+  return canvasSaida;
 }
 
-// Funcão para aplicar o filtro Gaussiano em uma imagem DICOM
-function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel, ignorarZero) {
 
-  sigma = Number(sigma);
+// =====================================================
+// GAUSSIANO EM DICOM
+// =====================================================
+async function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel, ignorarZero, atualizarProgresso) {
 
-  tamanhoKernel = parseInt(tamanhoKernel);
+  const parametros = ajustarParametrosGaussiano(sigma, tamanhoKernel);
 
-  if (tamanhoKernel % 2 === 0) {
-    tamanhoKernel = tamanhoKernel + 1;
-  }
+  sigma = parametros.sigma;
+  tamanhoKernel = parametros.tamanhoKernel;
+
   if (ignorarZero) {
-    return aplicarGaussianoEmDicomIgnorandoZero(imagemEntrada, sigma, tamanhoKernel);
+    return await aplicarGaussianoEmDicomIgnorandoZero(
+      imagemEntrada,
+      sigma,
+      tamanhoKernel,
+      atualizarProgresso
+    );
   }
 
+  atualizarProgressoGaussiano(atualizarProgresso, 5);
+  await esperarAtualizacaoGaussiano();
 
   const pixelsOriginais = imagemEntrada.getPixelData();
 
@@ -53,8 +138,18 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel, ignorarZer
   const pixelsFloat = new Float32Array(pixelsOriginais.length);
 
   for (let i = 0; i < pixelsOriginais.length; i++) {
+
     pixelsFloat[i] = Number(pixelsOriginais[i]);
+
+    if (i % 50000 === 0) {
+      const porcentagem = 5 + (i / pixelsOriginais.length) * 20;
+      atualizarProgressoGaussiano(atualizarProgresso, porcentagem);
+      await esperarAtualizacaoGaussiano();
+    }
   }
+
+  atualizarProgressoGaussiano(atualizarProgresso, 30);
+  await esperarAtualizacaoGaussiano();
 
   const src = cv.matFromArray(
     altura,
@@ -63,8 +158,10 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel, ignorarZer
     Array.from(pixelsFloat)
   );
 
-  const dst = new cv.Mat();
+  atualizarProgressoGaussiano(atualizarProgresso, 45);
+  await esperarAtualizacaoGaussiano();
 
+  const dst = new cv.Mat();
   const ksize = new cv.Size(tamanhoKernel, tamanhoKernel);
 
   cv.GaussianBlur(
@@ -75,6 +172,9 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel, ignorarZer
     sigma,
     cv.BORDER_REPLICATE
   );
+
+  atualizarProgressoGaussiano(atualizarProgresso, 70);
+  await esperarAtualizacaoGaussiano();
 
   let pixelsFiltrados;
 
@@ -98,26 +198,21 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel, ignorarZer
 
     let valor = Math.round(dst.data32F[i]);
 
-    if (pixelsFiltrados instanceof Uint8Array) {
-      if (valor < 0) valor = 0;
-      if (valor > 255) valor = 255;
-    }
-
-    if (pixelsFiltrados instanceof Uint16Array) {
-      if (valor < 0) valor = 0;
-      if (valor > 65535) valor = 65535;
-    }
-
-    if (pixelsFiltrados instanceof Int16Array) {
-      if (valor < -32768) valor = -32768;
-      if (valor > 32767) valor = 32767;
-    }
+    valor = limitarValorParaTipoPixelGaussiano(valor, pixelsFiltrados);
 
     pixelsFiltrados[i] = valor;
+
+    if (i % 50000 === 0) {
+      const porcentagem = 70 + (i / dst.data32F.length) * 25;
+      atualizarProgressoGaussiano(atualizarProgresso, porcentagem);
+      await esperarAtualizacaoGaussiano();
+    }
   }
 
   src.delete();
   dst.delete();
+
+  atualizarProgressoGaussiano(atualizarProgresso, 100);
 
   return criarImagemDicomAPartirPixels(
     pixelsFiltrados,
@@ -126,15 +221,19 @@ function aplicarGaussianoEmDicom(imagemEntrada, sigma, tamanhoKernel, ignorarZer
     imagemEntrada,
     "dicom_gaussiano_" + Date.now()
   );
-
 }
-// Função para criar uma nova imagem DICOM compatível com Cornerstone
+
+
+// =====================================================
+// CRIAR NOVA IMAGEM DICOM
+// =====================================================
 function criarImagemDicomAPartirPixels(pixels, largura, altura, imagemBase, imageId) { 
 
   let min = Infinity;
   let max = -Infinity;
 
   for (let i = 0; i < pixels.length; i++) {
+
     const valor = Number(pixels[i]);
 
     if (!Number.isFinite(valor)) continue;
@@ -167,9 +266,9 @@ function criarImagemDicomAPartirPixels(pixels, largura, altura, imagemBase, imag
     windowCenter: windowCenter,
     windowWidth: windowWidth,
 
-      voiLUTFunction: "LINEAR",
-      modalityLUT: undefined,
-      voiLUT: undefined,
+    voiLUTFunction: "LINEAR",
+    modalityLUT: undefined,
+    voiLUT: undefined,
 
     render: cornerstone.renderGrayscaleImage,
 
@@ -196,17 +295,22 @@ function criarImagemDicomAPartirPixels(pixels, largura, altura, imagemBase, imag
   return imagemNova;
 }
 
-function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKernel) {
 
-  sigma = Number(sigma);
-  tamanhoKernel = parseInt(tamanhoKernel);
+// =====================================================
+// GAUSSIANO EM CANVAS IGNORANDO ZERO
+// =====================================================
+async function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKernel, atualizarProgresso) {
 
-  if (tamanhoKernel % 2 === 0) {
-    tamanhoKernel = tamanhoKernel + 1;
-  }
+  const parametros = ajustarParametrosGaussiano(sigma, tamanhoKernel);
+
+  sigma = parametros.sigma;
+  tamanhoKernel = parametros.tamanhoKernel;
 
   const largura = canvasEntrada.width;
   const altura = canvasEntrada.height;
+
+  atualizarProgressoGaussiano(atualizarProgresso, 0);
+  await esperarAtualizacaoGaussiano();
 
   const ctxEntrada = canvasEntrada.getContext("2d");
   const imageDataEntrada = ctxEntrada.getImageData(0, 0, largura, altura);
@@ -217,6 +321,7 @@ function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKern
 
   canvasValores.width = largura;
   canvasValores.height = altura;
+
   canvasMascara.width = largura;
   canvasMascara.height = altura;
 
@@ -236,9 +341,10 @@ function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKern
     const b = dataEntrada[i + 2];
     const a = dataEntrada[i + 3];
 
-    const ehZero = r === 0 && g === 0 && b === 0;
+    const pixelZero = r === 0 && g === 0 && b === 0;
 
-    if (ehZero) {
+    if (pixelZero) {
+
       dataValores[i] = 0;
       dataValores[i + 1] = 0;
       dataValores[i + 2] = 0;
@@ -248,7 +354,9 @@ function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKern
       dataMascara[i + 1] = 0;
       dataMascara[i + 2] = 0;
       dataMascara[i + 3] = 255;
+
     } else {
+
       dataValores[i] = r;
       dataValores[i + 1] = g;
       dataValores[i + 2] = b;
@@ -260,10 +368,18 @@ function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKern
       dataMascara[i + 3] = 255;
     }
 
+    if (i % 50000 === 0) {
+      const porcentagem = 0 + (i / dataEntrada.length) * 25;
+      atualizarProgressoGaussiano(atualizarProgresso, porcentagem);
+      await esperarAtualizacaoGaussiano();
+    }
   }
 
   ctxValores.putImageData(imageDataValores, 0, 0);
   ctxMascara.putImageData(imageDataMascara, 0, 0);
+
+  atualizarProgressoGaussiano(atualizarProgresso, 30);
+  await esperarAtualizacaoGaussiano();
 
   const srcValores = cv.imread(canvasValores);
   const srcMascara = cv.imread(canvasMascara);
@@ -273,8 +389,29 @@ function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKern
 
   const ksize = new cv.Size(tamanhoKernel, tamanhoKernel);
 
-  cv.GaussianBlur(srcValores, blurValores, ksize, sigma, sigma, cv.BORDER_REPLICATE);
-  cv.GaussianBlur(srcMascara, blurMascara, ksize, sigma, sigma, cv.BORDER_REPLICATE);
+  cv.GaussianBlur(
+    srcValores,
+    blurValores,
+    ksize,
+    sigma,
+    sigma,
+    cv.BORDER_REPLICATE
+  );
+
+  atualizarProgressoGaussiano(atualizarProgresso, 55);
+  await esperarAtualizacaoGaussiano();
+
+  cv.GaussianBlur(
+    srcMascara,
+    blurMascara,
+    ksize,
+    sigma,
+    sigma,
+    cv.BORDER_REPLICATE
+  );
+
+  atualizarProgressoGaussiano(atualizarProgresso, 70);
+  await esperarAtualizacaoGaussiano();
 
   const canvasSaida = document.createElement("canvas");
   canvasSaida.width = largura;
@@ -297,18 +434,25 @@ function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKern
     const pixelOriginalEraZero = rOriginal === 0 && gOriginal === 0 && bOriginal === 0;
 
     if (pixelOriginalEraZero) {
+
       dataSaida[i] = 0;
       dataSaida[i + 1] = 0;
       dataSaida[i + 2] = 0;
       dataSaida[i + 3] = dataEntrada[i + 3];
-      continue;
+
+    } else {
+
+      dataSaida[i] = mascaraR > 0 ? Math.round(blurValores.data[i] / mascaraR) : 0;
+      dataSaida[i + 1] = mascaraG > 0 ? Math.round(blurValores.data[i + 1] / mascaraG) : 0;
+      dataSaida[i + 2] = mascaraB > 0 ? Math.round(blurValores.data[i + 2] / mascaraB) : 0;
+      dataSaida[i + 3] = dataEntrada[i + 3];
     }
 
-    dataSaida[i] = mascaraR > 0 ? Math.round(blurValores.data[i] / mascaraR) : 0;
-    dataSaida[i + 1] = mascaraG > 0 ? Math.round(blurValores.data[i + 1] / mascaraG) : 0;
-    dataSaida[i + 2] = mascaraB > 0 ? Math.round(blurValores.data[i + 2] / mascaraB) : 0;
-    dataSaida[i + 3] = dataEntrada[i + 3];
-
+    if (i % 50000 === 0) {
+      const porcentagem = 70 + (i / dataSaida.length) * 25;
+      atualizarProgressoGaussiano(atualizarProgresso, porcentagem);
+      await esperarAtualizacaoGaussiano();
+    }
   }
 
   ctxSaida.putImageData(imageDataSaida, 0, 0);
@@ -318,18 +462,24 @@ function aplicarGaussianoEmCanvasIgnorandoZero(canvasEntrada, sigma, tamanhoKern
   blurValores.delete();
   blurMascara.delete();
 
-  return canvasSaida;
+  atualizarProgressoGaussiano(atualizarProgresso, 100);
 
+  return canvasSaida;
 }
 
-function aplicarGaussianoEmDicomIgnorandoZero(imagemEntrada, sigma, tamanhoKernel) {
 
-  sigma = Number(sigma);
-  tamanhoKernel = parseInt(tamanhoKernel);
+// =====================================================
+// GAUSSIANO EM DICOM IGNORANDO ZERO
+// =====================================================
+async function aplicarGaussianoEmDicomIgnorandoZero(imagemEntrada, sigma, tamanhoKernel, atualizarProgresso) {
 
-  if (tamanhoKernel % 2 === 0) {
-    tamanhoKernel = tamanhoKernel + 1;
-  }
+  const parametros = ajustarParametrosGaussiano(sigma, tamanhoKernel);
+
+  sigma = parametros.sigma;
+  tamanhoKernel = parametros.tamanhoKernel;
+
+  atualizarProgressoGaussiano(atualizarProgresso, 0);
+  await esperarAtualizacaoGaussiano();
 
   const pixelsOriginais = imagemEntrada.getPixelData();
 
@@ -351,7 +501,15 @@ function aplicarGaussianoEmDicomIgnorandoZero(imagemEntrada, sigma, tamanhoKerne
       mascara[i] = 1;
     }
 
+    if (i % 50000 === 0) {
+      const porcentagem = 0 + (i / pixelsOriginais.length) * 25;
+      atualizarProgressoGaussiano(atualizarProgresso, porcentagem);
+      await esperarAtualizacaoGaussiano();
+    }
   }
+
+  atualizarProgressoGaussiano(atualizarProgresso, 30);
+  await esperarAtualizacaoGaussiano();
 
   const srcValores = cv.matFromArray(
     altura,
@@ -367,23 +525,53 @@ function aplicarGaussianoEmDicomIgnorandoZero(imagemEntrada, sigma, tamanhoKerne
     Array.from(mascara)
   );
 
+  atualizarProgressoGaussiano(atualizarProgresso, 45);
+  await esperarAtualizacaoGaussiano();
+
   const blurValores = new cv.Mat();
   const blurMascara = new cv.Mat();
 
   const ksize = new cv.Size(tamanhoKernel, tamanhoKernel);
 
-  cv.GaussianBlur(srcValores, blurValores, ksize, sigma, sigma, cv.BORDER_REPLICATE);
-  cv.GaussianBlur(srcMascara, blurMascara, ksize, sigma, sigma, cv.BORDER_REPLICATE);
+  cv.GaussianBlur(
+    srcValores,
+    blurValores,
+    ksize,
+    sigma,
+    sigma,
+    cv.BORDER_REPLICATE
+  );
+
+  atualizarProgressoGaussiano(atualizarProgresso, 60);
+  await esperarAtualizacaoGaussiano();
+
+  cv.GaussianBlur(
+    srcMascara,
+    blurMascara,
+    ksize,
+    sigma,
+    sigma,
+    cv.BORDER_REPLICATE
+  );
+
+  atualizarProgressoGaussiano(atualizarProgresso, 75);
+  await esperarAtualizacaoGaussiano();
 
   let pixelsFiltrados;
 
   if (pixelsOriginais instanceof Uint8Array) {
     pixelsFiltrados = new Uint8Array(blurValores.data32F.length);
-  } else if (pixelsOriginais instanceof Uint16Array) {
+  } 
+  
+  else if (pixelsOriginais instanceof Uint16Array) {
     pixelsFiltrados = new Uint16Array(blurValores.data32F.length);
-  } else if (pixelsOriginais instanceof Int16Array) {
+  } 
+  
+  else if (pixelsOriginais instanceof Int16Array) {
     pixelsFiltrados = new Int16Array(blurValores.data32F.length);
-  } else {
+  } 
+  
+  else {
     pixelsFiltrados = new Uint16Array(blurValores.data32F.length);
   }
 
@@ -392,30 +580,27 @@ function aplicarGaussianoEmDicomIgnorandoZero(imagemEntrada, sigma, tamanhoKerne
     let valor;
 
     if (Number(pixelsOriginais[i]) === 0) {
+
       valor = 0;
+
     } else if (blurMascara.data32F[i] > 0) {
+
       valor = Math.round(blurValores.data32F[i] / blurMascara.data32F[i]);
+
     } else {
+
       valor = 0;
     }
 
-    if (pixelsFiltrados instanceof Uint8Array) {
-      if (valor < 0) valor = 0;
-      if (valor > 255) valor = 255;
-    }
-
-    if (pixelsFiltrados instanceof Uint16Array) {
-      if (valor < 0) valor = 0;
-      if (valor > 65535) valor = 65535;
-    }
-
-    if (pixelsFiltrados instanceof Int16Array) {
-      if (valor < -32768) valor = -32768;
-      if (valor > 32767) valor = 32767;
-    }
+    valor = limitarValorParaTipoPixelGaussiano(valor, pixelsFiltrados);
 
     pixelsFiltrados[i] = valor;
 
+    if (i % 50000 === 0) {
+      const porcentagem = 75 + (i / blurValores.data32F.length) * 20;
+      atualizarProgressoGaussiano(atualizarProgresso, porcentagem);
+      await esperarAtualizacaoGaussiano();
+    }
   }
 
   srcValores.delete();
@@ -423,12 +608,43 @@ function aplicarGaussianoEmDicomIgnorandoZero(imagemEntrada, sigma, tamanhoKerne
   blurValores.delete();
   blurMascara.delete();
 
+  atualizarProgressoGaussiano(atualizarProgresso, 100);
+
   return criarImagemDicomAPartirPixels(
     pixelsFiltrados,
     largura,
     altura,
     imagemEntrada,
-    "dicom_gaussiano_sem_zero_" + Date.now()
+    "dicom_gaussiano_" + Date.now()
   );
+}
 
+
+// =====================================================
+// LIMITAR VALOR PELO TIPO DO PIXEL
+// =====================================================
+function limitarValorParaTipoPixelGaussiano(valor, arrayDestino) {
+
+  if (!Number.isFinite(valor)) {
+    valor = 0;
+  }
+
+  valor = Math.round(valor);
+
+  if (arrayDestino instanceof Uint8Array) {
+    if (valor < 0) valor = 0;
+    if (valor > 255) valor = 255;
+  }
+
+  if (arrayDestino instanceof Uint16Array) {
+    if (valor < 0) valor = 0;
+    if (valor > 65535) valor = 65535;
+  }
+
+  if (arrayDestino instanceof Int16Array) {
+    if (valor < -32768) valor = -32768;
+    if (valor > 32767) valor = 32767;
+  }
+
+  return valor;
 }

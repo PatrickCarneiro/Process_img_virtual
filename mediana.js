@@ -13,7 +13,7 @@
 
 // Interpreta o kernel digitado pelo usuário
 // Aceita: 3, [3 3], 3 3, 5x5
-// Não aceita mais kernel retangular, como 10 11
+// Não aceita kernel retangular, como 10 11
 function interpretarKernelMediana(textoKernel) {
 
   textoKernel = textoKernel.trim();
@@ -89,8 +89,26 @@ function interpretarKernelMediana(textoKernel) {
 }
 
 
-// Aplica mediana rápida em imagem comum usando OpenCV.js
-function aplicarMedianaEmCanvas(canvasEntrada, tamanhoKernel, ignorarZero) {
+// Pequena pausa para o navegador conseguir atualizar a barra
+function esperarAtualizacaoMediana() {
+  return new Promise(function(resolve) {
+    requestAnimationFrame(resolve);
+  });
+}
+
+
+// Atualiza a barra somente se a função existir
+function atualizarProgressoMediana(atualizarProgresso, porcentagem) {
+  if (typeof atualizarProgresso === "function") {
+    atualizarProgresso(porcentagem);
+  }
+}
+
+
+// =====================================================
+// MEDIANA EM CANVAS
+// =====================================================
+async function aplicarMedianaEmCanvas(canvasEntrada, tamanhoKernel, ignorarZero, atualizarProgresso) {
 
   tamanhoKernel = parseInt(tamanhoKernel);
 
@@ -103,13 +121,32 @@ function aplicarMedianaEmCanvas(canvasEntrada, tamanhoKernel, ignorarZero) {
   }
 
   if (ignorarZero) {
-    return aplicarMedianaEmCanvasIgnorandoZero(canvasEntrada, tamanhoKernel);
+    return await aplicarMedianaEmCanvasIgnorandoZero(
+      canvasEntrada,
+      tamanhoKernel,
+      atualizarProgresso
+    );
   }
 
+  // ===== MODO RÁPIDO COM OPENCV =====
+
+  atualizarProgressoMediana(atualizarProgresso, 10);
+  await esperarAtualizacaoMediana();
+
   const src = cv.imread(canvasEntrada);
+
+  atualizarProgressoMediana(atualizarProgresso, 35);
+  await esperarAtualizacaoMediana();
+
   const dst = new cv.Mat();
 
+  atualizarProgressoMediana(atualizarProgresso, 50);
+  await esperarAtualizacaoMediana();
+
   cv.medianBlur(src, dst, tamanhoKernel);
+
+  atualizarProgressoMediana(atualizarProgresso, 75);
+  await esperarAtualizacaoMediana();
 
   const canvasSaida = document.createElement("canvas");
   canvasSaida.width = canvasEntrada.width;
@@ -117,15 +154,22 @@ function aplicarMedianaEmCanvas(canvasEntrada, tamanhoKernel, ignorarZero) {
 
   cv.imshow(canvasSaida, dst);
 
+  atualizarProgressoMediana(atualizarProgresso, 95);
+  await esperarAtualizacaoMediana();
+
   src.delete();
   dst.delete();
+
+  atualizarProgressoMediana(atualizarProgresso, 100);
 
   return canvasSaida;
 }
 
 
-// Aplica mediana rápida em DICOM
-function aplicarMedianaEmDicom(imagemEntrada, tamanhoKernel, ignorarZero) {
+// =====================================================
+// MEDIANA EM DICOM
+// =====================================================
+async function aplicarMedianaEmDicom(imagemEntrada, tamanhoKernel, ignorarZero, atualizarProgresso) {
 
   tamanhoKernel = parseInt(tamanhoKernel);
 
@@ -138,13 +182,23 @@ function aplicarMedianaEmDicom(imagemEntrada, tamanhoKernel, ignorarZero) {
   }
 
   if (ignorarZero) {
-    return aplicarMedianaEmDicomIgnorandoZero(imagemEntrada, tamanhoKernel);
+    return await aplicarMedianaEmDicomIgnorandoZero(
+      imagemEntrada,
+      tamanhoKernel,
+      atualizarProgresso
+    );
   }
+
+  atualizarProgressoMediana(atualizarProgresso, 5);
+  await esperarAtualizacaoMediana();
 
   const pixelsOriginais = imagemEntrada.getPixelData();
 
   const largura = imagemEntrada.width;
   const altura = imagemEntrada.height;
+
+  atualizarProgressoMediana(atualizarProgresso, 15);
+  await esperarAtualizacaoMediana();
 
   const src = cv.matFromArray(
     altura,
@@ -155,9 +209,15 @@ function aplicarMedianaEmDicom(imagemEntrada, tamanhoKernel, ignorarZero) {
     })
   );
 
+  atualizarProgressoMediana(atualizarProgresso, 35);
+  await esperarAtualizacaoMediana();
+
   const dst = new cv.Mat();
 
   cv.medianBlur(src, dst, tamanhoKernel);
+
+  atualizarProgressoMediana(atualizarProgresso, 70);
+  await esperarAtualizacaoMediana();
 
   let pixelsFiltrados;
 
@@ -184,10 +244,18 @@ function aplicarMedianaEmDicom(imagemEntrada, tamanhoKernel, ignorarZero) {
     valor = limitarValorParaTipoPixelMediana(valor, pixelsFiltrados);
 
     pixelsFiltrados[i] = valor;
+
+    if (i % 50000 === 0) {
+      const porcentagem = 70 + (i / dst.data32F.length) * 25;
+      atualizarProgressoMediana(atualizarProgresso, porcentagem);
+      await esperarAtualizacaoMediana();
+    }
   }
 
   src.delete();
   dst.delete();
+
+  atualizarProgressoMediana(atualizarProgresso, 100);
 
   return criarImagemDicomAPartirPixels(
     pixelsFiltrados,
@@ -199,9 +267,10 @@ function aplicarMedianaEmDicom(imagemEntrada, tamanhoKernel, ignorarZero) {
 }
 
 
-// Versão com ignorar zero para imagem comum
-// Observação: essa parte ainda é manual porque o medianBlur não ignora zero nativamente
-function aplicarMedianaEmCanvasIgnorandoZero(canvasEntrada, tamanhoKernel) {
+// =====================================================
+// MEDIANA EM CANVAS IGNORANDO ZERO
+// =====================================================
+async function aplicarMedianaEmCanvasIgnorandoZero(canvasEntrada, tamanhoKernel, atualizarProgresso) {
 
   const largura = canvasEntrada.width;
   const altura = canvasEntrada.height;
@@ -219,6 +288,9 @@ function aplicarMedianaEmCanvasIgnorandoZero(canvasEntrada, tamanhoKernel) {
   const dataSaida = imageDataSaida.data;
 
   const raio = Math.floor(tamanhoKernel / 2);
+
+  atualizarProgressoMediana(atualizarProgresso, 0);
+  await esperarAtualizacaoMediana();
 
   for (let y = 0; y < altura; y++) {
 
@@ -261,17 +333,27 @@ function aplicarMedianaEmCanvasIgnorandoZero(canvasEntrada, tamanhoKernel) {
 
       dataSaida[indicePixel + 3] = dataEntrada[indicePixel + 3];
     }
+
+    const porcentagem = ((y + 1) / altura) * 95;
+    atualizarProgressoMediana(atualizarProgresso, porcentagem);
+
+    if (y % 5 === 0) {
+      await esperarAtualizacaoMediana();
+    }
   }
 
   ctxSaida.putImageData(imageDataSaida, 0, 0);
+
+  atualizarProgressoMediana(atualizarProgresso, 100);
 
   return canvasSaida;
 }
 
 
-// Versão com ignorar zero para DICOM
-// Observação: essa parte ainda é manual porque o medianBlur não ignora zero nativamente
-function aplicarMedianaEmDicomIgnorandoZero(imagemEntrada, tamanhoKernel) {
+// =====================================================
+// MEDIANA EM DICOM IGNORANDO ZERO
+// =====================================================
+async function aplicarMedianaEmDicomIgnorandoZero(imagemEntrada, tamanhoKernel, atualizarProgresso) {
 
   const pixelsOriginais = imagemEntrada.getPixelData();
 
@@ -297,6 +379,9 @@ function aplicarMedianaEmDicomIgnorandoZero(imagemEntrada, tamanhoKernel) {
   }
 
   const raio = Math.floor(tamanhoKernel / 2);
+
+  atualizarProgressoMediana(atualizarProgresso, 0);
+  await esperarAtualizacaoMediana();
 
   for (let y = 0; y < altura; y++) {
 
@@ -337,7 +422,16 @@ function aplicarMedianaEmDicomIgnorandoZero(imagemEntrada, tamanhoKernel) {
         pixelsFiltrados
       );
     }
+
+    const porcentagem = ((y + 1) / altura) * 95;
+    atualizarProgressoMediana(atualizarProgresso, porcentagem);
+
+    if (y % 5 === 0) {
+      await esperarAtualizacaoMediana();
+    }
   }
+
+  atualizarProgressoMediana(atualizarProgresso, 100);
 
   return criarImagemDicomAPartirPixels(
     pixelsFiltrados,
@@ -349,6 +443,9 @@ function aplicarMedianaEmDicomIgnorandoZero(imagemEntrada, tamanhoKernel) {
 }
 
 
+// =====================================================
+// CÁLCULO DA MEDIANA
+// =====================================================
 function calcularMedianaMediana(valores) {
 
   valores.sort(function(a, b) {
@@ -366,6 +463,9 @@ function calcularMedianaMediana(valores) {
 }
 
 
+// =====================================================
+// LIMITAR VALOR PELO TIPO DO PIXEL
+// =====================================================
 function limitarValorParaTipoPixelMediana(valor, arrayDestino) {
 
   if (!Number.isFinite(valor)) {
