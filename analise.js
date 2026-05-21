@@ -35,9 +35,7 @@ let arrastandoAlcaHistograma = null; // Controla qual alça da faixa está sendo
 
 async function abrirAnaliseSobDemanda() {
 
-  const botaoInicial = document.getElementById("botaoAbrirAnaliseInicial");
-
-  // Se a análise ainda não foi carregada, carrega o HTML da análise
+  // Se por algum motivo a análise ainda não foi carregada, carrega agora
   if (!analiseCarregada) {
 
     await iniciarAnalise();
@@ -46,21 +44,19 @@ async function abrirAnaliseSobDemanda() {
   }
 
   const aba = document.getElementById("abaAnalises");
+  const icone = document.getElementById("iconeAnalises");
 
-  if (!aba) return;
+  if (!aba || !icone) return;
 
-  // Abre ou fecha a aba
   aba.classList.toggle("aberta");
 
   if (aba.classList.contains("aberta")) {
 
-    if (botaoInicial) {
-      botaoInicial.innerText = "▼ Fechar análise";
-    }
+    icone.innerText = "▼ Fechar análises";
 
     document.body.style.overflow = "hidden";
 
-    // Só agora calcula a análise da imagem atual
+    // Só calcula quando abrir a aba
     await atualizarAnaliseDaImagemAtual();
 
     setTimeout(function() {
@@ -69,9 +65,7 @@ async function abrirAnaliseSobDemanda() {
 
   } else {
 
-    if (botaoInicial) {
-      botaoInicial.innerText = "▲ Abrir análise";
-    }
+    icone.innerText = "▲ Abrir análises";
 
     document.body.style.overflowX = "hidden";
     document.body.style.overflowY = "auto";
@@ -1655,3 +1649,12 @@ function baixarCSV(conteudo, nomeArquivo) {
 
   URL.revokeObjectURL(url); // Libera memória
 }
+
+window.addEventListener("DOMContentLoaded", async function() {
+
+  if (!analiseCarregada) {
+    await iniciarAnalise();
+    analiseCarregada = true;
+  }
+
+});
