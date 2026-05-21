@@ -145,7 +145,6 @@ function selecionarFerramenta(nome) {
           id="param1" 
           min="0.1" 
           step="0.1" 
-          placeholder="Digite o sigma"
         >
 
         <div class="caixa_info_parametro">
@@ -161,7 +160,6 @@ function selecionarFerramenta(nome) {
           id="param2" 
           min="1" 
           step="1" 
-          placeholder="Digite um valor ímpar"
         >
 
         <div class="caixa_info_parametro">
@@ -188,18 +186,15 @@ function selecionarFerramenta(nome) {
         <input 
           type="text" 
           id="param1" 
-          placeholder="Ex: 3, 5 ou 7"
         >
 
         <div class="caixa_info_parametro">
-          No modo rápido, o filtro usa cv.medianBlur. 
-          Por isso, aceita apenas kernel quadrado, ímpar e maior que 1.
-          Exemplos válidos: 3, 5, 7.
+          O tamanho do kernel deve ser quadrado, ímpar e maior que 1.
+          Função do MATLAB: medfilt2(I, [k k], 'symmetric').
         </div>
       </div>
 
       <div class="caixa_info_parametro">
-        Comparação no MATLAB: use medfilt2(I, [k k], 'symmetric').
         O modo rápido não usa o padrão 'zeros' do medfilt2.
       </div>
 
@@ -272,14 +267,16 @@ async function aplicarFerramenta(nome) {
       }
     };
 
-    pipelineFerramentas.push(etapa); // Adiciona a etapa ao pipeline
+    pipelineFerramentas.push(etapa);
 
-    await recalcularTodasAsImagens(); // Aplica o pipeline em todas as imagens
+    if (imagemAtualSelecionada) {
+      await processarImagemSelecionada(imagemAtualSelecionada);
+      openFile(imagemAtualSelecionada);
+    }
 
-    desenharFluxograma(); // Desenha o bloco no fluxograma
+    desenharFluxograma();
 
-    statusText.innerText = "Filtro Gaussiano aplicado em todas as imagens."; // Atualiza o status
-
+    statusText.innerText = "Filtro Gaussiano aplicado na imagem selecionada.";
     return;
   }
 
@@ -307,14 +304,14 @@ async function aplicarFerramenta(nome) {
 
     pipelineFerramentas.push(etapa);
 
-    await recalcularTodasAsImagens();
+    if (imagemAtualSelecionada) {
+      await processarImagemSelecionada(imagemAtualSelecionada);
+      openFile(imagemAtualSelecionada);
+    }
 
     desenharFluxograma();
 
-    statusText.innerText = "Filtro Mediana aplicado em todas as imagens.";
-
-    return;
-  }
+    statusText.innerText = "Filtro Mediana aplicado na imagem selecionada.";
 
   alert("Ferramenta ainda não implementada no pipeline.");
 }
@@ -363,12 +360,23 @@ function desenharFluxograma() {
 }
 async function removerEtapaPipeline(idEtapa) {
 
-  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) { // Remove do array a etapa que possui o ID selecionado.
+  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) {
     return etapa.id !== idEtapa;
   });
-  await recalcularTodasAsImagens(); // Recalcula todas as imagens.
-  desenharFluxograma(); // Redesenha o fluxograma sem a etapa removida.
 
+  // Limpa o resultado da imagem atual, porque o pipeline mudou
+  if (imagemAtualSelecionada) {
+    imagemAtualSelecionada.resultado = null;
+    imagemAtualSelecionada.processado = false;
+
+    if (pipelineFerramentas.length > 0) {
+      await processarImagemSelecionada(imagemAtualSelecionada);
+    }
+
+    openFile(imagemAtualSelecionada);
+  }
+
+  desenharFluxograma();
 }
 
 function openDatabase() { // Função para abrir/criar o banco IndexedDB
@@ -452,32 +460,78 @@ function getFiles(db) { // Função para pegar arquivos da store files
 async function loadFiles() { 
 
   try {
-    const db = await openDatabase(); // Abre o banco IndexedDB
+    const db = await openDatabase();
     const files = await getFiles(db);
+
     if (files.length === 0) {
       statusText.innerText = "Nenhum arquivo encontrado.";
       return;
     }
-    imagensProcessamento = files.map(function(item, index) { // Mapeia os arquivos para o array imagensProcessamento
+
+    imagensProcessamento = files.map(function(item, index) {
       return {
         idProcessamento: index + 1,
         id: item.id,
         name: item.name,
         type: item.type,
         file: item.file,
-        resultado: null
+        resultado: null,
+        processado: false
       };
     });
-    await recalcularTodasAsImagens(); 
+
+    // Agora NÃO processa tudo ao carregar
     desenharCardsImagensTrabalho();
+
+    // Apenas abre a primeira imagem original
     if (imagensProcessamento.length > 0) {
       openFile(imagensProcessamento[0]);
     }
-    statusText.innerText = "Arquivos carregados.";
+
+    statusText.innerText = "Arquivos carregados. Clique em uma miniatura para processar.";
+
   } catch (error) {
     console.error(error);
     statusText.innerText = "Erro ao carregar arquivos.";
   }
+}
+
+async function processarImagemSelecionada(item) {
+
+  if (!item) return null;
+
+  barraProcessamentoContainer.style.display = "inline-flex";
+  barraProcessamento.style.width = "0%";
+  barraProcessamentoTexto.innerText = "0%";
+
+  statusText.innerText = "Processando imagem selecionada: " + item.name;
+
+  await new Promise(function(resolve) {
+    requestAnimationFrame(resolve);
+  });
+
+  if (item.type === "image") {
+    item.resultado = await processarImagemNormalPeloPipeline(item);
+  }
+
+  if (item.type === "dicom") {
+    item.resultado = await processarDicomPeloPipeline(item);
+  }
+
+  item.processado = true;
+
+  barraProcessamento.style.width = "100%";
+  barraProcessamentoTexto.innerText = "100%";
+
+  statusText.innerText = "Processamento concluído: " + item.name;
+
+  setTimeout(function() {
+    barraProcessamentoContainer.style.display = "none";
+    barraProcessamento.style.width = "0%";
+    barraProcessamentoTexto.innerText = "0%";
+  }, 700);
+
+  return item;
 }
 
 function desenharCardsImagensTrabalho() {
@@ -526,7 +580,14 @@ function criarCardImagem(item) {
   card.appendChild(nome);
 
   // Ao clicar no card, continua abrindo a imagem processada na tela principal
-  card.onclick = function() {
+  card.onclick = async function() {
+
+    imagemAtualSelecionada = item;
+
+    if (pipelineFerramentas.length > 0) {
+      await processarImagemSelecionada(item);
+    }
+
     openFile(item);
   };
 
