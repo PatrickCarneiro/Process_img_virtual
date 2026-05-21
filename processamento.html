@@ -679,28 +679,10 @@ body {
 
 </div> <!-- Fecha área principal -->
 
-<button 
-  id="botaoAbrirAnaliseInicial"
-  onclick="abrirAnaliseSobDemanda()"
-  style="
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-    z-index: 90;
-    padding: 12px 20px;
-    border-radius: 14px;
-    border: 1px solid rgba(192,132,252,0.45);
-    background: rgba(10,20,40,0.98);
-    color: white;
-    cursor: pointer;
-  "
->
-  ▲ Abrir análises
+<button id="botaoAbrirAnaliseInicial" onclick="abrirAnaliseSobDemanda()">
+  ▲ Abrir análise
 </button>
 
-<div id="areaAnalise"></div>
-
-<!-- Área onde a aba de análises será carregada a partir do arquivo analise.html -->
 <div id="areaAnalise"></div>
 
 <script src="https://docs.opencv.org/4.x/opencv.js"></script>

@@ -35,35 +35,33 @@ let arrastandoAlcaHistograma = null; // Controla qual alça da faixa está sendo
 
 async function abrirAnaliseSobDemanda() {
 
+  const botaoInicial = document.getElementById("botaoAbrirAnaliseInicial");
+
+  // Se a análise ainda não foi carregada, carrega o HTML da análise
   if (!analiseCarregada) {
 
     await iniciarAnalise();
 
     analiseCarregada = true;
-
-    const botaoInicial = document.getElementById("botaoAbrirAnaliseInicial");
-
-    if (botaoInicial) {
-      botaoInicial.style.display = "none";
-    }
   }
 
   const aba = document.getElementById("abaAnalises");
-  const icone = document.getElementById("iconeAnalises");
 
-  if (!aba || !icone) return;
+  if (!aba) return;
 
+  // Abre ou fecha a aba
   aba.classList.toggle("aberta");
 
   if (aba.classList.contains("aberta")) {
 
-    icone.innerText = "▼ Fechar análises";
+    if (botaoInicial) {
+      botaoInicial.innerText = "▼ Fechar análise";
+    }
 
     document.body.style.overflow = "hidden";
 
-    if (typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
+    // Só agora calcula a análise da imagem atual
+    await atualizarAnaliseDaImagemAtual();
 
     setTimeout(function() {
       desenharHistogramaAtual();
@@ -71,11 +69,12 @@ async function abrirAnaliseSobDemanda() {
 
   } else {
 
-    icone.innerText = "▲ Abrir análises";
+    if (botaoInicial) {
+      botaoInicial.innerText = "▲ Abrir análise";
+    }
 
     document.body.style.overflowX = "hidden";
     document.body.style.overflowY = "auto";
-
   }
 }
 
@@ -88,17 +87,28 @@ async function atualizarAnaliseDaImagemAtual() {
 
   const item = imagemAtualSelecionada;
 
+  // Caso seja imagem comum: JPG, PNG, TIFF convertido para img
   if (item.type === "image") {
 
     const imagemNormal = document.getElementById("imagemNormal");
 
-    if (imagemNormal && imagemNormal.src) {
-      gerarAnaliseImagemNormal(imagemNormal);
+    if (!imagemNormal) return;
+
+    // Espera a imagem terminar de carregar antes de analisar
+    if (!imagemNormal.complete || imagemNormal.naturalWidth === 0) {
+
+      await new Promise(function(resolve) {
+        imagemNormal.onload = resolve;
+      });
+
     }
+
+    gerarAnaliseImagemNormal(imagemNormal);
 
     return;
   }
 
+  // Caso seja DICOM
   if (item.type === "dicom") {
 
     if (typeof imagemDicomAtual !== "undefined" && imagemDicomAtual) {
@@ -131,10 +141,10 @@ function iniciarAnalise() {
         areaAnalise.innerHTML = html; // Insere o HTML da aba de análises
       }
 
-      const cabecalho = document.getElementById("cabecalhoAnalises"); // Pega o cabeçalho da aba
+      const cabecalho = document.getElementById("cabecalhoAnalises");
 
       if (cabecalho) {
-        cabecalho.addEventListener("click", toggleAnalises); // Adiciona clique para abrir e fechar
+        cabecalho.addEventListener("click", abrirAnaliseSobDemanda);
       }
 
       const botaoMapaPixel = document.getElementById("botaoMapaPixel"); // Pega o botão Mapa de pixel
