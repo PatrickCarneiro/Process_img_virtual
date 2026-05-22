@@ -66,14 +66,24 @@ self.onmessage = function(event) {
 
   self.postMessage(
     {
-      tipo: tipo,
-      tipoArray: tipoArray,
-      inicioY: inicioY,
-      fimY: fimY,
-      bufferSaida: pixelsSaida.buffer
+        tipoMensagem: "resultado",
+        tipo: tipo,
+        tipoArray: tipoArray,
+        inicioY: inicioY,
+        fimY: fimY,
+        bufferSaida: pixelsSaida.buffer
     },
     [pixelsSaida.buffer]
-  );
+ );
+
+  if ((y - inicioY) % 10 === 0) {
+    self.postMessage({
+        tipoMensagem: "progresso",
+        inicioY: inicioY,
+        linhasProcessadas: y - inicioY + 1,
+        totalLinhasWorker: fimY - inicioY
+    });
+    }
 };
 
 
@@ -195,6 +205,16 @@ function processarDicomMediana(
       }
 
       saida[indiceSaida] = limitarValorWorker(valorFinal, tipoArray);
+    }
+
+    // Atualiza o progresso a cada 10 linhas
+    if ((y - inicioY) % 10 === 0) {
+      self.postMessage({
+        tipoMensagem: "progresso",
+        inicioY: inicioY,
+        linhasProcessadas: y - inicioY + 1,
+        totalLinhasWorker: fimY - inicioY
+      });
     }
   }
 }
