@@ -184,7 +184,7 @@ function processarMedianaComWorkers(opcoes) {
       totalElementosSaida
     );
 
-    const nucleosDisponiveis = navigator.hardwareConcurrency || 4;
+    const nucleosDisponiveis = navigator.hardwareConcurrency || 12;
 
     // Recomendo limitar em 4 para não pesar demais a memória.
     const quantidadeWorkers = Math.min(nucleosDisponiveis, 4, altura);
