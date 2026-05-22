@@ -342,8 +342,6 @@ function desenharFluxograma() {
     if (etapa.nome.includes("Mediana")) {
       textoParametros = `
         Kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
-        Método: cv.medianBlur - modo rápido<br>
-        MATLAB aproximado: medfilt2(I, [${etapa.parametros.tamanhoKernel} ${etapa.parametros.tamanhoKernel}], 'symmetric')<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
