@@ -1,21 +1,26 @@
 // =====================================================
-// FILTRO DE MEDIANA RÁPIDO
-// Usa cv.medianBlur do OpenCV.js
+// FILTRO DE MEDIANA
 //
-// Observações:
-// - Aceita apenas kernel quadrado: k x k
-// - O kernel precisa ser ímpar e maior que 1
-// - Muito mais rápido que a versão manual
-// - Não reproduz exatamente o medfilt2 padrão com borda 'zeros'
-// - Para comparar no MATLAB, use medfilt2(I, [k k], 'symmetric')
+// Imagem normal sem ignorar zero:
+// - usa cv.medianBlur do OpenCV.js
+//
+// Imagem normal ignorando zero:
+// - usa Web Workers
+//
+// DICOM considerando zero:
+// - usa Web Workers
+//
+// DICOM ignorando zero:
+// - usa Web Workers
 // =====================================================
 
 
-// Interpreta o kernel digitado pelo usuário
+// =====================================================
+// INTERPRETAR KERNEL
 // Aceita: 3, [3 3], 3 3, 5x5
 // Não aceita kernel retangular, como 10 11
+// =====================================================
 function interpretarKernelMediana(textoKernel) {
-
   textoKernel = textoKernel.trim();
 
   if (textoKernel === "") {
@@ -43,25 +48,20 @@ function interpretarKernelMediana(textoKernel) {
   let k = null;
 
   if (partes.length === 1) {
-
     k = parseInt(partes[0]);
-
   } else if (partes.length === 2) {
-
     const k1 = parseInt(partes[0]);
     const k2 = parseInt(partes[1]);
 
     if (k1 !== k2) {
       return {
         valido: false,
-        motivo: "O medianBlur aceita apenas kernel quadrado, como 3 ou 5 5."
+        motivo: "O filtro de mediana aceita apenas kernel quadrado, como 3 ou 5 5."
       };
     }
 
     k = k1;
-
   } else {
-
     return {
       valido: false,
       motivo: "Digite apenas um valor, como 3, ou dois valores iguais, como 5 5."
@@ -89,7 +89,9 @@ function interpretarKernelMediana(textoKernel) {
 }
 
 
-// Pequena pausa para o navegador conseguir atualizar a barra
+// =====================================================
+// PEQUENA PAUSA PARA ATUALIZAR A INTERFACE
+// =====================================================
 function esperarAtualizacaoMediana() {
   return new Promise(function(resolve) {
     requestAnimationFrame(resolve);
@@ -97,23 +99,26 @@ function esperarAtualizacaoMediana() {
 }
 
 
-// Atualiza a barra somente se a função existir
+// =====================================================
+// ATUALIZAR PROGRESSO
+// =====================================================
 function atualizarProgressoMediana(atualizarProgresso, porcentagem) {
   if (typeof atualizarProgresso === "function") {
     atualizarProgresso(porcentagem);
   }
 }
 
+
 // =====================================================
 // IDENTIFICA O TIPO DO ARRAY
 // =====================================================
 function obterTipoArrayMediana(array) {
-  if (array instanceof Uint8Array) {
-    return "Uint8Array";
-  }
-
   if (array instanceof Uint8ClampedArray) {
     return "Uint8ClampedArray";
+  }
+
+  if (array instanceof Uint8Array) {
+    return "Uint8Array";
   }
 
   if (array instanceof Uint16Array) {
@@ -132,12 +137,12 @@ function obterTipoArrayMediana(array) {
 // CRIA ARRAY PELO TIPO
 // =====================================================
 function criarArrayMedianaPorTipo(tipoArray, tamanho) {
-  if (tipoArray === "Uint8Array") {
-    return new Uint8Array(tamanho);
-  }
-
   if (tipoArray === "Uint8ClampedArray") {
     return new Uint8ClampedArray(tamanho);
+  }
+
+  if (tipoArray === "Uint8Array") {
+    return new Uint8Array(tamanho);
   }
 
   if (tipoArray === "Uint16Array") {
@@ -154,7 +159,12 @@ function criarArrayMedianaPorTipo(tipoArray, tamanho) {
 
 // =====================================================
 // PROCESSA MEDIANA COM VÁRIOS WORKERS
-// Barra de progresso baseada em linhas processadas
+//
+// Barra de progresso:
+// - 1% até 94%: processamento nos workers
+// - 94% até 97%: recebimento e montagem dos blocos
+// - 97% até 99%: criação do objeto final
+// - 100%: imagem final pronta para retornar
 // =====================================================
 function processarMedianaComWorkers(opcoes) {
   return new Promise(function(resolve, reject) {
@@ -185,8 +195,9 @@ function processarMedianaComWorkers(opcoes) {
 
     const nucleosDisponiveis = navigator.hardwareConcurrency || 4;
 
-    // Altere aqui se quiser testar mais workers
-    const limiteWorkers = 8;
+    // Altere aqui se quiser testar.
+    // Recomendo 4 primeiro. Depois teste 6 ou 8.
+    const limiteWorkers = 4;
 
     const quantidadeWorkers = Math.min(
       nucleosDisponiveis,
@@ -212,7 +223,6 @@ function processarMedianaComWorkers(opcoes) {
       }
 
       workersCriados++;
-
       progressoPorWorker[inicioY] = 0;
 
       const worker = new Worker("medianaWorker.js");
@@ -220,9 +230,9 @@ function processarMedianaComWorkers(opcoes) {
       worker.onmessage = function(event) {
         const dados = event.data;
 
-        // ============================
-        // MENSAGEM DE PROGRESSO
-        // ============================
+        // =====================================================
+        // PROGRESSO
+        // =====================================================
         if (dados.tipoMensagem === "progresso") {
           progressoPorWorker[dados.inicioY] = dados.linhasProcessadas;
 
@@ -232,31 +242,30 @@ function processarMedianaComWorkers(opcoes) {
             linhasProcessadasTotais += progressoPorWorker[chave];
           }
 
-          // Reserva:
-          // 1% a 95% = processamento
-          // 95% a 100% = montagem final
           const porcentagem = 1 + Math.round(
-            (linhasProcessadasTotais / altura) * 94
+            (linhasProcessadasTotais / altura) * 93
           );
 
           atualizarProgressoMediana(
             atualizarProgresso,
-            Math.min(porcentagem, 95)
+            Math.min(porcentagem, 94)
           );
 
           return;
         }
 
-        // ============================
-        // MENSAGEM DE RESULTADO
-        // ============================
+        // =====================================================
+        // RESULTADO
+        // =====================================================
         if (dados.tipoMensagem === "resultado") {
           let parteProcessada;
 
           if (dados.tipo === "rgba") {
             parteProcessada = new Uint8ClampedArray(dados.bufferSaida);
           } else {
-            if (dados.tipoArray === "Uint8Array") {
+            if (dados.tipoArray === "Uint8ClampedArray") {
+              parteProcessada = new Uint8ClampedArray(dados.bufferSaida);
+            } else if (dados.tipoArray === "Uint8Array") {
               parteProcessada = new Uint8Array(dados.bufferSaida);
             } else if (dados.tipoArray === "Uint16Array") {
               parteProcessada = new Uint16Array(dados.bufferSaida);
@@ -277,20 +286,19 @@ function processarMedianaComWorkers(opcoes) {
 
           workersFinalizados++;
 
-          // Pequeno progresso de montagem final
-          const progressoMontagem = 95 + Math.round(
-            (workersFinalizados / workersCriados) * 5
+          const porcentagemMontagem = 94 + Math.round(
+            (workersFinalizados / workersCriados) * 3
           );
 
           atualizarProgressoMediana(
             atualizarProgresso,
-            Math.min(progressoMontagem, 100)
+            Math.min(porcentagemMontagem, 97)
           );
 
           worker.terminate();
 
           if (workersFinalizados === workersCriados) {
-            atualizarProgressoMediana(atualizarProgresso, 100);
+            atualizarProgressoMediana(atualizarProgresso, 97);
             resolve(pixelsSaidaFinal);
           }
         }
@@ -301,6 +309,8 @@ function processarMedianaComWorkers(opcoes) {
         reject(error);
       };
 
+      // Cada worker recebe uma cópia do array inteiro.
+      // Isso permite consultar vizinhos acima e abaixo da sua faixa.
       const copiaEntrada = pixelsEntrada.slice();
 
       worker.postMessage(
@@ -325,8 +335,12 @@ function processarMedianaComWorkers(opcoes) {
 // =====================================================
 // MEDIANA EM CANVAS
 // =====================================================
-async function aplicarMedianaEmCanvas(canvasEntrada, tamanhoKernel, ignorarZero, atualizarProgresso) {
-
+async function aplicarMedianaEmCanvas(
+  canvasEntrada,
+  tamanhoKernel,
+  ignorarZero,
+  atualizarProgresso
+) {
   tamanhoKernel = parseInt(tamanhoKernel);
 
   if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 3) {
@@ -345,7 +359,10 @@ async function aplicarMedianaEmCanvas(canvasEntrada, tamanhoKernel, ignorarZero,
     );
   }
 
-  // ===== MODO RÁPIDO COM OPENCV =====
+  // =====================================================
+  // IMAGEM NORMAL SEM IGNORAR ZERO
+  // Modo rápido com OpenCV.js
+  // =====================================================
 
   atualizarProgressoMediana(atualizarProgresso, 10);
   await esperarAtualizacaoMediana();
@@ -402,7 +419,6 @@ async function aplicarMedianaEmDicom(
     tamanhoKernel = tamanhoKernel + 1;
   }
 
-  // DICOM ignorando pixels zero
   if (ignorarZero) {
     return await aplicarMedianaEmDicomIgnorandoZero(
       imagemEntrada,
@@ -411,7 +427,6 @@ async function aplicarMedianaEmDicom(
     );
   }
 
-  // DICOM considerando pixels zero
   return await aplicarMedianaEmDicomComZeroWorkers(
     imagemEntrada,
     tamanhoKernel,
@@ -421,7 +436,7 @@ async function aplicarMedianaEmDicom(
 
 
 // =====================================================
-// MEDIANA EM CANVAS IGNORANDO ZERO
+// MEDIANA EM CANVAS IGNORANDO ZERO COM WORKERS
 // =====================================================
 async function aplicarMedianaEmCanvasIgnorandoZero(
   canvasEntrada,
@@ -434,7 +449,7 @@ async function aplicarMedianaEmCanvasIgnorandoZero(
   const ctxEntrada = canvasEntrada.getContext("2d");
   const imageDataEntrada = ctxEntrada.getImageData(0, 0, largura, altura);
 
-  atualizarProgressoMediana(atualizarProgresso, 0);
+  atualizarProgressoMediana(atualizarProgresso, 1);
   await esperarAtualizacaoMediana();
 
   const pixelsFiltrados = await processarMedianaComWorkers({
@@ -446,6 +461,9 @@ async function aplicarMedianaEmCanvasIgnorandoZero(
     ignorarZero: true,
     atualizarProgresso: atualizarProgresso
   });
+
+  atualizarProgressoMediana(atualizarProgresso, 98);
+  await esperarAtualizacaoMediana();
 
   const canvasSaida = document.createElement("canvas");
   canvasSaida.width = largura;
@@ -468,7 +486,7 @@ async function aplicarMedianaEmCanvasIgnorandoZero(
 
 
 // =====================================================
-// MEDIANA EM DICOM IGNORANDO ZERO
+// MEDIANA EM DICOM IGNORANDO ZERO COM WORKERS
 // =====================================================
 async function aplicarMedianaEmDicomIgnorandoZero(
   imagemEntrada,
@@ -480,7 +498,7 @@ async function aplicarMedianaEmDicomIgnorandoZero(
   const largura = imagemEntrada.width;
   const altura = imagemEntrada.height;
 
-  atualizarProgressoMediana(atualizarProgresso, 0);
+  atualizarProgressoMediana(atualizarProgresso, 1);
   await esperarAtualizacaoMediana();
 
   const pixelsFiltrados = await processarMedianaComWorkers({
@@ -493,16 +511,22 @@ async function aplicarMedianaEmDicomIgnorandoZero(
     atualizarProgresso: atualizarProgresso
   });
 
-  atualizarProgressoMediana(atualizarProgresso, 100);
+  atualizarProgressoMediana(atualizarProgresso, 98);
+  await esperarAtualizacaoMediana();
 
-  return criarImagemDicomAPartirPixels(
+  const imagemFinal = criarImagemDicomAPartirPixels(
     pixelsFiltrados,
     largura,
     altura,
     imagemEntrada,
     "dicom_mediana_" + Date.now()
   );
+
+  atualizarProgressoMediana(atualizarProgresso, 100);
+
+  return imagemFinal;
 }
+
 
 // =====================================================
 // MEDIANA EM DICOM CONSIDERANDO ZERO COM WORKERS
@@ -517,7 +541,7 @@ async function aplicarMedianaEmDicomComZeroWorkers(
   const largura = imagemEntrada.width;
   const altura = imagemEntrada.height;
 
-  atualizarProgressoMediana(atualizarProgresso, 0);
+  atualizarProgressoMediana(atualizarProgresso, 1);
   await esperarAtualizacaoMediana();
 
   const pixelsFiltrados = await processarMedianaComWorkers({
@@ -530,23 +554,28 @@ async function aplicarMedianaEmDicomComZeroWorkers(
     atualizarProgresso: atualizarProgresso
   });
 
-  atualizarProgressoMediana(atualizarProgresso, 100);
+  atualizarProgressoMediana(atualizarProgresso, 98);
+  await esperarAtualizacaoMediana();
 
-  return criarImagemDicomAPartirPixels(
+  const imagemFinal = criarImagemDicomAPartirPixels(
     pixelsFiltrados,
     largura,
     altura,
     imagemEntrada,
     "dicom_mediana_" + Date.now()
   );
+
+  atualizarProgressoMediana(atualizarProgresso, 100);
+
+  return imagemFinal;
 }
 
 
 // =====================================================
 // CÁLCULO DA MEDIANA
+// Mantida para compatibilidade caso outra parte use
 // =====================================================
 function calcularMedianaMediana(valores) {
-
   valores.sort(function(a, b) {
     return a - b;
   });
@@ -564,16 +593,16 @@ function calcularMedianaMediana(valores) {
 
 // =====================================================
 // LIMITAR VALOR PELO TIPO DO PIXEL
+// Mantida para compatibilidade caso outra parte use
 // =====================================================
 function limitarValorParaTipoPixelMediana(valor, arrayDestino) {
-
   if (!Number.isFinite(valor)) {
     valor = 0;
   }
 
   valor = Math.round(valor);
 
-  if (arrayDestino instanceof Uint8Array) {
+  if (arrayDestino instanceof Uint8Array || arrayDestino instanceof Uint8ClampedArray) {
     if (valor < 0) valor = 0;
     if (valor > 255) valor = 255;
   }

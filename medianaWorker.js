@@ -1,16 +1,21 @@
 // =====================================================
 // WORKER - FILTRO DE MEDIANA
+//
 // Funciona para:
 // - Imagem normal RGBA
 // - DICOM 1 canal
-// - Considerando zero
-// - Ignorando zero
+// - Considerando pixel zero
+// - Ignorando pixel zero
+//
+// Este arquivo NÃO deve ser chamado no HTML com <script>.
+// Ele é chamado pela mediana.js usando:
+// new Worker("medianaWorker.js")
 // =====================================================
 
 self.onmessage = function(event) {
   const dados = event.data;
 
-  const tipo = dados.tipo;
+  const tipo = dados.tipo; // "rgba" ou "dicom"
   const largura = dados.largura;
   const altura = dados.altura;
   const tamanhoKernel = dados.tamanhoKernel;
@@ -21,7 +26,7 @@ self.onmessage = function(event) {
 
   const raio = Math.floor(tamanhoKernel / 2);
 
-  let pixelsEntrada = criarArrayEntradaPorTipo(
+  const pixelsEntrada = criarArrayEntradaPorTipo(
     tipoArray,
     dados.bufferEntrada
   );
@@ -66,24 +71,15 @@ self.onmessage = function(event) {
 
   self.postMessage(
     {
-        tipoMensagem: "resultado",
-        tipo: tipo,
-        tipoArray: tipoArray,
-        inicioY: inicioY,
-        fimY: fimY,
-        bufferSaida: pixelsSaida.buffer
+      tipoMensagem: "resultado",
+      tipo: tipo,
+      tipoArray: tipoArray,
+      inicioY: inicioY,
+      fimY: fimY,
+      bufferSaida: pixelsSaida.buffer
     },
     [pixelsSaida.buffer]
- );
-
-  if ((y - inicioY) % 10 === 0) {
-    self.postMessage({
-        tipoMensagem: "progresso",
-        inicioY: inicioY,
-        linhasProcessadas: y - inicioY + 1,
-        totalLinhasWorker: fimY - inicioY
-    });
-    }
+  );
 };
 
 
@@ -100,6 +96,8 @@ function processarImagemNormalMediana(
   raio,
   ignorarZero
 ) {
+  const totalLinhasWorker = fimY - inicioY;
+
   for (let y = inicioY; y < fimY; y++) {
     for (let x = 0; x < largura; x++) {
       const indiceOriginal = (y * largura + x) * 4;
@@ -144,8 +142,11 @@ function processarImagemNormalMediana(
         saida[indiceSaida + canal] = valorFinal;
       }
 
+      // Mantém o alfa original
       saida[indiceSaida + 3] = entrada[indiceOriginal + 3];
     }
+
+    enviarProgressoWorker(y, inicioY, fimY, totalLinhasWorker);
   }
 }
 
@@ -164,6 +165,8 @@ function processarDicomMediana(
   tipoArray,
   ignorarZero
 ) {
+  const totalLinhasWorker = fimY - inicioY;
+
   for (let y = inicioY; y < fimY; y++) {
     for (let x = 0; x < largura; x++) {
       const vizinhos = [];
@@ -207,15 +210,25 @@ function processarDicomMediana(
       saida[indiceSaida] = limitarValorWorker(valorFinal, tipoArray);
     }
 
-    // Atualiza o progresso a cada 10 linhas
-    if ((y - inicioY) % 10 === 0) {
-      self.postMessage({
-        tipoMensagem: "progresso",
-        inicioY: inicioY,
-        linhasProcessadas: y - inicioY + 1,
-        totalLinhasWorker: fimY - inicioY
-      });
-    }
+    enviarProgressoWorker(y, inicioY, fimY, totalLinhasWorker);
+  }
+}
+
+
+// =====================================================
+// ENVIA PROGRESSO DO WORKER
+// =====================================================
+function enviarProgressoWorker(y, inicioY, fimY, totalLinhasWorker) {
+  const linhaRelativa = y - inicioY + 1;
+
+  // Envia progresso a cada 10 linhas e também na última linha
+  if (linhaRelativa % 10 === 0 || y === fimY - 1) {
+    self.postMessage({
+      tipoMensagem: "progresso",
+      inicioY: inicioY,
+      linhasProcessadas: linhaRelativa,
+      totalLinhasWorker: totalLinhasWorker
+    });
   }
 }
 
@@ -272,12 +285,12 @@ function limitarValorWorker(valor, tipoArray) {
 // CRIAR ARRAY DE ENTRADA
 // =====================================================
 function criarArrayEntradaPorTipo(tipoArray, buffer) {
-  if (tipoArray === "Uint8Array") {
-    return new Uint8Array(buffer);
-  }
-
   if (tipoArray === "Uint8ClampedArray") {
     return new Uint8ClampedArray(buffer);
+  }
+
+  if (tipoArray === "Uint8Array") {
+    return new Uint8Array(buffer);
   }
 
   if (tipoArray === "Uint16Array") {
@@ -296,12 +309,12 @@ function criarArrayEntradaPorTipo(tipoArray, buffer) {
 // CRIAR ARRAY DE SAÍDA
 // =====================================================
 function criarArraySaidaPorTipo(tipoArray, tamanho) {
-  if (tipoArray === "Uint8Array") {
-    return new Uint8Array(tamanho);
-  }
-
   if (tipoArray === "Uint8ClampedArray") {
     return new Uint8ClampedArray(tamanho);
+  }
+
+  if (tipoArray === "Uint8Array") {
+    return new Uint8Array(tamanho);
   }
 
   if (tipoArray === "Uint16Array") {
