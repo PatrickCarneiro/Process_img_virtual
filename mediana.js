@@ -205,7 +205,7 @@ function processarMedianaComWorkers(opcoes) {
 
     // Altere este valor para testar mais ou menos workers.
     // Recomendo começar com 4, depois testar 6 ou 8.
-    const limiteWorkers = 4;
+    const limiteWorkers = 8;
 
     const quantidadeWorkers = Math.min(
       nucleosDisponiveis,
