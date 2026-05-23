@@ -597,11 +597,11 @@ body {
 /* Áreas de imagem original e processada lado a lado */
 .area_imagem_original {
   display: none;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
   flex: 0 0 auto;
-  border-right: 1px solid rgba(255,255,255,0.15);
   padding-right: 12px;
+  border-right: 1px solid rgba(255,255,255,0.15);
 }
 
 .area_imagem_original.ativo {
@@ -613,12 +613,6 @@ body {
   justify-content: center;
   align-items: center;
   flex: 0 0 auto;
-}
-
-.titulo_imagem_original {
-  font-size: 12px;
-  opacity: 0.8;
-  margin-bottom: 6px;
 }
 
 #imagemOriginalNormal {
@@ -723,7 +717,6 @@ body {
       <div class="visualizacao_box"> <!-- Caixa da imagem -->
 
         <div id="areaImagemOriginal" class="area_imagem_original">
-          <div class="titulo_imagem_original">Imagem original</div>
           <div id="visualizadorDicomOriginal"></div>
           <img id="imagemOriginalNormal">
         </div>

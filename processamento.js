@@ -1127,11 +1127,17 @@ visualizadorDicomOriginal.addEventListener("dblclick", function() {
 // Calcula o aumento automático
 function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
-  const limiteLargura = visualizacaoBox.clientWidth - 30; // Limite de largura considerando margem
+  let limiteLargura = visualizacaoBox.clientWidth - 30;
   const limiteAltura = visualizacaoBox.clientHeight - 30;
+
+  if (mostrarOriginalAtivo) {
+    limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
+  }
+
   const escalaLargura = limiteLargura / larguraImagem;
-  const escalaAltura = limiteAltura / alturaImagem; // Calcula escala para largura e altura 
-  const escala = Math.min(escalaLargura, escalaAltura); // Usa a menor escala para não deformar nem cortar
+  const escalaAltura = limiteAltura / alturaImagem;
+
+  const escala = Math.min(escalaLargura, escalaAltura);
 
   return escala;
 
@@ -1512,10 +1518,23 @@ async function toggleImagemOriginal() {
     botaoOriginal.classList.add("ativo");
     areaImagemOriginal.classList.add("ativo");
 
+    escalaBaseAtual = calcularEscalaAutomaticaComparacao(
+      larguraOriginalAtual,
+      alturaOriginalAtual
+    );
+
+    zoomAtual = 1;
+    atualizarTamanhoImagemAtual();
+
     await abrirImagemOriginal(imagemAtualSelecionada);
 
+    visualizacaoBox.scrollLeft = 0;
+    visualizacaoBox.scrollTop = 0;
+
     statusText.innerText = "Imagem original exibida ao lado da imagem processada.";
-  } else {
+  }
+  
+  else {
     botaoOriginal.classList.remove("ativo");
     areaImagemOriginal.classList.remove("ativo");
 
@@ -1524,8 +1543,34 @@ async function toggleImagemOriginal() {
 
     imagemDicomOriginalAtual = null;
 
+    escalaBaseAtual = calcularEscalaAutomatica(
+      larguraOriginalAtual,
+      alturaOriginalAtual
+    );
+
+    zoomAtual = 1;
+    atualizarTamanhoImagemAtual();
+
+    visualizacaoBox.scrollLeft = 0;
+    visualizacaoBox.scrollTop = 0;
+
     statusText.innerText = "Imagem original ocultada.";
   }
+
+}
+
+function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
+
+  const limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
+  const limiteAltura = visualizacaoBox.clientHeight - 30;
+
+  const escalaLargura = limiteLargura / larguraImagem;
+  const escalaAltura = limiteAltura / alturaImagem;
+
+  const escala = Math.min(escalaLargura, escalaAltura);
+
+  return escala;
+
 }
 
 async function abrirImagemOriginal(item) {
@@ -1549,7 +1594,7 @@ async function abrirImagemOriginal(item) {
         const larguraOriginal = imagemOriginalNormal.naturalWidth;
         const alturaOriginal = imagemOriginalNormal.naturalHeight;
 
-        const escala = calcularEscalaAutomatica(
+        const escala = calcularEscalaAutomaticaComparacao(
           larguraOriginal,
           alturaOriginal
         );
@@ -1586,7 +1631,7 @@ async function abrirImagemOriginal(item) {
 
     imagemDicomOriginalAtual = imagem;
 
-    const escala = calcularEscalaAutomatica(
+    const escala = calcularEscalaAutomaticaComparacao(
       imagem.width,
       imagem.height
     );
