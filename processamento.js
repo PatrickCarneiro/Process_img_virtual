@@ -454,6 +454,7 @@ function getFiles(db) { // Função para pegar arquivos da store files
   }); // Fecha Promise
 
 } // Fecha getFiles
+
 // Função para carregar arquivos
 async function loadFiles() { 
 
@@ -478,15 +479,21 @@ async function loadFiles() {
       };
     });
 
+    // Define automaticamente a primeira imagem como imagem atual
+    imagemAtualSelecionada = imagensProcessamento[0];
+
+    // Desenha as miniaturas já com a primeira marcada como selecionada
     desenharCardsImagensTrabalho();
 
-    // Abre automaticamente a primeira imagem, normal ou DICOM
-    if (imagensProcessamento.length > 0) {
-      imagemAtualSelecionada = imagensProcessamento[0];
-      await openFile(imagensProcessamento[0]);
+    // Abre automaticamente a primeira imagem na tela principal
+    await openFile(imagemAtualSelecionada);
+
+    // Se a aba de análise já estiver carregada, atualiza a análise da primeira imagem
+    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+      await atualizarAnaliseDaImagemAtual();
     }
 
-    statusText.innerText = "Arquivos carregados. Clique em uma miniatura para processar.";
+    statusText.innerText = "Arquivos carregados.";
 
   } catch (error) {
     console.error(error);
@@ -538,19 +545,26 @@ function desenharCardsImagensTrabalho() {
   });
 }
 
-// Função para criar um card de imagem
-
 function criarCardImagem(item) {
 
-  const card = document.createElement("div"); // Cria um card
+  const card = document.createElement("div");
   card.className = "card_imagem";
+
+  card.dataset.idProcessamento = item.idProcessamento;
+
+  // Marca visualmente a imagem atual
+  if (
+    imagemAtualSelecionada &&
+    imagemAtualSelecionada.idProcessamento === item.idProcessamento
+  ) {
+    card.classList.add("selecionado");
+  }
 
   // Se for imagem comum, mostra SEMPRE a miniatura da imagem original
   if (item.type === "image") {
 
     const img = document.createElement("img");
 
-    // Usa sempre o arquivo original, não o resultado processado
     img.src = URL.createObjectURL(item.file);
 
     card.appendChild(img);
@@ -564,7 +578,6 @@ function criarCardImagem(item) {
 
     card.appendChild(dicomBox);
 
-    // Renderiza sempre o DICOM original na miniatura
     renderDicomThumbnail(item, dicomBox);
   }
 
@@ -574,19 +587,44 @@ function criarCardImagem(item) {
 
   card.appendChild(nome);
 
-  // Ao clicar no card, continua abrindo a imagem processada na tela principal
   card.onclick = async function() {
 
     imagemAtualSelecionada = item;
+
+    atualizarCardSelecionado();
 
     if (pipelineFerramentas.length > 0) {
       await processarImagemSelecionada(item);
     }
 
     await openFile(item);
+
+    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+      await atualizarAnaliseDaImagemAtual();
+    }
   };
 
   imagensTrabalho.appendChild(card);
+}
+
+function atualizarCardSelecionado() {
+
+  const cards = document.querySelectorAll(".card_imagem");
+
+  cards.forEach(function(card) {
+
+    const idCard = Number(card.dataset.idProcessamento);
+
+    if (
+      imagemAtualSelecionada &&
+      idCard === imagemAtualSelecionada.idProcessamento
+    ) {
+      card.classList.add("selecionado");
+    } else {
+      card.classList.remove("selecionado");
+    }
+
+  });
 }
 
 async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
