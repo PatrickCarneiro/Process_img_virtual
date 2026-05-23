@@ -429,6 +429,19 @@ function openDatabase() { // Função para abrir/criar o banco IndexedDB
 
 } // Fecha openDatabase
 
+function atualizarArquivoAtual() {
+
+  const arquivoAtual = document.getElementById("arquivoAtual");
+
+  if (!arquivoAtual) return;
+
+  if (imagemAtualSelecionada && imagemAtualSelecionada.name) {
+    arquivoAtual.innerText = "Arquivo atual: " + imagemAtualSelecionada.name;
+  } else {
+    arquivoAtual.innerText = "Arquivo atual: nenhum";
+  }
+}
+
 function getFiles(db) { // Função para pegar arquivos da store files
 
   return new Promise((resolve, reject) => { // Retorna uma Promise
@@ -481,6 +494,8 @@ async function loadFiles() {
 
     // Define automaticamente a primeira imagem como imagem atual
     imagemAtualSelecionada = imagensProcessamento[0];
+
+    atualizarArquivoAtual();
 
     // Desenha as miniaturas já com a primeira marcada como selecionada
     desenharCardsImagensTrabalho();
@@ -655,6 +670,9 @@ async function openFile(item) {
 
   imagemAtualSelecionada = item;
   statusText.innerText = "Abrindo: " + item.name;
+
+  imagemAtualSelecionada = item;
+  atualizarArquivoAtual();
 
   const arquivoAtual = document.getElementById("arquivoAtual");
   if (arquivoAtual) {
