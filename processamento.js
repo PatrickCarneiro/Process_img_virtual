@@ -429,18 +429,6 @@ function openDatabase() { // Função para abrir/criar o banco IndexedDB
 
 } // Fecha openDatabase
 
-function atualizarArquivoAtual() {
-
-  const arquivoAtual = document.getElementById("arquivoAtual");
-
-  if (!arquivoAtual) return;
-
-  if (imagemAtualSelecionada && imagemAtualSelecionada.name) {
-    arquivoAtual.innerText = "Arquivo atual: " + imagemAtualSelecionada.name;
-  } else {
-    arquivoAtual.innerText = "Arquivo atual: nenhum";
-  }
-}
 
 function getFiles(db) { // Função para pegar arquivos da store files
 
@@ -494,8 +482,6 @@ async function loadFiles() {
 
     // Define automaticamente a primeira imagem como imagem atual
     imagemAtualSelecionada = imagensProcessamento[0];
-
-    atualizarArquivoAtual();
 
     // Desenha as miniaturas já com a primeira marcada como selecionada
     desenharCardsImagensTrabalho();
@@ -669,15 +655,15 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 async function openFile(item) {
 
   imagemAtualSelecionada = item;
-  statusText.innerText = "Abrindo: " + item.name;
-
-  imagemAtualSelecionada = item;
-  atualizarArquivoAtual();
 
   const arquivoAtual = document.getElementById("arquivoAtual");
+
   if (arquivoAtual) {
-    arquivoAtual.innerText = item.name;
+    arquivoAtual.innerText = "Arquivo atual: " + item.name;
   }
+
+  statusText.innerText = "Abrindo: " + item.name;
+
 
   // =====================================================
   // IMAGEM NORMAL
