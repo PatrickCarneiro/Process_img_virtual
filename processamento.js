@@ -685,38 +685,50 @@ async function openFile(item) {
     imagemNormal.style.display = "none";
     imagemNormal.style.visibility = "hidden";
 
-    imagemNormal.onload = function() {
+    const srcImagem = item.resultado && item.resultado.tipo === "image"
+      ? item.resultado.dataURL
+      : URL.createObjectURL(item.file);
 
-      larguraOriginalAtual = imagemNormal.naturalWidth;
-      alturaOriginalAtual = imagemNormal.naturalHeight;
+    await new Promise(function(resolve, reject) {
 
-      escalaBaseAtual = calcularEscalaAutomatica(
-        larguraOriginalAtual,
-        alturaOriginalAtual
-      );
+      imagemNormal.addEventListener("load", function() {
 
-      zoomAtual = 1;
+        larguraOriginalAtual = imagemNormal.naturalWidth;
+        alturaOriginalAtual = imagemNormal.naturalHeight;
 
-      const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
-      const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+        escalaBaseAtual = calcularEscalaAutomatica(
+          larguraOriginalAtual,
+          alturaOriginalAtual
+        );
 
-      imagemNormal.style.width = larguraInicial + "px";
-      imagemNormal.style.height = alturaInicial + "px";
+        zoomAtual = 1;
 
-      visualizacaoBox.scrollLeft = 0;
-      visualizacaoBox.scrollTop = 0;
+        const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
+        const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
 
-      imagemNormal.style.display = "block";
-      imagemNormal.style.visibility = "visible";
+        imagemNormal.style.width = larguraInicial + "px";
+        imagemNormal.style.height = alturaInicial + "px";
 
-      statusText.innerText = "Imagem carregada: " + item.name;
-    };
+        visualizacaoBox.scrollLeft = 0;
+        visualizacaoBox.scrollTop = 0;
 
-    if (item.resultado && item.resultado.tipo === "image") {
-      imagemNormal.src = item.resultado.dataURL;
-    } else {
-      imagemNormal.src = URL.createObjectURL(item.file);
-    }
+        imagemNormal.style.display = "block";
+        imagemNormal.style.visibility = "visible";
+
+        statusText.innerText = "Imagem carregada: " + item.name;
+
+        resolve();
+
+      }, { once: true });
+
+      imagemNormal.addEventListener("error", function() {
+        statusText.innerText = "Erro ao abrir imagem: " + item.name;
+        reject(new Error("Erro ao carregar imagem."));
+      }, { once: true });
+
+      imagemNormal.src = srcImagem;
+
+    });
 
     return;
   }
