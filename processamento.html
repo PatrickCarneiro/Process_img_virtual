@@ -634,6 +634,12 @@ body {
   max-width: none;
   max-height: none;
 }
+
+.bloco_fluxo.selecionado_comparativo {
+  background: rgba(56,189,248,0.25);
+  border: 2px solid rgba(56,189,248,0.9);
+  box-shadow: 0 0 14px rgba(56,189,248,0.35);
+}
 </style> 
 
 </head> 
@@ -707,9 +713,8 @@ body {
         <button class="botao_pan" id="botaoPan" onclick="togglePanImagem()" title="Mover imagem">
           ⛶
         </button> <!-- Botão para ativar/desativar pan -->
-
-        <button class="botao_original" id="botaoOriginal" onclick="toggleImagemOriginal()" title="Imagem original">
-          ▣
+        <button class="botao_original" id="botaoOriginal" onclick="toggleComparativo()" title="Comparativo">
+          ⧉
         </button>
 
       </div> <!-- Fecha coluna dos botões -->
