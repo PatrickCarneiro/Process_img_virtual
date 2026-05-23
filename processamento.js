@@ -797,10 +797,6 @@ async function openFile(item) {
 
         statusText.innerText = "Imagem carregada: " + item.name;
 
-        if (modoComparativoAtivo) {
-          await atualizarImagemComparativa();
-        }
-
         resolve();
 
       }, { once: true });
@@ -814,7 +810,9 @@ async function openFile(item) {
 
     });
 
-    
+    if (modoComparativoAtivo) {
+          await atualizarImagemComparativa();
+        }
 
     return;
   }
@@ -1130,63 +1128,37 @@ function aplicarZoomNoMouse(event, elemento) {
 // Volta a imagem para o tamanho normal
 function resetarZoom() {
 
-  zoomAtual = 1; // Reseta zoom manual
+  zoomAtual = 1;
 
-  // Volta imagem comum ou DICOM para o tamanho automático inicial
   atualizarTamanhoImagemAtual();
 
-  // Se for DICOM, também reseta a translação do Cornerstone
   if (visualizadorDicom.style.display === "block") {
 
-    const viewport = cornerstone.getViewport(visualizadorDicomOriginal);
+    const viewport = cornerstone.getViewport(visualizadorDicom);
 
     viewport.translation.x = 0;
     viewport.translation.y = 0;
+
+    cornerstone.setViewport(visualizadorDicom, viewport);
+    cornerstone.resize(visualizadorDicom, true);
+  }
+
+  if (visualizadorDicomOriginal.style.display === "block") {
+
+    const viewportOriginal = cornerstone.getViewport(visualizadorDicomOriginal);
+
+    viewportOriginal.translation.x = 0;
+    viewportOriginal.translation.y = 0;
+
     cornerstone.setViewport(visualizadorDicomOriginal, viewportOriginal);
     cornerstone.resize(visualizadorDicomOriginal, true);
   }
 
   visualizacaoBox.scrollLeft = 0;
   visualizacaoBox.scrollTop = 0;
-
 }
-// Zoom com scroll na imagem comum
-imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na imagem comum
 
-  aplicarZoomNoMouse(event, imagemNormal); // Aplica zoom na imagem comum
 
-}); 
-imagemOriginalNormal.addEventListener("wheel", function(event) {
-  aplicarZoomNoMouse(event, imagemOriginalNormal);
-});
-// Zoom com scroll no DICOM
-visualizadorDicom.addEventListener("wheel", function(event) { 
-
-  aplicarZoomNoMouse(event, visualizadorDicom); // Usa o mesmo comportamento da imagem normal
-
-});
-visualizadorDicomOriginal.addEventListener("wheel", function(event) { 
-  aplicarZoomNoMouse(event, visualizadorDicomOriginal);
-});
-// Dois cliques na imagem comum
-imagemNormal.addEventListener("dblclick", function() { 
-
-  if (modoZoomAtivo) resetarZoom(); // Reseta zoom se modo ativo
-
-}); 
-imagemOriginalNormal.addEventListener("dblclick", function() { 
-  if (modoZoomAtivo) resetarZoom();
-});
-// Dois cliques no DICOM
-visualizadorDicom.addEventListener("dblclick", function() { 
-
-  if (modoZoomAtivo) resetarZoom(); 
-
-}); 
-visualizadorDicomOriginal.addEventListener("dblclick", function() { 
-  if (modoZoomAtivo) resetarZoom(); 
-});
-// Calcula o aumento automático
 function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
   let limiteLargura = visualizacaoBox.clientWidth - 30;
