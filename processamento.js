@@ -664,7 +664,7 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 
   } // Fecha try/catch
 
-} // Fecha renderDicomThumbnail
+} // Fecha renderDicomThumbnailv
 
 async function openFile(item) {
 
