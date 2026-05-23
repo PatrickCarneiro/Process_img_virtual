@@ -6,6 +6,14 @@ const visualizadorDicom = document.getElementById("visualizadorDicom"); // Pega 
 
 const imagemNormal = document.getElementById("imagemNormal"); // Pega a imagem comum
 
+const botaoOriginal = document.getElementById("botaoOriginal");
+
+const areaImagemOriginal = document.getElementById("areaImagemOriginal");
+
+const imagemOriginalNormal = document.getElementById("imagemOriginalNormal");
+
+const visualizadorDicomOriginal = document.getElementById("visualizadorDicomOriginal");
+
 const statusText = document.getElementById("status"); // Pega o texto de status
 
 const barraProcessamentoContainer = document.createElement("div");
@@ -37,6 +45,10 @@ const infoPixel = document.getElementById("infoPixel"); // Pega a caixa de infor
 let modoPixelAtivo = false; // Controla se o modo de visualizar pixel está ativo
 
 let imagemDicomAtual = null; // Guarda a imagem DICOM atual para consultar os pixels
+
+let mostrarOriginalAtivo = false;
+
+let imagemDicomOriginalAtual = null;
 
 let imagensProcessamento = []; // Guarda as imagens de trabalho no fluxograma
 
@@ -91,6 +103,8 @@ cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
 }); // Fecha configuração
 
 cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
+
+cornerstone.enable(visualizadorDicomOriginal);
 
 // Função para abrir/fechar o menu lateral -----------
 function toggleMenu() { 
@@ -665,6 +679,10 @@ async function openFile(item) {
 
   imagemAtualSelecionada = item;
 
+  if (mostrarOriginalAtivo) {
+    await abrirImagemOriginal(item);
+  }
+
   const arquivoAtual = document.getElementById("arquivoAtual");
 
   if (arquivoAtual) {
@@ -871,6 +889,47 @@ imagemNormal.addEventListener("mousemove", function(event) {
   } 
 
 }); 
+imagemOriginalNormal.addEventListener("mousemove", function(event) { 
+
+  if (!modoPixelAtivo) return;
+  if (!imagemOriginalNormal.src) return;
+
+  const rect = imagemOriginalNormal.getBoundingClientRect();
+
+  const escalaX = imagemOriginalNormal.naturalWidth / rect.width;
+  const escalaY = imagemOriginalNormal.naturalHeight / rect.height;
+
+  const x = Math.floor((event.clientX - rect.left) * escalaX);
+  const y = Math.floor((event.clientY - rect.top) * escalaY);
+
+  if (
+    x < 0 ||
+    y < 0 ||
+    x >= imagemOriginalNormal.naturalWidth ||
+    y >= imagemOriginalNormal.naturalHeight
+  ) return;
+
+  const canvasTemp = document.createElement("canvas");
+  const ctxTemp = canvasTemp.getContext("2d");
+
+  canvasTemp.width = imagemOriginalNormal.naturalWidth;
+  canvasTemp.height = imagemOriginalNormal.naturalHeight;
+
+  ctxTemp.drawImage(imagemOriginalNormal, 0, 0);
+
+  const pixel = ctxTemp.getImageData(x, y, 1, 1).data;
+
+  const r = pixel[0];
+  const g = pixel[1];
+  const b = pixel[2];
+
+  if (r === g && g === b) {
+    infoPixel.innerText = `Original | X: ${x + 1} | Y: ${y + 1} | Intensidade: ${r}`;
+  } else {
+    infoPixel.innerText = `Original | X: ${x + 1} | Y: ${y + 1} | RGB: [${r}, ${g}, ${b}]`;
+  }
+
+});
 // Quando move o mouse sobre DICOM
 visualizadorDicom.addEventListener("mousemove", function(event) { 
 
@@ -893,6 +952,34 @@ visualizadorDicom.addEventListener("mousemove", function(event) {
   infoPixel.innerText = `X: ${x + 1} | Y: ${y + 1} | Intensidade: ${valorPixel}`; 
 
 });
+visualizadorDicomOriginal.addEventListener("mousemove", function(event) { 
+
+  if (!modoPixelAtivo) return; 
+  if (!imagemDicomOriginalAtual) return; 
+
+  const rect = visualizadorDicomOriginal.getBoundingClientRect();
+
+  const escalaX = imagemDicomOriginalAtual.width / rect.width;
+  const escalaY = imagemDicomOriginalAtual.height / rect.height;
+
+  const x = Math.floor((event.clientX - rect.left) * escalaX);
+  const y = Math.floor((event.clientY - rect.top) * escalaY);
+
+  if (
+    x < 0 ||
+    y < 0 ||
+    x >= imagemDicomOriginalAtual.width ||
+    y >= imagemDicomOriginalAtual.height
+  ) return;
+
+  const pixels = imagemDicomOriginalAtual.getPixelData();
+  const indice = y * imagemDicomOriginalAtual.width + x;
+
+  const valorPixel = pixels[indice];
+
+  infoPixel.innerText = `Original | X: ${x + 1} | Y: ${y + 1} | Intensidade: ${valorPixel}`;
+
+});
 // Quando mouse sai da imagem comum
 imagemNormal.addEventListener("mouseleave", function() { 
 
@@ -901,6 +988,13 @@ imagemNormal.addEventListener("mouseleave", function() {
   } 
 
 }); 
+imagemOriginalNormal.addEventListener("mouseleave", function() { 
+
+  if (modoPixelAtivo) {
+    infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem.";
+  } 
+
+});
  // Quando mouse sai do DICOM
 visualizadorDicom.addEventListener("mouseleave", function() {
 
@@ -908,6 +1002,13 @@ visualizadorDicom.addEventListener("mouseleave", function() {
     infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem."; 
   } 
 }); 
+visualizadorDicomOriginal.addEventListener("mouseleave", function() {
+
+  if (modoPixelAtivo) { 
+    infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem."; 
+  } 
+
+});
 // Fecha a parte da função de visualização de pixel --------------------------------------------------------
 
 // Funções do zoom -----------------------------------------------------------------------------------------
@@ -993,11 +1094,17 @@ imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na i
   aplicarZoomNoMouse(event, imagemNormal); // Aplica zoom na imagem comum
 
 }); 
+imagemOriginalNormal.addEventListener("wheel", function(event) {
+  aplicarZoomNoMouse(event, imagemOriginalNormal);
+});
 // Zoom com scroll no DICOM
 visualizadorDicom.addEventListener("wheel", function(event) { 
 
   aplicarZoomNoMouse(event, visualizadorDicom); // Usa o mesmo comportamento da imagem normal
 
+});
+visualizadorDicomOriginal.addEventListener("wheel", function(event) { 
+  aplicarZoomNoMouse(event, visualizadorDicomOriginal);
 });
 // Dois cliques na imagem comum
 imagemNormal.addEventListener("dblclick", function() { 
@@ -1005,12 +1112,18 @@ imagemNormal.addEventListener("dblclick", function() {
   if (modoZoomAtivo) resetarZoom(); // Reseta zoom se modo ativo
 
 }); 
+imagemOriginalNormal.addEventListener("dblclick", function() { 
+  if (modoZoomAtivo) resetarZoom();
+});
 // Dois cliques no DICOM
 visualizadorDicom.addEventListener("dblclick", function() { 
 
   if (modoZoomAtivo) resetarZoom(); 
 
 }); 
+visualizadorDicomOriginal.addEventListener("dblclick", function() { 
+  if (modoZoomAtivo) resetarZoom(); 
+});
 // Calcula o aumento automático
 function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
@@ -1039,6 +1152,12 @@ function atualizarTamanhoImagemAtual() {
     imagemNormal.style.height = alturaFinal + "px";
 
   }
+  if (imagemOriginalNormal.style.display === "block") {
+
+    imagemOriginalNormal.style.width = larguraFinal + "px";
+    imagemOriginalNormal.style.height = alturaFinal + "px";
+
+  }
 
   // DICOM
   if (visualizadorDicom.style.display === "block") {
@@ -1048,6 +1167,14 @@ function atualizarTamanhoImagemAtual() {
 
     // Garante que o canvas interno do Cornerstone siga o tamanho da div
     cornerstone.resize(visualizadorDicom, true);
+
+  }
+  if (visualizadorDicomOriginal.style.display === "block") {
+
+    visualizadorDicomOriginal.style.width = larguraFinal + "px";
+    visualizadorDicomOriginal.style.height = alturaFinal + "px";
+
+    cornerstone.resize(visualizadorDicomOriginal, true);
 
   }
 
@@ -1370,4 +1497,118 @@ function invalidarProcessamentoDeTodasAsImagens() {
     item.assinaturaPipeline = "";
   });
 
+}
+
+async function toggleImagemOriginal() {
+
+  if (!imagemAtualSelecionada) {
+    alert("Nenhuma imagem carregada.");
+    return;
+  }
+
+  mostrarOriginalAtivo = !mostrarOriginalAtivo;
+
+  if (mostrarOriginalAtivo) {
+    botaoOriginal.classList.add("ativo");
+    areaImagemOriginal.classList.add("ativo");
+
+    await abrirImagemOriginal(imagemAtualSelecionada);
+
+    statusText.innerText = "Imagem original exibida ao lado da imagem processada.";
+  } else {
+    botaoOriginal.classList.remove("ativo");
+    areaImagemOriginal.classList.remove("ativo");
+
+    imagemOriginalNormal.style.display = "none";
+    visualizadorDicomOriginal.style.display = "none";
+
+    imagemDicomOriginalAtual = null;
+
+    statusText.innerText = "Imagem original ocultada.";
+  }
+}
+
+async function abrirImagemOriginal(item) {
+
+  if (!item) return;
+
+  if (item.type === "image") {
+
+    visualizadorDicomOriginal.style.display = "none";
+    imagemDicomOriginalAtual = null;
+
+    imagemOriginalNormal.style.display = "none";
+    imagemOriginalNormal.style.visibility = "hidden";
+
+    const srcOriginal = URL.createObjectURL(item.file);
+
+    await new Promise(function(resolve, reject) {
+
+      imagemOriginalNormal.addEventListener("load", function() {
+
+        const larguraOriginal = imagemOriginalNormal.naturalWidth;
+        const alturaOriginal = imagemOriginalNormal.naturalHeight;
+
+        const escala = calcularEscalaAutomatica(
+          larguraOriginal,
+          alturaOriginal
+        );
+
+        imagemOriginalNormal.style.width = larguraOriginal * escala + "px";
+        imagemOriginalNormal.style.height = alturaOriginal * escala + "px";
+
+        imagemOriginalNormal.style.display = "block";
+        imagemOriginalNormal.style.visibility = "visible";
+
+        resolve();
+
+      }, { once: true });
+
+      imagemOriginalNormal.addEventListener("error", function() {
+        reject(new Error("Erro ao carregar imagem original."));
+      }, { once: true });
+
+      imagemOriginalNormal.src = srcOriginal;
+
+    });
+
+    return;
+  }
+
+  if (item.type === "dicom") {
+
+    imagemOriginalNormal.style.display = "none";
+    imagemOriginalNormal.style.visibility = "hidden";
+
+    visualizadorDicomOriginal.style.display = "block";
+
+    const imagem = await carregarDicomOriginal(item);
+
+    imagemDicomOriginalAtual = imagem;
+
+    const escala = calcularEscalaAutomatica(
+      imagem.width,
+      imagem.height
+    );
+
+    visualizadorDicomOriginal.style.width = imagem.width * escala + "px";
+    visualizadorDicomOriginal.style.height = imagem.height * escala + "px";
+
+    cornerstone.displayImage(visualizadorDicomOriginal, imagem);
+
+    const viewport = cornerstone.getViewport(visualizadorDicomOriginal);
+
+    viewport.voi = {
+      windowCenter: imagem.windowCenter,
+      windowWidth: imagem.windowWidth
+    };
+
+    viewport.invert = imagem.invert || false;
+    viewport.scale = escala;
+
+    cornerstone.setViewport(visualizadorDicomOriginal, viewport);
+    cornerstone.resize(visualizadorDicomOriginal, true);
+
+    return;
+  }
 }

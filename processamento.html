@@ -222,11 +222,12 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 14px;
   width: 100%;
   max-width: 100%;
   height: 70vh;
   min-width: 0;
-}  
+}
 /* Linha que organiza os botões e a imagem lado a lado */
 .linha_visualizacao {
   display: grid; 
@@ -341,6 +342,27 @@ body {
 }
 .pan_arrastando {
   cursor: grabbing; /* Cursor de mão fechada ao arrastar */
+}
+
+/* Botão para mostrar imagem original */
+.botao_original {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(192,132,252,0.55);
+  background: rgba(192,132,252,0.18);
+  color: white;
+  font-size: 11px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.botao_original:hover {
+  background: rgba(192,132,252,0.35);
+  transform: scale(1.05);
+}
+.botao_original.ativo {
+  background: rgba(192,132,252,0.55);
+  box-shadow: 0 0 12px rgba(192,132,252,0.65);
 }
 
 /* VISUALIZAÇÃO */
@@ -572,6 +594,52 @@ body {
   margin-top: 2px;
 }
 
+/* Áreas de imagem original e processada lado a lado */
+.area_imagem_original {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+  border-right: 1px solid rgba(255,255,255,0.15);
+  padding-right: 12px;
+}
+
+.area_imagem_original.ativo {
+  display: flex;
+}
+
+.area_imagem_processada {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.titulo_imagem_original {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
+
+#imagemOriginalNormal {
+  display: none;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+
+#visualizadorDicomOriginal {
+  background: black;
+  border-radius: 0;
+  overflow: hidden;
+  display: none;
+  user-select: none;
+  flex: 0 0 auto;
+  max-width: none;
+  max-height: none;
+}
 </style> 
 
 </head> 
@@ -643,16 +711,27 @@ body {
         </button> <!-- Botão para ativar/desativar zoom -->
 
         <button class="botao_pan" id="botaoPan" onclick="togglePanImagem()" title="Mover imagem">
-        ⛶
+          ⛶
         </button> <!-- Botão para ativar/desativar pan -->
+
+        <button class="botao_original" id="botaoOriginal" onclick="toggleImagemOriginal()" title="Imagem original">
+          ▣
+        </button>
 
       </div> <!-- Fecha coluna dos botões -->
 
       <div class="visualizacao_box"> <!-- Caixa da imagem -->
 
-        <div id="visualizadorDicom"></div> <!-- Container para imagem DICOM -->
+        <div id="areaImagemOriginal" class="area_imagem_original">
+          <div class="titulo_imagem_original">Imagem original</div>
+          <div id="visualizadorDicomOriginal"></div>
+          <img id="imagemOriginalNormal">
+        </div>
 
-        <img id="imagemNormal"> <!-- Elemento para imagem comum -->
+        <div id="areaImagemProcessada" class="area_imagem_processada">
+          <div id="visualizadorDicom"></div>
+          <img id="imagemNormal">
+        </div>
 
       </div> <!-- Fecha caixa da imagem -->
 
