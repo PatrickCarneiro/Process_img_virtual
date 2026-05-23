@@ -362,16 +362,15 @@ async function removerEtapaPipeline(idEtapa) {
     return etapa.id !== idEtapa;
   });
 
-  // Limpa o resultado da imagem atual, porque o pipeline mudou
+  invalidarProcessamentoDeTodasAsImagens();
+
   if (imagemAtualSelecionada) {
-    imagemAtualSelecionada.resultado = null;
-    imagemAtualSelecionada.processado = false;
 
     if (pipelineFerramentas.length > 0) {
       await processarImagemSelecionada(imagemAtualSelecionada);
     }
 
-    openFile(imagemAtualSelecionada);
+    await openFile(imagemAtualSelecionada);
   }
 
   desenharFluxograma();
@@ -476,7 +475,8 @@ async function loadFiles() {
         type: item.type,
         file: item.file,
         resultado: null,
-        processado: false
+        processado: false,
+        assinaturaPipeline: ""
       };
     });
 
@@ -506,6 +506,13 @@ async function processarImagemSelecionada(item) {
 
   if (!item) return null;
 
+  const assinaturaAtual = gerarAssinaturaPipeline();
+
+  if (!imagemPrecisaProcessar(item)) {
+    statusText.innerText = "Imagem já processada com o fluxograma atual: " + item.name;
+    return item;
+  }
+
   mostrarBarraProcessamento();
 
   statusText.innerText = "Processando imagem selecionada: " + item.name;
@@ -523,6 +530,8 @@ async function processarImagemSelecionada(item) {
   }
 
   item.processado = true;
+
+  item.assinaturaPipeline = assinaturaAtual;
 
   atualizarBarraProcessamento(100);
 
@@ -594,7 +603,7 @@ function criarCardImagem(item) {
 
     atualizarCardSelecionado();
 
-    if (pipelineFerramentas.length > 0) {
+    if (imagemPrecisaProcessar(item)) {
       await processarImagemSelecionada(item);
     }
 
@@ -655,7 +664,7 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 async function openFile(item) {
 
   imagemAtualSelecionada = item;
-  
+
   const arquivoAtual = document.getElementById("arquivoAtual");
 
   if (arquivoAtual) {
@@ -1314,4 +1323,51 @@ function esperarAtualizacaoTela() {
   return new Promise(function(resolve) {
     requestAnimationFrame(resolve);
   });
+}
+
+function gerarAssinaturaPipeline() {
+
+  return JSON.stringify(
+    pipelineFerramentas.map(function(etapa) {
+      return {
+        nome: etapa.nome,
+        parametros: etapa.parametros
+      };
+    })
+  );
+
+}
+
+
+function imagemPrecisaProcessar(item) {
+
+  if (!item) return false;
+
+  // Se não tem ferramenta no fluxograma, não precisa processar
+  if (pipelineFerramentas.length === 0) return false;
+
+  const assinaturaAtual = gerarAssinaturaPipeline();
+
+  // Se nunca processou, precisa processar
+  if (!item.processado) return true;
+
+  // Se não tem resultado salvo, precisa processar
+  if (!item.resultado) return true;
+
+  // Se o fluxograma mudou, precisa processar de novo
+  if (item.assinaturaPipeline !== assinaturaAtual) return true;
+
+  // Se já processou com o mesmo fluxograma, não precisa
+  return false;
+
+}
+
+function invalidarProcessamentoDeTodasAsImagens() {
+
+  imagensProcessamento.forEach(function(item) {
+    item.resultado = null;
+    item.processado = false;
+    item.assinaturaPipeline = "";
+  });
+
 }
