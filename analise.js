@@ -80,6 +80,7 @@ async function atualizarAnaliseDaImagemAtual() {
   if (!imagemAtualSelecionada) return;
 
   const item = imagemAtualSelecionada;
+  atualizarNomeArquivoAtualAnalise();
 
   // Caso seja imagem comum: JPG, PNG, TIFF convertido para img
   if (item.type === "image") {
@@ -111,6 +112,24 @@ async function atualizarAnaliseDaImagemAtual() {
 
     return;
   }
+}
+
+function atualizarNomeArquivoAtualAnalise() {
+
+  const arquivoAtual = document.getElementById("arquivoAtual");
+
+  if (!arquivoAtual) return;
+
+  if (
+    typeof imagemAtualSelecionada !== "undefined" &&
+    imagemAtualSelecionada &&
+    imagemAtualSelecionada.name
+  ) {
+    arquivoAtual.innerText = imagemAtualSelecionada.name;
+  } else {
+    arquivoAtual.innerText = "---";
+  }
+
 }
 
 // FUNÇÕES DA TELA DE ANÁLISE
@@ -148,6 +167,8 @@ function iniciarAnalise() {
       }
 
       criarControleIgnorarPixelZero();
+
+      atualizarNomeArquivoAtualAnalise();
 
     })
     .catch(function(error) {

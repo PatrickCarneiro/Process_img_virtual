@@ -655,11 +655,11 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 async function openFile(item) {
 
   imagemAtualSelecionada = item;
-
+  
   const arquivoAtual = document.getElementById("arquivoAtual");
 
   if (arquivoAtual) {
-    arquivoAtual.innerText = "Arquivo atual: " + item.name;
+    arquivoAtual.innerText = item.name;
   }
 
   statusText.innerText = "Abrindo: " + item.name;
