@@ -348,13 +348,19 @@ function desenharFluxograma() {
 
   blocoOriginal.className = "bloco_fluxo";
 
-  if (etapaComparativoSelecionada === "original") {
+  if (modoComparativoAtivo && etapaComparativoSelecionada === "original") {
     blocoOriginal.classList.add("selecionado_comparativo");
   }
 
-  blocoOriginal.onclick = async function() {
-    await selecionarEtapaComparativo("original");
-  };
+  if (modoComparativoAtivo) {
+    blocoOriginal.onclick = async function() {
+      await selecionarEtapaComparativo("original");
+    };
+
+    blocoOriginal.style.cursor = "pointer";
+  } else {
+    blocoOriginal.style.cursor = "default";
+  }
 
   blocoOriginal.innerHTML = `
     <strong>Original</strong>
@@ -375,7 +381,7 @@ function desenharFluxograma() {
     const bloco = document.createElement("div");
     bloco.className = "bloco_fluxo";
 
-    if (etapaComparativoSelecionada === etapa.id) {
+    if (modoComparativoAtivo && etapaComparativoSelecionada === etapa.id) {
       bloco.classList.add("selecionado_comparativo");
     }
 
@@ -396,14 +402,24 @@ function desenharFluxograma() {
       `;
     }
 
-    bloco.onclick = async function(event) {
+    if (modoComparativoAtivo) {
 
-      if (event.target.classList.contains("remover")) {
-        return;
-      }
+      bloco.onclick = async function(event) {
 
-      await selecionarEtapaComparativo(etapa.id);
-    };
+        if (event.target.classList.contains("remover")) {
+          return;
+        }
+
+        await selecionarEtapaComparativo(etapa.id);
+      };
+
+      bloco.style.cursor = "pointer";
+
+    } else {
+
+      bloco.style.cursor = "default";
+
+    }
 
     bloco.innerHTML = `
       <strong>${etapa.nome}</strong>
