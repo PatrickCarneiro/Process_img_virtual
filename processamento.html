@@ -352,7 +352,7 @@ body {
   border: 1px solid rgba(192,132,252,0.55);
   background: rgba(192,132,252,0.18);
   color: white;
-  font-size: 30px;
+  font-size: 20px;
   cursor: pointer;
   transition: 0.3s;
 }
@@ -682,6 +682,16 @@ body {
 
     </div> <!-- Fecha categoria filtros -->
 
+    <div class="categoria-titulo" onclick="toggleCategoria('tonsCinza')">Tons de cinza</div>
+
+    <div class="categoria-conteudo" id="tonsCinza">
+
+      <div class="ferramenta" onclick="selecionarFerramenta('Converter para tons de cinza')">
+        Converter para tons de cinza
+      </div>
+
+    </div>
+
     <div class="parametros" id="parametros"></div> <!-- Área onde aparecem os parâmetros da ferramenta -->
 
     <div class="caixa_ignorar_zero">
@@ -770,6 +780,7 @@ body {
 <script src="analise.js"></script>
 <script src="gaussiano.js"></script>
 <script src="mediana.js"></script>
+<script src="cinza.js"></script>
 <script src="processamento.js"></script>
 <script>
   // Agora carrega as imagens direto, sem carregar a aba de análise no início

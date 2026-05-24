@@ -222,6 +222,24 @@ function selecionarFerramenta(nome) {
     return;
   }
 
+  if (nome.includes("tons de cinza")) {
+
+    parametrosDiv.innerHTML = `
+      <h4>Converter para tons de cinza</h4>
+
+      <div class="caixa_info_parametro" style="display:block; position:static; width:auto; margin-bottom:10px;">
+        Usa a mesma fórmula do MATLAB rgb2gray:<br>
+        0.2989R + 0.5870G + 0.1140B
+      </div>
+
+      <button class="botao-aplicar" onclick="aplicarFerramenta('Converter para tons de cinza')">
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
 
   parametrosDiv.innerHTML = `
     <h4>Parâmetros</h4>
@@ -243,12 +261,63 @@ async function aplicarFerramenta(nome) {
     return;
   }
 
-  if (typeof cv === "undefined") {
-    alert("OpenCV.js ainda não foi carregado.");
+  if (nome.includes("tons de cinza")) {
+
+    if (!imagemAtualSelecionada) {
+      alert("Nenhuma imagem selecionada.");
+      return;
+    }
+
+    if (imagemAtualSelecionada.type === "dicom") {
+      statusText.innerText = "A imagem DICOM já é tratada como tons de cinza.";
+      alert("A imagem DICOM já é tons de cinza.");
+      return;
+    }
+
+    const canvasTeste = await criarCanvasOriginalImagemNormal(imagemAtualSelecionada.file);
+
+    if (imagemCanvasJaEstaCinza(canvasTeste)) {
+      statusText.innerText = "A imagem já está em tons de cinza.";
+      alert("A imagem já está em tons de cinza.");
+      return;
+    }
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Converter para tons de cinza",
+      parametros: {
+        metodo: "rgb2gray MATLAB",
+        formula: "0.2989R + 0.5870G + 0.1140B"
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    if (imagemAtualSelecionada) {
+      await processarImagemSelecionada(imagemAtualSelecionada);
+      await openFile(imagemAtualSelecionada);
+    }
+
+    desenharFluxograma();
+
+    if (modoComparativoAtivo) {
+      await atualizarImagemComparativa();
+    }
+
+    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+      await atualizarAnaliseDaImagemAtual();
+    }
+
+    statusText.innerText = "Imagem convertida para tons de cinza usando o padrão do MATLAB.";
     return;
   }
 
   if (nome.includes("Gaussiano")) {
+
+    if (typeof cv === "undefined") {
+      alert("OpenCV.js ainda não foi carregado.");
+      return;
+    }
 
     const p1 = document.getElementById("param1");
     const p2 = document.getElementById("param2");
@@ -301,6 +370,11 @@ async function aplicarFerramenta(nome) {
   }
 
   if (nome.includes("Mediana")) {
+
+    if (typeof cv === "undefined") {
+      alert("OpenCV.js ainda não foi carregado.");
+      return;
+    }
 
     const p1 = document.getElementById("param1");
     const kernelTexto = p1 ? p1.value.trim() : "";
@@ -400,6 +474,10 @@ function desenharFluxograma() {
         Kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
+    }
+
+    if (etapa.nome.includes("tons de cinza")) {
+    
     }
 
     if (modoComparativoAtivo) {
@@ -1393,6 +1471,19 @@ async function processarImagemNormalPeloPipeline(item) {
         atualizarBarraProcessamento
       );
     }
+    if (etapa.nome.includes("tons de cinza")) {
+
+      const resultadoCinza = await aplicarCinzaEmCanvas(
+        canvasAtual,
+        atualizarBarraProcessamento
+      );
+
+      canvasAtual = resultadoCinza.canvas;
+
+      if (!resultadoCinza.alterou) {
+        statusText.innerText = resultadoCinza.mensagem;
+      }
+    }
   }
 
   return {
@@ -1427,6 +1518,20 @@ async function processarDicomPeloPipeline(item) {
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );
+    }
+
+    if (etapa.nome.includes("tons de cinza")) {
+
+      const resultadoCinza = await aplicarCinzaEmDicom(
+        imagemAtual,
+        atualizarBarraProcessamento
+      );
+
+      imagemAtual = resultadoCinza.imagem;
+
+      if (!resultadoCinza.alterou) {
+        statusText.innerText = resultadoCinza.mensagem;
+      }
     }
   }
 
@@ -1835,6 +1940,16 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
         function() {}
       );
     }
+
+    if (etapa.nome.includes("tons de cinza")) {
+
+      const resultadoCinza = await aplicarCinzaEmCanvas(
+        canvasAtual,
+        function() {}
+      );
+
+      canvasAtual = resultadoCinza.canvas;
+    }
   }
 
   return {
@@ -1872,6 +1987,16 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
         etapa.parametros.ignorarZero,
         function() {}
       );
+    }
+
+    if (etapa.nome.includes("tons de cinza")) {
+
+      const resultadoCinza = await aplicarCinzaEmDicom(
+        imagemAtual,
+        function() {}
+      );
+
+      imagemAtual = resultadoCinza.imagem;
     }
   }
 
