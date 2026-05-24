@@ -215,10 +215,6 @@ function selecionarFerramenta(nome, botaoClicado) {
         </div>
       </div>
 
-      <div class="caixa_info_parametro" style="display:block; position:static; width:auto; margin-top:8px;">
-        O modo rápido não usa o padrão 'zeros' do medfilt2.
-      </div>
-
       <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Mediana')">
         Aplicar
       </button>
@@ -633,7 +629,8 @@ async function loadFiles() {
         file: item.file,
         resultado: null,
         processado: false,
-        assinaturaPipeline: ""
+        assinaturaPipeline: "",
+        cacheEtapas: {}
       };
     });
 
@@ -1448,9 +1445,16 @@ async function processarImagemNormalPeloPipeline(item) {
 
   let canvasAtual = await criarCanvasOriginalImagemNormal(item.file);
 
+  // Cria ou limpa o cache das etapas dessa imagem
+  item.cacheEtapas = {};
+
+  // Salva a imagem original no cache
+  salvarCanvasNoCache(item, "original", canvasAtual);
+
   for (const etapa of pipelineFerramentas) {
 
     if (etapa.nome.includes("Gaussiano")) { 
+
       canvasAtual = await aplicarGaussianoEmCanvas(
         canvasAtual,
         etapa.parametros.sigma,
@@ -1458,15 +1462,20 @@ async function processarImagemNormalPeloPipeline(item) {
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );
+
     }
+
     if (etapa.nome.includes("Mediana")) { 
+
       canvasAtual = await aplicarMedianaEmCanvas(
         canvasAtual,
         etapa.parametros.tamanhoKernel,
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );
+
     }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -1479,7 +1488,11 @@ async function processarImagemNormalPeloPipeline(item) {
       if (!resultadoCinza.alterou) {
         statusText.innerText = resultadoCinza.mensagem;
       }
+
     }
+
+    // Salva o resultado dessa etapa no cache
+    salvarCanvasNoCache(item, etapa.id, canvasAtual);
   }
 
   return {
@@ -1495,9 +1508,16 @@ async function processarDicomPeloPipeline(item) {
 
   let imagemAtual = await carregarDicomOriginal(item);
 
+  // Cria ou limpa o cache das etapas dessa imagem
+  item.cacheEtapas = {};
+
+  // Salva o DICOM original no cache
+  salvarDicomNoCache(item, "original", imagemAtual);
+
   for (const etapa of pipelineFerramentas) {
 
     if (etapa.nome.includes("Gaussiano")) {
+
       imagemAtual = await aplicarGaussianoEmDicom(
         imagemAtual,
         etapa.parametros.sigma,
@@ -1505,15 +1525,18 @@ async function processarDicomPeloPipeline(item) {
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );
+
     }
 
     if (etapa.nome.includes("Mediana")) {
+
       imagemAtual = await aplicarMedianaEmDicom(
         imagemAtual,
         etapa.parametros.tamanhoKernel,
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );
+
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -1528,7 +1551,11 @@ async function processarDicomPeloPipeline(item) {
       if (!resultadoCinza.alterou) {
         statusText.innerText = resultadoCinza.mensagem;
       }
+
     }
+
+    // Salva o resultado dessa etapa no cache
+    salvarDicomNoCache(item, etapa.id, imagemAtual);
   }
 
   return {
@@ -1536,6 +1563,7 @@ async function processarDicomPeloPipeline(item) {
     imagem: imagemAtual
   };
 }
+
 // Cria um canvas com a imagem original.
 function criarCanvasOriginalImagemNormal(file) {
 
@@ -1654,7 +1682,36 @@ function invalidarProcessamentoDeTodasAsImagens() {
     item.resultado = null;
     item.processado = false;
     item.assinaturaPipeline = "";
+    item.cacheEtapas = {};
   });
+
+}
+
+function salvarCanvasNoCache(item, chave, canvas) {
+
+  if (!item.cacheEtapas) {
+    item.cacheEtapas = {};
+  }
+
+  item.cacheEtapas[chave] = {
+    tipo: "image",
+    dataURL: canvas.toDataURL("image/png"),
+    largura: canvas.width,
+    altura: canvas.height
+  };
+
+}
+
+function salvarDicomNoCache(item, chave, imagemDicom) {
+
+  if (!item.cacheEtapas) {
+    item.cacheEtapas = {};
+  }
+
+  item.cacheEtapas[chave] = {
+    tipo: "dicom",
+    imagem: imagemDicom
+  };
 
 }
 
@@ -1725,11 +1782,37 @@ async function atualizarImagemComparativa() {
 
   const item = imagemAtualSelecionada;
 
-  if (etapaComparativoSelecionada === "original") {
+  // Se não estiver processado ainda, processa uma vez e cria o cache
+  if (imagemPrecisaProcessar(item)) {
 
-    statusText.innerText = "Carregando imagem original no comparativo...";
+    statusText.innerText = "Processando imagem para gerar cache do comparativo...";
 
     await esperarAtualizacaoTela();
+
+    await processarImagemSelecionada(item);
+
+    await openFile(item);
+  }
+
+  if (!item.cacheEtapas) {
+    item.cacheEtapas = {};
+  }
+
+  if (etapaComparativoSelecionada === "original") {
+
+    const cacheOriginal = item.cacheEtapas["original"];
+
+    if (cacheOriginal && cacheOriginal.tipo === "image") {
+      await mostrarImagemNormalNoComparativo(cacheOriginal.dataURL);
+      statusText.innerText = "Comparativo mostrando: Original.";
+      return;
+    }
+
+    if (cacheOriginal && cacheOriginal.tipo === "dicom") {
+      await mostrarDicomNoComparativo(cacheOriginal.imagem);
+      statusText.innerText = "Comparativo mostrando: Original.";
+      return;
+    }
 
     await abrirImagemOriginalNoComparativo(item);
 
@@ -1738,36 +1821,45 @@ async function atualizarImagemComparativa() {
     return;
   }
 
-  const indiceEtapa = pipelineFerramentas.findIndex(function(etapa) {
+  const etapa = pipelineFerramentas.find(function(etapa) {
     return etapa.id === etapaComparativoSelecionada;
   });
 
-  if (indiceEtapa === -1) return;
+  if (!etapa) return;
 
-  const nomeFerramenta = pipelineFerramentas[indiceEtapa].nome;
+  const cache = item.cacheEtapas[etapa.id];
 
-  statusText.innerText = "Aplicando ferramenta no comparativo: " + nomeFerramenta + "...";
+  if (!cache) {
+
+    statusText.innerText = "Cache da etapa não encontrado. Reprocessando imagem...";
+
+    await esperarAtualizacaoTela();
+
+    await processarImagemSelecionada(item);
+
+    await openFile(item);
+
+    return atualizarImagemComparativa();
+  }
+
+  statusText.innerText = "Carregando etapa salva no comparativo: " + etapa.nome + "...";
 
   await esperarAtualizacaoTela();
 
-  if (item.type === "image") {
+  if (cache.tipo === "image") {
 
-    const resultado = await processarImagemNormalAteEtapa(item, indiceEtapa);
+    await mostrarImagemNormalNoComparativo(cache.dataURL);
 
-    await mostrarImagemNormalNoComparativo(resultado.dataURL);
-
-    statusText.innerText = "Comparativo mostrando: " + nomeFerramenta;
+    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
 
     return;
   }
 
-  if (item.type === "dicom") {
+  if (cache.tipo === "dicom") {
 
-    const resultado = await processarDicomAteEtapa(item, indiceEtapa);
+    await mostrarDicomNoComparativo(cache.imagem);
 
-    await mostrarDicomNoComparativo(resultado.imagem);
-
-    statusText.innerText = "Comparativo mostrando: " + nomeFerramenta;
+    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
 
     return;
   }
