@@ -225,12 +225,7 @@ function selecionarFerramenta(nome) {
   if (nome.includes("tons de cinza")) {
 
     parametrosDiv.innerHTML = `
-      <h4>Converter para tons de cinza</h4>
-
-      <div class="caixa_info_parametro" style="display:block; position:static; width:auto; margin-bottom:10px;">
-        Usa a mesma fórmula do MATLAB rgb2gray:<br>
-        0.2989R + 0.5870G + 0.1140B
-      </div>
+      <h4>Tons de cinza</h4>
 
       <button class="botao-aplicar" onclick="aplicarFerramenta('Converter para tons de cinza')">
         Aplicar
