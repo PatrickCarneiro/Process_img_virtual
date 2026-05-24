@@ -225,8 +225,7 @@ function selecionarFerramenta(nome) {
   if (nome.includes("tons de cinza")) {
 
     parametrosDiv.innerHTML = `
-      <h4>Tons de cinza</h4>
-
+ 
       <button class="botao-aplicar" onclick="aplicarFerramenta('Converter para tons de cinza')">
         Aplicar
       </button>
