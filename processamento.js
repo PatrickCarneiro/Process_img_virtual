@@ -285,6 +285,13 @@ async function aplicarFerramenta(nome) {
 
     pipelineFerramentas.push(etapa);
 
+    await aplicarPipelineAposAdicionarEtapa(
+      "Imagem convertida para tons de cinza usando o padrão do MATLAB.",
+      "Tons de cinza aplicado em todas as imagens."
+    );
+
+    return;
+
     if (imagemAtualSelecionada) {
       await processarImagemSelecionada(imagemAtualSelecionada);
       await openFile(imagemAtualSelecionada);
@@ -346,18 +353,11 @@ async function aplicarFerramenta(nome) {
 
     pipelineFerramentas.push(etapa);
 
-    if (imagemAtualSelecionada) {
-      await processarImagemSelecionada(imagemAtualSelecionada);
-      await openFile(imagemAtualSelecionada);
-    }
+    await aplicarPipelineAposAdicionarEtapa(
+      "Filtro Gaussiano aplicado na imagem selecionada.",
+      "Filtro Gaussiano aplicado em todas as imagens."
+    );
 
-    desenharFluxograma();
-
-    if (modoComparativoAtivo) {
-      await atualizarImagemComparativa();
-    }
-
-    statusText.innerText = "Filtro Gaussiano aplicado na imagem selecionada.";
     return;
   }
 
@@ -388,19 +388,11 @@ async function aplicarFerramenta(nome) {
     };
 
     pipelineFerramentas.push(etapa);
+    await aplicarPipelineAposAdicionarEtapa(
+      "Filtro Mediana aplicado na imagem selecionada.",
+      "Filtro Mediana aplicado em todas as imagens."
+    );
 
-    if (imagemAtualSelecionada) {
-      await processarImagemSelecionada(imagemAtualSelecionada);
-      await openFile(imagemAtualSelecionada);
-    }
-
-    desenharFluxograma();
-
-    if (modoComparativoAtivo) {
-      await atualizarImagemComparativa();
-    }    
-
-    statusText.innerText = "Filtro Mediana aplicado na imagem selecionada.";
     return;
   }
 
@@ -698,6 +690,92 @@ async function processarImagemSelecionada(item) {
   }, 700);
 
   return item;
+}
+
+async function processarTodasAsImagensComPipeline() {
+
+  if (!imagensProcessamento || imagensProcessamento.length === 0) {
+    return;
+  }
+
+  mostrarBarraProcessamento();
+
+  for (let i = 0; i < imagensProcessamento.length; i++) {
+
+    const item = imagensProcessamento[i];
+
+    const porcentagemBase = (i / imagensProcessamento.length) * 100;
+
+    statusText.innerText =
+      "Aplicando ferramenta em todas as imagens: " +
+      (i + 1) +
+      "/" +
+      imagensProcessamento.length +
+      " - " +
+      item.name;
+
+    atualizarBarraProcessamento(porcentagemBase);
+
+    await esperarAtualizacaoTela();
+
+    await processarImagemSelecionada(item);
+  }
+
+  atualizarBarraProcessamento(100);
+
+  statusText.innerText = "Ferramenta aplicada em todas as imagens.";
+
+  setTimeout(function() {
+    barraProcessamentoContainer.style.display = "none";
+    barraProcessamento.style.width = "0%";
+    barraProcessamentoTexto.innerText = "0%";
+  }, 700);
+
+}
+
+async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
+
+  if (deveAplicarFerramentasEmTodasImagens()) {
+
+    await processarTodasAsImagensComPipeline();
+
+    if (imagemAtualSelecionada) {
+      await openFile(imagemAtualSelecionada);
+    }
+
+    desenharCardsImagensTrabalho();
+
+    desenharFluxograma();
+
+    if (modoComparativoAtivo) {
+      await atualizarImagemComparativa();
+    }
+
+    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+      await atualizarAnaliseDaImagemAtual();
+    }
+
+    statusText.innerText = mensagemTodasImagens;
+
+    return;
+  }
+
+  if (imagemAtualSelecionada) {
+    await processarImagemSelecionada(imagemAtualSelecionada);
+    await openFile(imagemAtualSelecionada);
+  }
+
+  desenharFluxograma();
+
+  if (modoComparativoAtivo) {
+    await atualizarImagemComparativa();
+  }
+
+  if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+    await atualizarAnaliseDaImagemAtual();
+  }
+
+  statusText.innerText = mensagemImagemAtual;
 }
 
 function desenharCardsImagensTrabalho() {
@@ -1604,6 +1682,16 @@ function carregarDicomOriginal(item) {
 function deveIgnorarPixelZeroFerramentas() {
 
   const check = document.getElementById("checkIgnorarZeroFerramentas");
+
+  if (!check) return false;
+
+  return check.checked;
+
+}
+
+function deveAplicarFerramentasEmTodasImagens() {
+
+  const check = document.getElementById("checkAplicarTodasImagens");
 
   if (!check) return false;
 
