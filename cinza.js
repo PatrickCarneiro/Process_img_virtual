@@ -93,7 +93,7 @@ async function aplicarCinzaEmCanvas(canvasEntrada, atualizarProgresso) {
   return {
     canvas: canvasSaida,
     alterou: true,
-    mensagem: "Imagem convertida para tons de cinza usando o padrão do MATLAB."
+    mensagem: "Imagem convertida para tons de cinza."
   };
 }
 

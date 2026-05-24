@@ -131,7 +131,7 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 } // Fecha toggleCategoria
 
-function selecionarFerramenta(nome) {
+function selecionarFerramenta(nome, botaoClicado) {
 
   // Se clicar novamente na mesma ferramenta, fecha a caixa de parâmetros
   if (
@@ -144,8 +144,13 @@ function selecionarFerramenta(nome) {
     return;
   }
 
-  // Se clicar em outra ferramenta, abre/troca os parâmetros
   ferramentaSelecionadaAtual = nome;
+
+  // Faz a caixa de parâmetros aparecer embaixo do botão clicado
+  if (botaoClicado) {
+    botaoClicado.insertAdjacentElement("afterend", parametrosDiv);
+  }
+
   parametrosDiv.style.display = "block";
 
   if (nome.includes("Gaussiano")) {
@@ -210,7 +215,7 @@ function selecionarFerramenta(nome) {
         </div>
       </div>
 
-      <div class="caixa_info_parametro">
+      <div class="caixa_info_parametro" style="display:block; position:static; width:auto; margin-top:8px;">
         O modo rápido não usa o padrão 'zeros' do medfilt2.
       </div>
 
@@ -225,7 +230,6 @@ function selecionarFerramenta(nome) {
   if (nome.includes("tons de cinza")) {
 
     parametrosDiv.innerHTML = `
- 
       <button class="botao-aplicar" onclick="aplicarFerramenta('Converter para tons de cinza')">
         Aplicar
       </button>
@@ -233,7 +237,6 @@ function selecionarFerramenta(nome) {
 
     return;
   }
-
 
   parametrosDiv.innerHTML = `
     <h4>Parâmetros</h4>
@@ -245,7 +248,6 @@ function selecionarFerramenta(nome) {
     </button>
   `;
 }
-
 
 
 async function aplicarFerramenta(nome) {
@@ -1725,6 +1727,10 @@ async function atualizarImagemComparativa() {
 
   if (etapaComparativoSelecionada === "original") {
 
+    statusText.innerText = "Carregando imagem original no comparativo...";
+
+    await esperarAtualizacaoTela();
+
     await abrirImagemOriginalNoComparativo(item);
 
     statusText.innerText = "Comparativo mostrando: Original.";
@@ -1738,13 +1744,19 @@ async function atualizarImagemComparativa() {
 
   if (indiceEtapa === -1) return;
 
+  const nomeFerramenta = pipelineFerramentas[indiceEtapa].nome;
+
+  statusText.innerText = "Aplicando ferramenta no comparativo: " + nomeFerramenta + "...";
+
+  await esperarAtualizacaoTela();
+
   if (item.type === "image") {
 
     const resultado = await processarImagemNormalAteEtapa(item, indiceEtapa);
 
     await mostrarImagemNormalNoComparativo(resultado.dataURL);
 
-    statusText.innerText = "Comparativo mostrando: " + pipelineFerramentas[indiceEtapa].nome;
+    statusText.innerText = "Comparativo mostrando: " + nomeFerramenta;
 
     return;
   }
@@ -1755,7 +1767,7 @@ async function atualizarImagemComparativa() {
 
     await mostrarDicomNoComparativo(resultado.imagem);
 
-    statusText.innerText = "Comparativo mostrando: " + pipelineFerramentas[indiceEtapa].nome;
+    statusText.innerText = "Comparativo mostrando: " + nomeFerramenta;
 
     return;
   }

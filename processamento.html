@@ -163,7 +163,8 @@ body {
   border: 1px solid rgba(255,255,255,0.08); /* Borda suave */
   border-radius: 14px; /* Arredonda cantos */
   padding: 12px; /* Espaçamento interno */
-  margin-top: 15px; /* Espaço acima */
+  margin-top: 4px;
+  margin-bottom: 10px;
   display: none; /* Começa escondida */
 }
 
@@ -676,17 +677,30 @@ body {
 
     <div class="categoria-conteudo" id="filtros"> <!-- Conteúdo da categoria filtros -->
 
-      <div class="ferramenta" onclick="selecionarFerramenta('Filtro Gaussiano')">Filtro Gaussiano</div> <!-- Opção filtro gaussiano -->
- 
-      <div class="ferramenta" onclick="selecionarFerramenta('Filtro Mediana')">Filtro Mediana</div>
-
+    <div 
+      class="ferramenta" 
+      id="botaoFerramentaGaussiano"
+      onclick="selecionarFerramenta('Filtro Gaussiano', this)"
+    >
+      Filtro Gaussiano
+    </div>
+    
+    <div 
+      class="ferramenta" 
+      id="botaoFerramentaMediana"
+      onclick="selecionarFerramenta('Filtro Mediana', this)"
+    >
+      Filtro Mediana
+    </div>
+      
     </div> <!-- Fecha categoria filtros -->
 
-    <div class="categoria-titulo" onclick="selecionarFerramenta('Converter para tons de cinza')">
+    <div 
+      class="categoria-titulo" 
+      onclick="selecionarFerramenta('Converter para tons de cinza', this)"
+    >
       Tons de cinza
     </div>
-
-    <div class="parametros" id="parametros"></div> <!-- Área onde aparecem os parâmetros da ferramenta -->
 
     <div class="caixa_ignorar_zero">
       <label>
