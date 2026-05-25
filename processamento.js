@@ -1,5 +1,7 @@
 // Código do processamento de imagem, incluindo o pipeline de ferramentas, miniaturas, seleção múltipla e barra de processamento
 
+// VARIÁVEIS GLOBAIS 
+
 const DB_NAME = "MedicalImagesDB"; // Nome do banco IndexedDB usado pelo sistema
 const DB_VERSION = 6; // Versão do banco IndexedDB
 
@@ -24,14 +26,6 @@ const statusText = document.getElementById("status"); // Pega o texto de status
 
 let ferramentaSelecionadaAtual = null;
 
-cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
-cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
-cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
-  useWebWorkers: false // Desativa web workers para simplificar o funcionamento
-}); // Fecha configuração
-cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
-cornerstone.enable(visualizadorDicomOriginal);
-
 const barraProcessamentoContainer = document.createElement("div"); // Cria a barra de processamento (inicialmente oculta)
 barraProcessamentoContainer.id = "barraProcessamentoContainer";
 barraProcessamentoContainer.style.display = "none";
@@ -49,14 +43,6 @@ const botaoPixel = document.getElementById("botaoPixel"); // Pega o botão de in
 const infoPixel = document.getElementById("infoPixel"); // Pega a caixa de informação do pixel
 let modoPixelAtivo = false; // Controla se o modo de visualizar pixel está ativo
 let imagemDicomAtual = null; // Guarda a imagem DICOM atual para consultar os pixels
-
-const botaoOriginal = document.getElementById("botaoOriginal"); // Pega o botão de imagem original para comparação
-const areaImagemOriginal = document.getElementById("areaImagemOriginal"); // Pega a área onde a imagem original aparece no modo comparativo
-const imagemOriginalNormal = document.getElementById("imagemOriginalNormal");
-const visualizadorDicomOriginal = document.getElementById("visualizadorDicomOriginal");
-let modoComparativoAtivo = false; 
-let etapaComparativoSelecionada = "original"; 
-let imagemDicomOriginalAtual = null;
 
 const botaoZoom = document.getElementById("botaoZoom"); // Pega o botão de zoom
 let modoZoomAtivo = false; // Controla se o modo zoom está ativo
@@ -77,6 +63,21 @@ let inicioMouseY = 0; // Posição inicial Y do mouse
 let scrollInicialX = 0; // Scroll horizontal inicial
 let scrollInicialY = 0; // Scroll vertical inicial
 
+const botaoOriginal = document.getElementById("botaoOriginal"); // Pega o botão de imagem original para comparação
+const areaImagemOriginal = document.getElementById("areaImagemOriginal"); // Pega a área onde a imagem original aparece no modo comparativo
+const imagemOriginalNormal = document.getElementById("imagemOriginalNormal");
+const visualizadorDicomOriginal = document.getElementById("visualizadorDicomOriginal");
+let modoComparativoAtivo = false; 
+let etapaComparativoSelecionada = "original"; 
+let imagemDicomOriginalAtual = null;
+
+cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
+cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
+cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
+  useWebWorkers: false // Desativa web workers para simplificar o funcionamento
+}); // Fecha configuração
+cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
+cornerstone.enable(visualizadorDicomOriginal);
 
 // FUNÇÕES 
 
