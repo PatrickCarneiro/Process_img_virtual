@@ -1364,31 +1364,36 @@ function atualizarTamanhoImagemAtual() {
 
   }
 
-  // DICOM
+  /* DICOM PROCESSADO */
+
   if (visualizadorDicom.style.display === "block") {
 
     visualizadorDicom.style.width = larguraFinal + "px";
     visualizadorDicom.style.height = alturaFinal + "px";
 
-    // Garante que o canvas interno do Cornerstone siga o tamanho da div
-    cornerstone.resize(visualizadorDicom, true);
+    const viewport = cornerstone.getViewport(visualizadorDicom);
 
+    viewport.scale = escalaBaseAtual * zoomAtual;
+
+    cornerstone.setViewport(visualizadorDicom, viewport);
+    cornerstone.resize(visualizadorDicom, true);
   }
+
+
+  /* DICOM ORIGINAL DO COMPARATIVO */
+
   if (visualizadorDicomOriginal.style.display === "block") {
 
     visualizadorDicomOriginal.style.width = larguraFinal + "px";
     visualizadorDicomOriginal.style.height = alturaFinal + "px";
 
+    const viewportOriginal = cornerstone.getViewport(visualizadorDicomOriginal);
+
+    viewportOriginal.scale = escalaBaseAtual * zoomAtual;
+
+    cornerstone.setViewport(visualizadorDicomOriginal, viewportOriginal);
     cornerstone.resize(visualizadorDicomOriginal, true);
-
   }
-
-  if (zoomAtual > 1) {
-    visualizacaoBox.classList.add("zoom_aplicado");
-  } else {
-    visualizacaoBox.classList.remove("zoom_aplicado");
-  }
-
 }
 // Liga/desliga o modo mãozinha
 function togglePanImagem() { 
@@ -2205,4 +2210,22 @@ function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
   return escala;
 
 }
+
+/* EVENTOS DO ZOOM COM SCROLL */
+
+imagemNormal.addEventListener("wheel", function(event) {
+  aplicarZoomNoMouse(event, imagemNormal);
+}, { passive: false });
+
+visualizadorDicom.addEventListener("wheel", function(event) {
+  aplicarZoomNoMouse(event, visualizadorDicom);
+}, { passive: false });
+
+imagemOriginalNormal.addEventListener("wheel", function(event) {
+  aplicarZoomNoMouse(event, imagemOriginalNormal);
+}, { passive: false });
+
+visualizadorDicomOriginal.addEventListener("wheel", function(event) {
+  aplicarZoomNoMouse(event, visualizadorDicomOriginal);
+}, { passive: false });
 
