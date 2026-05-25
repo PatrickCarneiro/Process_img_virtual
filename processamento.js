@@ -759,6 +759,23 @@ async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTo
 
     return;
   }
+
+  if (imagemAtualSelecionada) {
+    await processarImagemSelecionada(imagemAtualSelecionada);
+    await openFile(imagemAtualSelecionada);
+  }
+
+  desenharFluxograma();
+
+  if (modoComparativoAtivo) {
+    await atualizarImagemComparativa();
+  }
+
+  if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+    await atualizarAnaliseDaImagemAtual();
+  }
+
+  statusText.innerText = mensagemImagemAtual;
 }
 
 function desenharCardsImagensTrabalho() {
