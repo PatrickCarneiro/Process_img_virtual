@@ -1,8 +1,7 @@
-// Nome do banco de dados (tem que ser igual no processamento.html)
-const DB_NAME = "MedicalImagesDB";
+// Java da tela principal
 
-// Versão do banco (sempre aumentar quando mudar estrutura)
-const DB_VERSION = 6;
+const DB_NAME = "MedicalImagesDB"; // Nome do banco de dados (futuramente mudar para o Supabase)
+const DB_VERSION = 6; // Versão do banco 
 
 // Pegando elementos do HTML
 const fileInput = document.getElementById("fileInput"); 
@@ -15,19 +14,18 @@ let selectedItems = [];
 // CONFIGURAÇÃO DICOM
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
-
 cornerstoneWADOImageLoader.configure({
   useWebWorkers: false
 });
 
 // BANCO DE DADOS 
-// Função que abre (ou cria) o banco de dados
+
+// Função que abre o banco de dados
 function openDatabase() {
   
   return new Promise((resolve, reject) => { // Retorna uma Promise para trabalhar de forma assíncrona (esperar abrir o banco)
 
     const request = indexedDB.open(DB_NAME, DB_VERSION); 
-
     request.onupgradeneeded = function(event) { // Evento que cria ou atualiza o banco 
 
       const db = event.target.result; 
@@ -78,6 +76,9 @@ function addToStore(db, storeName, data) { // Função para adicionar um item a 
   });
 }
 
+// MINIATURAS 
+
+// Carregar as imagens recentes 
 function getAllFromStore(db, storeName) { // Função para pegar todos os itens de uma tabela do banco
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readonly"); // Transação de leitura
@@ -89,7 +90,6 @@ function getAllFromStore(db, storeName) { // Função para pegar todos os itens 
   });
 }
 
-// SELEÇÃO MULTIPLA
 function toggleSelection(item, card) { // Função para selecionar ou deselecionar um item (imagem)
  
   const index = selectedItems.findIndex(i => i.id === item.id); // Verifica se o item já está selecionado (procura pelo id)
@@ -106,19 +106,16 @@ function toggleSelection(item, card) { // Função para selecionar ou deselecion
   }
 }
 
-// LIMPAR TABELA
-function clearStore(db, storeName) {
+function clearStore(db, storeName) { // Função para limpar todos os itens de uma tabela do banco (usada para guardar apenas as imagens selecionadas para processamento)
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
     const store = tx.objectStore(storeName);
     const request = store.clear();
-
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
 }
 
-// BOTÃO PROCESSAR
 async function processSelected() { // Função para processar as imagens selecionadas ao clicar no botão 
 
   if (selectedItems.length === 0) {
@@ -136,7 +133,6 @@ async function processSelected() { // Função para processar as imagens selecio
   window.location.href = "processamento.html"; // Redireciona para a página de processamento
 }
 
-// MINIATURA DICOM
 async function renderDicomThumbnail(item, container) { // Função para renderizar a miniatura de um arquivo DICOM dentro de um container HTML
   try {
 
@@ -155,7 +151,6 @@ async function renderDicomThumbnail(item, container) { // Função para renderiz
   }
 }
 
-// CARREGAR RECENTES
 async function loadRecentImages() { // Função para carregar as imagens recentes da tabela "recent" do banco e exibi-las na tela
 
   const db = await openDatabase(); 
@@ -207,6 +202,7 @@ async function loadRecentImages() { // Função para carregar as imagens recente
 }
 
 // UPLOAD NORMAL
+
 fileInput.addEventListener("change", async function() { // Evento que roda quando o usuário seleciona arquivos usando o input de arquivos
 
   const files = Array.from(fileInput.files); // Converte a lista de arquivos selecionados em um array para facilitar o uso
