@@ -9,14 +9,11 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-  <!-- Biblioteca principal para exibir imagens médicas -->
-  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>
+  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script> <!-- Biblioteca principal para exibir imagens médicas -->
 
-  <!-- Biblioteca que lê a estrutura interna de arquivos DICOM -->
-  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script>
+  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script> <!-- Biblioteca que lê a estrutura interna de arquivos DICOM -->
 
-  <!-- Biblioteca que carrega imagens DICOM para o Cornerstone -->
-  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
+  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>  <!-- Biblioteca que carrega imagens DICOM para o Cornerstone -->
 
 
   <style>
@@ -29,7 +26,6 @@
       box-sizing: border-box; /* Inclui padding e borda no tamanho total */
     }
 
-
     /* DESIGN GERAL DO CORPO DA PÁGINA */
 
     body {
@@ -41,7 +37,6 @@
       overflow-x: hidden; /* Impede rolagem horizontal */
       overflow-y: auto; /* Permite rolagem vertical */
     }
-
 
     /* DESIGN DO MENU LATERAL */
 
@@ -61,7 +56,6 @@
       width: 70px; /* Largura quando fechado */
     }
 
-
     /* DESIGN DO LOGO DO MENU */
 
     .logo {
@@ -69,14 +63,12 @@
       font-weight: bold;
       margin-bottom: 25px;
     }
-
     .menulateral.fechado .logo,
     .menulateral.fechado .texto-menu {
       display: none; /* Esconde textos quando o menu fecha */
     }
 
-
-    /* DESIGN DO BOTÃO DO MENU */
+    /* DESIGN DO MENU */
 
     .botao-menu {
       width: 100%;
@@ -88,10 +80,6 @@
       cursor: pointer;
       margin-bottom: 20px;
     }
-
-
-    /* DESIGN DOS ITENS DO MENU */
-
     .menu-item {
       padding: 12px;
       border-radius: 10px;
@@ -99,11 +87,9 @@
       cursor: pointer;
       background: rgba(255,255,255,0.06);
     }
-
     .menu-item:hover {
       background: rgba(192,132,252,0.25);
     }
-
 
     /* LAYOUT PRINCIPAL */
 
@@ -117,7 +103,6 @@
       padding-bottom: 90px; /* Espaço para a aba de análises */
     }
 
-
     /* DESIGN DOS PAINÉIS */
 
     .painel {
@@ -127,7 +112,6 @@
       padding: 18px;
       overflow: auto; /* Permite rolagem interna */
     }
-
 
     /* DESIGN DAS CATEGORIAS DE FERRAMENTAS */
 
@@ -142,18 +126,15 @@
       border: 1px solid rgba(192,132,252,0.45);
       transition: 0.3s;
     }
-
     .categoria-titulo:hover {
       background: rgba(192,132,252,0.45);
     }
-
     .categoria-conteudo {
       display: none; /* Começa fechada */
       margin-bottom: 15px;
       padding-left: 8px;
       border-left: 2px solid rgba(192,132,252,0.35);
     }
-
 
     /* DESIGN DAS FERRAMENTAS */
 
@@ -166,14 +147,9 @@
       cursor: pointer;
       transition: 0.3s;
     }
-
     .ferramenta:hover {
       background: rgba(255,255,255,0.15);
     }
-
-
-    /* DESIGN DOS PARÂMETROS DAS FERRAMENTAS */
-
     .parametros {
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.08);
@@ -183,18 +159,15 @@
       margin-bottom: 10px;
       display: none; /* Começa escondida */
     }
-
     .parametros h4 {
       margin-bottom: 10px;
       color: #c084fc;
     }
-
     .parametros label {
       display: block; /* Cada label em uma linha */
       font-size: 13px;
       margin-top: 8px;
     }
-
     .parametros input,
     .parametros select {
       width: 100%;
@@ -204,10 +177,6 @@
       border: none;
       outline: none;
     }
-
-
-    /* DESIGN DO BOTÃO APLICAR */
-
     .botao-aplicar {
       width: 100%;
       padding: 10px;
@@ -218,11 +187,9 @@
       color: white;
       cursor: pointer;
     }
-
     .botao-aplicar:hover {
       background: rgba(192,132,252,0.55);
     }
-
 
     /* DESIGN DA ÁREA CENTRAL DE VISUALIZAÇÃO */
 
@@ -232,12 +199,10 @@
       gap: 10px;
       align-items: center;
     }
-
     .area_visualizacao h1,
     .area_visualizacao p {
       width: 100%;
     }
-
 
     /* DESIGN DA LINHA DE VISUALIZAÇÃO */
 
@@ -248,7 +213,6 @@
       width: 100%;
       column-gap: 8px;
     }
-
 
     /* DESIGN DA CAIXA DA IMAGEM */
 
@@ -267,12 +231,10 @@
       height: 70vh;
       min-width: 0;
     }
-
     .visualizacao_box.zoom_aplicado {
       justify-content: flex-start; /* Facilita navegar com zoom */
       align-items: flex-start;
     }
-
 
     /* DESIGN DOS BOTÕES LATERAIS DA IMAGEM */
 
@@ -285,7 +247,6 @@
       align-self: start;
       padding-top: 4px;
     }
-
     .botao_pixel,
     .botao_zoom,
     .botao_pan,
@@ -304,21 +265,17 @@
       line-height: 1;
       padding: 0;
     }
-
     .botao_pixel {
       font-size: 24px;
       justify-self: start;
     }
-
     .botao_zoom {
       font-size: 30px;
     }
-
     .botao_pan,
     .botao_original {
       font-size: 20px;
     }
-
     .botao_pixel:hover,
     .botao_zoom:hover,
     .botao_pan:hover,
@@ -326,7 +283,6 @@
       background: rgba(192,132,252,0.35);
       transform: scale(1.05);
     }
-
     .botao_pixel.ativo,
     .botao_zoom.ativo,
     .botao_pan.ativo,
@@ -334,7 +290,6 @@
       background: rgba(192,132,252,0.55);
       box-shadow: 0 0 12px rgba(192,132,252,0.65);
     }
-
 
     /* DESIGN DA INFORMAÇÃO DO PIXEL */
 
@@ -350,21 +305,17 @@
       opacity: 0.85;
     }
 
-
     /* CURSORES DAS FERRAMENTAS DA IMAGEM */
 
     .zoom_ativo {
       cursor: zoom-in;
     }
-
     .pan_ativo {
       cursor: grab;
     }
-
     .pan_arrastando {
       cursor: grabbing;
     }
-
 
     /* DESIGN DA IMAGEM NORMAL */
 
@@ -378,7 +329,6 @@
       transform-origin: center center; /* Base do zoom */
       transition: none;
     }
-
 
     /* DESIGN DO VISUALIZADOR DICOM */
 
@@ -395,7 +345,6 @@
       transition: transform 0.08s ease-out;
     }
 
-
     /* DESIGN DO FLUXOGRAMA */
 
     #areaFluxograma {
@@ -403,7 +352,6 @@
       flex-direction: column;
       align-items: center;
     }
-
     .bloco_fluxo {
       width: 100%;
       padding: 12px;
@@ -413,29 +361,22 @@
       margin-bottom: 8px;
       text-align: center;
     }
-
     .bloco_fluxo.selecionado_comparativo {
       background: rgba(56,189,248,0.25);
       border: 2px solid rgba(56,189,248,0.9);
       box-shadow: 0 0 14px rgba(56,189,248,0.35);
     }
-
     .bloco_parametros {
       margin-top: 6px;
       font-size: 12px;
       opacity: 0.8;
       text-align: left;
     }
-
     .seta {
       font-size: 24px;
       color: #c084fc;
       margin-bottom: 8px;
     }
-
-
-    /* DESIGN DO BOTÃO REMOVER */
-
     .remover {
       margin-top: 8px;
       padding: 6px 10px;
@@ -445,11 +386,9 @@
       color: white;
       cursor: pointer;
     }
-
     .remover:hover {
       background: rgba(255,80,80,0.45);
     }
-
 
     /* DESIGN DA ÁREA DE IMAGENS EMBAIXO */
 
@@ -460,7 +399,6 @@
       overflow-x: auto; /* Permite rolagem horizontal */
       min-height: 190px;
     }
-
 
     /* DESIGN DO CARD DE IMAGEM */
 
@@ -474,18 +412,15 @@
       cursor: pointer;
       transition: 0.3s;
     }
-
     .card_imagem:hover {
       background: rgba(192,132,252,0.18);
       transform: translateY(-3px);
     }
-
     .card_imagem.selecionado {
       background: rgba(192,132,252,0.25);
       border: 2px solid rgba(192,132,252,0.85);
       box-shadow: 0 0 14px rgba(192,132,252,0.35);
     }
-
 
     /* DESIGN DA MINIATURA DO CARD */
 
@@ -500,12 +435,10 @@
       overflow: hidden;
       display: block;
     }
-
     .dicom_thumb canvas {
       width: 100% !important;
       height: 100% !important;
     }
-
 
     /* DESIGN DO NOME DO ARQUIVO */
 
@@ -515,14 +448,12 @@
       word-break: break-word; /* Quebra nomes grandes */
     }
 
-
     /* DESIGN DO STATUS E BARRA DE PROCESSAMENTO */
 
     #status {
       display: inline-block;
       margin-right: 20px;
     }
-
     #barraProcessamentoContainer {
       display: inline-flex;
       align-items: center;
@@ -530,7 +461,6 @@
       width: 470px;
       vertical-align: middle;
     }
-
     #barraProcessamentoFundo {
       width: 420px;
       height: 8px;
@@ -538,7 +468,6 @@
       border-radius: 999px;
       overflow: hidden;
     }
-
     #barraProcessamento {
       width: 0%;
       height: 100%;
@@ -546,13 +475,11 @@
       border-radius: 999px;
       transition: width 0.2s ease;
     }
-
     #barraProcessamentoTexto {
       font-size: 12px;
       color: white;
       min-width: 35px;
     }
-
 
     /* DESIGN DAS INFORMAÇÕES DOS PARÂMETROS */
 
@@ -560,7 +487,6 @@
       position: relative;
       margin-bottom: 10px;
     }
-
     .caixa_info_parametro {
       display: none;
       position: absolute;
@@ -578,11 +504,9 @@
       width: 210px;
       box-shadow: 0 0 12px rgba(192,132,252,0.35);
     }
-
     .campo_parametro_info:hover .caixa_info_parametro {
       display: block; /* Mostra a explicação ao passar o mouse */
     }
-
 
     /* DESIGN DAS CAIXAS COM CHECKBOX */
 
@@ -595,7 +519,6 @@
       font-size: 13px;
       color: white;
     }
-
     .caixa_ignorar_zero label {
       display: flex;
       align-items: flex-start;
@@ -603,11 +526,9 @@
       cursor: pointer;
       line-height: 1.3;
     }
-
     .caixa_ignorar_zero input {
       margin-top: 2px;
     }
-
 
     /* DESIGN DO COMPARATIVO ORIGINAL E PROCESSADA */
 
@@ -619,18 +540,15 @@
       padding-right: 12px;
       border-right: 1px solid rgba(255,255,255,0.15);
     }
-
     .area_imagem_original.ativo {
       display: flex; /* Mostra a imagem original */
     }
-
     .area_imagem_processada {
       display: flex;
       justify-content: center;
       align-items: center;
       flex: 0 0 auto;
     }
-
     #imagemOriginalNormal {
       display: none;
       width: auto;
@@ -639,7 +557,6 @@
       max-height: none;
       object-fit: contain;
     }
-
     #visualizadorDicomOriginal {
       background: black;
       border-radius: 0;
@@ -657,7 +574,6 @@
 
 
 <body>
-
 
   <!-- MENU LATERAL -->
 
@@ -681,11 +597,9 @@
 
   </div>
 
-
   <!-- ÁREA PRINCIPAL -->
 
   <div class="principal">
-
 
     <!-- PAINEL DE FERRAMENTAS -->
 
@@ -750,7 +664,6 @@
 
     </div>
 
-
     <!-- ÁREA CENTRAL DE VISUALIZAÇÃO -->
 
     <div class="area_visualizacao">
@@ -759,7 +672,6 @@
 
       <!-- Linha com botões laterais e imagem -->
       <div class="linha_visualizacao">
-
 
         <!-- BOTÕES LATERAIS DA IMAGEM -->
 
@@ -787,7 +699,6 @@
 
         </div>
 
-
         <!-- CAIXA DA IMAGEM -->
 
         <div class="visualizacao_box">
@@ -814,20 +725,17 @@
 
       </div>
 
-
       <!-- INFORMAÇÃO DO PIXEL -->
 
       <div class="info_pixel" id="infoPixel">
         X: --- | Y: --- | Pixel: ---
       </div>
 
-
       <!-- TEXTO DE STATUS -->
 
       <p id="status">Carregando arquivos...</p>
 
     </div>
-
 
     <!-- PAINEL DO FLUXOGRAMA -->
 
@@ -846,23 +754,19 @@
 
     </div>
 
-
     <!-- ÁREA INFERIOR COM IMAGENS -->
 
     <div class="painel imagens_trabalho" id="imagensTrabalho"></div>
 
   </div>
 
-
   <!-- ÁREA DA ABA DE ANÁLISE -->
 
   <div id="areaAnalise"></div>
 
-
   <!-- BIBLIOTECA OPENCV -->
 
   <script src="https://docs.opencv.org/4.x/opencv.js"></script>
-
 
   <!-- ARQUIVOS JAVASCRIPT DO SISTEMA -->
 
@@ -871,7 +775,6 @@
   <script src="mediana.js"></script>
   <script src="cinza.js"></script>
   <script src="processamento.js"></script>
-
 
   <!-- INICIALIZAÇÃO DA PÁGINA -->
 
