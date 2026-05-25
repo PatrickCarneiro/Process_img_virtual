@@ -1260,35 +1260,46 @@ function toggleZoomImagem() {  // Função para ligar/desligar modo de zoom
 
 } 
 // Aplica zoom usando o ponto onde o mouse está
-// Aplica zoom usando o ponto onde o mouse está
 function aplicarZoomNoMouse(event, elemento) {
 
-  if (!modoZoomAtivo) return; // Só funciona se o zoom estiver ativo
-  event.preventDefault(); // Impede a rolagem da página
-  const box = visualizacaoBox; // Caixa onde a imagem aparece
-  const rectElemento = elemento.getBoundingClientRect(); // Posição real da imagem/DICOM na tela
-  const mouseDentroX = event.clientX - rectElemento.left; // X do mouse dentro da imagem
-  const mouseDentroY = event.clientY - rectElemento.top; // Y do mouse dentro da imagem
-  const proporcaoX = mouseDentroX / elemento.offsetWidth; // Proporção horizontal antes do zoom
-  const proporcaoY = mouseDentroY / elemento.offsetHeight; // Proporção vertical antes do zoom
-  const larguraAntes = elemento.offsetWidth; // Largura antes do zoom
-  const alturaAntes = elemento.offsetHeight; // Altura antes do zoom
-  if (event.deltaY < 0) { // Scroll para cima aumenta
-    zoomAtual *= 2;
-  } else { // Scroll para baixo diminui
-    zoomAtual /= 2;
-  }
-  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limite mínimo
-  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limite máximo
-  atualizarTamanhoImagemAtual(); // Aplica novo tamanho
-  const larguraDepois = elemento.offsetWidth; // Largura depois do zoom
-  const alturaDepois = elemento.offsetHeight; // Altura depois do zoom
-  const diferencaX = proporcaoX * (larguraDepois - larguraAntes); // Diferença horizontal
-  const diferencaY = proporcaoY * (alturaDepois - alturaAntes); // Diferença vertical
-  box.scrollLeft += diferencaX; // Mantém o ponto do mouse
-  box.scrollTop += diferencaY; // Mantém o ponto do mouse
-  statusText.innerText = `Zoom: ${zoomAtual.toFixed(2)}x`;
+  if (!modoZoomAtivo) return;
 
+  event.preventDefault();
+
+  const box = visualizacaoBox;
+
+  const boxRect = box.getBoundingClientRect();
+
+  // Posição do mouse dentro da caixa de visualização
+  const mouseXNaBox = event.clientX - boxRect.left;
+  const mouseYNaBox = event.clientY - boxRect.top;
+
+  // Posição real do ponto dentro da imagem rolável antes do zoom
+  const pontoAntesX = box.scrollLeft + mouseXNaBox;
+  const pontoAntesY = box.scrollTop + mouseYNaBox;
+
+  const zoomAntes = zoomAtual;
+
+  const fatorZoom = 1.15; // diminua para 1.10 se quiser mais suave
+
+  if (event.deltaY < 0) {
+    zoomAtual *= fatorZoom;
+  } else {
+    zoomAtual /= fatorZoom;
+  }
+
+  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo;
+  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo;
+
+  const fatorReal = zoomAtual / zoomAntes;
+
+  atualizarTamanhoImagemAtual();
+
+  // Mantém o ponto do mouse na mesma região depois do zoom
+  box.scrollLeft = pontoAntesX * fatorReal - mouseXNaBox;
+  box.scrollTop = pontoAntesY * fatorReal - mouseYNaBox;
+
+  statusText.innerText = `Zoom: ${zoomAtual.toFixed(2)}x`;
 }
 // Volta a imagem para o tamanho normal
 function resetarZoom() {
@@ -1375,6 +1386,9 @@ function atualizarTamanhoImagemAtual() {
 
     viewport.scale = escalaBaseAtual * zoomAtual;
 
+    viewport.translation.x = 0;
+    viewport.translation.y = 0;
+
     cornerstone.setViewport(visualizadorDicom, viewport);
     cornerstone.resize(visualizadorDicom, true);
   }
@@ -1390,6 +1404,9 @@ function atualizarTamanhoImagemAtual() {
     const viewportOriginal = cornerstone.getViewport(visualizadorDicomOriginal);
 
     viewportOriginal.scale = escalaBaseAtual * zoomAtual;
+
+    viewportOriginal.translation.x = 0;
+    viewportOriginal.translation.y = 0;
 
     cornerstone.setViewport(visualizadorDicomOriginal, viewportOriginal);
     cornerstone.resize(visualizadorDicomOriginal, true);
