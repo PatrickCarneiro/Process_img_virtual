@@ -1,56 +1,14 @@
-const DB_NAME = "MedicalImagesDB"; // Nome do banco IndexedDB usado pelo sistema
+// Código do processamento de imagem, incluindo o pipeline de ferramentas, miniaturas, seleção múltipla e barra de processamento
 
+const DB_NAME = "MedicalImagesDB"; // Nome do banco IndexedDB usado pelo sistema
 const DB_VERSION = 6; // Versão do banco IndexedDB
 
 const visualizadorDicom = document.getElementById("visualizadorDicom"); // Pega o container DICOM
-
 const imagemNormal = document.getElementById("imagemNormal"); // Pega a imagem comum
-
-const botaoOriginal = document.getElementById("botaoOriginal");
-
-const areaImagemOriginal = document.getElementById("areaImagemOriginal");
-
-const imagemOriginalNormal = document.getElementById("imagemOriginalNormal");
-
-const visualizadorDicomOriginal = document.getElementById("visualizadorDicomOriginal");
-
-const statusText = document.getElementById("status"); // Pega o texto de status
-
-const barraProcessamentoContainer = document.createElement("div");
-barraProcessamentoContainer.id = "barraProcessamentoContainer";
-barraProcessamentoContainer.style.display = "none";
-
-barraProcessamentoContainer.innerHTML = `
-  <div id="barraProcessamentoFundo">
-    <div id="barraProcessamento"></div>
-  </div>
-  <span id="barraProcessamentoTexto">0%</span>
-`;
-
-statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
-
-const barraProcessamento = document.getElementById("barraProcessamento");
-const barraProcessamentoTexto = document.getElementById("barraProcessamentoTexto");
 
 const imagensTrabalho = document.getElementById("imagensTrabalho"); // Pega a área das imagens de trabalho
 
 const areaFluxograma = document.getElementById("areaFluxograma"); // Pega a área do fluxograma
-
-const parametrosDiv = document.getElementById("parametros"); // Pega a área de parâmetros
-
-const botaoPixel = document.getElementById("botaoPixel"); // Pega o botão de inspeção de pixel
-
-const infoPixel = document.getElementById("infoPixel"); // Pega a caixa de informação do pixel
-
-let modoPixelAtivo = false; // Controla se o modo de visualizar pixel está ativo
-
-let imagemDicomAtual = null; // Guarda a imagem DICOM atual para consultar os pixels
-
-let modoComparativoAtivo = false;
-
-let etapaComparativoSelecionada = "original";
-
-let imagemDicomOriginalAtual = null;
 
 let imagensProcessamento = []; // Guarda as imagens de trabalho no fluxograma
 
@@ -60,55 +18,69 @@ let pipelineFerramentas = []; // Guarda o pipeline de ferramentas do fluxograma
 
 let proximoIdEtapa = 1; // Guarda o id da próxima etapa no fluxograma
 
-const botaoZoom = document.getElementById("botaoZoom"); // Pega o botão de zoom
+const parametrosDiv = document.getElementById("parametros"); // Pega a área de parâmetros
 
-let modoZoomAtivo = false; // Controla se o modo zoom está ativo
-
-const botaoPan = document.getElementById("botaoPan"); // Pega o botão da mãozinha
-
-const visualizacaoBox = document.querySelector(".visualizacao_box"); // Caixa onde a imagem aparece
-
-let modoPanAtivo = false; // Controla se a mãozinha está ativa
-
-let arrastandoImagem = false; // Controla se está arrastando
-
-let inicioMouseX = 0; // Posição inicial X do mouse
-
-let inicioMouseY = 0; // Posição inicial Y do mouse
-
-let scrollInicialX = 0; // Scroll horizontal inicial
-
-let scrollInicialY = 0; // Scroll vertical inicial
-
-let escalaBaseAtual = 1; // Escala automática inicial da imagem
-
-let zoomAtual = 1; // Zoom manual atual
-
-let escalaDicomBase = 1; // Guarda a escala inicial do DICOM no Cornerstone
-
-const zoomMinimo = 1; // Zoom mínimo
-
-const zoomMaximo = 5000; // Pode aumentar bastante, parecido com MATLAB
-
-let larguraOriginalAtual = 0; // Largura original da imagem atual
-
-let alturaOriginalAtual = 0; // Altura original da imagem atual
+const statusText = document.getElementById("status"); // Pega o texto de status
 
 let ferramentaSelecionadaAtual = null;
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
-
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
-
 cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
   useWebWorkers: false // Desativa web workers para simplificar o funcionamento
 }); // Fecha configuração
-
 cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
-
 cornerstone.enable(visualizadorDicomOriginal);
 
-// Função para abrir/fechar o menu lateral -----------
+const barraProcessamentoContainer = document.createElement("div"); // Cria a barra de processamento (inicialmente oculta)
+barraProcessamentoContainer.id = "barraProcessamentoContainer";
+barraProcessamentoContainer.style.display = "none";
+barraProcessamentoContainer.innerHTML = ` 
+  <div id="barraProcessamentoFundo">
+    <div id="barraProcessamento"></div>
+  </div>
+  <span id="barraProcessamentoTexto">0%</span>
+`; // Conteúdo da barra de processamento, com um fundo, a barra em si e um texto para mostrar a porcentagem
+statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
+const barraProcessamento = document.getElementById("barraProcessamento");
+const barraProcessamentoTexto = document.getElementById("barraProcessamentoTexto");
+
+const botaoPixel = document.getElementById("botaoPixel"); // Pega o botão de inspeção de pixel
+const infoPixel = document.getElementById("infoPixel"); // Pega a caixa de informação do pixel
+let modoPixelAtivo = false; // Controla se o modo de visualizar pixel está ativo
+let imagemDicomAtual = null; // Guarda a imagem DICOM atual para consultar os pixels
+
+const botaoOriginal = document.getElementById("botaoOriginal"); // Pega o botão de imagem original para comparação
+const areaImagemOriginal = document.getElementById("areaImagemOriginal"); // Pega a área onde a imagem original aparece no modo comparativo
+const imagemOriginalNormal = document.getElementById("imagemOriginalNormal");
+const visualizadorDicomOriginal = document.getElementById("visualizadorDicomOriginal");
+let modoComparativoAtivo = false; 
+let etapaComparativoSelecionada = "original"; 
+let imagemDicomOriginalAtual = null;
+
+const botaoZoom = document.getElementById("botaoZoom"); // Pega o botão de zoom
+let modoZoomAtivo = false; // Controla se o modo zoom está ativo
+let escalaBaseAtual = 1; // Escala automática inicial da imagem
+let zoomAtual = 1; // Zoom manual atual
+let escalaDicomBase = 1; // Guarda a escala inicial do DICOM no Cornerstone
+const zoomMinimo = 1; // Zoom mínimo
+const zoomMaximo = 5000; // Pode aumentar bastante, parecido com MATLAB
+let larguraOriginalAtual = 0; // Largura original da imagem atual
+let alturaOriginalAtual = 0; // Altura original da imagem atual
+
+const botaoPan = document.getElementById("botaoPan"); // Pega o botão da mãozinha
+let modoPanAtivo = false; // Controla se a mãozinha está ativa
+const visualizacaoBox = document.querySelector(".visualizacao_box"); // Caixa onde a imagem aparece
+let arrastandoImagem = false; // Controla se está arrastando
+let inicioMouseX = 0; // Posição inicial X do mouse
+let inicioMouseY = 0; // Posição inicial Y do mouse
+let scrollInicialX = 0; // Scroll horizontal inicial
+let scrollInicialY = 0; // Scroll vertical inicial
+
+
+// FUNÇÕES 
+
+// Função para abrir/fechar o menu lateral 
 function toggleMenu() { 
 
   document.getElementById("menulateral").classList.toggle("fechado"); // Adiciona ou remove a classe fechado
