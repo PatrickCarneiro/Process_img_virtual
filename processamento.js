@@ -6,31 +6,7 @@ const visualizadorDicom = document.getElementById("visualizadorDicom"); // Pega 
 
 const imagemNormal = document.getElementById("imagemNormal"); // Pega a imagem comum
 
-const botaoOriginal = document.getElementById("botaoOriginal");
-
-const areaImagemOriginal = document.getElementById("areaImagemOriginal");
-
-const imagemOriginalNormal = document.getElementById("imagemOriginalNormal");
-
-const visualizadorDicomOriginal = document.getElementById("visualizadorDicomOriginal");
-
 const statusText = document.getElementById("status"); // Pega o texto de status
-
-const barraProcessamentoContainer = document.createElement("div");
-barraProcessamentoContainer.id = "barraProcessamentoContainer";
-barraProcessamentoContainer.style.display = "none";
-
-barraProcessamentoContainer.innerHTML = `
-  <div id="barraProcessamentoFundo">
-    <div id="barraProcessamento"></div>
-  </div>
-  <span id="barraProcessamentoTexto">0%</span>
-`;
-
-statusText.insertAdjacentElement("afterend", barraProcessamentoContainer);
-
-const barraProcessamento = document.getElementById("barraProcessamento");
-const barraProcessamentoTexto = document.getElementById("barraProcessamentoTexto");
 
 const imagensTrabalho = document.getElementById("imagensTrabalho"); // Pega a área das imagens de trabalho
 
@@ -45,20 +21,6 @@ const infoPixel = document.getElementById("infoPixel"); // Pega a caixa de infor
 let modoPixelAtivo = false; // Controla se o modo de visualizar pixel está ativo
 
 let imagemDicomAtual = null; // Guarda a imagem DICOM atual para consultar os pixels
-
-let modoComparativoAtivo = false;
-
-let etapaComparativoSelecionada = "original";
-
-let imagemDicomOriginalAtual = null;
-
-let imagensProcessamento = []; // Guarda as imagens de trabalho no fluxograma
-
-let imagemAtualSelecionada = null; // Guarda qual imagem está aberta na tela neste momento.
-
-let pipelineFerramentas = []; // Guarda o pipeline de ferramentas do fluxograma
-
-let proximoIdEtapa = 1; // Guarda o id da próxima etapa no fluxograma
 
 const botaoZoom = document.getElementById("botaoZoom"); // Pega o botão de zoom
 
@@ -94,8 +56,6 @@ let larguraOriginalAtual = 0; // Largura original da imagem atual
 
 let alturaOriginalAtual = 0; // Altura original da imagem atual
 
-let ferramentaSelecionadaAtual = null;
-
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
@@ -106,7 +66,6 @@ cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
 
 cornerstone.enable(visualizadorDicom); // Habilita o container para exibir DICOM
 
-cornerstone.enable(visualizadorDicomOriginal);
 
 // Função para abrir/fechar o menu lateral -----------
 function toggleMenu() { 
@@ -131,395 +90,130 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
 } // Fecha toggleCategoria
 
-function selecionarFerramenta(nome, botaoClicado) {
-
-  // Se clicar novamente na mesma ferramenta, fecha a caixa de parâmetros
-  if (
-    ferramentaSelecionadaAtual === nome && 
-    parametrosDiv.style.display === "block"
-  ) {
-    parametrosDiv.style.display = "none";
-    parametrosDiv.innerHTML = "";
-    ferramentaSelecionadaAtual = null;
-    return;
-  }
-
-  ferramentaSelecionadaAtual = nome;
-
-  // Faz a caixa de parâmetros aparecer embaixo do botão clicado
-  if (botaoClicado) {
-    botaoClicado.insertAdjacentElement("afterend", parametrosDiv);
-  }
-
-  parametrosDiv.style.display = "block";
-
-  if (nome.includes("Gaussiano")) {
-
-    parametrosDiv.innerHTML = `
-      <h4>Parâmetros</h4>
-
-      <div class="campo_parametro_info">
-        <label>Sigma</label>
-
-        <input 
-          type="number" 
-          id="param1" 
-          min="0.1" 
-          step="0.1" 
-        >
-
-        <div class="caixa_info_parametro">
-          O sigma deve ser maior que 0.
-        </div>
-      </div>
-
-      <div class="campo_parametro_info">
-        <label>Tamanho do kernel</label>
-
-        <input 
-          type="number" 
-          id="param2" 
-          min="1" 
-          step="1" 
-        >
-
-        <div class="caixa_info_parametro">
-          O tamanho do kernel deve ser ímpar e maior que 0.
-        </div>
-      </div>
-
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
-  
-  if (nome.includes("Mediana")) {
-
-    parametrosDiv.innerHTML = `
-      <h4>Parâmetros</h4>
-
-      <div class="campo_parametro_info">
-        <label>Tamanho do kernel</label>
-
-        <input 
-          type="text" 
-          id="param1" 
-        >
-
-        <div class="caixa_info_parametro">
-          O tamanho do kernel deve ser quadrado, ímpar e maior que 1.
-          Função do MATLAB: medfilt2(I, [k k], 'symmetric').
-        </div>
-      </div>
-
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Mediana')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
-
-  if (nome.includes("tons de cinza")) {
-
-    parametrosDiv.innerHTML = `
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Converter para tons de cinza')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
+function selecionarFerramenta(nome) { // Função chamada ao clicar em uma ferramenta
 
-  parametrosDiv.innerHTML = `
-    <h4>Parâmetros</h4>
-    <label>Parâmetro 1</label>
-    <input type="text" id="param1">
+  parametrosDiv.style.display = "block"; // Mostra o painel de parâmetros
 
-    <button class="botao-aplicar" onclick="aplicarFerramenta('${nome}')">
-      Aplicar
-    </button>
-  `;
-}
-
-
-async function aplicarFerramenta(nome) {
-
-  if (imagensProcessamento.length === 0) {
-    alert("Nenhuma imagem carregada para processar.");
-    return;
-  }
-
-  if (nome.includes("tons de cinza")) {
-
-    if (!imagemAtualSelecionada) {
-      alert("Nenhuma imagem selecionada.");
-      return;
-    }
-
-    if (imagemAtualSelecionada.type === "dicom") {
-      statusText.innerText = "A imagem DICOM já é tratada como tons de cinza.";
-      alert("A imagem DICOM já é tons de cinza.");
-      return;
-    }
-
-    const canvasTeste = await criarCanvasOriginalImagemNormal(imagemAtualSelecionada.file);
-
-    if (imagemCanvasJaEstaCinza(canvasTeste)) {
-      statusText.innerText = "A imagem já está em tons de cinza.";
-      alert("A imagem já está em tons de cinza.");
-      return;
-    }
+  let html = `<h4>${nome}</h4>`; // Cria o título dos parâmetros
 
-    const etapa = {
-      id: proximoIdEtapa++,
-      nome: "Converter para tons de cinza",
-      parametros: {
-        metodo: "rgb2gray MATLAB",
-        formula: "0.2989R + 0.5870G + 0.1140B"
-      }
-    };
-
-    pipelineFerramentas.push(etapa);
-
-    await aplicarPipelineAposAdicionarEtapa(
-      "Imagem convertida para tons de cinza usando o padrão do MATLAB.",
-      "Tons de cinza aplicado em todas as imagens."
-    );
-
-    return;
-
-    if (imagemAtualSelecionada) {
-      await processarImagemSelecionada(imagemAtualSelecionada);
-      await openFile(imagemAtualSelecionada);
-    }
-
-    desenharFluxograma();
-
-    if (modoComparativoAtivo) {
-      await atualizarImagemComparativa();
-    }
-
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
+  if (nome.includes("Gaussiano")) { // Verifica se a ferramenta é filtro gaussiano
 
-    statusText.innerText = "Imagem convertida para tons de cinza usando o padrão do MATLAB.";
-    return;
-  }
+    html += ` 
+      <label>Sigma</label>
+      <input type="number" id="param1" value="1" step="0.1">
 
-  if (nome.includes("Gaussiano")) {
-
-    if (typeof cv === "undefined") {
-      alert("OpenCV.js ainda não foi carregado.");
-      return;
-    }
-
-    const p1 = document.getElementById("param1");
-    const p2 = document.getElementById("param2");
-
-    const sigmaTexto = p1 ? p1.value.trim() : "";
-    const kernelTexto = p2 ? p2.value.trim() : "";
-
-    let sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto);
-    let tamanhoKernel = kernelTexto === "" ? 3 : parseInt(kernelTexto);
-
-    if (!Number.isFinite(sigma) || sigma <= 0) {
-      alert("Digite um sigma válido maior que zero.");
-      return;
-    }
+      <label>Tamanho do kernel</label>
+      <input type="number" id="param2" value="3">
+    `; // Campos específicos do filtro gaussiano
 
-    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 1) {
-      alert("Digite um tamanho de kernel válido.");
-      return;
-    }
-
-    if (tamanhoKernel % 2 === 0) {
-      tamanhoKernel = tamanhoKernel + 1;
-    }
-
-    const etapa = {
-      id: proximoIdEtapa++,
-      nome: "Filtro Gaussiano",
-      parametros: {
-        sigma: sigma,
-        tamanhoKernel: tamanhoKernel,
-        ignorarZero: deveIgnorarPixelZeroFerramentas()
-      }
-    };
-
-    pipelineFerramentas.push(etapa);
-
-    await aplicarPipelineAposAdicionarEtapa(
-      "Filtro Gaussiano aplicado na imagem selecionada.",
-      "Filtro Gaussiano aplicado em todas as imagens."
-    );
-
-    return;
-  }
-
-  if (nome.includes("Mediana")) {
-
-    if (typeof cv === "undefined") {
-      alert("OpenCV.js ainda não foi carregado.");
-      return;
-    }
-
-    const p1 = document.getElementById("param1");
-    const kernelTexto = p1 ? p1.value.trim() : "";
-
-    const kernel = interpretarKernelMediana(kernelTexto);
-
-    if (!kernel.valido) {
-      alert(kernel.motivo || "Digite um kernel válido. Exemplos: 3, 5 ou 7.");
-      return;
-    }
+  } else { // Caso seja outra ferramenta
 
-    const etapa = {
-      id: proximoIdEtapa++,
-      nome: "Filtro Mediana",
-      parametros: {
-        tamanhoKernel: kernel.tamanhoKernel,
-        ignorarZero: deveIgnorarPixelZeroFerramentas()
-      }
-    };
+    html += `
+      <label>Parâmetro</label>
+      <input type="number" id="param1" value="3">
+    `; // Campo genérico
 
-    pipelineFerramentas.push(etapa);
-    await aplicarPipelineAposAdicionarEtapa(
-      "Filtro Mediana aplicado na imagem selecionada.",
-      "Filtro Mediana aplicado em todas as imagens."
-    );
+  } // Fecha if/else
 
-    return;
-  }
+  html += `<button class="botao-aplicar" onclick="aplicarFerramenta('${nome}')">Aplicar</button>`; // Botão aplicar
 
-  alert("Ferramenta ainda não implementada no pipeline.");
-}
-function desenharFluxograma() {
+  parametrosDiv.innerHTML = html; // Insere o HTML dos parâmetros na tela
 
-  areaFluxograma.innerHTML = "";
+} // Fecha selecionarFerramenta
 
-  const blocoOriginal = document.createElement("div");
+function aplicarFerramenta(nome) { // Função chamada ao clicar em Aplicar
 
-  blocoOriginal.className = "bloco_fluxo";
+  const p1 = document.getElementById("param1"); // Pega o primeiro parâmetro
 
-  if (modoComparativoAtivo && etapaComparativoSelecionada === "original") {
-    blocoOriginal.classList.add("selecionado_comparativo");
-  }
+  const p2 = document.getElementById("param2"); // Pega o segundo parâmetro, se existir
 
-  if (modoComparativoAtivo) {
-    blocoOriginal.onclick = async function() {
-      await selecionarEtapaComparativo("original");
-    };
+  let parametros = ""; // Cria texto vazio para os parâmetros
 
-    blocoOriginal.style.cursor = "pointer";
-  } else {
-    blocoOriginal.style.cursor = "default";
-  }
+  if (p1) parametros += `Parâmetro 1: ${p1.value}`; // Adiciona parâmetro 1 se existir
 
-  blocoOriginal.innerHTML = `
-    <strong>Original</strong>
-    <div class="bloco_parametros">
-      Imagem sem processamento
-    </div>
-  `;
+  if (p2) parametros += `<br>Parâmetro 2: ${p2.value}`; // Adiciona parâmetro 2 se existir
 
-  areaFluxograma.appendChild(blocoOriginal);
+  addBlock(nome, parametros); // Adiciona a ferramenta ao fluxograma
 
-  pipelineFerramentas.forEach(function(etapa, index) {
+} // Fecha aplicarFerramenta
 
-    const seta = document.createElement("div");
-    seta.className = "seta";
-    seta.innerText = "↓";
-    areaFluxograma.appendChild(seta);
+function addBlock(name, parametros) { // Função para criar bloco no fluxograma
 
-    const bloco = document.createElement("div");
-    bloco.className = "bloco_fluxo";
+  if (areaFluxograma.querySelector("p")) { // Verifica se existe mensagem inicial
 
-    if (modoComparativoAtivo && etapaComparativoSelecionada === etapa.id) {
-      bloco.classList.add("selecionado_comparativo");
-    }
+    areaFluxograma.innerHTML = ""; // Remove mensagem inicial
 
-    let textoParametros = "";
+  } // Fecha if
 
-    if (etapa.nome.includes("Gaussiano")) {
-      textoParametros = `
-        Sigma: ${etapa.parametros.sigma}<br>
-        Tamanho do kernel: ${etapa.parametros.tamanhoKernel}<br>
-        Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
-      `;
-    }
+  const quantidade = areaFluxograma.querySelectorAll(".bloco_fluxo").length; // Conta blocos existentes
 
-    if (etapa.nome.includes("Mediana")) {
-      textoParametros = `
-        Kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
-        Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
-      `;
-    }
+  if (quantidade > 0) { // Se já existe algum bloco
 
-    if (etapa.nome.includes("tons de cinza")) {
-    
-    }
+    const seta = document.createElement("div"); // Cria uma div para seta
 
-    if (modoComparativoAtivo) {
+    seta.className = "seta"; // Define classe da seta
 
-      bloco.onclick = async function(event) {
+    seta.innerText = "↓"; // Define símbolo da seta
 
-        if (event.target.classList.contains("remover")) {
-          return;
-        }
+    areaFluxograma.appendChild(seta); // Adiciona seta no fluxograma
 
-        await selecionarEtapaComparativo(etapa.id);
-      };
+  } // Fecha if
 
-      bloco.style.cursor = "pointer";
+  const bloco = document.createElement("div"); // Cria div do bloco
 
-    } else {
+  bloco.className = "bloco_fluxo"; // Define classe do bloco
 
-      bloco.style.cursor = "default";
+  bloco.innerHTML = ` 
+    <strong>${name}</strong>
+    <div class="bloco_parametros">${parametros}</div>
+    <button class="remover">Remover</button>
+  `; // Define conteúdo do bloco
 
-    }
+  bloco.querySelector(".remover").onclick = function() { // Define ação do botão remover
 
-    bloco.innerHTML = `
-      <strong>${etapa.nome}</strong>
-      <div class="bloco_parametros">${textoParametros}</div>
-      <button class="remover" onclick="removerEtapaPipeline(${etapa.id})">
-        Remover
-      </button>
-    `;
+    bloco.remove(); // Remove o bloco
 
-    areaFluxograma.appendChild(bloco);
-  });
-}
+    atualizarSetas(); // Reorganiza as setas
 
-async function removerEtapaPipeline(idEtapa) {
+  }; // Fecha função do botão remover
 
-  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) {
-    return etapa.id !== idEtapa;
-  });
+  areaFluxograma.appendChild(bloco); // Adiciona bloco no fluxograma
 
-  invalidarProcessamentoDeTodasAsImagens();
+} // Fecha addBlock
 
-  if (imagemAtualSelecionada) {
+function atualizarSetas() { // Função para atualizar setas após remover bloco
 
-    if (pipelineFerramentas.length > 0) {
-      await processarImagemSelecionada(imagemAtualSelecionada);
-    }
+  const blocos = Array.from(areaFluxograma.querySelectorAll(".bloco_fluxo")); // Pega todos os blocos
 
-    await openFile(imagemAtualSelecionada);
-  }
+  areaFluxograma.innerHTML = ""; // Limpa o fluxograma
 
-  desenharFluxograma();
+  if (blocos.length === 0) { // Se não sobrou nenhum bloco
 
-  if (modoComparativoAtivo) {
-    etapaComparativoSelecionada = "original";
-    await atualizarImagemComparativa();
-    desenharFluxograma();
-  }
-  }
+    areaFluxograma.innerHTML = '<p style="opacity: 0.6;">Aplique uma ferramenta para montar o fluxo.</p>'; // Mostra mensagem inicial
+
+    return; // Para a função
+
+  } // Fecha if
+
+  blocos.forEach((bloco, index) => { // Percorre cada bloco
+
+    if (index > 0) { // Se não for o primeiro bloco
+
+      const seta = document.createElement("div"); // Cria seta
+
+      seta.className = "seta"; // Define classe
+
+      seta.innerText = "↓"; // Define símbolo
+
+      areaFluxograma.appendChild(seta); // Adiciona seta
+
+    } // Fecha if
+
+    areaFluxograma.appendChild(bloco); // Adiciona bloco novamente
+
+  }); // Fecha forEach
+
+} // Fecha atualizarSetas
 
 function openDatabase() { // Função para abrir/criar o banco IndexedDB
 
@@ -573,7 +267,6 @@ function openDatabase() { // Função para abrir/criar o banco IndexedDB
 
 } // Fecha openDatabase
 
-
 function getFiles(db) { // Função para pegar arquivos da store files
 
   return new Promise((resolve, reject) => { // Retorna uma Promise
@@ -600,274 +293,85 @@ function getFiles(db) { // Função para pegar arquivos da store files
 
 } // Fecha getFiles
 
-// Função para carregar arquivos
-async function loadFiles() { 
+async function loadFiles() { // Função para carregar arquivos salvos
 
-  try {
-    const db = await openDatabase();
-    const files = await getFiles(db);
+  try { // Tenta executar o carregamento
 
-    if (files.length === 0) {
-      statusText.innerText = "Nenhum arquivo encontrado.";
-      return;
-    }
+    const db = await openDatabase(); // Abre o banco
 
-    imagensProcessamento = files.map(function(item, index) {
-      return {
-        idProcessamento: index + 1,
-        id: item.id,
-        name: item.name,
-        type: item.type,
-        file: item.file,
-        resultado: null,
-        processado: false,
-        assinaturaPipeline: "",
-        cacheEtapas: {}
-      };
-    });
+    const files = await getFiles(db); // Busca arquivos da store files
 
-    // Define automaticamente a primeira imagem como imagem atual
-    imagemAtualSelecionada = imagensProcessamento[0];
+    if (files.length === 0) { // Se não houver arquivos
 
-    // Desenha as miniaturas já com a primeira marcada como selecionada
-    desenharCardsImagensTrabalho();
+      statusText.innerText = "Nenhum arquivo encontrado."; // Mostra mensagem
 
-    // Abre automaticamente a primeira imagem na tela principal
-    await openFile(imagemAtualSelecionada);
+      return; // Para a função
 
-    // Se a aba de análise já estiver carregada, atualiza a análise da primeira imagem
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
+    } // Fecha if
 
-    statusText.innerText = "Arquivos carregados.";
+    imagensTrabalho.innerHTML = ""; // Limpa a área das imagens
 
-  } catch (error) {
-    console.error(error);
-    statusText.innerText = "Erro ao carregar arquivos.";
-  }
-}
+    files.forEach((item) => { // Percorre todos os arquivos
 
-async function processarImagemSelecionada(item) {
+      criarCardImagem(item); // Cria card da imagem
 
-  if (!item) return null;
+    }); // Fecha forEach
 
-  const assinaturaAtual = gerarAssinaturaPipeline();
+    openFile(files[0]); // Abre o primeiro arquivo automaticamente
 
-  if (!imagemPrecisaProcessar(item)) {
-    statusText.innerText = "Imagem já processada com o fluxograma atual: " + item.name;
-    return item;
-  }
+  } catch (error) { // Captura erro
 
-  mostrarBarraProcessamento();
+    console.error(error); // Mostra erro no console
 
-  statusText.innerText = "Processando imagem selecionada: " + item.name;
+    statusText.innerText = "Erro ao carregar arquivos."; // Mostra erro na tela
 
-  await new Promise(function(resolve) {
-    requestAnimationFrame(resolve);
-  });
+  } // Fecha try/catch
 
-  if (item.type === "image") {
-    item.resultado = await processarImagemNormalPeloPipeline(item);
-  }
+} // Fecha loadFiles
 
-  if (item.type === "dicom") {
-    item.resultado = await processarDicomPeloPipeline(item);
-  }
+function criarCardImagem(item) { // Função para criar card de imagem
 
-  item.processado = true;
+  const card = document.createElement("div"); // Cria div do card
 
-  item.assinaturaPipeline = assinaturaAtual;
+  card.className = "card_imagem"; // Define classe do card
 
-  atualizarBarraProcessamento(100);
+  if (item.type === "dicom") { // Verifica se é DICOM
 
-  statusText.innerText = "Processamento concluído: " + item.name;
+    const dicomBox = document.createElement("div"); // Cria div para miniatura DICOM
 
-  setTimeout(function() {
-    barraProcessamentoContainer.style.display = "none";
-    barraProcessamento.style.width = "0%";
-    barraProcessamentoTexto.innerText = "0%";
-  }, 700);
+    dicomBox.className = "dicom_thumb"; // Define classe da miniatura
 
-  return item;
-}
+    card.appendChild(dicomBox); // Coloca miniatura dentro do card
 
-async function processarTodasAsImagensComPipeline() {
+    renderDicomThumbnail(item, dicomBox); // Renderiza miniatura DICOM
 
-  if (!imagensProcessamento || imagensProcessamento.length === 0) {
-    return;
-  }
+  } else { // Caso seja imagem comum
 
-  mostrarBarraProcessamento();
+    const img = document.createElement("img"); // Cria tag img
 
-  for (let i = 0; i < imagensProcessamento.length; i++) {
+    img.src = URL.createObjectURL(item.file); // Cria URL temporária para a imagem
 
-    const item = imagensProcessamento[i];
+    card.appendChild(img); // Coloca imagem no card
 
-    const porcentagemBase = (i / imagensProcessamento.length) * 100;
+  } // Fecha if/else
 
-    statusText.innerText =
-      "Aplicando ferramenta em todas as imagens: " +
-      (i + 1) +
-      "/" +
-      imagensProcessamento.length +
-      " - " +
-      item.name;
+  const nome = document.createElement("div"); // Cria div do nome
 
-    atualizarBarraProcessamento(porcentagemBase);
+  nome.className = "nome_arquivo"; // Define classe do nome
 
-    await esperarAtualizacaoTela();
+  nome.innerText = item.name; // Define nome do arquivo
 
-    await processarImagemSelecionada(item);
-  }
+  card.appendChild(nome); // Coloca nome no card
 
-  atualizarBarraProcessamento(100);
+  card.onclick = function() { // Define clique no card
 
-  statusText.innerText = "Ferramenta aplicada em todas as imagens.";
+    openFile(item); // Abre a imagem clicada
 
-  setTimeout(function() {
-    barraProcessamentoContainer.style.display = "none";
-    barraProcessamento.style.width = "0%";
-    barraProcessamentoTexto.innerText = "0%";
-  }, 700);
+  }; // Fecha onclick
 
-}
+  imagensTrabalho.appendChild(card); // Adiciona card na área inferior
 
-async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
-
-  if (deveAplicarFerramentasEmTodasImagens()) {
-
-    await processarTodasAsImagensComPipeline();
-
-    if (imagemAtualSelecionada) {
-      await openFile(imagemAtualSelecionada);
-    }
-
-    desenharCardsImagensTrabalho();
-
-    desenharFluxograma();
-
-    if (modoComparativoAtivo) {
-      await atualizarImagemComparativa();
-    }
-
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
-
-    statusText.innerText = mensagemTodasImagens;
-
-    return;
-  }
-
-  if (imagemAtualSelecionada) {
-    await processarImagemSelecionada(imagemAtualSelecionada);
-    await openFile(imagemAtualSelecionada);
-  }
-
-  desenharFluxograma();
-
-  if (modoComparativoAtivo) {
-    await atualizarImagemComparativa();
-  }
-
-  if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-    await atualizarAnaliseDaImagemAtual();
-  }
-
-  statusText.innerText = mensagemImagemAtual;
-}
-
-function desenharCardsImagensTrabalho() {
-
-  imagensTrabalho.innerHTML = "";
-
-  imagensProcessamento.forEach(function(item) {
-    criarCardImagem(item);
-  });
-}
-
-function criarCardImagem(item) {
-
-  const card = document.createElement("div");
-  card.className = "card_imagem";
-
-  card.dataset.idProcessamento = item.idProcessamento;
-
-  // Marca visualmente a imagem atual
-  if (
-    imagemAtualSelecionada &&
-    imagemAtualSelecionada.idProcessamento === item.idProcessamento
-  ) {
-    card.classList.add("selecionado");
-  }
-
-  // Se for imagem comum, mostra SEMPRE a miniatura da imagem original
-  if (item.type === "image") {
-
-    const img = document.createElement("img");
-
-    img.src = URL.createObjectURL(item.file);
-
-    card.appendChild(img);
-  }
-
-  // Se for DICOM, mostra SEMPRE a miniatura do DICOM original
-  if (item.type === "dicom") {
-
-    const dicomBox = document.createElement("div");
-    dicomBox.className = "dicom_thumb";
-
-    card.appendChild(dicomBox);
-
-    renderDicomThumbnail(item, dicomBox);
-  }
-
-  const nome = document.createElement("div");
-  nome.className = "nome_arquivo";
-  nome.innerText = item.name;
-
-  card.appendChild(nome);
-
-  card.onclick = async function() {
-
-    imagemAtualSelecionada = item;
-
-    atualizarCardSelecionado();
-
-    if (imagemPrecisaProcessar(item)) {
-      await processarImagemSelecionada(item);
-    }
-
-    await openFile(item);
-
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
-  };
-
-  imagensTrabalho.appendChild(card);
-}
-
-function atualizarCardSelecionado() {
-
-  const cards = document.querySelectorAll(".card_imagem");
-
-  cards.forEach(function(card) {
-
-    const idCard = Number(card.dataset.idProcessamento);
-
-    if (
-      imagemAtualSelecionada &&
-      idCard === imagemAtualSelecionada.idProcessamento
-    ) {
-      card.classList.add("selecionado");
-    } else {
-      card.classList.remove("selecionado");
-    }
-
-  });
-}
+} // Fecha criarCardImagem
 
 async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
 
@@ -891,55 +395,32 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 
   } // Fecha try/catch
 
-} // Fecha renderDicomThumbnailv
+} // Fecha renderDicomThumbnail
 
-async function openFile(item) {
+function openFile(item) { // Função para abrir imagem selecionada
 
-  imagemAtualSelecionada = item;
+  statusText.innerText = "Abrindo: " + item.name; // Atualiza status
 
-  const arquivoAtual = document.getElementById("arquivoAtual");
+  resetarZoom(); // Reseta o zoom sempre que abre outra imagem
 
-  if (arquivoAtual) {
-    arquivoAtual.innerText = item.name;
-  }
+  document.getElementById("arquivoAtual").innerText = item.name; // Atualiza nome na análise
 
-  statusText.innerText = "Abrindo: " + item.name;
+  if (item.type === "dicom") { // Se for DICOM
 
+    imagemNormal.style.display = "none"; // Esconde imagem comum
 
-  // =====================================================
-  // IMAGEM NORMAL
-  // =====================================================
-  if (item.type === "image") {
+    visualizadorDicom.style.display = "block"; // Mostra container DICOM
 
-    visualizadorDicom.style.display = "none";
-    imagemDicomAtual = null;
+    const dicomFile = new File([item.file], item.name); // Recria arquivo DICOM
 
-    modoZoomAtivo = false;
-    modoPanAtivo = false;
-    zoomAtual = 1;
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona ao loader
 
-    if (botaoZoom) botaoZoom.classList.remove("ativo");
-    if (botaoPan) botaoPan.classList.remove("ativo");
+    cornerstone.loadImage(imageId)
 
-    imagemNormal.classList.remove("zoom_ativo");
-    visualizadorDicom.classList.remove("zoom_ativo");
-    visualizacaoBox.classList.remove("zoom_aplicado");
-    visualizacaoBox.classList.remove("pan_ativo");
-    visualizacaoBox.classList.remove("pan_arrastando");
+      .then(function(image) {
 
-    imagemNormal.style.display = "none";
-    imagemNormal.style.visibility = "hidden";
-
-    const srcImagem = item.resultado && item.resultado.tipo === "image"
-      ? item.resultado.dataURL
-      : URL.createObjectURL(item.file);
-
-    await new Promise(function(resolve, reject) {
-
-      imagemNormal.addEventListener("load", function() {
-
-        larguraOriginalAtual = imagemNormal.naturalWidth;
-        alturaOriginalAtual = imagemNormal.naturalHeight;
+        larguraOriginalAtual = image.width;
+        alturaOriginalAtual = image.height;
 
         escalaBaseAtual = calcularEscalaAutomatica(
           larguraOriginalAtual,
@@ -948,117 +429,77 @@ async function openFile(item) {
 
         zoomAtual = 1;
 
+        // Primeiro define o tamanho inicial do DICOM igual ao da imagem normal
         const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
         const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
 
-        imagemNormal.style.width = larguraInicial + "px";
-        imagemNormal.style.height = alturaInicial + "px";
+        visualizadorDicom.style.width = larguraInicial + "px";
+        visualizadorDicom.style.height = alturaInicial + "px";
 
-        visualizacaoBox.scrollLeft = 0;
-        visualizacaoBox.scrollTop = 0;
+        // Agora exibe o DICOM já no tamanho correto
+        cornerstone.displayImage(visualizadorDicom, image);
 
-        imagemNormal.style.display = "block";
-        imagemNormal.style.visibility = "visible";
+        // Ajusta o canvas interno do Cornerstone ao tamanho da div
+        cornerstone.resize(visualizadorDicom, true);
 
-        statusText.innerText = "Imagem carregada: " + item.name;
+        // Salva a escala inicial correta do Cornerstone
+        const viewport = cornerstone.getViewport(visualizadorDicom);
 
-        resolve();
+        escalaDicomBase = viewport.scale;
+        zoomAtual = 1; // Reseta zoom manual
 
-      }, { once: true });
+        imagemDicomAtual = image; // Guarda imagem DICOM atual
 
-      imagemNormal.addEventListener("error", function() {
-        statusText.innerText = "Erro ao abrir imagem: " + item.name;
-        reject(new Error("Erro ao carregar imagem."));
-      }, { once: true });
+        gerarAnaliseDicom(image); // Gera análise do DICOM
 
-      imagemNormal.src = srcImagem;
+        statusText.innerText = "DICOM carregado: " + item.name;
 
-    });
+      })
 
-    if (modoComparativoAtivo) {
-          await atualizarImagemComparativa();
-        }
+      .catch(function(error) { // Captura erro ao abrir DICOM
 
-    return;
-  }
+        console.error(error); // Mostra erro no console
 
-  // =====================================================
-  // DICOM
-  // =====================================================
-  if (item.type === "dicom") {
+        statusText.innerText = "Erro ao abrir DICOM."; // Mostra erro na tela
 
-    imagemNormal.style.display = "none";
-    imagemNormal.style.visibility = "hidden";
+      }); // Fecha catch
 
-    visualizadorDicom.style.display = "block";
+  } else { // Se for imagem comum
 
-    modoZoomAtivo = false;
-    modoPanAtivo = false;
-    zoomAtual = 1;
+    visualizadorDicom.style.display = "none"; // Esconde container DICOM
 
-    if (botaoZoom) botaoZoom.classList.remove("ativo");
-    if (botaoPan) botaoPan.classList.remove("ativo");
+    imagemDicomAtual = null; // Limpa imagem DICOM atual porque agora é imagem comum
 
-    imagemNormal.classList.remove("zoom_ativo");
-    visualizadorDicom.classList.remove("zoom_ativo");
-    visualizacaoBox.classList.remove("zoom_aplicado");
-    visualizacaoBox.classList.remove("pan_ativo");
-    visualizacaoBox.classList.remove("pan_arrastando");
+    imagemNormal.style.display = "block"; // Mostra imagem comum
 
-    let imagem;
+    const imageURL = URL.createObjectURL(item.file); // Cria URL temporária da imagem
 
-    if (item.resultado && item.resultado.tipo === "dicom") {
-      imagem = item.resultado.imagem;
-    } else {
-      imagem = await carregarDicomOriginal(item);
-    }
+    imagemNormal.src = imageURL; // Define imagem no elemento img
 
-    imagemDicomAtual = imagem;
+    imagemNormal.onload = function() { // Quando a imagem terminar de carregar
 
-    larguraOriginalAtual = imagem.width;
-    alturaOriginalAtual = imagem.height;
+      larguraOriginalAtual = imagemNormal.naturalWidth; // Salva largura original
 
-    escalaBaseAtual = calcularEscalaAutomatica(
-      larguraOriginalAtual,
-      alturaOriginalAtual
-    );
+      alturaOriginalAtual = imagemNormal.naturalHeight; // Salva altura original
 
-    zoomAtual = 1;
+      escalaBaseAtual = calcularEscalaAutomatica(
+        larguraOriginalAtual,
+        alturaOriginalAtual
+      ); // Calcula escala automática inicial
 
-    const larguraInicial = larguraOriginalAtual * escalaBaseAtual;
-    const alturaInicial = alturaOriginalAtual * escalaBaseAtual;
+      zoomAtual = 1; // Reseta zoom manual
 
-    visualizadorDicom.style.width = larguraInicial + "px";
-    visualizadorDicom.style.height = alturaInicial + "px";
+      atualizarTamanhoImagemAtual(); // Aplica tamanho inicial
 
-    cornerstone.displayImage(visualizadorDicom, imagem);
+      gerarAnaliseImagemNormal(imagemNormal); // Gera análise da imagem
 
-    const viewport = cornerstone.getViewport(visualizadorDicom);
+    }; // Fecha onload
 
-    viewport.voi = {
-      windowCenter: imagem.windowCenter,
-      windowWidth: imagem.windowWidth
-    };
+    statusText.innerText = "Imagem carregada: " + item.name; // Atualiza status
 
-    viewport.invert = imagem.invert || false;
-    viewport.scale = escalaBaseAtual;
+  } // Fecha if/else
 
-    cornerstone.setViewport(visualizadorDicom, viewport);
-    cornerstone.resize(visualizadorDicom, true);
-
-    visualizacaoBox.scrollLeft = 0;
-    visualizacaoBox.scrollTop = 0;
-
-    statusText.innerText = "DICOM carregado: " + item.name;
-
-    if (modoComparativoAtivo) {
-      await atualizarImagemComparativa();
-    }
-
-    return;
-  }
-}
-
+} // Fecha openFile
 
 // Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
 function togglePixelInfo() { // Função para ligar/desligar inspeção de pixel
@@ -1111,47 +552,6 @@ imagemNormal.addEventListener("mousemove", function(event) {
   } 
 
 }); 
-imagemOriginalNormal.addEventListener("mousemove", function(event) { 
-
-  if (!modoPixelAtivo) return;
-  if (!imagemOriginalNormal.src) return;
-
-  const rect = imagemOriginalNormal.getBoundingClientRect();
-
-  const escalaX = imagemOriginalNormal.naturalWidth / rect.width;
-  const escalaY = imagemOriginalNormal.naturalHeight / rect.height;
-
-  const x = Math.floor((event.clientX - rect.left) * escalaX);
-  const y = Math.floor((event.clientY - rect.top) * escalaY);
-
-  if (
-    x < 0 ||
-    y < 0 ||
-    x >= imagemOriginalNormal.naturalWidth ||
-    y >= imagemOriginalNormal.naturalHeight
-  ) return;
-
-  const canvasTemp = document.createElement("canvas");
-  const ctxTemp = canvasTemp.getContext("2d");
-
-  canvasTemp.width = imagemOriginalNormal.naturalWidth;
-  canvasTemp.height = imagemOriginalNormal.naturalHeight;
-
-  ctxTemp.drawImage(imagemOriginalNormal, 0, 0);
-
-  const pixel = ctxTemp.getImageData(x, y, 1, 1).data;
-
-  const r = pixel[0];
-  const g = pixel[1];
-  const b = pixel[2];
-
-  if (r === g && g === b) {
-    infoPixel.innerText = `Original | X: ${x + 1} | Y: ${y + 1} | Intensidade: ${r}`;
-  } else {
-    infoPixel.innerText = `Original | X: ${x + 1} | Y: ${y + 1} | RGB: [${r}, ${g}, ${b}]`;
-  }
-
-});
 // Quando move o mouse sobre DICOM
 visualizadorDicom.addEventListener("mousemove", function(event) { 
 
@@ -1174,34 +574,6 @@ visualizadorDicom.addEventListener("mousemove", function(event) {
   infoPixel.innerText = `X: ${x + 1} | Y: ${y + 1} | Intensidade: ${valorPixel}`; 
 
 });
-visualizadorDicomOriginal.addEventListener("mousemove", function(event) { 
-
-  if (!modoPixelAtivo) return; 
-  if (!imagemDicomOriginalAtual) return; 
-
-  const rect = visualizadorDicomOriginal.getBoundingClientRect();
-
-  const escalaX = imagemDicomOriginalAtual.width / rect.width;
-  const escalaY = imagemDicomOriginalAtual.height / rect.height;
-
-  const x = Math.floor((event.clientX - rect.left) * escalaX);
-  const y = Math.floor((event.clientY - rect.top) * escalaY);
-
-  if (
-    x < 0 ||
-    y < 0 ||
-    x >= imagemDicomOriginalAtual.width ||
-    y >= imagemDicomOriginalAtual.height
-  ) return;
-
-  const pixels = imagemDicomOriginalAtual.getPixelData();
-  const indice = y * imagemDicomOriginalAtual.width + x;
-
-  const valorPixel = pixels[indice];
-
-  infoPixel.innerText = `Original | X: ${x + 1} | Y: ${y + 1} | Intensidade: ${valorPixel}`;
-
-});
 // Quando mouse sai da imagem comum
 imagemNormal.addEventListener("mouseleave", function() { 
 
@@ -1210,13 +582,6 @@ imagemNormal.addEventListener("mouseleave", function() {
   } 
 
 }); 
-imagemOriginalNormal.addEventListener("mouseleave", function() { 
-
-  if (modoPixelAtivo) {
-    infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem.";
-  } 
-
-});
  // Quando mouse sai do DICOM
 visualizadorDicom.addEventListener("mouseleave", function() {
 
@@ -1224,13 +589,6 @@ visualizadorDicom.addEventListener("mouseleave", function() {
     infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem."; 
   } 
 }); 
-visualizadorDicomOriginal.addEventListener("mouseleave", function() {
-
-  if (modoPixelAtivo) { 
-    infoPixel.innerText = "Modo pixel ativo: passe o mouse sobre a imagem."; 
-  } 
-
-});
 // Fecha a parte da função de visualização de pixel --------------------------------------------------------
 
 // Funções do zoom -----------------------------------------------------------------------------------------
@@ -1245,69 +603,56 @@ function toggleZoomImagem() {  // Função para ligar/desligar modo de zoom
     visualizacaoBox.classList.remove("pan_arrastando"); // Remove cursor de arrastando
     botaoZoom.classList.add("ativo"); // Marca botão como ativo
     visualizadorDicom.classList.add("zoom_ativo"); // Muda cursor no DICOM
-    visualizadorDicomOriginal.classList.add("zoom_ativo");
-    imagemOriginalNormal.classList.add("zoom_ativo");       
     imagemNormal.classList.add("zoom_ativo"); // Muda cursor na imagem comum
     statusText.innerText = "Modo zoom ativo: posicione o mouse sobre a região desejada e use o scroll.";
   } else { // Se desativou o zoom
     botaoZoom.classList.remove("ativo"); // Remove botão ativo
     visualizadorDicom.classList.remove("zoom_ativo"); // Remove cursor de zoom no DICOM
     imagemNormal.classList.remove("zoom_ativo"); // Remove cursor de zoom na imagem comum
-    visualizadorDicomOriginal.classList.remove("zoom_ativo");
-    imagemOriginalNormal.classList.remove("zoom_ativo");
     statusText.innerText = "Modo zoom desativado.";
   } 
 
 } 
 // Aplica zoom usando o ponto onde o mouse está
+// Aplica zoom usando o ponto onde o mouse está
 function aplicarZoomNoMouse(event, elemento) {
 
-  if (!modoZoomAtivo) return;
-
-  event.preventDefault();
-
-  const box = visualizacaoBox;
-
-  const boxRect = box.getBoundingClientRect();
-
-  // Posição do mouse dentro da caixa de visualização
-  const mouseXNaBox = event.clientX - boxRect.left;
-  const mouseYNaBox = event.clientY - boxRect.top;
-
-  // Posição real do ponto dentro da imagem rolável antes do zoom
-  const pontoAntesX = box.scrollLeft + mouseXNaBox;
-  const pontoAntesY = box.scrollTop + mouseYNaBox;
-
-  const zoomAntes = zoomAtual;
-
-  const fatorZoom = 1.15; // diminua para 1.10 se quiser mais suave
-
-  if (event.deltaY < 0) {
-    zoomAtual *= fatorZoom;
-  } else {
-    zoomAtual /= fatorZoom;
+  if (!modoZoomAtivo) return; // Só funciona se o zoom estiver ativo
+  event.preventDefault(); // Impede a rolagem da página
+  const box = visualizacaoBox; // Caixa onde a imagem aparece
+  const rectElemento = elemento.getBoundingClientRect(); // Posição real da imagem/DICOM na tela
+  const mouseDentroX = event.clientX - rectElemento.left; // X do mouse dentro da imagem
+  const mouseDentroY = event.clientY - rectElemento.top; // Y do mouse dentro da imagem
+  const proporcaoX = mouseDentroX / elemento.offsetWidth; // Proporção horizontal antes do zoom
+  const proporcaoY = mouseDentroY / elemento.offsetHeight; // Proporção vertical antes do zoom
+  const larguraAntes = elemento.offsetWidth; // Largura antes do zoom
+  const alturaAntes = elemento.offsetHeight; // Altura antes do zoom
+  if (event.deltaY < 0) { // Scroll para cima aumenta
+    zoomAtual *= 2;
+  } else { // Scroll para baixo diminui
+    zoomAtual /= 2;
   }
-
-  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo;
-  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo;
-
-  const fatorReal = zoomAtual / zoomAntes;
-
-  atualizarTamanhoImagemAtual();
-
-  // Mantém o ponto do mouse na mesma região depois do zoom
-  box.scrollLeft = pontoAntesX * fatorReal - mouseXNaBox;
-  box.scrollTop = pontoAntesY * fatorReal - mouseYNaBox;
-
+  if (zoomAtual < zoomMinimo) zoomAtual = zoomMinimo; // Limite mínimo
+  if (zoomAtual > zoomMaximo) zoomAtual = zoomMaximo; // Limite máximo
+  atualizarTamanhoImagemAtual(); // Aplica novo tamanho
+  const larguraDepois = elemento.offsetWidth; // Largura depois do zoom
+  const alturaDepois = elemento.offsetHeight; // Altura depois do zoom
+  const diferencaX = proporcaoX * (larguraDepois - larguraAntes); // Diferença horizontal
+  const diferencaY = proporcaoY * (alturaDepois - alturaAntes); // Diferença vertical
+  box.scrollLeft += diferencaX; // Mantém o ponto do mouse
+  box.scrollTop += diferencaY; // Mantém o ponto do mouse
   statusText.innerText = `Zoom: ${zoomAtual.toFixed(2)}x`;
+
 }
 // Volta a imagem para o tamanho normal
 function resetarZoom() {
 
-  zoomAtual = 1;
+  zoomAtual = 1; // Reseta zoom manual
 
+  // Volta imagem comum ou DICOM para o tamanho automático inicial
   atualizarTamanhoImagemAtual();
 
+  // Se for DICOM, também reseta a translação do Cornerstone
   if (visualizadorDicom.style.display === "block") {
 
     const viewport = cornerstone.getViewport(visualizadorDicom);
@@ -1319,35 +664,43 @@ function resetarZoom() {
     cornerstone.resize(visualizadorDicom, true);
   }
 
-  if (visualizadorDicomOriginal.style.display === "block") {
-
-    const viewportOriginal = cornerstone.getViewport(visualizadorDicomOriginal);
-
-    viewportOriginal.translation.x = 0;
-    viewportOriginal.translation.y = 0;
-
-    cornerstone.setViewport(visualizadorDicomOriginal, viewportOriginal);
-    cornerstone.resize(visualizadorDicomOriginal, true);
-  }
-
   visualizacaoBox.scrollLeft = 0;
   visualizacaoBox.scrollTop = 0;
+
+  statusText.innerText = "Zoom resetado.";
 }
+// Zoom com scroll na imagem comum
+imagemNormal.addEventListener("wheel", function(event) { // Zoom com scroll na imagem comum
 
+  aplicarZoomNoMouse(event, imagemNormal); // Aplica zoom na imagem comum
 
+}); 
+// Zoom com scroll no DICOM
+visualizadorDicom.addEventListener("wheel", function(event) { 
+
+  aplicarZoomNoMouse(event, visualizadorDicom); // Usa o mesmo comportamento da imagem normal
+
+});
+// Dois cliques na imagem comum
+imagemNormal.addEventListener("dblclick", function() { 
+
+  if (modoZoomAtivo) resetarZoom(); // Reseta zoom se modo ativo
+
+}); 
+// Dois cliques no DICOM
+visualizadorDicom.addEventListener("dblclick", function() { 
+
+  if (modoZoomAtivo) resetarZoom(); 
+
+}); 
+// Calcula o aumento automático
 function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
-  let limiteLargura = visualizacaoBox.clientWidth - 30;
+  const limiteLargura = visualizacaoBox.clientWidth - 30; // Limite de largura considerando margem
   const limiteAltura = visualizacaoBox.clientHeight - 30;
-
-  if (modoComparativoAtivo) {
-    limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
-  }
-
   const escalaLargura = limiteLargura / larguraImagem;
-  const escalaAltura = limiteAltura / alturaImagem;
-
-  const escala = Math.min(escalaLargura, escalaAltura);
+  const escalaAltura = limiteAltura / alturaImagem; // Calcula escala para largura e altura 
+  const escala = Math.min(escalaLargura, escalaAltura); // Usa a menor escala para não deformar nem cortar
 
   return escala;
 
@@ -1368,49 +721,24 @@ function atualizarTamanhoImagemAtual() {
     imagemNormal.style.height = alturaFinal + "px";
 
   }
-  if (imagemOriginalNormal.style.display === "block") {
 
-    imagemOriginalNormal.style.width = larguraFinal + "px";
-    imagemOriginalNormal.style.height = alturaFinal + "px";
-
-  }
-
-  /* DICOM PROCESSADO */
-
+  // DICOM
   if (visualizadorDicom.style.display === "block") {
 
     visualizadorDicom.style.width = larguraFinal + "px";
     visualizadorDicom.style.height = alturaFinal + "px";
 
-    const viewport = cornerstone.getViewport(visualizadorDicom);
-
-    viewport.scale = escalaBaseAtual * zoomAtual;
-
-    viewport.translation.x = 0;
-    viewport.translation.y = 0;
-
-    cornerstone.setViewport(visualizadorDicom, viewport);
+    // Garante que o canvas interno do Cornerstone siga o tamanho da div
     cornerstone.resize(visualizadorDicom, true);
+
   }
 
-
-  /* DICOM ORIGINAL DO COMPARATIVO */
-
-  if (visualizadorDicomOriginal.style.display === "block") {
-
-    visualizadorDicomOriginal.style.width = larguraFinal + "px";
-    visualizadorDicomOriginal.style.height = alturaFinal + "px";
-
-    const viewportOriginal = cornerstone.getViewport(visualizadorDicomOriginal);
-
-    viewportOriginal.scale = escalaBaseAtual * zoomAtual;
-
-    viewportOriginal.translation.x = 0;
-    viewportOriginal.translation.y = 0;
-
-    cornerstone.setViewport(visualizadorDicomOriginal, viewportOriginal);
-    cornerstone.resize(visualizadorDicomOriginal, true);
+  if (zoomAtual > 1) {
+    visualizacaoBox.classList.add("zoom_aplicado");
+  } else {
+    visualizacaoBox.classList.remove("zoom_aplicado");
   }
+
 }
 // Liga/desliga o modo mãozinha
 function togglePanImagem() { 
@@ -1422,8 +750,6 @@ function togglePanImagem() {
     botaoZoom.classList.remove("ativo"); // Remove o visual ativo do botão de zoom
     visualizadorDicom.classList.remove("zoom_ativo"); // Remove cursor de zoom do DICOM
     imagemNormal.classList.remove("zoom_ativo"); // Remove cursor de zoom da imagem comum
-    visualizadorDicomOriginal.classList.remove("zoom_ativo");
-    imagemOriginalNormal.classList.remove("zoom_ativo");
     visualizacaoBox.classList.add("pan_ativo"); // Muda cursor
     statusText.innerText = "Modo mãozinha ativo: clique e arraste para mover a imagem.";
   } else { // Se desativou
@@ -1485,764 +811,5 @@ visualizacaoBox.addEventListener("mouseleave", function() {
 });
 // Fecha a parte da função de arrastar a imagem --------------------------------------------------------
 
-// Recalcula todas as imagens processadas.
-async function recalcularTodasAsImagens() {
 
-  barraProcessamentoContainer.style.display = "inline-flex";
-  barraProcessamento.style.width = "0%";
-  barraProcessamentoTexto.innerText = "0%";
-
-  const total = imagensProcessamento.length;
-
-  for (let i = 0; i < total; i++) {
-
-    const item = imagensProcessamento[i];
-
-    statusText.innerText = `Processando ${i + 1} de ${total}: ${item.name}`;
-
-    if (item.type === "image") {
-      item.resultado = await processarImagemNormalPeloPipeline(item);
-    }
-
-    if (item.type === "dicom") {
-      item.resultado = await processarDicomPeloPipeline(item);
-    }
-
-    const porcentagem = Math.round(((i + 1) / total) * 100);
-
-    barraProcessamento.style.width = porcentagem + "%";
-    barraProcessamentoTexto.innerText = porcentagem + "%";
-
-    await new Promise(function(resolve) {
-      requestAnimationFrame(resolve);
-    });
-  }
-
-  statusText.innerText = "Processamento concluído.";
-  barraProcessamento.style.width = "100%";
-  barraProcessamentoTexto.innerText = "100%";
-
-  setTimeout(function() {
-    barraProcessamentoContainer.style.display = "none";
-    barraProcessamento.style.width = "0%";
-    barraProcessamentoTexto.innerText = "0%";
-  }, 900);
-
-  desenharCardsImagensTrabalho();
-
-  if (imagemAtualSelecionada) {
-    const imagemAtualizada = imagensProcessamento.find(function(item) {
-      return item.idProcessamento === imagemAtualSelecionada.idProcessamento;
-    });
-
-    if (imagemAtualizada) {
-      openFile(imagemAtualizada);
-    }
-  }
-}
-// Processa uma imagem normal usando o pipeline de ferramentas.
-async function processarImagemNormalPeloPipeline(item) {
-
-  let canvasAtual = await criarCanvasOriginalImagemNormal(item.file);
-
-  // Cria ou limpa o cache das etapas dessa imagem
-  item.cacheEtapas = {};
-
-  // Salva a imagem original no cache
-  salvarCanvasNoCache(item, "original", canvasAtual);
-
-  for (const etapa of pipelineFerramentas) {
-
-    if (etapa.nome.includes("Gaussiano")) { 
-
-      canvasAtual = await aplicarGaussianoEmCanvas(
-        canvasAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        atualizarBarraProcessamento
-      );
-
-    }
-
-    if (etapa.nome.includes("Mediana")) { 
-
-      canvasAtual = await aplicarMedianaEmCanvas(
-        canvasAtual,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        atualizarBarraProcessamento
-      );
-
-    }
-
-    if (etapa.nome.includes("tons de cinza")) {
-
-      const resultadoCinza = await aplicarCinzaEmCanvas(
-        canvasAtual,
-        atualizarBarraProcessamento
-      );
-
-      canvasAtual = resultadoCinza.canvas;
-
-      if (!resultadoCinza.alterou) {
-        statusText.innerText = resultadoCinza.mensagem;
-      }
-
-    }
-
-    // Salva o resultado dessa etapa no cache
-    salvarCanvasNoCache(item, etapa.id, canvasAtual);
-  }
-
-  return {
-    tipo: "image",
-    dataURL: canvasAtual.toDataURL("image/png"),
-    largura: canvasAtual.width,
-    altura: canvasAtual.height
-  };
-}
-
-// Processa um DICOM usando o pipeline de ferramentas.
-async function processarDicomPeloPipeline(item) {
-
-  let imagemAtual = await carregarDicomOriginal(item);
-
-  // Cria ou limpa o cache das etapas dessa imagem
-  item.cacheEtapas = {};
-
-  // Salva o DICOM original no cache
-  salvarDicomNoCache(item, "original", imagemAtual);
-
-  for (const etapa of pipelineFerramentas) {
-
-    if (etapa.nome.includes("Gaussiano")) {
-
-      imagemAtual = await aplicarGaussianoEmDicom(
-        imagemAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        atualizarBarraProcessamento
-      );
-
-    }
-
-    if (etapa.nome.includes("Mediana")) {
-
-      imagemAtual = await aplicarMedianaEmDicom(
-        imagemAtual,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        atualizarBarraProcessamento
-      );
-
-    }
-
-    if (etapa.nome.includes("tons de cinza")) {
-
-      const resultadoCinza = await aplicarCinzaEmDicom(
-        imagemAtual,
-        atualizarBarraProcessamento
-      );
-
-      imagemAtual = resultadoCinza.imagem;
-
-      if (!resultadoCinza.alterou) {
-        statusText.innerText = resultadoCinza.mensagem;
-      }
-
-    }
-
-    // Salva o resultado dessa etapa no cache
-    salvarDicomNoCache(item, etapa.id, imagemAtual);
-  }
-
-  return {
-    tipo: "dicom",
-    imagem: imagemAtual
-  };
-}
-
-// Cria um canvas com a imagem original.
-function criarCanvasOriginalImagemNormal(file) {
-
-  return new Promise(function(resolve, reject) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas);
-    };
-    img.onerror = function(error) {
-      reject(error);
-    };
-    img.src = URL.createObjectURL(file);
-  });
-
-}
-// Carrega um DICOM original.
-function carregarDicomOriginal(item) {
-
-  return new Promise(function(resolve, reject) {
-    const dicomFile = new File([item.file], item.name);
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
-    cornerstone.loadImage(imageId)
-      .then(function(image) {
-        resolve(image);
-      })
-      .catch(function(error) {
-        reject(error);
-      });
-  });
-
-}
-
-function deveIgnorarPixelZeroFerramentas() {
-
-  const check = document.getElementById("checkIgnorarZeroFerramentas");
-
-  if (!check) return false;
-
-  return check.checked;
-
-}
-
-function deveAplicarFerramentasEmTodasImagens() {
-
-  const check = document.getElementById("checkAplicarTodasImagens");
-
-  if (!check) return false;
-
-  return check.checked;
-
-}
-
-function mostrarBarraProcessamento() {
-  barraProcessamentoContainer.style.display = "inline-flex";
-  atualizarBarraProcessamento(0);
-}
-
-function atualizarBarraProcessamento(porcentagem) {
-  porcentagem = Math.round(porcentagem);
-
-  if (porcentagem < 0) porcentagem = 0;
-  if (porcentagem > 100) porcentagem = 100;
-
-  barraProcessamento.style.width = porcentagem + "%";
-  barraProcessamentoTexto.innerText = porcentagem + "%";
-}
-
-function esconderBarraProcessamento() {
-  setTimeout(function() {
-    barraProcessamentoContainer.style.display = "none";
-    atualizarBarraProcessamento(0);
-  }, 700);
-}
-
-function esperarAtualizacaoTela() {
-  return new Promise(function(resolve) {
-    requestAnimationFrame(resolve);
-  });
-}
-
-function gerarAssinaturaPipeline() {
-
-  return JSON.stringify(
-    pipelineFerramentas.map(function(etapa) {
-      return {
-        nome: etapa.nome,
-        parametros: etapa.parametros
-      };
-    })
-  );
-
-}
-
-
-function imagemPrecisaProcessar(item) {
-
-  if (!item) return false;
-
-  // Se não tem ferramenta no fluxograma, não precisa processar
-  if (pipelineFerramentas.length === 0) return false;
-
-  const assinaturaAtual = gerarAssinaturaPipeline();
-
-  // Se nunca processou, precisa processar
-  if (!item.processado) return true;
-
-  // Se não tem resultado salvo, precisa processar
-  if (!item.resultado) return true;
-
-  // Se o fluxograma mudou, precisa processar de novo
-  if (item.assinaturaPipeline !== assinaturaAtual) return true;
-
-  // Se já processou com o mesmo fluxograma, não precisa
-  return false;
-
-}
-
-function invalidarProcessamentoDeTodasAsImagens() {
-
-  imagensProcessamento.forEach(function(item) {
-    item.resultado = null;
-    item.processado = false;
-    item.assinaturaPipeline = "";
-    item.cacheEtapas = {};
-  });
-
-}
-
-function salvarCanvasNoCache(item, chave, canvas) {
-
-  if (!item.cacheEtapas) {
-    item.cacheEtapas = {};
-  }
-
-  item.cacheEtapas[chave] = {
-    tipo: "image",
-    dataURL: canvas.toDataURL("image/png"),
-    largura: canvas.width,
-    altura: canvas.height
-  };
-
-}
-
-function salvarDicomNoCache(item, chave, imagemDicom) {
-
-  if (!item.cacheEtapas) {
-    item.cacheEtapas = {};
-  }
-
-  item.cacheEtapas[chave] = {
-    tipo: "dicom",
-    imagem: imagemDicom
-  };
-
-}
-
-async function toggleComparativo() {
-
-  if (!imagemAtualSelecionada) {
-    alert("Nenhuma imagem carregada.");
-    return;
-  }
-
-  modoComparativoAtivo = !modoComparativoAtivo;
-
-  if (modoComparativoAtivo) {
-
-    botaoOriginal.classList.add("ativo");
-    areaImagemOriginal.classList.add("ativo");
-
-    escalaBaseAtual = calcularEscalaAutomaticaComparacao(
-      larguraOriginalAtual,
-      alturaOriginalAtual
-    );
-
-    zoomAtual = 1;
-    atualizarTamanhoImagemAtual();
-
-    etapaComparativoSelecionada = "original";
-
-    await atualizarImagemComparativa();
-
-    desenharFluxograma();
-
-    visualizacaoBox.scrollLeft = 0;
-    visualizacaoBox.scrollTop = 0;
-
-    statusText.innerText = "Modo comparativo ativo.";
-
-  } else {
-
-    botaoOriginal.classList.remove("ativo");
-    areaImagemOriginal.classList.remove("ativo");
-
-    imagemOriginalNormal.style.display = "none";
-    visualizadorDicomOriginal.style.display = "none";
-
-    imagemDicomOriginalAtual = null;
-
-    escalaBaseAtual = calcularEscalaAutomatica(
-      larguraOriginalAtual,
-      alturaOriginalAtual
-    );
-
-    zoomAtual = 1;
-    atualizarTamanhoImagemAtual();
-
-    desenharFluxograma();
-
-    visualizacaoBox.scrollLeft = 0;
-    visualizacaoBox.scrollTop = 0;
-
-    statusText.innerText = "Modo comparativo desativado.";
-  }
-}
-
-async function atualizarImagemComparativa() {
-
-  if (!modoComparativoAtivo) return;
-  if (!imagemAtualSelecionada) return;
-
-  const item = imagemAtualSelecionada;
-
-  // Se não estiver processado ainda, processa uma vez e cria o cache
-  if (imagemPrecisaProcessar(item)) {
-
-    statusText.innerText = "Processando imagem para gerar cache do comparativo...";
-
-    await esperarAtualizacaoTela();
-
-    await processarImagemSelecionada(item);
-
-    await openFile(item);
-  }
-
-  if (!item.cacheEtapas) {
-    item.cacheEtapas = {};
-  }
-
-  if (etapaComparativoSelecionada === "original") {
-
-    const cacheOriginal = item.cacheEtapas["original"];
-
-    if (cacheOriginal && cacheOriginal.tipo === "image") {
-      await mostrarImagemNormalNoComparativo(cacheOriginal.dataURL);
-      statusText.innerText = "Comparativo mostrando: Original.";
-      return;
-    }
-
-    if (cacheOriginal && cacheOriginal.tipo === "dicom") {
-      await mostrarDicomNoComparativo(cacheOriginal.imagem);
-      statusText.innerText = "Comparativo mostrando: Original.";
-      return;
-    }
-
-    await abrirImagemOriginalNoComparativo(item);
-
-    statusText.innerText = "Comparativo mostrando: Original.";
-
-    return;
-  }
-
-  const etapa = pipelineFerramentas.find(function(etapa) {
-    return etapa.id === etapaComparativoSelecionada;
-  });
-
-  if (!etapa) return;
-
-  const cache = item.cacheEtapas[etapa.id];
-
-  if (!cache) {
-
-    statusText.innerText = "Cache da etapa não encontrado. Reprocessando imagem...";
-
-    await esperarAtualizacaoTela();
-
-    await processarImagemSelecionada(item);
-
-    await openFile(item);
-
-    return atualizarImagemComparativa();
-  }
-
-  statusText.innerText = "Carregando etapa salva no comparativo: " + etapa.nome + "...";
-
-  await esperarAtualizacaoTela();
-
-  if (cache.tipo === "image") {
-
-    await mostrarImagemNormalNoComparativo(cache.dataURL);
-
-    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
-
-    return;
-  }
-
-  if (cache.tipo === "dicom") {
-
-    await mostrarDicomNoComparativo(cache.imagem);
-
-    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
-
-    return;
-  }
-}
-
-async function selecionarEtapaComparativo(etapaId) {
-
-  etapaComparativoSelecionada = etapaId;
-
-  desenharFluxograma();
-
-  if (modoComparativoAtivo) {
-    await atualizarImagemComparativa();
-  }
-}
-
-async function abrirImagemOriginalNoComparativo(item) {
-
-  if (!item) return;
-
-  if (item.type === "image") {
-
-    visualizadorDicomOriginal.style.display = "none";
-    imagemDicomOriginalAtual = null;
-
-    imagemOriginalNormal.style.display = "none";
-    imagemOriginalNormal.style.visibility = "hidden";
-
-    const srcOriginal = URL.createObjectURL(item.file);
-
-    await new Promise(function(resolve, reject) {
-
-      imagemOriginalNormal.addEventListener("load", function() {
-
-        const larguraOriginal = imagemOriginalNormal.naturalWidth;
-        const alturaOriginal = imagemOriginalNormal.naturalHeight;
-
-        const escala = calcularEscalaAutomaticaComparacao(
-          larguraOriginal,
-          alturaOriginal
-        );
-
-        imagemOriginalNormal.style.width = larguraOriginal * escala + "px";
-        imagemOriginalNormal.style.height = alturaOriginal * escala + "px";
-
-        imagemOriginalNormal.style.display = "block";
-        imagemOriginalNormal.style.visibility = "visible";
-
-        resolve();
-
-      }, { once: true });
-
-      imagemOriginalNormal.addEventListener("error", function() {
-        reject(new Error("Erro ao carregar imagem original no comparativo."));
-      }, { once: true });
-
-      imagemOriginalNormal.src = srcOriginal;
-
-    });
-
-    return;
-  }
-
-  if (item.type === "dicom") {
-
-    imagemOriginalNormal.style.display = "none";
-    imagemOriginalNormal.style.visibility = "hidden";
-
-    visualizadorDicomOriginal.style.display = "block";
-
-    const imagem = await carregarDicomOriginal(item);
-
-    imagemDicomOriginalAtual = imagem;
-
-    await mostrarDicomNoComparativo(imagem);
-
-    return;
-  }
-}
-
-async function mostrarImagemNormalNoComparativo(dataURL) {
-
-  visualizadorDicomOriginal.style.display = "none";
-  imagemDicomOriginalAtual = null;
-
-  imagemOriginalNormal.style.display = "none";
-  imagemOriginalNormal.style.visibility = "hidden";
-
-  await new Promise(function(resolve, reject) {
-
-    imagemOriginalNormal.addEventListener("load", function() {
-
-      const largura = imagemOriginalNormal.naturalWidth;
-      const altura = imagemOriginalNormal.naturalHeight;
-
-      const escala = calcularEscalaAutomaticaComparacao(largura, altura);
-
-      imagemOriginalNormal.style.width = largura * escala + "px";
-      imagemOriginalNormal.style.height = altura * escala + "px";
-
-      imagemOriginalNormal.style.display = "block";
-      imagemOriginalNormal.style.visibility = "visible";
-
-      resolve();
-
-    }, { once: true });
-
-    imagemOriginalNormal.addEventListener("error", function() {
-      reject(new Error("Erro ao mostrar imagem no comparativo."));
-    }, { once: true });
-
-    imagemOriginalNormal.src = dataURL;
-
-  });
-}
-
-async function mostrarDicomNoComparativo(imagem) {
-
-  imagemOriginalNormal.style.display = "none";
-  imagemOriginalNormal.style.visibility = "hidden";
-
-  visualizadorDicomOriginal.style.display = "block";
-
-  imagemDicomOriginalAtual = imagem;
-
-  const escala = calcularEscalaAutomaticaComparacao(
-    imagem.width,
-    imagem.height
-  );
-
-  visualizadorDicomOriginal.style.width = imagem.width * escala + "px";
-  visualizadorDicomOriginal.style.height = imagem.height * escala + "px";
-
-  cornerstone.displayImage(visualizadorDicomOriginal, imagem);
-
-  const viewport = cornerstone.getViewport(visualizadorDicomOriginal);
-
-  viewport.voi = {
-    windowCenter: imagem.windowCenter,
-    windowWidth: imagem.windowWidth
-  };
-
-  viewport.invert = imagem.invert || false;
-  viewport.scale = escala;
-
-  cornerstone.setViewport(visualizadorDicomOriginal, viewport);
-  cornerstone.resize(visualizadorDicomOriginal, true);
-}
-
-
-async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
-
-  let canvasAtual = await criarCanvasOriginalImagemNormal(item.file);
-
-  for (let i = 0; i <= indiceEtapaFinal; i++) {
-
-    const etapa = pipelineFerramentas[i];
-
-    if (etapa.nome.includes("Gaussiano")) {
-
-      canvasAtual = await aplicarGaussianoEmCanvas(
-        canvasAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        function() {}
-      );
-    }
-
-    if (etapa.nome.includes("Mediana")) {
-
-      canvasAtual = await aplicarMedianaEmCanvas(
-        canvasAtual,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        function() {}
-      );
-    }
-
-    if (etapa.nome.includes("tons de cinza")) {
-
-      const resultadoCinza = await aplicarCinzaEmCanvas(
-        canvasAtual,
-        function() {}
-      );
-
-      canvasAtual = resultadoCinza.canvas;
-    }
-  }
-
-  return {
-    tipo: "image",
-    dataURL: canvasAtual.toDataURL("image/png"),
-    largura: canvasAtual.width,
-    altura: canvasAtual.height
-  };
-}
-
-async function processarDicomAteEtapa(item, indiceEtapaFinal) {
-
-  let imagemAtual = await carregarDicomOriginal(item);
-
-  for (let i = 0; i <= indiceEtapaFinal; i++) {
-
-    const etapa = pipelineFerramentas[i];
-
-    if (etapa.nome.includes("Gaussiano")) {
-
-      imagemAtual = await aplicarGaussianoEmDicom(
-        imagemAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        function() {}
-      );
-    }
-
-    if (etapa.nome.includes("Mediana")) {
-
-      imagemAtual = await aplicarMedianaEmDicom(
-        imagemAtual,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        function() {}
-      );
-    }
-
-    if (etapa.nome.includes("tons de cinza")) {
-
-      const resultadoCinza = await aplicarCinzaEmDicom(
-        imagemAtual,
-        function() {}
-      );
-
-      imagemAtual = resultadoCinza.imagem;
-    }
-  }
-
-  return {
-    tipo: "dicom",
-    imagem: imagemAtual
-  };
-}
-
-function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
-
-  const limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
-  const limiteAltura = visualizacaoBox.clientHeight - 30;
-
-  const escalaLargura = limiteLargura / larguraImagem;
-  const escalaAltura = limiteAltura / alturaImagem;
-
-  const escala = Math.min(escalaLargura, escalaAltura);
-
-  return escala;
-
-}
-
-/* EVENTOS DO ZOOM COM SCROLL */
-
-imagemNormal.addEventListener("wheel", function(event) {
-  aplicarZoomNoMouse(event, imagemNormal);
-}, { passive: false });
-
-visualizadorDicom.addEventListener("wheel", function(event) {
-  aplicarZoomNoMouse(event, visualizadorDicom);
-}, { passive: false });
-
-imagemOriginalNormal.addEventListener("wheel", function(event) {
-  aplicarZoomNoMouse(event, imagemOriginalNormal);
-}, { passive: false });
-
-visualizadorDicomOriginal.addEventListener("wheel", function(event) {
-  aplicarZoomNoMouse(event, visualizadorDicomOriginal);
-}, { passive: false });
-
+// O carregamento dos arquivos agora é iniciado no processamento.html, depois que analise.html é carregado.
