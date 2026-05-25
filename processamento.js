@@ -83,12 +83,11 @@ cornerstone.enable(visualizadorDicomOriginal);
 
 // Função para abrir/fechar o menu lateral 
 function toggleMenu() { 
-
   document.getElementById("menulateral").classList.toggle("fechado"); // Adiciona ou remove a classe fechado
-
 } 
 
-function toggleCategoria(id) { // Função para abrir/fechar categoria de ferramentas
+// Função para abrir/fechar categoria de ferramentas
+function toggleCategoria(id) { 
 
   const categoria = document.getElementById(id); // Pega a categoria pelo id
 
@@ -100,10 +99,11 @@ function toggleCategoria(id) { // Função para abrir/fechar categoria de ferram
 
     categoria.style.display = "block"; // Abre a categoria
 
-  } // Fecha if/else
+  } 
 
-} // Fecha toggleCategoria
+} 
 
+// Função para selecionar uma ferramenta
 function selecionarFerramenta(nome, botaoClicado) {
 
   // Se clicar novamente na mesma ferramenta, fecha a caixa de parâmetros
@@ -218,7 +218,7 @@ function selecionarFerramenta(nome, botaoClicado) {
   `;
 }
 
-
+// Função para aplicar uma ferramenta
 async function aplicarFerramenta(nome) {
 
   if (imagensProcessamento.length === 0) {
@@ -249,38 +249,16 @@ async function aplicarFerramenta(nome) {
 
     const etapa = {
       id: proximoIdEtapa++,
-      nome: "Converter para tons de cinza",
-      parametros: {
-        metodo: "rgb2gray MATLAB",
-        formula: "0.2989R + 0.5870G + 0.1140B"
-      }
+      nome: "Conversão para tons de cinza",
     };
 
     pipelineFerramentas.push(etapa);
 
     await aplicarPipelineAposAdicionarEtapa(
-      "Imagem convertida para tons de cinza usando o padrão do MATLAB.",
+      "Imagem convertida para tons de cinza.",
       "Tons de cinza aplicado em todas as imagens."
     );
 
-    return;
-
-    if (imagemAtualSelecionada) {
-      await processarImagemSelecionada(imagemAtualSelecionada);
-      await openFile(imagemAtualSelecionada);
-    }
-
-    desenharFluxograma();
-
-    if (modoComparativoAtivo) {
-      await atualizarImagemComparativa();
-    }
-
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
-
-    statusText.innerText = "Imagem convertida para tons de cinza usando o padrão do MATLAB.";
     return;
   }
 
@@ -294,7 +272,7 @@ async function aplicarFerramenta(nome) {
     const p1 = document.getElementById("param1");
     const p2 = document.getElementById("param2");
 
-    const sigmaTexto = p1 ? p1.value.trim() : "";
+    const sigmaTexto = p1 ? p1.value.trim() : ""; // pega o texto digitado
     const kernelTexto = p2 ? p2.value.trim() : "";
 
     let sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto);
@@ -342,12 +320,59 @@ async function aplicarFerramenta(nome) {
     }
 
     const p1 = document.getElementById("param1");
-    const kernelTexto = p1 ? p1.value.trim() : "";
+    let kernelTexto = p1 ? p1.value.trim() : "";
 
-    const kernel = interpretarKernelMediana(kernelTexto);
+    let tamanhoKernel = 3; // padrão
 
-    if (!kernel.valido) {
-      alert(kernel.motivo || "Digite um kernel válido. Exemplos: 3, 5 ou 7.");
+    if (kernelTexto !== "") {
+
+      kernelTexto = kernelTexto
+        .replace(/\[/g, " ")
+        .replace(/\]/g, " ")
+        .replace(/\(/g, " ")
+        .replace(/\)/g, " ")
+        .replace(/,/g, " ")
+        .replace(/x/gi, " ");
+
+      const partes = kernelTexto
+        .trim()
+        .split(/\s+/)
+        .filter(function(valor) {
+          return valor !== "";
+        });
+
+      if (partes.length === 1) {
+
+        tamanhoKernel = parseInt(partes[0]);
+
+      } else if (partes.length === 2) {
+
+        const k1 = parseInt(partes[0]);
+        const k2 = parseInt(partes[1]);
+
+        if (k1 !== k2) {
+          alert("O filtro de mediana aceita apenas kernel quadrado, como 3 ou 5 5.");
+          return;
+        }
+
+        tamanhoKernel = k1;
+
+      } else {
+
+        alert("Digite apenas um valor, como 3, ou dois valores iguais, como 5 5.");
+        return;
+
+      }
+
+    }
+
+    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 3) {
+      alert("O kernel precisa ser ímpar e maior que 1.");
+      return;
+    }
+
+    if (tamanhoKernel % 2 === 0) {
+      alert("O kernel precisa ser ímpar.");
       return;
     }
 
@@ -355,12 +380,13 @@ async function aplicarFerramenta(nome) {
       id: proximoIdEtapa++,
       nome: "Filtro Mediana",
       parametros: {
-        tamanhoKernel: kernel.tamanhoKernel,
+        tamanhoKernel: tamanhoKernel,
         ignorarZero: deveIgnorarPixelZeroFerramentas()
       }
     };
 
     pipelineFerramentas.push(etapa);
+
     await aplicarPipelineAposAdicionarEtapa(
       "Filtro Mediana aplicado na imagem selecionada.",
       "Filtro Mediana aplicado em todas as imagens."
@@ -371,6 +397,7 @@ async function aplicarFerramenta(nome) {
 
   alert("Ferramenta ainda não implementada no pipeline.");
 }
+
 function desenharFluxograma() {
 
   areaFluxograma.innerHTML = "";
