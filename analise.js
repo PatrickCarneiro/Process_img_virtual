@@ -185,34 +185,6 @@ function iniciarAnalise() {
 
 }
 
-function toggleAnalises() {
-
-  const aba = document.getElementById("abaAnalises"); // Pega a aba de análises
-  const icone = document.getElementById("iconeAnalises"); // Pega o texto do botão abrir/fechar
-
-  if (!aba || !icone) return;
-
-  aba.classList.toggle("aberta"); // Abre ou fecha a aba
-
-  if (aba.classList.contains("aberta")) {
-
-    icone.innerText = "▼ Fechar análises";
-    document.body.style.overflow = "hidden";
-
-    setTimeout(function() {
-      desenharHistogramaAtual(); // Redesenha o histograma depois da aba abrir
-    }, 100);
-
-  } else {
-
-    icone.innerText = "▲ Abrir análises";
-    document.body.style.overflowX = "hidden";
-    document.body.style.overflowY = "auto";
-
-  }
-
-}
-
 function criarControleIgnorarPixelZero() {
 
   if (document.getElementById("controleIgnorarZero")) return;

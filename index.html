@@ -1,233 +1,267 @@
-<!DOCTYPE html> 
-<html lang="pt-BR"> 
-<head>
-  <meta charset="UTF-8"> 
+<!DOCTYPE html>
+<html lang="pt-BR">
 
-  <title>Processamento de Imagens Médicas</title> 
+<head>
+
+  <meta charset="UTF-8">
+
+  <title>Processamento de Imagens Médicas</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-  <!-- Bibliotecas necessárias para ler e exibir arquivos DICOM -->
-  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script> <!-- Biblioteca principal de visualização -->
-  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script> <!-- Parser de arquivos DICOM -->
-  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script> <!-- Loader para imagens DICOM -->
+  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>   <!-- Biblioteca principal para exibir imagens médicas -->
+
+  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script> <!-- Biblioteca que lê a estrutura interna de arquivos DICOM -->
+
+  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>  <!-- Biblioteca que carrega imagens DICOM para serem exibidas pelo Cornerstone -->
 
   <style>
-    * { /* Aplica a todos os elementos */
-      margin: 0; /* Remove margem padrão */
-      padding: 0; /* Remove padding padrão */
-      box-sizing: border-box; /* Faz padding e border entrarem no tamanho total */
+    
+    /* RESET GERAL DA PÁGINA */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box; /* Inclui padding e borda no tamanho total do elemento */
     }
 
-    body { 
-      font-family: 'Poppins', sans-serif; /* Define a fonte */
-      background: linear-gradient(135deg, #0b1d3a, #050c1a); /* Fundo degradê */
-      color: white; /* Cor do texto */
-      min-height: 100vh; /* Altura mínima da tela */
-      display: flex; /* Layout flexível */
+    /* DESIGN GERAL DO CORPO DA PÁGINA */
+
+    body {
+      font-family: 'Poppins', sans-serif; /* Fonte principal */
+      background: linear-gradient(135deg, #0b1d3a, #050c1a); /* Fundo em degradê azul escuro */
+      color: white; /* Cor padrão dos textos */
+      min-height: 100vh; /* Ocupa no mínimo a altura inteira da tela */
+      display: flex; /* Deixa menu lateral e conteúdo principal lado a lado */
     }
 
-    .menulateral { 
-      width: 250px; /* Largura fixa */
-      background: rgba(10, 20, 40, 0.9); /* Fundo semi-transparente */
+
+    /* DESIGN DO MENU LATERAL */
+
+    .menulateral {
+      width: 250px; /* Largura do menu */
+      background: rgba(10, 20, 40, 0.9); /* Fundo escuro com transparência */
       padding: 20px; /* Espaçamento interno */
-      border-right: 1px solid rgba(255,255,255,0.05); /* Linha separadora */
+      border-right: 1px solid rgba(255,255,255,0.05); /* Linha separando o menu da área principal */
     }
 
-    .logo { 
-      font-size: 25px;
-      font-weight: 600;
-      margin-bottom: 50px;
+
+    /* DESIGN DO LOGO/TÍTULO DO MENU */
+
+    .logo {
+      font-size: 25px; /* Tamanho do texto */
+      font-weight: 600; /* Deixa o texto mais forte */
+      margin-bottom: 50px; /* Espaço abaixo do logo */
     }
 
-    .menu { /* Lista do menu */
-      list-style: none; /* Remove bolinhas */
+    /* DESIGN DA LISTA DO MENU */
+
+    .menu {
+      list-style: none; /* Remove as bolinhas da lista */
+    }
+    .menu li {
+      padding: 12px; /* Espaçamento interno do item */
+      border-radius: 10px; /* Cantos arredondados */
+      margin-bottom: 10px; /* Espaço entre os itens */
+      transition: 0.3s; /* Suaviza o efeito de hover */
+      cursor: pointer; /* Mostra que o item é clicável */
+    }
+    .menu li:hover {
+      background: rgba(192,132,252,0.15); /* Fundo roxo claro ao passar o mouse */
+      color: #c084fc; /* Texto roxo ao passar o mouse */
+    }
+    .menu .active {
+      background: rgba(192,132,252,0.2); /* Fundo do item ativo */
+      color: #c084fc; /* Cor do texto do item ativo */
     }
 
-    .menu li{ 
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      transition: 0.3s;
-      cursor: pointer;
+    /* DESIGN DA ÁREA PRINCIPAL */
+
+    .main {
+      flex: 1; /* Ocupa todo o espaço restante depois do menu */
+      padding: 40px; /* Espaçamento interno */
+      overflow-y: auto; /* Permite rolagem vertical caso tenha muito conteúdo */
+    }
+    .main h1 {
+      font-size: 52px; /* Tamanho do título principal */
+      margin-bottom: 10px; /* Espaço abaixo do título */
+    }
+    .main p {
+      opacity: 0.7; /* Deixa os parágrafos mais discretos */
+      margin-bottom: 30px; /* Espaço abaixo dos parágrafos */
     }
 
-    .menu li:hover {   /* Clareia se passar o mouse em cima */ 
-      background: rgba(192,132,252,0.15);
-      color: #c084fc;
-    }
+    /* DESIGN DA CAIXA DE UPLOAD */
 
-    .menu .active { /* Item ativo */
-      background: rgba(192,132,252,0.2);
-      color: #c084fc;
-    }
-
-    .main { /* Área principal */
-      flex: 1; /* Ocupa o espaço restante */
-      padding: 40px;
-      overflow-y: auto; /* Permite rolagem vertical */
-    }
-
-    .main h1 { 
-      font-size: 52px;
-      margin-bottom: 10px;
-    }
-
-    .main p { 
-      opacity: 0.7;
-      margin-bottom: 30px;
-    }
-
-    .upload-box { 
+    .upload-box {
       border: 2px dashed rgba(255,255,255,0.2); /* Borda tracejada */
-      border-radius: 20px;
-      padding: 50px;
-      text-align: center;
-      background: rgba(255,255,255,0.02);
-      transition: 0.3s;
+      border-radius: 20px; /* Cantos arredondados */
+      padding: 50px; /* Espaçamento interno */
+      text-align: center; /* Centraliza os textos */
+      background: rgba(255,255,255,0.02); /* Fundo levemente transparente */
+      transition: 0.3s; /* Suaviza a mudança visual */
+    }
+    .upload-box:hover {
+      border-color: #c084fc; /* Borda roxa ao passar o mouse */
+      background: rgba(192,132,252,0.05); /* Fundo levemente roxo */
     }
 
-    .upload-box:hover {   /* Clareia se passar o mouse em cima */ 
-      border-color: #c084fc;
-      background: rgba(192,132,252,0.05);
-    }
+    /* DESIGN DOS BOTÕES */
 
     .botoes {
-      margin-top: 20px;
-      padding: 12px 25px;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.08);
-      border: none;
-      color: white;
-      cursor: pointer;
-      font-family: 'Poppins', sans-serif;
-      transition: 0.3s;
+      margin-top: 20px; /* Espaço acima do botão */
+      padding: 12px 25px; /* Tamanho interno do botão */
+      border-radius: 10px; /* Cantos arredondados */
+      background: rgba(255,255,255,0.08); /* Fundo transparente */
+      border: none; /* Remove borda padrão */
+      color: white; /* Cor do texto */
+      cursor: pointer; /* Mostra que é clicável */
+      font-family: 'Poppins', sans-serif; /* Mantém a mesma fonte */
+      transition: 0.3s; /* Suaviza o hover */
+    }
+    .botoes:hover {
+      background: rgba(192,132,252,0.3); /* Fundo roxo ao passar o mouse */
     }
 
-    .botoes:hover { /* Efeito ao passar o mouse */
-      background: rgba(192,132,252,0.3);
+    /* DESIGN DO TEXTO DE STATUS */
+
+    #status {
+      font-size: 14px; /* Texto menor */
+      opacity: 0.7; /* Texto mais discreto */
+      margin-top: 15px; /* Espaço acima do status */
     }
 
-    #status { 
-      font-size: 14px;
-      opacity: 0.7;
-      margin-top: 15px;
+    /* DESIGN DO TÍTULO DAS IMAGENS RECENTES */
+
+    .recent-titul {
+      margin-top: 35px; /* Espaço acima do título */
+      margin-bottom: 15px; /* Espaço abaixo do título */
     }
 
-    .recent-titul { /* Título das imagens recentes */
-      margin-top: 35px;
-      margin-bottom: 15px;
+    /* DESIGN DA GRADE DE MINIATURAS */
+
+    .grid_recente {
+      display: grid; /* Ativa layout em grade */
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Colunas responsivas */
+      gap: 15px; /* Espaço entre as miniaturas */
     }
 
-    .grid_recente { /* Grid para miniaturas */
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Layout responsivo */
-      gap: 15px;
-    }
+    /* DESIGN DA MINIATURA */
 
     .miniaturas {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 15px;
-      padding: 10px;
-      cursor: pointer; /* Cursor de mão para indicar que é clicável */
-      text-align: center;
-      transition: 0.3s;
+      background: rgba(255,255,255,0.05); /* Fundo da miniatura */
+      border: 1px solid rgba(255,255,255,0.08); /* Borda discreta */
+      border-radius: 15px; /* Cantos arredondados */
+      padding: 10px; /* Espaçamento interno */
+      cursor: pointer; /* Indica que a miniatura pode ser clicada */
+      text-align: center; /* Centraliza o conteúdo */
+      transition: 0.3s; /* Suaviza efeitos */
+    }
+    .miniaturas:hover {
+      background: rgba(192,132,252,0.18); /* Fundo roxo ao passar o mouse */
+      transform: translateY(-3px); /* Faz a miniatura subir levemente */
     }
 
-    .miniaturas:hover { 
-      background: rgba(192,132,252,0.18);
-      transform: translateY(-3px);
+    /* DESIGN DA IMAGEM DENTRO DA MINIATURA */
+
+    .miniaturas img {
+      width: 100%; /* Ocupa toda a largura da miniatura */
+      height: 90px; /* Altura fixa */
+      object-fit: cover; /* Preenche o espaço sem deformar */
+      border-radius: 10px; /* Cantos arredondados */
+      margin-bottom: 8px; /* Espaço abaixo da imagem */
+      background: black; /* Fundo preto caso a imagem não preencha tudo */
+    }
+    .dicom_miniatura {
+      width: 100%; /* Ocupa a largura da miniatura */
+      height: 90px; /* Altura fixa */
+      border-radius: 10px; /* Cantos arredondados */
+      background: black; /* Fundo preto típico para imagens médicas */
+      overflow: hidden; /* Esconde partes que passarem da área */
+      margin-bottom: 8px; /* Espaço abaixo da imagem */
+    }
+    .dicom-erro {
+      width: 100%; /* Ocupa toda a largura */
+      height: 90px; /* Altura fixa */
+      border-radius: 10px; /* Cantos arredondados */
+      background: black; /* Fundo preto */
+      color: #c084fc; /* Texto roxo */
+      display: flex; /* Ativa centralização */
+      align-items: center; /* Centraliza verticalmente */
+      justify-content: center; /* Centraliza horizontalmente */
+      font-weight: 600; /* Texto mais forte */
+      margin-bottom: 8px; /* Espaço abaixo */
+    }
+    .miniatura_nome {
+      font-size: 12px; /* Texto pequeno */
+      opacity: 0.8; /* Texto discreto */
+      word-break: break-word; /* Quebra nomes grandes para não estourar a caixa */
+    }
+    .selecionado {
+      border: 2px solid #c084fc !important; /* Borda roxa destacada */
+      background: rgba(192,132,252,0.22); /* Fundo roxo claro */
     }
 
-    .miniaturas img { /* Imagem normal */
-      width: 100%;
-      height: 90px;
-      object-fit: cover;
-      border-radius: 10px;
-      margin-bottom: 8px;
-      background: black;
-    }
+    /* RESPONSIVIDADE */
 
-    .dicom_miniatura { /* Área para miniatura DICOM */
-      width: 100%;
-      height: 90px;
-      border-radius: 10px;
-      background: black;
-      overflow: hidden;
-      margin-bottom: 8px;
-    }
-
-    .dicom-erro { /* Caso DICOM não carregue */
-      width: 100%;
-      height: 90px;
-      border-radius: 10px;
-      background: black;
-      color: #c084fc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    .miniatura_nome { /* Nome do arquivo */
-      font-size: 12px;
-      opacity: 0.8;
-      word-break: break-word;
-    }
-
-    .selecionado { /* Estilo quando selecionado */
-      border: 2px solid #c084fc !important;
-      background: rgba(192,132,252,0.22);
-    }
-
-    @media (max-width: 800px) { /* Responsividade para celular */
+    @media (max-width: 800px) {
       body {
-        flex-direction: column;
+        flex-direction: column; /* Menu fica em cima e conteúdo embaixo */
       }
-
       .menulateral {
-        width: 100%;
+        width: 100%; /* Menu ocupa toda a largura da tela */
       }
-
       .main h1 {
-        font-size: 34px;
+        font-size: 34px; /* Diminui o título em telas pequenas */
       }
-
       .main {
-        padding: 25px;
+        padding: 25px; /* Reduz o espaçamento interno */
       }
     }
   </style>
 </head>
 
-<body> 
 
-  <div class="menulateral">  <!-- Menu lateral -->
+<body>
+
+  <!-- MENU LATERAL -->
+
+  <div class="menulateral">
+
+    <!-- Nome/logo do sistema -->
     <div class="logo">Processamento Imagem Médica</div>
 
-    <ul class="menu"> <!-- Itens do menu -->
+    <!-- Itens do menu -->
+    <ul class="menu">
       <li class="active">Início</li>
       <li>Projetos</li>
     </ul>
+
   </div>
 
-  <div class="main"> <!-- Conteúdo principal -->
+  <!-- CONTEÚDO PRINCIPAL -->
 
-    <h1>Comece seu processamento de imagens</h1> <!-- Título principal -->
+  <div class="main">
 
-    <p>Envie suas imagens médicas para iniciar o processamento.</p> <!-- Descrição -->
+    <!-- Título principal da página -->
+    <h1>Comece seu processamento de imagens</h1>
 
-    <div class="upload-box"> <!-- Caixa de upload -->
+    <!-- Descrição da página -->
+    <p>Envie suas imagens médicas para iniciar o processamento.</p>
 
+    <!--CAIXA DE UPLOAD -->
+
+    <div class="upload-box">
+
+      <!-- Texto principal da caixa de upload -->
       <p>Escolher imagens ou arquivos DICOM</p>
 
+      <!-- Texto informando os formatos aceitos -->
       <p style="font-size: 12px; opacity: 0.6;">
         Formatos aceitos: PNG, JPG, JPEG, TIF, TIFF, DCM e DICOM
       </p>
 
-      <!-- Input escondido para selecionar arquivos -->
+      <!-- Input real de arquivos. -->
       <input
         type="file"
         id="fileInput"
@@ -235,32 +269,38 @@
         accept=".png,.jpg,.jpeg,.tif,.tiff,.dcm,.dicom"
         hidden
       >
-
-      <!-- Botão que abre o seletor -->
+  
+      <!-- Botão visual. -->
       <button class="botoes" onclick="document.getElementById('fileInput').click()">
         Selecionar arquivos
       </button>
 
-      <!-- Status -->
+      <!-- Texto de status atualizado pelo JavaScript -->
       <p id="status">Nenhum arquivo selecionado.</p>
+
     </div>
 
-    <!-- Título das imagens recentes -->
+    <!-- ÁREA DAS IMAGENS RECENTES -->
+
+    <!-- Título da seção -->
     <h2 class="recent-titul">Últimas imagens enviadas</h2>
 
-    <!-- Grid onde as miniaturas serão inseridas via JS -->
+    <!-- Grid das miniaturas. -->
     <div id="recentImages" class="grid_recente"></div>
 
-    <!-- Botão para processar imagens selecionadas -->
+    <!-- BOTÃO PARA PROCESSAR IMAGENS SELECIONADAS -->
+
     <div style="margin-top: 20px;">
       <button class="botoes" onclick="processSelected()">
         Processar selecionadas
       </button>
     </div>
 
-  </div> 
+  </div>
 
-  <!-- Script principal -->
+
+  <!-- ARQUIVO JAVASCRIPT PRINCIPAL -->
+
   <script src="index.js"></script>
 
 </body>

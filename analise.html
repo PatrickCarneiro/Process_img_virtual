@@ -1,65 +1,69 @@
 <style>
 
-  /* Aba fechada de análises */
+  /* ABA FECHADA DE ANÁLISES */
+
   .aba_analises {
-    position: fixed; /* Fixa na tela */
+    position: fixed; /* Fixa a aba na tela */
     left: 250px; /* Começa depois do menu lateral */
-    right: 15px; /* Espaço à direita */
-    bottom: 0; /* Fica grudada embaixo */
-    height: 55px; /* Altura quando fechada */
-    background: rgba(10,20,40,0.98); 
-    color: white; 
-    border: 1px solid rgba(192,132,252,0.35); 
-    border-radius: 20px 20px 0 0; /* Arredonda só em cima */
+    right: 15px; /* Mantém espaço na direita */
+    bottom: 0; /* Fica presa na parte inferior */
+    height: 55px; /* Altura quando a aba está fechada */
+    background: rgba(10,20,40,0.98);
+    color: white;
+    border: 1px solid rgba(192,132,252,0.35);
+    border-radius: 20px 20px 0 0; /* Arredonda apenas a parte de cima */
     transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease;
-    overflow: hidden; /* Esconde conteúdo quando fechada */
-    z-index: 100; /* Fica acima dos outros elementos */
+    overflow: hidden; /* Esconde o conteúdo interno quando fechada */
+    z-index: 100; /* Mantém a aba acima dos outros elementos */
   }
 
-  /* Aba aberta de análises */
+  /* ABA ABERTA DE ANÁLISES */
+
   .aba_analises.aberta {
-    left: 0; /* Ocupa desde a esquerda */
-    right: 0; /* Ocupa até a direita */
-    bottom: 0; /* Continua presa embaixo */
-    width: 100vw; /* Ocupa toda a largura da tela */
-    height: 100vh; /* Cresce até ocupar toda a altura */
+    left: 0; /* Ocupa desde a esquerda da tela */
+    right: 0; /* Ocupa até a direita da tela */
+    bottom: 0;
+    width: 100vw; /* Ocupa toda a largura */
+    height: 100vh; /* Ocupa toda a altura */
     border-radius: 0; /* Remove arredondamento em tela cheia */
   }
 
-  /* Cabeçalho clicável da aba de análises */
+  /* CABEÇALHO DA ABA DE ANÁLISES */
+
   .cabecalho_analises {
-    height: 55px; /* Altura do cabeçalho */
-    padding: 15px 20px; 
-    cursor: pointer; 
-    background: rgba(192,132,252,0.15); 
-    display: flex; 
-    justify-content: space-between; /* Joga um para cada lado */
-    align-items: center; 
+    height: 55px; /* Mesma altura da aba fechada */
+    padding: 15px 20px;
+    cursor: pointer; /* Indica que pode clicar */
+    background: rgba(192,132,252,0.15);
+    display: flex;
+    justify-content: space-between; /* Deixa título à esquerda e ícone à direita */
+    align-items: center;
   }
 
-  /* Conteúdo interno da análise */
+  /* CONTEÚDO INTERNO DAS ANÁLISES */
+
   .conteudo_analises {
     padding: 20px;
-    display: grid; /* Usa grid */
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); /* Histograma maior + métricas à direita */
-    gap: 20px; /* Espaço entre histograma e métricas */
+    display: grid; /* Organiza histograma e métricas em colunas */
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); /* Gráfico maior + métricas à direita */
+    gap: 20px;
+  }
+  .aba_analises.aberta .conteudo_analises {
+    height: calc(100vh - 55px); /* Altura total menos o cabeçalho */
+    overflow: auto; /* Permite rolagem dentro da aba */
   }
 
-  /* Conteúdo quando a aba está aberta */
-  .aba_analises.aberta .conteudo_analises { 
-    height: calc(100vh - 55px); /* Ocupa a tela menos o cabeçalho */
-    overflow: auto; /* Permite rolagem interna */
-  }
+  /* ÁREA DO GRÁFICO DE ANÁLISE */
 
-  /* Área que guarda o histograma, textos, controles e botões */
   .area_grafico_analise {
     display: flex;
-    flex-direction: column;
-    gap: 12px; /* Espaço entre os elementos */
-    position: relative; /* Para posicionar elementos internos */
+    flex-direction: column; /* Organiza elementos um abaixo do outro */
+    gap: 12px;
+    position: relative; /* Permite posicionar elementos internos */
   }
 
-  /* Título principal do histograma */
+  /* HISTOGRAMA */
+
   .titulo_histograma {
     text-align: center;
     font-size: 18px;
@@ -67,24 +71,21 @@
     color: white;
     margin-top: 4px;
   }
-
-  /* Subtítulo do histograma */
   .subtitulo_histograma {
     text-align: center;
     font-size: 13px;
     opacity: 0.75;
     margin-top: -6px;
   }
-
-  /* Canvas do histograma */
   #histograma {
     width: 100%; /* Ocupa toda a largura disponível */
-    height: 65vh; /* Altura relativa à tela */
-    background: black; 
-    border-radius: 12px; 
+    height: 65vh; /* Altura proporcional à tela */
+    background: black;
+    border-radius: 12px;
   }
 
-  /* Área geral do seletor de faixa */
+  /* CONTROLE DA FAIXA DO HISTOGRAMA */
+
   .controle_faixa_histograma {
     display: flex;
     flex-direction: column;
@@ -95,9 +96,10 @@
     padding: 12px;
   }
 
-  /* Barra onde as laterais são puxadas */
+  /* BARRA DA FAIXA DO HISTOGRAMA */
+
   .barra_faixa_histograma {
-    position: relative;
+    position: relative; /* Referência para alças e faixa selecionada */
     width: 100%;
     height: 18px;
     background: rgba(255,255,255,0.12);
@@ -105,7 +107,8 @@
     cursor: pointer;
   }
 
-  /* Região selecionada dentro da barra */
+  /* REGIÃO SELECIONADA DO HISTOGRAMA */
+
   .faixa_selecionada_histograma {
     position: absolute;
     height: 100%;
@@ -115,7 +118,8 @@
     width: 100%;
   }
 
-  /* Alças laterais para puxar */
+  /* ALÇAS DA FAIXA DO HISTOGRAMA */
+
   .alca_faixa {
     position: absolute;
     top: 50%;
@@ -124,38 +128,31 @@
     background: #c084fc;
     border: 2px solid white;
     border-radius: 8px;
-    transform: translate(-50%, -50%);
-    cursor: ew-resize;
+    transform: translate(-50%, -50%); /* Centraliza a alça na barra */
+    cursor: ew-resize; /* Indica movimento horizontal */
     z-index: 2;
     box-shadow: 0 0 10px rgba(192,132,252,0.55);
   }
-
-  /* Alça da esquerda */
   .alca_faixa.esquerda {
-    left: 0%;
+    left: 0%; /* Posição inicial da alça esquerda */
   }
-
-  /* Alça da direita */
   .alca_faixa.direita {
-    left: 100%;
+    left: 100%; /* Posição inicial da alça direita */
   }
-
-  /* Texto mostrando a região selecionada do histograma */
   .faixa_histograma {
     text-align: center;
     font-size: 13px;
     opacity: 0.85;
   }
 
-  /* Botões dos canais RGB */
+  /* BOTÕES DOS CANAIS RGB */
+
   .botoes_canais_rgb {
-    display: none; /* Começa escondido e só aparece se a imagem for RGB */
+    display: none; /* Só aparece quando a imagem é RGB */
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
   }
-
-  /* Botões dos canais: Vermelho, Verde, Azul e Média */
   .botao_canal {
     padding: 8px 18px;
     border: 1px solid rgba(255,255,255,0.18);
@@ -166,27 +163,25 @@
     font-family: Arial, sans-serif;
     transition: 0.3s;
   }
-
-  /* Efeito ao passar o mouse nos botões dos canais */
   .botao_canal:hover {
     background: rgba(192,132,252,0.25);
   }
-
-  /* Botão de canal ativo */
   .botao_canal.ativo {
     background: rgba(192,132,252,0.45);
     box-shadow: 0 0 10px rgba(192,132,252,0.35);
   }
 
-  /* Área dos botões abaixo do histograma */
+  /* BOTÕES DE TIPO DE ANÁLISE */
+
   .botoes_analise_imagem {
-    display: flex; 
+    display: flex;
     justify-content: center;
     gap: 12px;
     flex-wrap: wrap;
   }
 
-  /* Botões da aba de análise */
+  /* BOTÃO DA ABA DE ANÁLISE */
+
   .botao_analise {
     padding: 10px 22px;
     border: 1px solid rgba(192,132,252,0.45);
@@ -197,60 +192,62 @@
     font-family: Arial, sans-serif;
     transition: 0.3s;
   }
-
-  /* Efeito ao passar o mouse */
   .botao_analise:hover {
     background: rgba(192,132,252,0.25);
   }
-
-  /* Estilo para o botão ativo */
   .botao_analise.ativo {
     background: rgba(192,132,252,0.45);
     box-shadow: 0 0 10px rgba(192,132,252,0.35);
   }
 
-  /* Caixa que aparece ao passar o mouse em cima da coluna */
+  /* TOOLTIP DO HISTOGRAMA */
+
   .tooltip_histograma {
-    position: fixed;
-    display: none;
+    position: fixed; /* Permite acompanhar a posição do mouse */
+    display: none; /* Começa escondida */
     background: rgba(10,20,40,0.98);
     color: white;
     border: 1px solid rgba(192,132,252,0.55);
     border-radius: 10px;
     padding: 8px 10px;
     font-size: 12px;
-    pointer-events: none;
+    pointer-events: none; /* Não interfere no mouse */
     z-index: 9999;
     box-shadow: 0 0 12px rgba(0,0,0,0.45);
   }
 
-  /* Cards de métricas */
+  /* CARDS DE MÉTRICAS */
+
   .metrica {
-    background: rgba(255,255,255,0.06); 
+    background: rgba(255,255,255,0.06);
     padding: 10px;
-    border-radius: 10px; 
-    margin-bottom: 8px; 
+    border-radius: 10px;
+    margin-bottom: 8px;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
+    overflow: hidden; /* Evita texto sair da caixa */
   }
 
-  /* Nome do arquivo atual */
+  /* NOME DO ARQUIVO ATUAL */
+
   #arquivoAtual {
     display: block;
     width: 100%;
     margin-top: 6px;
-    word-break: break-word;
-    overflow-wrap: anywhere;
+    word-break: break-word; /* Quebra nomes grandes */
+    overflow-wrap: anywhere; /* Permite quebrar em qualquer ponto */
     white-space: normal;
     color: #c084fc;
     font-size: 13px;
-}
+  }
 
 </style>
 
-<!-- Aba de análises -->
+<!-- ABA DE ANÁLISES -->
+
 <div class="aba_analises" id="abaAnalises">
+
+  <!-- CABEÇALHO DA ABA -->
 
   <div class="cabecalho_analises" id="cabecalhoAnalises">
 
@@ -260,35 +257,49 @@
 
   </div>
 
+  <!-- CONTEÚDO DA ABA -->
+
   <div class="conteudo_analises">
+
+    <!-- ÁREA DO HISTOGRAMA E CONTROLES -->
 
     <div class="area_grafico_analise">
 
+      <!-- Título do gráfico -->
       <div class="titulo_histograma" id="tituloHistograma">
         Histograma de Intensidades
       </div>
 
+      <!-- Área onde o histograma será desenhado pelo JavaScript -->
       <canvas id="histograma"></canvas>
+
+      <!-- CONTROLE DE FAIXA DO HISTOGRAMA -->
 
       <div class="controle_faixa_histograma">
 
+        <!-- Barra onde o usuário arrasta a faixa -->
         <div class="barra_faixa_histograma" id="barraFaixaHistograma">
 
+          <!-- Região roxa selecionada -->
           <div class="faixa_selecionada_histograma" id="faixaSelecionadaHistograma"></div>
 
+          <!-- Alça esquerda da seleção -->
           <div class="alca_faixa esquerda" id="alcaEsquerdaHistograma"></div>
 
+          <!-- Alça direita da seleção -->
           <div class="alca_faixa direita" id="alcaDireitaHistograma"></div>
 
         </div>
 
+        <!-- Texto mostrando a faixa selecionada -->
         <div class="faixa_histograma" id="faixaHistograma">
           Intensidade de ---
         </div>
 
       </div>
 
-      <!-- Botões dos canais RGB: só aparecem quando a imagem for RGB -->
+      <!-- BOTÕES DOS CANAIS RGB -->
+
       <div class="botoes_canais_rgb" id="botoesCanaisRGB">
 
         <button class="botao_canal ativo" id="botaoCanalR" onclick="trocarCanalHistograma('r')">
@@ -309,6 +320,8 @@
 
       </div>
 
+      <!-- BOTÕES DE TIPO DE ANÁLISE -->
+
       <div class="botoes_analise_imagem">
 
         <button class="botao_analise ativo" id="botaoHistograma">
@@ -321,27 +334,51 @@
 
       </div>
 
+      <!-- TOOLTIP DO HISTOGRAMA -->
+
       <div class="tooltip_histograma" id="tooltipHistograma"></div>
 
     </div>
 
+    <!-- ÁREA DAS MÉTRICAS DA IMAGEM -->
+
     <div>
 
-      <div class="metrica">Arquivo atual: <span id="arquivoAtual">---</span></div>
+      <div class="metrica">
+        Arquivo atual:
+        <span id="arquivoAtual">---</span>
+      </div>
 
-      <div class="metrica">Tipo da imagem: <span id="tipoImagemAtual">---</span></div>
+      <div class="metrica">
+        Tipo da imagem:
+        <span id="tipoImagemAtual">---</span>
+      </div>
 
-      <div class="metrica">Dimensão: <span id="dimensaoImagemAtual">---</span></div>
+      <div class="metrica">
+        Dimensão:
+        <span id="dimensaoImagemAtual">---</span>
+      </div>
 
-      <div class="metrica">Mínimo: <span id="minimo">---</span></div>
+      <div class="metrica">
+        Mínimo:
+        <span id="minimo">---</span>
+      </div>
 
-      <div class="metrica">Máximo: <span id="maximo">---</span></div>
+      <div class="metrica">
+        Máximo:
+        <span id="maximo">---</span>
+      </div>
 
-      <div class="metrica">Média: <span id="media">---</span></div>
+      <div class="metrica">
+        Média:
+        <span id="media">---</span>
+      </div>
 
-      <div class="metrica">Moda: <span id="moda">---</span></div>
+      <div class="metrica">
+        Moda:
+        <span id="moda">---</span>
+      </div>
 
-      
     </div>
 
   </div>

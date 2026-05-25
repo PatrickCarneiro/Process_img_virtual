@@ -1,819 +1,789 @@
-<!DOCTYPE html> 
-<html lang="pt-BR"> 
-
-<head> 
-
-<meta charset="UTF-8"> 
-
-<title>Processamento</title> 
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-
-<!-- Bibliotecas para DICOM -->
-<script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>
-<script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script>
-<script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
-
-<style> /* Início do CSS */
-
-/* Aplica estilo base para todos os elementos */
-* {
-  margin: 0; /* Remove a margem padrão */
-  padding: 0; /* Remove o espaçamento interno padrão */
-  box-sizing: border-box; /* Faz padding e borda entrarem no tamanho total do elemento */
-}
-
-/* Estiliza o corpo da página */
-body {
-  font-family: Arial, sans-serif; /* Define a fonte principal */
-  background: linear-gradient(135deg, #0b1d3a, #050c1a); /* Define fundo em degradê escuro */
-  color: white; /* Define a cor padrão do texto como branca */
-  min-height: 100vh; /* Faz o corpo ocupar no mínimo toda a altura da tela */
-  display: flex; /* Coloca o menu lateral e o conteúdo lado a lado */
-  overflow-x: hidden; /* Impede rolagem horizontal da página */
-  overflow-y: auto; /* Permite rolagem vertical da página */
-}
-
-/* MENU LATERAL */
-
-/* Estiliza o menu lateral */
-.menulateral {
-  width: 230px; /* Define a largura inicial do menu */
-  min-height: 100vh; /* Faz o menu ocupar toda a altura da tela */
-  background: rgba(10, 20, 40, 0.95); /* Define fundo azul escuro com transparência */
-  color: white; /* Define cor do texto do menu */
-  padding: 20px; /* Espaçamento interno do menu */
-  transition: 0.3s; /* Suaviza mudanças de tamanho */
-  position: sticky; /* Mantém o menu fixo durante a rolagem */
-  top: 0; /* Cola o menu no topo */
-  border-right: 1px solid rgba(255,255,255,0.08); /* Linha divisória à direita */
-}
-
-/* Estado fechado do menu lateral */
-.menulateral.fechado {
-  width: 70px; /* Reduz a largura do menu quando fechado */
-}
-
-/* Estiliza o logo/texto principal do menu */
-.logo {
-  font-size: 20px; /* Define tamanho do texto */
-  font-weight: bold; /* Deixa o texto em negrito */
-  margin-bottom: 25px; /* Espaço abaixo do logo */
-}
-
-/* Esconde o logo e textos quando o menu está fechado */
-.menulateral.fechado .logo,
-.menulateral.fechado .texto-menu {
-  display: none; /* Oculta esses elementos */
-}
-
-/* Botão de abrir/fechar menu */
-.botao-menu {
-  width: 100%; /* Ocupa toda a largura disponível */
-  padding: 10px; /* Espaçamento interno */
-  border: none; /* Remove borda padrão */
-  border-radius: 10px; /* Arredonda os cantos */
-  background: rgba(192,132,252,0.25); /* Fundo roxo transparente */
-  color: white; /* Cor do texto */
-  cursor: pointer; /* Mostra cursor de clique */
-  margin-bottom: 20px; /* Espaço abaixo do botão */
-}
-
-/* Itens do menu */
-.menu-item {
-  padding: 12px;
-  border-radius: 10px; 
-  margin-bottom: 10px; 
-  cursor: pointer; 
-  background: rgba(255,255,255,0.06); 
-}
-.menu-item:hover {
-  background: rgba(192,132,252,0.25); 
-}
-
-/* LAYOUT PRINCIPAL */
-
-/* Área principal da página */
-.principal {
-  flex: 1; /* Ocupa o espaço restante ao lado do menu */
-  display: grid; /* Usa grid para organizar os painéis */
-  grid-template-columns: 260px minmax(500px, 1fr) 320px; /* Define colunas: ferramentas, imagem e fluxograma */
-  grid-template-rows: auto auto; /* Define duas linhas automáticas */
-  gap: 15px; /* Espaço entre os blocos */
-  padding: 15px; /* Espaçamento interno geral */
-  padding-bottom: 90px; /* Espaço extra embaixo para a aba de análises */
-}
-
-/* Painéis gerais */
-.painel {
-  background: rgba(255,255,255,0.04); /* Fundo branco bem transparente */
-  border: 1px solid rgba(255,255,255,0.08); /* Borda clara transparente */
-  border-radius: 20px; /* Arredonda o painel */
-  padding: 18px; /* Espaçamento interno */
-  overflow: auto; /* Permite rolagem se o conteúdo passar do tamanho */
-}
-
-/* FERRAMENTAS */
-
-/* Título das categorias de ferramentas */
-.categoria-titulo {
-  background: rgba(192,132,252,0.30); /* Fundo roxo mais forte para diferenciar das opções */
-  color: #ffffff; /* Texto branco */
-  padding: 13px; /* Espaçamento interno */
-  border-radius: 12px; /* Arredonda cantos */
-  margin-bottom: 8px; /* Espaço abaixo */
-  cursor: pointer; /* Mostra que pode clicar */
-  font-weight: bold; /* Deixa em negrito */
-  border: 1px solid rgba(192,132,252,0.45); /* Borda roxa */
-  transition: 0.3s; /* Suaviza o hover */
-}
-
-/* Efeito ao passar o mouse sobre categoria */
-.categoria-titulo:hover {
-  background: rgba(192,132,252,0.45); /* Deixa o roxo mais forte */
-}
-
-/* Área que guarda as opções dentro de uma categoria */
-.categoria-conteudo {
-  display: none; /* Começa fechada */
-  margin-bottom: 15px; /* Espaço abaixo da categoria aberta */
-  padding-left: 8px; /* Recuo à esquerda */
-  border-left: 2px solid rgba(192,132,252,0.35); /* Linha lateral roxa */
-}
-
-/* Cada ferramenta/opção */
-.ferramenta {
-  padding: 10px; /* Espaçamento interno */
-  background: rgba(255,255,255,0.07); /* Fundo diferente da categoria */
-  border: 1px solid rgba(255,255,255,0.08); /* Borda suave */
-  border-radius: 10px; /* Arredonda cantos */
-  margin-bottom: 8px; /* Espaço entre opções */
-  cursor: pointer; /* Indica clique */
-  transition: 0.3s; /* Suaviza mudança no hover */
-}
-
-/* Efeito ao passar o mouse na ferramenta */
-.ferramenta:hover {
-  background: rgba(255,255,255,0.15); /* Clareia a opção */
-}
-
-/* Área onde aparecem os parâmetros da ferramenta */
-.parametros {
-  background: rgba(255,255,255,0.06); /* Fundo transparente */
-  border: 1px solid rgba(255,255,255,0.08); /* Borda suave */
-  border-radius: 14px; /* Arredonda cantos */
-  padding: 12px; /* Espaçamento interno */
-  margin-top: 4px;
-  margin-bottom: 10px;
-  display: none; /* Começa escondida */
-}
-
-/* Título dentro da área de parâmetros */
-.parametros h4 {
-  margin-bottom: 10px; /* Espaço abaixo do título */
-  color: #c084fc; /* Cor roxa */
-}
-
-/* Rótulos dos campos */
-.parametros label {
-  display: block; /* Cada label fica em linha própria */
-  font-size: 13px; /* Tamanho do texto */
-  margin-top: 8px; /* Espaço acima */
-}
-
-/* Campos de entrada e seleção */
-.parametros input,
-.parametros select {
-  width: 100%; /* Ocupa toda a largura */
-  padding: 8px; /* Espaçamento interno */
-  margin-top: 4px; /* Espaço acima */
-  border-radius: 8px; /* Arredonda cantos */
-  border: none; /* Remove borda padrão */
-  outline: none; /* Remove contorno ao clicar */
-}
-
-/* Botão aplicar */
-.botao-aplicar {
-  width: 100%; /* Ocupa toda a largura */
-  padding: 10px; /* Espaçamento interno */
-  margin-top: 12px; /* Espaço acima */
-  border: none; /* Remove borda */
-  border-radius: 10px; /* Arredonda cantos */
-  background: rgba(192,132,252,0.35); /* Fundo roxo */
-  color: white; /* Texto branco */
-  cursor: pointer; /* Indica clique */
-}
-
-/* Hover do botão aplicar */
-.botao-aplicar:hover {
-  background: rgba(192,132,252,0.55); /* Roxo mais forte */
-}
-
-/* BOTÕES LATERAIS */
-
-/* Caixa onde a imagem é exibida */
-.visualizacao_box {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 0;
-  padding: 12px;
-  overflow: auto;
-  overflow-x: auto;
-  overflow-y: auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  max-width: 100%;
-  height: 70vh;
-  min-width: 0;
-}
-/* Linha que organiza os botões e a imagem lado a lado */
-.linha_visualizacao {
-  display: grid; 
-  grid-template-columns: 48px 1fr; /* Coluna dos botões + coluna da imagem */
-  align-items: center; /* Centraliza verticalmente */
-  width: 100%;
-  column-gap: 8px; /* Espaço pequeno entre botões e imagem */
-}
-
-/* Organiza os botões laterais da imagem em coluna */
-.botoes_laterais_imagem {
-  display: flex; /* Usa flexbox */
-  flex-direction: column; /* Coloca os botões um embaixo do outro */
-  gap: 8px; /* Espaço entre os botões */
-  align-items: center; /* Centraliza os botões */
-  justify-content: flex-start; /* Mantém os botões no topo da coluna */
-  align-self: start; /* Deixa os botões alinhados ao topo da imagem */
-  padding-top: 4px; /* Pequeno ajuste visual */
-}
-
-/* Botão de inspeção de pixel */
-.botao_pixel {
-  width: 42px; 
-  height: 42px; 
-  border-radius: 50%; /* Deixa circular */
-  border: 1px solid rgba(192,132,252,0.55); 
-  background: rgba(192,132,252,0.18); 
-  color: white; 
-  font-size: 24px; 
-  cursor: pointer; 
-  transition: 0.3s;
-  justify-self: start; /* Deixa o botão mais próximo do painel de ferramentas */
-}
-.botao_pixel:hover {
-  background: rgba(192,132,252,0.35); /* Clareia o botão */
-  transform: scale(1.05); /* Aumenta levemente */
-}
-.botao_pixel.ativo {
-  background: rgba(192,132,252,0.55); /* Fundo mais forte quando ativo */
-  box-shadow: 0 0 12px rgba(192,132,252,0.65); /* Brilho roxo */
-}
-.info_pixel { /* Caixa que mostra o valor do pixel */
-  display: none;
-  margin-top: 8px; 
-  padding: 8px 14px; 
-  border-radius: 10px; 
-  background: rgba(255,255,255,0.06); 
-  border: 1px solid rgba(255,255,255,0.08); 
-  color: #ffffff; 
-  font-size: 13px; 
-  opacity: 0.85; 
-}
-
-/* Botão de zoom */
-.botao_zoom {
-  width: 42px; 
-  height: 42px; 
-  border-radius: 50%;
-  border: 1px solid rgba(192,132,252,0.55); 
-  background: rgba(192,132,252,0.18); 
-  color: white; 
-  font-size: 30px; 
-  cursor: pointer; 
-  transition: 0.3s;
-}
-.botao_zoom:hover {
-  background: rgba(192,132,252,0.35); 
-  transform: scale(1.05); 
-}
-.botao_zoom.ativo {
-  background: rgba(192,132,252,0.55); 
-  box-shadow: 0 0 12px rgba(192,132,252,0.65); 
-}
-.zoom_ativo {
-  cursor: zoom-in; /* Mostra cursor de zoom */
-}
-#imagemNormal { /* Suaviza o zoom da imagem comum */
-  transform-origin: center center; /* Origem inicial do zoom */
-  transition: transform 0.08s ease-out; /* Suaviza a ampliação */
-}
-#visualizadorDicom { /* Suaviza o zoom do DICOM */
-  transform-origin: center center;
-  transition: transform 0.08s ease-out; 
-}
-.visualizacao_box.zoom_aplicado {
-  justify-content: flex-start;
-  align-items: flex-start;
-}
-
-/* Botão da mão */
-.botao_pan {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid rgba(192,132,252,0.55);
-  background: rgba(192,132,252,0.18);
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-.botao_pan:hover {
-  background: rgba(192,132,252,0.35);
-  transform: scale(1.05);
-}
-.botao_pan.ativo {
-  background: rgba(192,132,252,0.55);
-  box-shadow: 0 0 12px rgba(192,132,252,0.65);
-}
-.pan_ativo {
-  cursor: grab; /* Mostra cursor de mão aberta para indicar que pode arrastar */
-}
-.pan_arrastando {
-  cursor: grabbing; /* Cursor de mão fechada ao arrastar */
-}
-
-/* Botão para mostrar imagem original */
-.botao_original {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid rgba(192,132,252,0.55);
-  background: rgba(192,132,252,0.18);
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-.botao_original:hover {
-  background: rgba(192,132,252,0.35);
-  transform: scale(1.05);
-}
-.botao_original.ativo {
-  background: rgba(192,132,252,0.55);
-  box-shadow: 0 0 12px rgba(192,132,252,0.65);
-}
-
-.botao_pixel,
-.botao_zoom,
-.botao_pan,
-.botao_original {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  padding: 0;
-}
-
-/* VISUALIZAÇÃO */
-
-/* Área central de visualização */
-.area_visualizacao {
-  display: flex; 
-  flex-direction: column; /* Organiza elementos em coluna */
-  gap: 10px; 
-  align-items: center; /* Centraliza horizontalmente */
-}
-
-/* Título e status ocupam largura total */
-.area_visualizacao h1,
-.area_visualizacao p {
-  width: 100%;
-}
-
-/* Container normal */ 
-#imagemNormal {
-  display: none;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
-  object-fit: contain;
-  transition: none;
-}
-/* Container Dicom */ 
-#visualizadorDicom {
-  background: black;
-  border-radius: 0;
-  overflow: hidden;
-  display: none;
-  user-select: none;
-  flex: 0 0 auto;
-  max-width: none;
-  max-height: none;
-}
-
-/* FLUXOGRAMA */
-
-/* Área onde os blocos do fluxo aparecem */
-#areaFluxograma {
-  display: flex; /* Usa flexbox */
-  flex-direction: column; /* Organiza em coluna */
-  align-items: center; /* Centraliza os blocos */
-}
-
-/* Bloco de ferramenta aplicada */
-.bloco_fluxo {
-  width: 100%; /* Ocupa toda a largura */
-  padding: 12px; /* Espaçamento interno */
-  background: rgba(192,132,252,0.18); /* Fundo roxo transparente */
-  border: 1px solid rgba(192,132,252,0.45); /* Borda roxa */
-  border-radius: 14px; /* Arredonda cantos */
-  margin-bottom: 8px; /* Espaço abaixo */
-  text-align: center; /* Centraliza texto */
-}
-
-/* Texto dos parâmetros dentro do bloco */
-.bloco_parametros {
-  margin-top: 6px; /* Espaço acima */
-  font-size: 12px; /* Texto menor */
-  opacity: 0.8; /* Deixa mais suave */
-  text-align: left; /* Alinha texto à esquerda */
-}
-
-/* Seta entre blocos */
-.seta {
-  font-size: 24px; /* Tamanho da seta */
-  color: #c084fc; /* Cor roxa */
-  margin-bottom: 8px; /* Espaço abaixo */
-}
-
-/* Botão remover */
-.remover {
-  margin-top: 8px; /* Espaço acima */
-  padding: 6px 10px; /* Espaçamento interno */
-  border: none; /* Remove borda */
-  border-radius: 8px; /* Arredonda cantos */
-  background: rgba(255,80,80,0.25); /* Fundo vermelho transparente */
-  color: white; /* Texto branco */
-  cursor: pointer; /* Indica clique */
-}
-.remover:hover {
-  background: rgba(255,80,80,0.45); /* Vermelho mais forte */
-}
-
-/* IMAGENS EMBAIXO */
-
-/* Área inferior com imagens selecionadas */
-.imagens_trabalho {
-  grid-column: 1 / 4; /* Faz ocupar as três colunas do grid */
-  display: flex; /* Organiza cards lado a lado */
-  gap: 15px; /* Espaço entre cards */
-  overflow-x: auto; /* Permite rolagem horizontal */
-  min-height: 190px; /* Altura mínima */
-}
-
-/* Card de imagem */
-.card_imagem {
-  min-width: 180px; /* Largura mínima */
-  max-width: 180px; /* Largura máxima */
-  background: rgba(255,255,255,0.05); /* Fundo transparente */
-  border: 1px solid rgba(255,255,255,0.08); /* Borda suave */
-  border-radius: 18px; /* Arredonda cantos */
-  padding: 12px; /* Espaçamento interno */
-  cursor: pointer; 
-  transition: 0.3s; /* Suaviza hover */
-}
-.card_imagem:hover {
-  background: rgba(192,132,252,0.18); /* Fundo roxo suave */
-  transform: translateY(-3px); /* Sobe um pouco */
-}
-
-.card_imagem.selecionado {
-  background: rgba(192,132,252,0.25);
-  border: 2px solid rgba(192,132,252,0.85);
-  box-shadow: 0 0 14px rgba(192,132,252,0.35);
-}
-
-/* Miniatura de imagem normal e DICOM */
-.card_imagem img,
-.dicom_thumb {
-  width: 100%;
-  height: 120px;
-  object-fit: contain;
-  background: rgba(0,0,0,0.65);
-  border-radius: 12px;
-  margin-bottom: 8px;
-  overflow: hidden;
-  display: block;
-}
-.dicom_thumb canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* Nome do arquivo */
-.nome_arquivo {
-  font-size: 12px; /* Texto pequeno */
-  opacity: 0.8; /* Texto mais suave */
-  word-break: break-word; /* Quebra nomes grandes */
-}
-
-
-#status {
-  display: inline-block;
-  margin-right: 20px;
-}
-
-#barraProcessamentoContainer {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: 470px;
-  vertical-align: middle;
-}
-
-#barraProcessamentoFundo {
-  width: 420px;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-#barraProcessamento {
-  width: 0%;
-  height: 100%;
-  background: linear-gradient(90deg, #38bdf8, #2563eb);
-  border-radius: 999px;
-  transition: width 0.2s ease;
-}
-
-#barraProcessamentoTexto {
-  font-size: 12px;
-  color: white;
-  min-width: 35px;
-}
-
-.campo_parametro_info {
-  position: relative;
-  margin-bottom: 10px;
-}
-
-.caixa_info_parametro {
-  display: none;
-  position: absolute;
-  left: 0;
-  top: 100%;
-  margin-top: 6px;
-  background: rgba(10, 20, 40, 0.98);
-  color: white;
-  border: 1px solid rgba(192,132,252,0.55);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 12px;
-  line-height: 1.3;
-  z-index: 999;
-  width: 210px;
-  box-shadow: 0 0 12px rgba(192,132,252,0.35);
-}
-
-.campo_parametro_info:hover .caixa_info_parametro {
-  display: block;
-}
-
-.caixa_ignorar_zero {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  font-size: 13px;
-  color: white;
-}
-
-.caixa_ignorar_zero label {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  cursor: pointer;
-  line-height: 1.3;
-}
-
-.caixa_ignorar_zero input {
-  margin-top: 2px;
-}
-
-/* Áreas de imagem original e processada lado a lado */
-.area_imagem_original {
-  display: none;
-  justify-content: center;
-  align-items: center;
-  flex: 0 0 auto;
-  padding-right: 12px;
-  border-right: 1px solid rgba(255,255,255,0.15);
-}
-
-.area_imagem_original.ativo {
-  display: flex;
-}
-
-.area_imagem_processada {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-#imagemOriginalNormal {
-  display: none;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
-  object-fit: contain;
-}
-
-#visualizadorDicomOriginal {
-  background: black;
-  border-radius: 0;
-  overflow: hidden;
-  display: none;
-  user-select: none;
-  flex: 0 0 auto;
-  max-width: none;
-  max-height: none;
-}
-
-.bloco_fluxo.selecionado_comparativo {
-  background: rgba(56,189,248,0.25);
-  border: 2px solid rgba(56,189,248,0.9);
-  box-shadow: 0 0 14px rgba(56,189,248,0.35);
-}
-</style> 
-
-</head> 
-
-<body> 
-
-<!-- Menu lateral -->
-<div class="menulateral" id="menulateral"> <!-- Container do menu lateral -->
-
-  <button class="botao-menu" onclick="toggleMenu()">☰</button> <!-- Botão que abre/fecha o menu -->
-
-  <div class="logo">Processamento Imagem Médica</div> <!-- Logo/título do menu -->
-
-  <div class="menu-item" onclick="window.location.href='index.html'"> <!-- Item para voltar ao início -->
-      <span class="texto-menu">Início</span> <!-- Texto do botão início -->
-  </div> <!-- Fecha item início -->
-
-  <div class="menu-item"> <!-- Item projetos -->
-      <span class="texto-menu">Projetos</span> <!-- Texto do botão projetos -->
-  </div> <!-- Fecha item projetos -->
-
-</div> <!-- Fecha menu lateral -->
-
-<!-- Área principal -->
-<div class="principal"> <!-- Container principal do sistema -->
-
-  <div class="painel"> <!-- Painel de ferramentas -->
-
-    <h3>Ferramentas</h3> <!-- Título do painel -->
-
-    <br> <!-- Quebra de linha -->
-
-    <div class="categoria-titulo" onclick="toggleCategoria('filtros')">Filtros</div> <!-- Categoria clicável filtros -->
-
-    <div class="categoria-conteudo" id="filtros"> <!-- Conteúdo da categoria filtros -->
-
-    <div 
-      class="ferramenta" 
-      id="botaoFerramentaGaussiano"
-      onclick="selecionarFerramenta('Filtro Gaussiano', this)"
-    >
-      Filtro Gaussiano
-    </div>
-    
-    <div 
-      class="ferramenta" 
-      id="botaoFerramentaMediana"
-      onclick="selecionarFerramenta('Filtro Mediana', this)"
-    >
-      Filtro Mediana
-    </div>
-      
-    </div> <!-- Fecha categoria filtros -->
-
-    <div 
-      class="categoria-titulo" 
-      onclick="selecionarFerramenta('Converter para tons de cinza', this)"
-    >
-      Tons de cinza
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <title>Processamento</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.js"></script>   <!-- Biblioteca principal para exibir imagens médicas -->
+
+  <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.js"></script> <!-- Biblioteca que lê a estrutura interna dos arquivos DICOM -->
+  
+  <script src="https://unpkg.com/cornerstone-wado-image-loader@4.13.2/dist/cornerstoneWADOImageLoader.bundle.min.js"></script> <!-- Biblioteca que carrega imagens DICOM para o Cornerstone -->
+
+  <style>
+
+    /* RESET GERAL DA PÁGINA */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box; /* Inclui padding e borda no tamanho total */
+    }
+
+
+    /* DESIGN GERAL DO CORPO DA PÁGINA */
+
+    body {
+      font-family: Arial, sans-serif; /* Fonte principal */
+      background: linear-gradient(135deg, #0b1d3a, #050c1a); /* Fundo em degradê escuro */
+      color: white; /* Cor padrão do texto */
+      min-height: 100vh; /* Ocupa no mínimo a altura inteira da tela */
+      display: flex; /* Menu lateral e conteúdo ficam lado a lado */
+      overflow-x: hidden; /* Evita rolagem horizontal */
+      overflow-y: auto; /* Permite rolagem vertical */
+    }
+
+
+    /* DESIGN DO MENU LATERAL */
+
+    .menulateral {
+      width: 230px; /* Largura inicial do menu */
+      min-height: 100vh; /* Ocupa toda a altura da tela */
+      background: rgba(10, 20, 40, 0.95); /* Fundo azul escuro */
+      color: white;
+      padding: 20px;
+      transition: 0.3s; /* Suaviza abrir e fechar */
+      position: sticky; /* Mantém o menu preso ao topo */
+      top: 0;
+      border-right: 1px solid rgba(255,255,255,0.08); /* Linha divisória */
+    }
+    .menulateral.fechado {
+      width: 70px; /* Largura do menu fechado */
+    }
+
+    /* DESIGN DO LOGO DO MENU */
+
+    .logo {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 25px;
+    }
+    .menulateral.fechado .logo,
+    .menulateral.fechado .texto-menu {
+      display: none; /* Esconde textos quando o menu fecha */
+    }
+
+    /* DESIGN DO BOTÃO DO MENU */
+
+    .botao-menu {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(192,132,252,0.25);
+      color: white;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    /* DESIGN DOS ITENS DO MENU */
+
+    .menu-item {
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      background: rgba(255,255,255,0.06);
+    }
+    .menu-item:hover {
+      background: rgba(192,132,252,0.25);
+    }
+
+    /* LAYOUT PRINCIPAL */
+
+    .principal {
+      flex: 1; /* Ocupa o restante da tela */
+      display: grid; /* Organiza ferramentas, imagem e fluxograma */
+      grid-template-columns: 260px minmax(500px, 1fr) 320px; /* Colunas principais */
+      grid-template-rows: auto auto;
+      gap: 15px;
+      padding: 15px;
+      padding-bottom: 90px; /* Espaço para a aba inferior de análise */
+    }
+
+    /* DESIGN DOS PAINÉIS */
+
+    .painel {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 18px;
+      overflow: auto; /* Permite rolagem se o conteúdo passar */
+    }
+
+    /* DESIGN DAS CATEGORIAS DE FERRAMENTAS */
+
+    .categoria-titulo {
+      background: rgba(192,132,252,0.30);
+      color: #ffffff;
+      padding: 13px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      border: 1px solid rgba(192,132,252,0.45);
+      transition: 0.3s;
+    }
+    .categoria-titulo:hover {
+      background: rgba(192,132,252,0.45);
+    }
+    .categoria-conteudo {
+      display: none; /* Começa fechada */
+      margin-bottom: 15px;
+      padding-left: 8px;
+      border-left: 2px solid rgba(192,132,252,0.35);
+    }
+
+    /* DESIGN DAS FERRAMENTAS */
+
+    .ferramenta {
+      padding: 10px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .ferramenta:hover {
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* DESIGN DOS PARÂMETROS DAS FERRAMENTAS */
+
+    .parametros {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 4px;
+      margin-bottom: 10px;
+      display: none; /* Começa escondido */
+    }
+    .parametros h4 {
+      margin-bottom: 10px;
+      color: #c084fc;
+    }
+    .parametros label {
+      display: block;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    .parametros input,
+    .parametros select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+
+    /* DESIGN DO BOTÃO APLICAR */
+
+    .botao-aplicar {
+      width: 100%;
+      padding: 10px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(192,132,252,0.35);
+      color: white;
+      cursor: pointer;
+    }
+    .botao-aplicar:hover {
+      background: rgba(192,132,252,0.55);
+    }
+
+    /* DESIGN DA ÁREA DE VISUALIZAÇÃO */
+
+    .area_visualizacao {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .area_visualizacao h1,
+    .area_visualizacao p {
+      width: 100%;
+    }
+
+    /* DESIGN DA LINHA DE VISUALIZAÇÃO */
+
+    .linha_visualizacao {
+      display: grid;
+      grid-template-columns: 48px 1fr; /* Botões laterais + imagem */
+      align-items: center;
+      width: 100%;
+      column-gap: 8px;
+
+    /* DESIGN DA CAIXA DA IMAGEM */
+
+    .visualizacao_box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 0;
+      padding: 12px;
+      overflow: auto; /* Permite mover a imagem quando passar da área */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 100%;
+      height: 70vh;
+      min-width: 0;
+    }
+    .visualizacao_box.zoom_aplicado {
+      justify-content: flex-start; /* Alinha no canto quando tem zoom */
+      align-items: flex-start;
+    }
+
+    /* DESIGN DOS BOTÕES LATERAIS DA IMAGEM */
+
+    .botoes_laterais_imagem {
+      display: flex;
+      flex-direction: column; /* Um botão abaixo do outro */
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-start;
+      align-self: start;
+      padding-top: 4px;
+    }
+    .botao_pixel,
+    .botao_zoom,
+    .botao_pan,
+    .botao_original {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%; /* Deixa circular */
+      border: 1px solid rgba(192,132,252,0.55);
+      background: rgba(192,132,252,0.18);
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+      display: flex; /* Centraliza o símbolo */
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+    }
+    .botao_pixel {
+      font-size: 24px;
+      justify-self: start;
+    }
+    .botao_zoom {
+      font-size: 30px;
+    }
+    .botao_pan,
+    .botao_original {
+      font-size: 20px;
+    }
+    .botao_pixel:hover,
+    .botao_zoom:hover,
+    .botao_pan:hover,
+    .botao_original:hover {
+      background: rgba(192,132,252,0.35);
+      transform: scale(1.05);
+    }
+    .botao_pixel.ativo,
+    .botao_zoom.ativo,
+    .botao_pan.ativo,
+    .botao_original.ativo {
+      background: rgba(192,132,252,0.55);
+      box-shadow: 0 0 12px rgba(192,132,252,0.65);
+    }
+
+    /* CURSORES DAS FERRAMENTAS DA IMAGEM */
+
+    .zoom_ativo {
+      cursor: zoom-in;
+    }
+    .pan_ativo {
+      cursor: grab;
+    }
+    .pan_arrastando {
+      cursor: grabbing;
+    }
+
+    /* DESIGN DA CAIXA DE INFORMAÇÃO DO PIXEL */
+
+    .info_pixel {
+      display: none; /* Só aparece quando ativado */
+      margin-top: 8px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #ffffff;
+      font-size: 13px;
+      opacity: 0.85;
+    }
+
+    /* DESIGN DA IMAGEM  */
+
+    #imagemNormal {
+      display: none;
+      width: auto;
+      height: auto;
+      max-width: none;
+      max-height: none;
+      object-fit: contain;
+      transform-origin: center center;
+      transition: transform 0.08s ease-out;
+    }
+    #visualizadorDicom {
+      background: black;
+      border-radius: 0;
+      overflow: hidden;
+      display: none;
+      user-select: none;
+      flex: 0 0 auto;
+      max-width: none;
+      max-height: none;
+      transform-origin: center center;
+      transition: transform 0.08s ease-out;
+    }
+
+    /* DESIGN DO FLUXOGRAMA */
+
+    #areaFluxograma {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .bloco_fluxo {
+      width: 100%;
+      padding: 12px;
+      background: rgba(192,132,252,0.18);
+      border: 1px solid rgba(192,132,252,0.45);
+      border-radius: 14px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .bloco_fluxo.selecionado_comparativo {
+      background: rgba(56,189,248,0.25);
+      border: 2px solid rgba(56,189,248,0.9);
+      box-shadow: 0 0 14px rgba(56,189,248,0.35);
+    }
+    .bloco_parametros {
+      margin-top: 6px;
+      font-size: 12px;
+      opacity: 0.8;
+      text-align: left;
+    }
+    .seta {
+      font-size: 24px;
+      color: #c084fc;
+      margin-bottom: 8px;
+    }
+
+    /* DESIGN DO BOTÃO REMOVER */
+
+    .remover {
+      margin-top: 8px;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255,80,80,0.25);
+      color: white;
+      cursor: pointer;
+    }
+    .remover:hover {
+      background: rgba(255,80,80,0.45);
+    }
+
+    /* DESIGN DA ÁREA DE IMAGENS DE TRABALHO */
+
+    .imagens_trabalho {
+      grid-column: 1 / 4; /* Ocupa as três colunas do grid */
+      display: flex;
+      gap: 15px;
+      overflow-x: auto; /* Rolagem horizontal para muitos cards */
+      min-height: 190px;
+    }
+
+    /* DESIGN DO CARD DE IMAGEM */
+
+    .card_imagem {
+      min-width: 180px;
+      max-width: 180px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 12px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .card_imagem:hover {
+      background: rgba(192,132,252,0.18);
+      transform: translateY(-3px);
+    }
+    .card_imagem.selecionado {
+      background: rgba(192,132,252,0.25);
+      border: 2px solid rgba(192,132,252,0.85);
+      box-shadow: 0 0 14px rgba(192,132,252,0.35);
+    }
+    .card_imagem img,
+    .dicom_thumb {
+      width: 100%;
+      height: 120px;
+      object-fit: contain;
+      background: rgba(0,0,0,0.65);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      display: block;
+    }
+    .dicom_thumb canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .nome_arquivo {
+      font-size: 12px;
+      opacity: 0.8;
+      word-break: break-word; /* Quebra nomes grandes */
+    }
+
+    /* DESIGN DO STATUS E BARRA DE PROCESSAMENTO */
+
+    #status {
+      display: inline-block;
+      margin-right: 20px;
+    }
+    #barraProcessamentoContainer {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: 470px;
+      vertical-align: middle;
+    }
+    #barraProcessamentoFundo {
+      width: 420px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    #barraProcessamento {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #2563eb);
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+    #barraProcessamentoTexto {
+      font-size: 12px;
+      color: white;
+      min-width: 35px;
+    }
+
+    /* DESIGN DAS CAIXAS DE INFORMAÇÃO DOS PARÂMETROS */
+
+    .campo_parametro_info {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .caixa_info_parametro {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 6px;
+      background: rgba(10, 20, 40, 0.98);
+      color: white;
+      border: 1px solid rgba(192,132,252,0.55);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.3;
+      z-index: 999;
+      width: 210px;
+      box-shadow: 0 0 12px rgba(192,132,252,0.35);
+    }
+    .campo_parametro_info:hover .caixa_info_parametro {
+      display: block; /* Mostra a explicação ao passar o mouse */
+    }
+
+    /* DESIGN DAS OPÇÕES COM CHECKBOX */
+
+    .caixa_ignorar_zero {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px;
+      color: white;
+    }
+    .caixa_ignorar_zero label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      cursor: pointer;
+      line-height: 1.3;
+    }
+    .caixa_ignorar_zero input {
+      margin-top: 2px;
+    }
+
+    /* DESIGN DA ÁREA COMPARATIVA */
+
+    .area_imagem_original {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex: 0 0 auto;
+      padding-right: 12px;
+      border-right: 1px solid rgba(255,255,255,0.15);
+    }
+    .area_imagem_original.ativo {
+      display: flex; /* Mostra a imagem original no comparativo */
+    }
+    .area_imagem_processada {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+    #imagemOriginalNormal {
+      display: none;
+      width: auto;
+      height: auto;
+      max-width: none;
+      max-height: none;
+      object-fit: contain;
+    }
+    #visualizadorDicomOriginal {
+      background: black;
+      border-radius: 0;
+      overflow: hidden;
+      display: none;
+      user-select: none;
+      flex: 0 0 auto;
+      max-width: none;
+      max-height: none;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+  <!-- MENU LATERAL -->
+
+  <div class="menulateral" id="menulateral">
+
+    <!-- Botão que abre ou fecha o menu lateral -->
+    <button class="botao-menu" onclick="toggleMenu()">☰</button>
+
+    <!-- Logo/título do sistema -->
+    <div class="logo">Processamento Imagem Médica</div>
+
+    <!-- Item para voltar à tela inicial -->
+    <div class="menu-item" onclick="window.location.href='index.html'">
+      <span class="texto-menu">Início</span>
     </div>
 
-    <div class="parametros" id="parametros"></div> <!-- Área onde aparecem os parâmetros da ferramenta -->
-
-    <div class="caixa_ignorar_zero">
-      <label>
-        <input type="checkbox" id="checkIgnorarZeroFerramentas">
-        Sem contabilizar pixels 0
-      </label>
+    <!-- Item de projetos -->
+    <div class="menu-item">
+      <span class="texto-menu">Projetos</span>
     </div>
 
-    <div class="caixa_ignorar_zero">
-      <label>
-        <input type="checkbox" id="checkAplicarTodasImagens">
-        Aplicar ferramentas em todas as imagens
-      </label>
-    </div>
+  </div>
 
-  </div> <!-- Fecha painel ferramentas -->
+  <!-- ÁREA PRINCIPAL -->
 
-  <div class="area_visualizacao"> <!-- Área central de visualização -->
+  <div class="principal">
 
-    <h1>Área de processamento</h1> <!-- Título da área central -->
+    <!-- PAINEL DE FERRAMENTAS -->
 
-    <!-- Linha que coloca os botões ao lado da imagem -->
-    <div class="linha_visualizacao">
+    <div class="painel">
 
-      <div class="botoes_laterais_imagem"> <!-- Coluna dos botões laterais -->
+      <h3>Ferramentas</h3>
 
-        <button class="botao_pixel" id="botaoPixel" onclick="togglePixelInfo()" title="Visualizar pixel">
-          ⊕
-        </button> <!-- Botão para ativar/desativar visualização de informações do pixel -->
+      <br>
 
-        <button class="botao_zoom" id="botaoZoom" onclick="toggleZoomImagem()" title="Ativar zoom">
-          ⌕
-        </button> <!-- Botão para ativar/desativar zoom -->
+      <!-- Categoria de filtros -->
+      <div class="categoria-titulo" onclick="toggleCategoria('filtros')">
+        Filtros
+      </div>
 
-        <button class="botao_pan" id="botaoPan" onclick="togglePanImagem()" title="Mover imagem">
-          ⛶
-        </button> <!-- Botão para ativar/desativar pan -->
-        <button class="botao_original" id="botaoOriginal" onclick="toggleComparativo()" title="Comparativo">
-          ⧉
-        </button>
+      <!-- Opções dentro da categoria filtros -->
+      <div class="categoria-conteudo" id="filtros">
 
-      </div> <!-- Fecha coluna dos botões -->
-
-      <div class="visualizacao_box"> <!-- Caixa da imagem -->
-
-        <div id="areaImagemOriginal" class="area_imagem_original">
-          <div id="visualizadorDicomOriginal"></div>
-          <img id="imagemOriginalNormal">
+        <div
+          class="ferramenta"
+          id="botaoFerramentaGaussiano"
+          onclick="selecionarFerramenta('Filtro Gaussiano', this)"
+        >
+          Filtro Gaussiano
         </div>
 
-        <div id="areaImagemProcessada" class="area_imagem_processada">
-          <div id="visualizadorDicom"></div>
-          <img id="imagemNormal">
+        <div
+          class="ferramenta"
+          id="botaoFerramentaMediana"
+          onclick="selecionarFerramenta('Filtro Mediana', this)"
+        >
+          Filtro Mediana
         </div>
 
-      </div> <!-- Fecha caixa da imagem -->
+      </div>
 
-    </div> <!-- Fecha linha_visualizacao -->
+      <!-- Ferramenta direta para tons de cinza -->
+      <div
+        class="categoria-titulo"
+        onclick="selecionarFerramenta('Converter para tons de cinza', this)"
+      >
+        Tons de cinza
+      </div>
 
-    <!-- Caixa que mostra coordenada e valor do pixel -->
-    <div class="info_pixel" id="infoPixel">
-      X: --- | Y: --- | Pixel: ---
+      <!-- Área onde os parâmetros da ferramenta selecionada aparecem -->
+      <div class="parametros" id="parametros"></div>
+
+      <!-- Opção para ignorar pixels zero nos cálculos -->
+      <div class="caixa_ignorar_zero">
+        <label>
+          <input type="checkbox" id="checkIgnorarZeroFerramentas">
+          Sem contabilizar pixels 0
+        </label>
+      </div>
+
+      <!-- Opção para aplicar a ferramenta em todas as imagens -->
+      <div class="caixa_ignorar_zero">
+        <label>
+          <input type="checkbox" id="checkAplicarTodasImagens">
+          Aplicar ferramentas em todas as imagens
+        </label>
+      </div>
+
     </div>
 
-    <p id="status">Carregando arquivos...</p> <!-- Texto de status -->
+    <!-- ÁREA CENTRAL DE VISUALIZAÇÃO -->
 
-  </div> <!-- Fecha área de visualização -->
+    <div class="area_visualizacao">
 
-  <div class="painel"> <!-- Painel do fluxograma -->
+      <h1>Área de processamento</h1>
 
-    <h3>Fluxograma</h3> <!-- Título do fluxograma -->
+      <!-- Linha que coloca botões laterais e imagem lado a lado -->
+      <div class="linha_visualizacao">
 
-    <br> <!-- Quebra de linha -->
+        <!-- BOTÕES LATERAIS DA IMAGEM -->
 
-    <div id="areaFluxograma"> <!-- Área onde os blocos do fluxo serão colocados -->
+        <div class="botoes_laterais_imagem">
 
-      <p style="opacity: 0.6;">Aplique uma ferramenta para montar o fluxo.</p> <!-- Mensagem inicial -->
+          <!-- Ativa/desativa inspeção de pixel -->
+          <button class="botao_pixel" id="botaoPixel" onclick="togglePixelInfo()" title="Visualizar pixel">
+            ⊕
+          </button>
 
-    </div> <!-- Fecha área do fluxograma -->
+          <!-- Ativa/desativa zoom -->
+          <button class="botao_zoom" id="botaoZoom" onclick="toggleZoomImagem()" title="Ativar zoom">
+            ⌕
+          </button>
 
-  </div> <!-- Fecha painel do fluxograma -->
+          <!-- Ativa/desativa movimentação da imagem -->
+          <button class="botao_pan" id="botaoPan" onclick="togglePanImagem()" title="Mover imagem">
+            ⛶
+          </button>
 
-  <div class="painel imagens_trabalho" id="imagensTrabalho"></div> <!-- Área inferior com as imagens selecionadas -->
+          <!-- Ativa/desativa comparação com a imagem original -->
+          <button class="botao_original" id="botaoOriginal" onclick="toggleComparativo()" title="Comparativo">
+            ⧉
+          </button>
 
-</div> <!-- Fecha área principal -->
+        </div>
 
-<div id="areaAnalise"></div>
+        <!-- CAIXA DE VISUALIZAÇÃO DA IMAGEM -->
 
-<script src="https://docs.opencv.org/4.x/opencv.js"></script>
+        <div class="visualizacao_box">
 
-<!-- Arquivos JavaScript separados da página -->
-<script src="analise.js"></script>
-<script src="gaussiano.js"></script>
-<script src="mediana.js"></script>
-<script src="cinza.js"></script>
-<script src="processamento.js"></script>
-<script>
-  // Agora carrega as imagens direto, sem carregar a aba de análise no início
-  loadFiles();
-</script>
-</body> <!-- Fim do corpo -->
+          <!-- Área da imagem original usada no comparativo -->
+          <div id="areaImagemOriginal" class="area_imagem_original">
 
-</html> <!-- Fim do HTML -->
+            <div id="visualizadorDicomOriginal"></div>
+
+            <img id="imagemOriginalNormal">
+
+          </div>
+
+          <!-- Área da imagem processada -->
+          <div id="areaImagemProcessada" class="area_imagem_processada">
+
+            <div id="visualizadorDicom"></div>
+
+            <img id="imagemNormal">
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- INFORMAÇÕES DO PIXEL -->
+
+      <div class="info_pixel" id="infoPixel">
+        X: --- | Y: --- | Pixel: ---
+      </div>
+
+      <!-- STATUS DO CARREGAMENTO OU PROCESSAMENTO -->
+
+      <p id="status">Carregando arquivos...</p>
+
+    </div>
+
+    <!-- PAINEL DO FLUXOGRAMA -->
+
+    <div class="painel">
+
+      <h3>Fluxograma</h3>
+
+      <br>
+
+      <!-- Área onde os blocos das ferramentas aplicadas serão inseridos -->
+      <div id="areaFluxograma">
+
+        <p style="opacity: 0.6;">Aplique uma ferramenta para montar o fluxo.</p>
+
+      </div>
+
+    </div>
+
+    <!-- ÁREA INFERIOR COM AS IMAGENS DE TRABALHO -->
+
+    <div class="painel imagens_trabalho" id="imagensTrabalho"></div>
+
+  </div>
+
+  <!-- ÁREA ONDE A ABA DE ANÁLISE PODE SER CARREGADA -->
+
+  <div id="areaAnalise"></div>
+
+  <!-- BIBLIOTECA OPENCV -->
+
+  <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+
+  <!-- ARQUIVOS JAVASCRIPT DO SISTEMA -->
+
+  <script src="analise.js"></script>
+  <script src="gaussiano.js"></script>
+  <script src="mediana.js"></script>
+  <script src="cinza.js"></script>
+  <script src="processamento.js"></script>
+
+  <!-- INICIALIZAÇÃO DA PÁGINA -->
+
+  <script>
+    loadFiles(); /* Carrega as imagens enviadas para a tela de processamento */
+  </script>
+
+</body>
+
+</html>
