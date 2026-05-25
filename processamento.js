@@ -1446,7 +1446,61 @@ visualizacaoBox.addEventListener("mouseleave", function() {
 });
 // Fecha a parte da função de arrastar a imagem --------------------------------------------------------
 
+// Recalcula todas as imagens processadas.
+async function recalcularTodasAsImagens() {
 
+  barraProcessamentoContainer.style.display = "inline-flex";
+  barraProcessamento.style.width = "0%";
+  barraProcessamentoTexto.innerText = "0%";
+
+  const total = imagensProcessamento.length;
+
+  for (let i = 0; i < total; i++) {
+
+    const item = imagensProcessamento[i];
+
+    statusText.innerText = `Processando ${i + 1} de ${total}: ${item.name}`;
+
+    if (item.type === "image") {
+      item.resultado = await processarImagemNormalPeloPipeline(item);
+    }
+
+    if (item.type === "dicom") {
+      item.resultado = await processarDicomPeloPipeline(item);
+    }
+
+    const porcentagem = Math.round(((i + 1) / total) * 100);
+
+    barraProcessamento.style.width = porcentagem + "%";
+    barraProcessamentoTexto.innerText = porcentagem + "%";
+
+    await new Promise(function(resolve) {
+      requestAnimationFrame(resolve);
+    });
+  }
+
+  statusText.innerText = "Processamento concluído.";
+  barraProcessamento.style.width = "100%";
+  barraProcessamentoTexto.innerText = "100%";
+
+  setTimeout(function() {
+    barraProcessamentoContainer.style.display = "none";
+    barraProcessamento.style.width = "0%";
+    barraProcessamentoTexto.innerText = "0%";
+  }, 900);
+
+  desenharCardsImagensTrabalho();
+
+  if (imagemAtualSelecionada) {
+    const imagemAtualizada = imagensProcessamento.find(function(item) {
+      return item.idProcessamento === imagemAtualSelecionada.idProcessamento;
+    });
+
+    if (imagemAtualizada) {
+      openFile(imagemAtualizada);
+    }
+  }
+}
 // Processa uma imagem normal usando o pipeline de ferramentas.
 async function processarImagemNormalPeloPipeline(item) {
 
@@ -1643,6 +1697,12 @@ function atualizarBarraProcessamento(porcentagem) {
   barraProcessamentoTexto.innerText = porcentagem + "%";
 }
 
+function esconderBarraProcessamento() {
+  setTimeout(function() {
+    barraProcessamentoContainer.style.display = "none";
+    atualizarBarraProcessamento(0);
+  }, 700);
+}
 
 function esperarAtualizacaoTela() {
   return new Promise(function(resolve) {
@@ -2018,6 +2078,101 @@ async function mostrarDicomNoComparativo(imagem) {
 
   cornerstone.setViewport(visualizadorDicomOriginal, viewport);
   cornerstone.resize(visualizadorDicomOriginal, true);
+}
+
+
+async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
+
+  let canvasAtual = await criarCanvasOriginalImagemNormal(item.file);
+
+  for (let i = 0; i <= indiceEtapaFinal; i++) {
+
+    const etapa = pipelineFerramentas[i];
+
+    if (etapa.nome.includes("Gaussiano")) {
+
+      canvasAtual = await aplicarGaussianoEmCanvas(
+        canvasAtual,
+        etapa.parametros.sigma,
+        etapa.parametros.tamanhoKernel,
+        etapa.parametros.ignorarZero,
+        function() {}
+      );
+    }
+
+    if (etapa.nome.includes("Mediana")) {
+
+      canvasAtual = await aplicarMedianaEmCanvas(
+        canvasAtual,
+        etapa.parametros.tamanhoKernel,
+        etapa.parametros.ignorarZero,
+        function() {}
+      );
+    }
+
+    if (etapa.nome.includes("tons de cinza")) {
+
+      const resultadoCinza = await aplicarCinzaEmCanvas(
+        canvasAtual,
+        function() {}
+      );
+
+      canvasAtual = resultadoCinza.canvas;
+    }
+  }
+
+  return {
+    tipo: "image",
+    dataURL: canvasAtual.toDataURL("image/png"),
+    largura: canvasAtual.width,
+    altura: canvasAtual.height
+  };
+}
+
+async function processarDicomAteEtapa(item, indiceEtapaFinal) {
+
+  let imagemAtual = await carregarDicomOriginal(item);
+
+  for (let i = 0; i <= indiceEtapaFinal; i++) {
+
+    const etapa = pipelineFerramentas[i];
+
+    if (etapa.nome.includes("Gaussiano")) {
+
+      imagemAtual = await aplicarGaussianoEmDicom(
+        imagemAtual,
+        etapa.parametros.sigma,
+        etapa.parametros.tamanhoKernel,
+        etapa.parametros.ignorarZero,
+        function() {}
+      );
+    }
+
+    if (etapa.nome.includes("Mediana")) {
+
+      imagemAtual = await aplicarMedianaEmDicom(
+        imagemAtual,
+        etapa.parametros.tamanhoKernel,
+        etapa.parametros.ignorarZero,
+        function() {}
+      );
+    }
+
+    if (etapa.nome.includes("tons de cinza")) {
+
+      const resultadoCinza = await aplicarCinzaEmDicom(
+        imagemAtual,
+        function() {}
+      );
+
+      imagemAtual = resultadoCinza.imagem;
+    }
+  }
+
+  return {
+    tipo: "dicom",
+    imagem: imagemAtual
+  };
 }
 
 function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {

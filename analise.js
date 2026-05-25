@@ -722,6 +722,88 @@ function desenharHistogramaAtual() {
 
 }
 
+function redesenharHistogramaAtual() {
+  desenharHistogramaAtual();
+}
+
+function desenharHistograma(ctx, canvas) {
+
+  const margemEsquerda = 65;
+  const margemDireita = 25;
+  const margemSuperior = 25;
+  const margemInferior = 55;
+
+  const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
+  const alturaGrafico = canvas.height - margemSuperior - margemInferior;
+
+  if (larguraGrafico <= 0 || alturaGrafico <= 0) return;
+
+  const inicio = faixaInicioHistograma;
+  const fim = faixaFimHistograma;
+
+  const histVisivel = histogramaAtual.slice(inicio, fim + 1);
+
+  if (histVisivel.length === 0) return;
+
+  let maior = 1;
+
+  for (let i = 0; i < histVisivel.length; i++) {
+
+    if (histVisivel[i] > maior) {
+      maior = histVisivel[i];
+    }
+
+  }
+
+  const larguraBarra = larguraGrafico / histVisivel.length;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  desenharGradeHistograma(
+    ctx,
+    canvas,
+    margemEsquerda,
+    margemDireita,
+    margemSuperior,
+    margemInferior,
+    larguraGrafico,
+    alturaGrafico
+  );
+
+  definirCorBarrasHistograma(ctx);
+
+  for (let i = 0; i < histVisivel.length; i++) {
+
+    const valor = histVisivel[i];
+    const altura = (valor / maior) * alturaGrafico;
+
+    const x = margemEsquerda + i * larguraBarra;
+    const y = margemSuperior + alturaGrafico - altura;
+
+    ctx.fillRect(x, y, Math.max(larguraBarra - 1, 1), altura);
+
+  }
+
+  desenharEixosHistograma(
+    ctx,
+    canvas,
+    margemEsquerda,
+    margemDireita,
+    margemSuperior,
+    margemInferior,
+    larguraGrafico,
+    alturaGrafico,
+    maior
+  );
+
+  atualizarTextosHistograma();
+  configurarSeletorFaixaHistograma();
+  ativarInteracaoHistograma(canvas);
+
+}
 
 function desenharGradeHistograma(
   ctx,
@@ -1261,6 +1343,18 @@ async function identificarTipoArquivoImagem(arquivo) {
   }
 
   return "Imagem comum";
+
+}
+
+async function atualizarTipoImagemNormal(img, arquivo) {
+
+  const tipo = await identificarTipoArquivoImagem(arquivo);
+
+  atualizarTipoImagemAtual(
+    tipo,
+    img.naturalHeight,
+    img.naturalWidth
+  );
 
 }
 

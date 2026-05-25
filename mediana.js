@@ -569,3 +569,53 @@ async function aplicarMedianaEmDicomComZeroWorkers(
 
   return imagemFinal;
 }
+
+
+// =====================================================
+// CÁLCULO DA MEDIANA
+// Mantida para compatibilidade caso outra parte use
+// =====================================================
+function calcularMedianaMediana(valores) {
+  valores.sort(function(a, b) {
+    return a - b;
+  });
+
+  const n = valores.length;
+  const meio = Math.floor(n / 2);
+
+  if (n % 2 === 1) {
+    return valores[meio];
+  }
+
+  return Math.trunc((valores[meio - 1] + valores[meio]) / 2);
+}
+
+
+// =====================================================
+// LIMITAR VALOR PELO TIPO DO PIXEL
+// Mantida para compatibilidade caso outra parte use
+// =====================================================
+function limitarValorParaTipoPixelMediana(valor, arrayDestino) {
+  if (!Number.isFinite(valor)) {
+    valor = 0;
+  }
+
+  valor = Math.round(valor);
+
+  if (arrayDestino instanceof Uint8Array || arrayDestino instanceof Uint8ClampedArray) {
+    if (valor < 0) valor = 0;
+    if (valor > 255) valor = 255;
+  }
+
+  if (arrayDestino instanceof Uint16Array) {
+    if (valor < 0) valor = 0;
+    if (valor > 65535) valor = 65535;
+  }
+
+  if (arrayDestino instanceof Int16Array) {
+    if (valor < -32768) valor = -32768;
+    if (valor > 32767) valor = 32767;
+  }
+
+  return valor;
+}
