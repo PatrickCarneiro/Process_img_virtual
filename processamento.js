@@ -81,6 +81,144 @@ cornerstone.enable(visualizadorDicomOriginal);
 
 // FUNÇÕES 
 
+
+// FUNÇÕES DO BANCO DE DADOS 
+
+// Função para abrir o banco IndexedDB
+function openDatabase() { 
+
+  return new Promise((resolve, reject) => { // Retorna uma Promise
+
+    const request = indexedDB.open(DB_NAME, DB_VERSION); // Abre o banco pelo nome e versão
+
+    request.onupgradeneeded = function(event) { // Executa se precisar criar/atualizar o banco
+
+      const db = event.target.result; // Pega o banco aberto
+
+      if (!db.objectStoreNames.contains("files")) { // Verifica se a store files não existe
+
+        db.createObjectStore("files", { // Cria a store files
+
+          keyPath: "id", // Define id como chave
+
+          autoIncrement: true // Gera id automático
+
+        }); 
+
+      } 
+
+      if (!db.objectStoreNames.contains("recent")) { // Verifica se a store recent não existe
+
+        db.createObjectStore("recent", { // Cria a store recent
+
+          keyPath: "id", // Define id como chave
+
+          autoIncrement: true // Gera id automático
+
+        }); 
+
+      } 
+
+    }; 
+
+    request.onsuccess = function() { // Se abrir com sucesso
+
+      resolve(request.result); // Retorna o banco aberto
+
+    }; 
+
+    request.onerror = function() { // Se der erro
+
+      reject(request.error); // Retorna o erro
+
+    }; 
+
+  }); 
+
+} 
+
+// Função para pegar arquivos da store files
+function getFiles(db) { 
+
+  return new Promise((resolve, reject) => { // Retorna uma Promise
+
+    const transaction = db.transaction("files", "readonly"); // Abre transação somente leitura
+
+    const store = transaction.objectStore("files"); // Pega a store files
+
+    const request = store.getAll(); // Solicita todos os arquivos
+
+    request.onsuccess = function() { // Se buscar com sucesso
+
+      resolve(request.result); // Retorna os arquivos
+
+    };
+
+    request.onerror = function() { // Se der erro
+
+      reject(request.error); // Retorna erro
+
+    }; 
+
+  }); 
+
+} 
+
+// Função para carregar arquivos
+async function loadFiles() { 
+
+  try {
+    const db = await openDatabase();
+    const files = await getFiles(db);
+
+    if (files.length === 0) {
+      statusText.innerText = "Nenhum arquivo encontrado.";
+      return;
+    }
+
+    imagensProcessamento = files.map(function(item, index) {
+      return {
+        idProcessamento: index + 1,
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        file: item.file,
+        resultado: null,
+        processado: false,
+        assinaturaPipeline: "",
+        cacheEtapas: {}
+      };
+    });
+
+    // Define automaticamente a primeira imagem como imagem atual
+    imagemAtualSelecionada = imagensProcessamento[0];
+
+    // Desenha as miniaturas já com a primeira marcada como selecionada
+    imagensTrabalho.innerHTML = "";
+
+    imagensProcessamento.forEach(function(item) {
+      criarCardImagem(item);
+    });
+
+    // Abre automaticamente a primeira imagem na tela principal
+    await openFile(imagemAtualSelecionada);
+
+    // Se a aba de análise já estiver carregada, atualiza a análise da primeira imagem
+    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+      await atualizarAnaliseDaImagemAtual();
+    }
+
+    statusText.innerText = "Arquivos carregados.";
+
+  } catch (error) {
+    console.error(error);
+    statusText.innerText = "Erro ao carregar arquivos.";
+  }
+}
+
+
+// FUNÇÕES INICIAIS DE INTERAÇÃO
+
 // Função para abrir/fechar o menu lateral 
 function toggleMenu() { 
   document.getElementById("menulateral").classList.toggle("fechado"); // Adiciona ou remove a classe fechado
@@ -103,7 +241,122 @@ function toggleCategoria(id) {
 
 } 
 
-// Função para selecionar uma ferramenta
+
+// FUNÇÕES DO CARD DE IMAGEM
+
+// Função para criar um card de imagem
+function criarCardImagem(item) {
+
+  const card = document.createElement("div");
+  card.className = "card_imagem";
+
+  card.dataset.idProcessamento = item.idProcessamento;
+
+  // Marca visualmente a imagem atual
+  if (
+    imagemAtualSelecionada &&
+    imagemAtualSelecionada.idProcessamento === item.idProcessamento
+  ) {
+    card.classList.add("selecionado");
+  }
+
+  // Se for imagem comum, mostra SEMPRE a miniatura da imagem original
+  if (item.type === "image") {
+
+    const img = document.createElement("img");
+
+    img.src = URL.createObjectURL(item.file);
+
+    card.appendChild(img);
+  }
+
+  // Se for DICOM, mostra SEMPRE a miniatura do DICOM original
+  if (item.type === "dicom") {
+
+    const dicomBox = document.createElement("div");
+    dicomBox.className = "dicom_thumb";
+
+    card.appendChild(dicomBox);
+
+    renderDicomThumbnail(item, dicomBox);
+  }
+
+  const nome = document.createElement("div");
+  nome.className = "nome_arquivo";
+  nome.innerText = item.name;
+
+  card.appendChild(nome);
+
+  card.onclick = async function() { // Adiciona evento de clique
+
+    imagemAtualSelecionada = item;
+
+    atualizarCardSelecionado();
+
+    if (imagemPrecisaProcessar(item)) { // Se precisa processar
+      await processarImagemSelecionada(item);
+    }
+
+    await openFile(item);
+
+    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+      await atualizarAnaliseDaImagemAtual();
+    }
+  };
+
+  imagensTrabalho.appendChild(card);
+}
+
+// Função para atualizar a marcação visual do card da imagem selecionada
+function atualizarCardSelecionado() {
+
+  const cards = document.querySelectorAll(".card_imagem");
+
+  cards.forEach(function(card) {
+
+    const idCard = Number(card.dataset.idProcessamento);
+
+    if (
+      imagemAtualSelecionada &&
+      idCard === imagemAtualSelecionada.idProcessamento
+    ) {
+      card.classList.add("selecionado");
+    } else {
+      card.classList.remove("selecionado");
+    }
+
+  });
+}
+
+// Função para renderizar miniatura DICOM
+async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
+
+  try { // Tenta renderizar
+
+    cornerstone.enable(container); // Habilita container no Cornerstone
+
+    const dicomFile = new File([item.file], item.name); // Recria arquivo DICOM
+
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona arquivo ao loader
+
+    const image = await cornerstone.loadImage(imageId); // Carrega imagem DICOM
+
+    cornerstone.displayImage(container, image); // Mostra imagem no container
+
+    cornerstone.resize(container, true); // Ajusta tamanho
+
+  } catch { // Se der erro
+
+    container.innerText = "DICOM"; // Mostra texto DICOM
+
+  } 
+
+} 
+
+
+// FUNÇÕES DE FERRAMENTAS E FLUXOGRAMA
+
+// Função para selecionar uma ferramenta, mostrando os parametros e informativos
 function selecionarFerramenta(nome, botaoClicado) {
 
   // Se clicar novamente na mesma ferramenta, fecha a caixa de parâmetros
@@ -218,7 +471,7 @@ function selecionarFerramenta(nome, botaoClicado) {
   `;
 }
 
-// Função para aplicar uma ferramenta
+// Função para aplicar uma ferramenta everificação das inserções
 async function aplicarFerramenta(nome) {
 
   if (imagensProcessamento.length === 0) {
@@ -398,20 +651,21 @@ async function aplicarFerramenta(nome) {
   alert("Ferramenta ainda não implementada no pipeline.");
 }
 
+// Desenha o fluxograma com as etapas do pipeline
 function desenharFluxograma() {
 
-  areaFluxograma.innerHTML = "";
+  areaFluxograma.innerHTML = ""; // Limpa o fluxograma
 
   const blocoOriginal = document.createElement("div");
 
   blocoOriginal.className = "bloco_fluxo";
 
-  if (modoComparativoAtivo && etapaComparativoSelecionada === "original") {
+  if (modoComparativoAtivo && etapaComparativoSelecionada === "original") { // se estiver no modo comparativo e a etapa original estiver selecionada
     blocoOriginal.classList.add("selecionado_comparativo");
   }
 
-  if (modoComparativoAtivo) {
-    blocoOriginal.onclick = async function() {
+  if (modoComparativoAtivo) { 
+    blocoOriginal.onclick = async function() { // Adiciona evento de clique para selecionar a etapa original no modo comparativo
       await selecionarEtapaComparativo("original");
     };
 
@@ -427,28 +681,28 @@ function desenharFluxograma() {
     </div>
   `;
 
-  areaFluxograma.appendChild(blocoOriginal);
+  areaFluxograma.appendChild(blocoOriginal); // Adiciona o bloco original no início do fluxograma
 
   pipelineFerramentas.forEach(function(etapa, index) {
 
-    const seta = document.createElement("div");
+    const seta = document.createElement("div"); // Cria a seta entre as etapas
     seta.className = "seta";
     seta.innerText = "↓";
     areaFluxograma.appendChild(seta);
 
-    const bloco = document.createElement("div");
+    const bloco = document.createElement("div"); // Cria um bloco para cada etapa do pipeline
     bloco.className = "bloco_fluxo";
 
-    if (modoComparativoAtivo && etapaComparativoSelecionada === etapa.id) {
+    if (modoComparativoAtivo && etapaComparativoSelecionada === etapa.id) { // se estiver no modo comparativo e a etapa atual estiver selecionada
       bloco.classList.add("selecionado_comparativo");
     }
 
-    let textoParametros = "";
+    let textoParametros = ""; // Texto dos parâmetros
 
     if (etapa.nome.includes("Gaussiano")) {
       textoParametros = `
         Sigma: ${etapa.parametros.sigma}<br>
-        Tamanho do kernel: ${etapa.parametros.tamanhoKernel}<br>
+        Tamanho do kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
@@ -461,14 +715,13 @@ function desenharFluxograma() {
     }
 
     if (etapa.nome.includes("tons de cinza")) {
-    
     }
 
-    if (modoComparativoAtivo) {
+    if (modoComparativoAtivo) { 
 
-      bloco.onclick = async function(event) {
+      bloco.onclick = async function(event) { // Adiciona evento de clique para selecionar a etapa no modo comparativo
 
-        if (event.target.classList.contains("remover")) {
+        if (event.target.classList.contains("remover")) { // Se clicou no botão remover
           return;
         }
 
@@ -495,13 +748,14 @@ function desenharFluxograma() {
   });
 }
 
+// Função para remover uma etapa do pipeline, reprocessar as imagens e atualizar a interface
 async function removerEtapaPipeline(idEtapa) {
 
-  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) {
+  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) { // Remove a etapa do pipeline
     return etapa.id !== idEtapa;
   });
 
-  invalidarProcessamentoDeTodasAsImagens();
+  invalidarProcessamentoDeTodasAsImagens(); // Invalida o processamento de todas as imagens
 
   if (imagemAtualSelecionada) {
 
@@ -519,140 +773,14 @@ async function removerEtapaPipeline(idEtapa) {
     await atualizarImagemComparativa();
     desenharFluxograma();
   }
-  }
-
-function openDatabase() { // Função para abrir/criar o banco IndexedDB
-
-  return new Promise((resolve, reject) => { // Retorna uma Promise
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION); // Abre o banco pelo nome e versão
-
-    request.onupgradeneeded = function(event) { // Executa se precisar criar/atualizar o banco
-
-      const db = event.target.result; // Pega o banco aberto
-
-      if (!db.objectStoreNames.contains("files")) { // Verifica se a store files não existe
-
-        db.createObjectStore("files", { // Cria a store files
-
-          keyPath: "id", // Define id como chave
-
-          autoIncrement: true // Gera id automático
-
-        }); // Fecha createObjectStore
-
-      } // Fecha if
-
-      if (!db.objectStoreNames.contains("recent")) { // Verifica se a store recent não existe
-
-        db.createObjectStore("recent", { // Cria a store recent
-
-          keyPath: "id", // Define id como chave
-
-          autoIncrement: true // Gera id automático
-
-        }); // Fecha createObjectStore
-
-      } // Fecha if
-
-    }; // Fecha onupgradeneeded
-
-    request.onsuccess = function() { // Se abrir com sucesso
-
-      resolve(request.result); // Retorna o banco aberto
-
-    }; // Fecha onsuccess
-
-    request.onerror = function() { // Se der erro
-
-      reject(request.error); // Retorna o erro
-
-    }; // Fecha onerror
-
-  }); // Fecha Promise
-
-} // Fecha openDatabase
-
-
-function getFiles(db) { // Função para pegar arquivos da store files
-
-  return new Promise((resolve, reject) => { // Retorna uma Promise
-
-    const transaction = db.transaction("files", "readonly"); // Abre transação somente leitura
-
-    const store = transaction.objectStore("files"); // Pega a store files
-
-    const request = store.getAll(); // Solicita todos os arquivos
-
-    request.onsuccess = function() { // Se buscar com sucesso
-
-      resolve(request.result); // Retorna os arquivos
-
-    }; // Fecha onsuccess
-
-    request.onerror = function() { // Se der erro
-
-      reject(request.error); // Retorna erro
-
-    }; // Fecha onerror
-
-  }); // Fecha Promise
-
-} // Fecha getFiles
-
-// Função para carregar arquivos
-async function loadFiles() { 
-
-  try {
-    const db = await openDatabase();
-    const files = await getFiles(db);
-
-    if (files.length === 0) {
-      statusText.innerText = "Nenhum arquivo encontrado.";
-      return;
-    }
-
-    imagensProcessamento = files.map(function(item, index) {
-      return {
-        idProcessamento: index + 1,
-        id: item.id,
-        name: item.name,
-        type: item.type,
-        file: item.file,
-        resultado: null,
-        processado: false,
-        assinaturaPipeline: "",
-        cacheEtapas: {}
-      };
-    });
-
-    // Define automaticamente a primeira imagem como imagem atual
-    imagemAtualSelecionada = imagensProcessamento[0];
-
-    // Desenha as miniaturas já com a primeira marcada como selecionada
-    desenharCardsImagensTrabalho();
-
-    // Abre automaticamente a primeira imagem na tela principal
-    await openFile(imagemAtualSelecionada);
-
-    // Se a aba de análise já estiver carregada, atualiza a análise da primeira imagem
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
-
-    statusText.innerText = "Arquivos carregados.";
-
-  } catch (error) {
-    console.error(error);
-    statusText.innerText = "Erro ao carregar arquivos.";
-  }
 }
 
+// Função que processa a imagem selecionada pelo pipeline.
 async function processarImagemSelecionada(item) {
 
   if (!item) return null;
 
-  const assinaturaAtual = gerarAssinaturaPipeline();
+  const assinaturaAtual = gerarAssinaturaPipeline(); // Gera a assinatura do pipeline atual para comparar com a assinatura salva na imagem e decidir se precisa processar ou não
 
   if (!imagemPrecisaProcessar(item)) {
     statusText.innerText = "Imagem já processada com o fluxograma atual: " + item.name;
@@ -692,6 +820,10 @@ async function processarImagemSelecionada(item) {
   return item;
 }
 
+
+// FUNÇÕES DO CHECKBOX DE APLICAR EM TODAS AS IMAGENS
+
+// Função para processar todas as imagens pelo pipeline, usada para aplicar as ferramentas em todas as imagens
 async function processarTodasAsImagensComPipeline() {
 
   if (!imagensProcessamento || imagensProcessamento.length === 0) {
@@ -733,17 +865,18 @@ async function processarTodasAsImagensComPipeline() {
 
 }
 
+// Define se deve aplicar as ferramentas em todas as imagens ou apenas na selecionada, baseado no estado do checkbox
 async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
 
-  if (deveAplicarFerramentasEmTodasImagens()) {
+  if (deveAplicarFerramentasEmTodasImagens()) { // Se o checkbox de aplicar em todas as imagens estiver marcado, processa todas as imagens com o pipeline
 
-    await processarTodasAsImagensComPipeline();
+    await processarTodasAsImagensComPipeline(); // Processa todas as imagens
 
     if (imagemAtualSelecionada) {
       await openFile(imagemAtualSelecionada);
     }
 
-    desenharCardsImagensTrabalho();
+    atualizarCardSelecionado();
 
     desenharFluxograma();
 
@@ -768,134 +901,20 @@ async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTo
   desenharFluxograma();
 
   if (modoComparativoAtivo) {
-    await atualizarImagemComparativa();
+    await atualizarImagemComparativa();  // Atualiza imagem comparativa
   }
 
   if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-    await atualizarAnaliseDaImagemAtual();
+    await atualizarAnaliseDaImagemAtual(); // Atualiza análise da imagem atual
   }
 
   statusText.innerText = mensagemImagemAtual;
 }
 
-function desenharCardsImagensTrabalho() {
+// Função para abrir a imagem selecionada, fazendo a montagem da imagem na tela
+async function openFile(item) { 
 
-  imagensTrabalho.innerHTML = "";
-
-  imagensProcessamento.forEach(function(item) {
-    criarCardImagem(item);
-  });
-}
-
-function criarCardImagem(item) {
-
-  const card = document.createElement("div");
-  card.className = "card_imagem";
-
-  card.dataset.idProcessamento = item.idProcessamento;
-
-  // Marca visualmente a imagem atual
-  if (
-    imagemAtualSelecionada &&
-    imagemAtualSelecionada.idProcessamento === item.idProcessamento
-  ) {
-    card.classList.add("selecionado");
-  }
-
-  // Se for imagem comum, mostra SEMPRE a miniatura da imagem original
-  if (item.type === "image") {
-
-    const img = document.createElement("img");
-
-    img.src = URL.createObjectURL(item.file);
-
-    card.appendChild(img);
-  }
-
-  // Se for DICOM, mostra SEMPRE a miniatura do DICOM original
-  if (item.type === "dicom") {
-
-    const dicomBox = document.createElement("div");
-    dicomBox.className = "dicom_thumb";
-
-    card.appendChild(dicomBox);
-
-    renderDicomThumbnail(item, dicomBox);
-  }
-
-  const nome = document.createElement("div");
-  nome.className = "nome_arquivo";
-  nome.innerText = item.name;
-
-  card.appendChild(nome);
-
-  card.onclick = async function() {
-
-    imagemAtualSelecionada = item;
-
-    atualizarCardSelecionado();
-
-    if (imagemPrecisaProcessar(item)) {
-      await processarImagemSelecionada(item);
-    }
-
-    await openFile(item);
-
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
-  };
-
-  imagensTrabalho.appendChild(card);
-}
-
-function atualizarCardSelecionado() {
-
-  const cards = document.querySelectorAll(".card_imagem");
-
-  cards.forEach(function(card) {
-
-    const idCard = Number(card.dataset.idProcessamento);
-
-    if (
-      imagemAtualSelecionada &&
-      idCard === imagemAtualSelecionada.idProcessamento
-    ) {
-      card.classList.add("selecionado");
-    } else {
-      card.classList.remove("selecionado");
-    }
-
-  });
-}
-
-async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
-
-  try { // Tenta renderizar
-
-    cornerstone.enable(container); // Habilita container no Cornerstone
-
-    const dicomFile = new File([item.file], item.name); // Recria arquivo DICOM
-
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona arquivo ao loader
-
-    const image = await cornerstone.loadImage(imageId); // Carrega imagem DICOM
-
-    cornerstone.displayImage(container, image); // Mostra imagem no container
-
-    cornerstone.resize(container, true); // Ajusta tamanho
-
-  } catch { // Se der erro
-
-    container.innerText = "DICOM"; // Mostra texto DICOM
-
-  } // Fecha try/catch
-
-} // Fecha renderDicomThumbnailv
-
-async function openFile(item) {
-
-  imagemAtualSelecionada = item;
+  imagemAtualSelecionada = item; // Define a imagem atual selecionada como a imagem do card clicado
 
   const arquivoAtual = document.getElementById("arquivoAtual");
 
@@ -905,29 +924,26 @@ async function openFile(item) {
 
   statusText.innerText = "Abrindo: " + item.name;
 
-
-  // =====================================================
-  // IMAGEM NORMAL
-  // =====================================================
+  // Imagem normal
   if (item.type === "image") {
 
-    visualizadorDicom.style.display = "none";
-    imagemDicomAtual = null;
+    visualizadorDicom.style.display = "none"; // Esconde o visualizador DICOM
+    imagemDicomAtual = null; // Limpa o DICOM atual
 
-    modoZoomAtivo = false;
+    modoZoomAtivo = false; // Desativa o modo zoom
     modoPanAtivo = false;
-    zoomAtual = 1;
+    zoomAtual = 1; 
 
-    if (botaoZoom) botaoZoom.classList.remove("ativo");
+    if (botaoZoom) botaoZoom.classList.remove("ativo"); // Desmarca o botão de zoom
     if (botaoPan) botaoPan.classList.remove("ativo");
 
-    imagemNormal.classList.remove("zoom_ativo");
+    imagemNormal.classList.remove("zoom_ativo"); 
     visualizadorDicom.classList.remove("zoom_ativo");
     visualizacaoBox.classList.remove("zoom_aplicado");
     visualizacaoBox.classList.remove("pan_ativo");
     visualizacaoBox.classList.remove("pan_arrastando");
 
-    imagemNormal.style.display = "none";
+    imagemNormal.style.display = "none"; // Esconde a imagem normal até carregar a nova
     imagemNormal.style.visibility = "hidden";
 
     const srcImagem = item.resultado && item.resultado.tipo === "image"
@@ -936,11 +952,11 @@ async function openFile(item) {
 
     await new Promise(function(resolve, reject) {
 
-      imagemNormal.addEventListener("load", function() {
+      imagemNormal.addEventListener("load", function() { // Quando a imagem for carregada
 
         larguraOriginalAtual = imagemNormal.naturalWidth;
         alturaOriginalAtual = imagemNormal.naturalHeight;
-
+        // Calcula a escala automática para caber na tela
         escalaBaseAtual = calcularEscalaAutomatica(
           larguraOriginalAtual,
           alturaOriginalAtual
@@ -975,16 +991,14 @@ async function openFile(item) {
 
     });
 
-    if (modoComparativoAtivo) {
+    if (modoComparativoAtivo) { // Se estiver no modo comparativo, atualiza a imagem comparativa
           await atualizarImagemComparativa();
         }
 
     return;
   }
 
-  // =====================================================
-  // DICOM
-  // =====================================================
+  // Imagem DICOM
   if (item.type === "dicom") {
 
     imagemNormal.style.display = "none";
@@ -1059,6 +1073,9 @@ async function openFile(item) {
   }
 }
 
+// Parei aqui -------------------------------------------------------------------------------------
+
+// FUNÇÕES DE INSPEÇÃO DE PIXEL
 
 // Função para ligar/desligar inspeção de pixel ---------------------------------------------------------------
 function togglePixelInfo() { // Função para ligar/desligar inspeção de pixel
@@ -1518,7 +1535,7 @@ async function recalcularTodasAsImagens() {
     barraProcessamentoTexto.innerText = "0%";
   }, 900);
 
-  desenharCardsImagensTrabalho();
+  atualizarCardSelecionado();
 
   if (imagemAtualSelecionada) {
     const imagemAtualizada = imagensProcessamento.find(function(item) {
