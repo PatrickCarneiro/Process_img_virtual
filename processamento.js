@@ -351,7 +351,120 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 
   } 
 
-} 
+}
+
+// =====================================================
+// FUNÇÕES AUXILIARES DA MEDIANA
+// =====================================================
+
+// Lê kernel digitado como:
+// 3
+// 3 3
+// 3x3
+// 3X5
+// [3 5]
+// [3,5]
+// (3, 5)
+function interpretarKernelMediana(textoKernel) {
+
+  let texto = String(textoKernel || "").trim();
+
+  // Se o campo estiver vazio, usa padrão do MATLAB: [3 3]
+  if (texto === "") {
+    return {
+      valido: true,
+      kernelAltura: 3,
+      kernelLargura: 3
+    };
+  }
+
+  texto = texto
+    .replace(/\[/g, " ")
+    .replace(/\]/g, " ")
+    .replace(/\(/g, " ")
+    .replace(/\)/g, " ")
+    .replace(/,/g, " ")
+    .replace(/;/g, " ")
+    .replace(/x/gi, " ");
+
+  const partes = texto
+    .trim()
+    .split(/\s+/)
+    .filter(function(valor) {
+      return valor !== "";
+    });
+
+  if (partes.length !== 1 && partes.length !== 2) {
+    return {
+      valido: false,
+      mensagem: "Digite o kernel como 3, 3 3, 3x3, 3x5 ou [3 5]."
+    };
+  }
+
+  let kernelAltura;
+  let kernelLargura;
+
+  if (partes.length === 1) {
+    kernelAltura = parseInt(partes[0], 10);
+    kernelLargura = kernelAltura;
+  }
+
+  if (partes.length === 2) {
+    kernelAltura = parseInt(partes[0], 10);
+    kernelLargura = parseInt(partes[1], 10);
+  }
+
+  if (
+    !Number.isFinite(kernelAltura) ||
+    !Number.isFinite(kernelLargura) ||
+    kernelAltura < 1 ||
+    kernelLargura < 1
+  ) {
+    return {
+      valido: false,
+      mensagem: "O kernel deve conter números inteiros positivos."
+    };
+  }
+
+  return {
+    valido: true,
+    kernelAltura: kernelAltura,
+    kernelLargura: kernelLargura
+  };
+}
+
+
+// Lê o tipo de borda escolhido
+function obterPadoptMedianaSelecionado() {
+
+  const seletor = document.getElementById("paramPadoptMediana");
+
+  if (!seletor) {
+    return "zeros";
+  }
+
+  const padopt = String(seletor.value || "zeros").toLowerCase().trim();
+
+  if (padopt === "zeros" || padopt === "symmetric" || padopt === "indexed") {
+    return padopt;
+  }
+
+  return "zeros";
+}
+
+
+// Mostra alerta quando zeros + ignorar zero estiverem juntos
+function verificarAlertaZerosComIgnorarZeroMediana(padopt, ignorarZero) {
+
+  if (padopt === "zeros" && ignorarZero) {
+    alert(
+      "Atenção: você selecionou borda 'zeros' e também marcou 'Sem contabilizar pixels 0'. " +
+      "Nesse caso, os zeros adicionados na borda serão ignorados, então a borda 'zeros' não produzirá o mesmo efeito do medfilt2 do MATLAB. " +
+      "Para ficar igual ao MATLAB, desmarque 'Sem contabilizar pixels 0'."
+    );
+  }
+
+}
 
 
 // FUNÇÕES DE FERRAMENTAS E FLUXOGRAMA
@@ -432,12 +545,30 @@ function selecionarFerramenta(nome, botaoClicado) {
 
         <input 
           type="text" 
-          id="param1" 
+          id="param1"
+          placeholder="Ex: 3, 3 3, 3x5, [6 6]"
         >
 
         <div class="caixa_info_parametro">
-          O tamanho do kernel deve ser quadrado, ímpar e maior que 1.
-          Função do MATLAB: medfilt2(I, [k k], 'symmetric').
+          Aceita 1 ou 2 valores: 3, 3 3, 3x5, 6x6, [3 5].
+          Igual ao MATLAB: medfilt2(I, [M N], PADOPT).
+          Kernels pares são permitidos.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Tratamento da borda</label>
+
+        <select id="paramPadoptMediana">
+          <option value="zeros">zeros</option>
+          <option value="symmetric">symmetric</option>
+          <option value="indexed">indexed</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          zeros: preenche fora da imagem com 0.
+          symmetric: espelha a imagem nas bordas.
+          indexed: no MATLAB usa 1 para double e 0 para os demais tipos.
         </div>
       </div>
 
@@ -567,74 +698,32 @@ async function aplicarFerramenta(nome) {
 
   if (nome.includes("Mediana")) {
 
-    if (typeof cv === "undefined") {
-      alert("OpenCV.js ainda não foi carregado.");
-      return;
-    }
-
     const p1 = document.getElementById("param1");
-    let kernelTexto = p1 ? p1.value.trim() : "";
+    const kernelTexto = p1 ? p1.value.trim() : "";
 
-    let tamanhoKernel = 3; // padrão
+    const kernelInterpretado = interpretarKernelMediana(kernelTexto);
 
-    if (kernelTexto !== "") {
-
-      kernelTexto = kernelTexto
-        .replace(/\[/g, " ")
-        .replace(/\]/g, " ")
-        .replace(/\(/g, " ")
-        .replace(/\)/g, " ")
-        .replace(/,/g, " ")
-        .replace(/x/gi, " ");
-
-      const partes = kernelTexto
-        .trim()
-        .split(/\s+/)
-        .filter(function(valor) {
-          return valor !== "";
-        });
-
-      if (partes.length === 1) {
-
-        tamanhoKernel = parseInt(partes[0]);
-
-      } else if (partes.length === 2) {
-
-        const k1 = parseInt(partes[0]);
-        const k2 = parseInt(partes[1]);
-
-        if (k1 !== k2) {
-          alert("O filtro de mediana aceita apenas kernel quadrado, como 3 ou 5 5.");
-          return;
-        }
-
-        tamanhoKernel = k1;
-
-      } else {
-
-        alert("Digite apenas um valor, como 3, ou dois valores iguais, como 5 5.");
-        return;
-
-      }
-
-    }
-
-    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 3) {
-      alert("O kernel precisa ser ímpar e maior que 1.");
+    if (!kernelInterpretado.valido) {
+      alert(kernelInterpretado.mensagem);
       return;
     }
 
-    if (tamanhoKernel % 2 === 0) {
-      alert("O kernel precisa ser ímpar.");
-      return;
-    }
+    const kernelAltura = kernelInterpretado.kernelAltura;
+    const kernelLargura = kernelInterpretado.kernelLargura;
+
+    const padopt = obterPadoptMedianaSelecionado();
+    const ignorarZero = deveIgnorarPixelZeroFerramentas();
+
+    verificarAlertaZerosComIgnorarZeroMediana(padopt, ignorarZero);
 
     const etapa = {
       id: proximoIdEtapa++,
       nome: "Filtro Mediana",
       parametros: {
-        tamanhoKernel: tamanhoKernel,
-        ignorarZero: deveIgnorarPixelZeroFerramentas()
+        kernelAltura: kernelAltura,
+        kernelLargura: kernelLargura,
+        padopt: padopt,
+        ignorarZero: ignorarZero
       }
     };
 
@@ -709,11 +798,11 @@ function desenharFluxograma() {
 
     if (etapa.nome.includes("Mediana")) {
       textoParametros = `
-        Kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
+        Kernel: ${etapa.parametros.kernelAltura}x${etapa.parametros.kernelLargura}<br>
+        Borda: ${etapa.parametros.padopt}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
-
     if (etapa.nome.includes("tons de cinza")) {
     }
 
@@ -1572,15 +1661,16 @@ async function processarImagemNormalPeloPipeline(item) {
 
     }
 
-    if (etapa.nome.includes("Mediana")) { 
+    if (etapa.nome.includes("Mediana")) {
 
       canvasAtual = await aplicarMedianaEmCanvas(
-        canvasAtual,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        atualizarBarraProcessamento
-      );
-
+      canvasAtual,
+      etapa.parametros.kernelAltura,
+      etapa.parametros.kernelLargura,
+      etapa.parametros.padopt || "zeros",
+      etapa.parametros.ignorarZero,
+      atualizarBarraProcessamento
+    );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -1638,11 +1728,13 @@ async function processarDicomPeloPipeline(item) {
     if (etapa.nome.includes("Mediana")) {
 
       imagemAtual = await aplicarMedianaEmDicom(
-        imagemAtual,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        atualizarBarraProcessamento
-      );
+      imagemAtual,
+      etapa.parametros.kernelAltura,
+      etapa.parametros.kernelLargura,
+      etapa.parametros.padopt || "zeros",
+      etapa.parametros.ignorarZero,
+      atualizarBarraProcessamento
+    );
 
     }
 
@@ -2150,10 +2242,13 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
       canvasAtual = await aplicarMedianaEmCanvas(
         canvasAtual,
-        etapa.parametros.tamanhoKernel,
+        etapa.parametros.kernelAltura,
+        etapa.parametros.kernelLargura,
+        etapa.parametros.padopt || "zeros",
         etapa.parametros.ignorarZero,
         function() {}
       );
+
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -2183,25 +2278,17 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
     const etapa = pipelineFerramentas[i];
 
-    if (etapa.nome.includes("Gaussiano")) {
-
-      imagemAtual = await aplicarGaussianoEmDicom(
-        imagemAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
-        function() {}
-      );
-    }
-
     if (etapa.nome.includes("Mediana")) {
 
       imagemAtual = await aplicarMedianaEmDicom(
         imagemAtual,
-        etapa.parametros.tamanhoKernel,
+        etapa.parametros.kernelAltura,
+        etapa.parametros.kernelLargura,
+        etapa.parametros.padopt || "zeros",
         etapa.parametros.ignorarZero,
         function() {}
       );
+
     }
 
     if (etapa.nome.includes("tons de cinza")) {
