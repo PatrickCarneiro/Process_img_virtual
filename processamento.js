@@ -466,6 +466,192 @@ function verificarAlertaZerosComIgnorarZeroMediana(padopt, ignorarZero) {
 
 }
 
+function interpretarKernelMedia(textoKernel) {
+
+  let texto = String(textoKernel || "").trim();
+
+  // Padrão do imboxfilt(A): filtro 3x3
+  if (texto === "") {
+    return {
+      valido: true,
+      kernelAltura: 3,
+      kernelLargura: 3
+    };
+  }
+
+  texto = texto
+    .replace(/\[/g, " ")
+    .replace(/\]/g, " ")
+    .replace(/\(/g, " ")
+    .replace(/\)/g, " ")
+    .replace(/,/g, " ")
+    .replace(/;/g, " ")
+    .replace(/x/gi, " ");
+
+  const partes = texto
+    .trim()
+    .split(/\s+/)
+    .filter(function(valor) {
+      return valor !== "";
+    });
+
+  if (partes.length !== 1 && partes.length !== 2) {
+    return {
+      valido: false,
+      mensagem: "Digite o kernel como 3, 3 3, 3x5 ou [3 5]."
+    };
+  }
+
+  let kernelAltura;
+  let kernelLargura;
+
+  if (partes.length === 1) {
+    kernelAltura = parseInt(partes[0], 10);
+    kernelLargura = kernelAltura;
+  }
+
+  if (partes.length === 2) {
+    kernelAltura = parseInt(partes[0], 10);
+    kernelLargura = parseInt(partes[1], 10);
+  }
+
+  if (
+    !Number.isFinite(kernelAltura) ||
+    !Number.isFinite(kernelLargura) ||
+    kernelAltura < 1 ||
+    kernelLargura < 1
+  ) {
+    return {
+      valido: false,
+      mensagem: "O kernel deve conter números inteiros positivos."
+    };
+  }
+
+  // imboxfilt do MATLAB exige tamanho ímpar
+  if (kernelAltura % 2 === 0 || kernelLargura % 2 === 0) {
+    return {
+      valido: false,
+      mensagem: "No imboxfilt, o tamanho do kernel deve ser ímpar. Use 3, 5, 7, 3x5, 5x7 etc."
+    };
+  }
+
+  return {
+    valido: true,
+    kernelAltura: kernelAltura,
+    kernelLargura: kernelLargura
+  };
+}
+
+
+function atualizarCampoValorPaddingMedia() {
+
+  const seletor = document.getElementById("paramPaddingMedia");
+  const campo = document.getElementById("campoValorPaddingMedia");
+
+  if (!seletor || !campo) return;
+
+  if (seletor.value === "constant") {
+    campo.style.display = "block";
+  } else {
+    campo.style.display = "none";
+  }
+}
+
+
+function obterPaddingMediaSelecionado() {
+
+  const seletor = document.getElementById("paramPaddingMedia");
+
+  if (!seletor) {
+    return {
+      valido: true,
+      padding: "replicate",
+      valorPadding: 0
+    };
+  }
+
+  const padding = String(seletor.value || "replicate").toLowerCase().trim();
+
+  if (
+    padding === "replicate" ||
+    padding === "symmetric" ||
+    padding === "circular"
+  ) {
+    return {
+      valido: true,
+      padding: padding,
+      valorPadding: 0
+    };
+  }
+
+  if (padding === "constant") {
+
+    const entradaValor = document.getElementById("paramValorPaddingMedia");
+    const textoValor = entradaValor ? entradaValor.value.trim() : "0";
+    const valorPadding = textoValor === "" ? 0 : Number(textoValor);
+
+    if (!Number.isFinite(valorPadding)) {
+      return {
+        valido: false,
+        mensagem: "O valor constante do padding deve ser numérico."
+      };
+    }
+
+    return {
+      valido: true,
+      padding: "constant",
+      valorPadding: valorPadding
+    };
+  }
+
+  return {
+    valido: true,
+    padding: "replicate",
+    valorPadding: 0
+  };
+}
+
+
+function obterNormalizacaoMediaSelecionada(kernelAltura, kernelLargura) {
+
+  const seletor = document.getElementById("paramModoMedia");
+  const modo = seletor ? String(seletor.value || "mean") : "mean";
+
+  if (modo === "sum") {
+    return {
+      modoNormalizacao: "sum",
+      normalizationFactor: 1
+    };
+  }
+
+  return {
+    modoNormalizacao: "mean",
+    normalizationFactor: 1 / (kernelAltura * kernelLargura)
+  };
+}
+
+
+function verificarAlertaZerosComIgnorarZeroMedia(padding, valorPadding, ignorarZero) {
+
+  if (padding === "constant" && Number(valorPadding) === 0 && ignorarZero) {
+    alert(
+      "Atenção: você selecionou padding constante 0 e também marcou 'Sem contabilizar pixels 0'. " +
+      "Nesse caso, os zeros da borda serão ignorados. Para ficar igual ao imboxfilt do MATLAB, desmarque 'Sem contabilizar pixels 0'."
+    );
+  }
+
+}
+
+
+function formatarPaddingMedia(padding, valorPadding) {
+
+  if (padding === "constant") {
+    return "constante (" + valorPadding + ")";
+  }
+
+  return padding;
+}
+
 
 // FUNÇÕES DE FERRAMENTAS E FLUXOGRAMA
 
@@ -528,6 +714,86 @@ function selecionarFerramenta(nome, botaoClicado) {
       </div>
 
       <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Gaussiano')">
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
+  if (nome === "Filtro Média") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+        <label>Tamanho do kernel</label>
+
+        <input 
+          type="text" 
+          id="paramKernelMedia"
+          placeholder="Ex: 3, 5, 3x5, [7 7]"
+        >
+
+        <div class="caixa_info_parametro">
+          Igual ao MATLAB: imboxfilt(A, filterSize).
+          Aceita 1 ou 2 valores positivos e ímpares.
+          Exemplo: 3 gera 3x3; 3x5 gera 3 linhas e 5 colunas.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Padding</label>
+
+        <select id="paramPaddingMedia" onchange="atualizarCampoValorPaddingMedia()">
+          <option value="replicate">replicate</option>
+          <option value="symmetric">symmetric</option>
+          <option value="circular">circular</option>
+          <option value="constant">constante numérico</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          replicate é o padrão do imboxfilt.
+          symmetric espelha a imagem.
+          circular considera a imagem periódica.
+          constante usa um valor numérico fora da imagem.
+        </div>
+      </div>
+
+      <div 
+        class="campo_parametro_info" 
+        id="campoValorPaddingMedia" 
+        style="display:none;"
+      >
+        <label>Valor constante do padding</label>
+
+        <input 
+          type="number" 
+          id="paramValorPaddingMedia"
+          value="0"
+          step="1"
+        >
+
+        <div class="caixa_info_parametro">
+          Usado apenas quando o padding escolhido for constante numérico.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Tipo de cálculo</label>
+
+        <select id="paramModoMedia">
+          <option value="mean">Média local</option>
+          <option value="sum">Soma local</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          Média local equivale ao imboxfilt padrão.
+          Soma local equivale a usar NormalizationFactor = 1.
+        </div>
+      </div>
+
+      <button class="botao-aplicar" onclick="aplicarFerramenta('Filtro Média')">
         Aplicar
       </button>
     `;
@@ -696,6 +962,68 @@ async function aplicarFerramenta(nome) {
     return;
   }
 
+  if (nome === "Filtro Média") {
+
+    const entradaKernel = document.getElementById("paramKernelMedia");
+    const kernelTexto = entradaKernel ? entradaKernel.value.trim() : "";
+
+    const kernelInterpretado = interpretarKernelMedia(kernelTexto);
+
+    if (!kernelInterpretado.valido) {
+      alert(kernelInterpretado.mensagem);
+      return;
+    }
+
+    const kernelAltura = kernelInterpretado.kernelAltura;
+    const kernelLargura = kernelInterpretado.kernelLargura;
+
+    const paddingSelecionado = obterPaddingMediaSelecionado();
+
+    if (!paddingSelecionado.valido) {
+      alert(paddingSelecionado.mensagem);
+      return;
+    }
+
+    const padding = paddingSelecionado.padding;
+    const valorPadding = paddingSelecionado.valorPadding;
+
+    const normalizacao = obterNormalizacaoMediaSelecionada(
+      kernelAltura,
+      kernelLargura
+    );
+
+    const ignorarZero = deveIgnorarPixelZeroFerramentas();
+
+    verificarAlertaZerosComIgnorarZeroMedia(
+      padding,
+      valorPadding,
+      ignorarZero
+    );
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Filtro Média",
+      parametros: {
+        kernelAltura: kernelAltura,
+        kernelLargura: kernelLargura,
+        padding: padding,
+        valorPadding: valorPadding,
+        modoNormalizacao: normalizacao.modoNormalizacao,
+        normalizationFactor: normalizacao.normalizationFactor,
+        ignorarZero: ignorarZero
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Filtro Média aplicado na imagem selecionada.",
+      "Filtro Média aplicado em todas as imagens."
+    );
+
+    return;
+  }
+
   if (nome.includes("Mediana")) {
 
     const p1 = document.getElementById("param1");
@@ -792,6 +1120,16 @@ function desenharFluxograma() {
       textoParametros = `
         Sigma: ${etapa.parametros.sigma}<br>
         Tamanho do kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
+        Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+
+    if (etapa.nome === "Filtro Média") {
+      textoParametros = `
+        Kernel: ${etapa.parametros.kernelAltura}x${etapa.parametros.kernelLargura}<br>
+        Padding: ${formatarPaddingMedia(etapa.parametros.padding, etapa.parametros.valorPadding)}<br>
+        Tipo: ${etapa.parametros.modoNormalizacao === "sum" ? "Soma local" : "Média local"}<br>
+        NormalizationFactor: ${etapa.parametros.normalizationFactor}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
@@ -1661,6 +1999,21 @@ async function processarImagemNormalPeloPipeline(item) {
 
     }
 
+    if (etapa.nome === "Filtro Média") {
+
+      canvasAtual = await aplicarMediaEmCanvas(
+        canvasAtual,
+        etapa.parametros.kernelAltura,
+        etapa.parametros.kernelLargura,
+        etapa.parametros.padding || "replicate",
+        etapa.parametros.valorPadding || 0,
+        etapa.parametros.normalizationFactor,
+        etapa.parametros.ignorarZero,
+        atualizarBarraProcessamento
+      );
+
+    }
+
     if (etapa.nome.includes("Mediana")) {
 
       canvasAtual = await aplicarMedianaEmCanvas(
@@ -1719,6 +2072,21 @@ async function processarDicomPeloPipeline(item) {
         imagemAtual,
         etapa.parametros.sigma,
         etapa.parametros.tamanhoKernel,
+        etapa.parametros.ignorarZero,
+        atualizarBarraProcessamento
+      );
+
+    }
+
+    if (etapa.nome === "Filtro Média") {
+
+      imagemAtual = await aplicarMediaEmDicom(
+        imagemAtual,
+        etapa.parametros.kernelAltura,
+        etapa.parametros.kernelLargura,
+        etapa.parametros.padding || "replicate",
+        etapa.parametros.valorPadding || 0,
+        etapa.parametros.normalizationFactor,
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );

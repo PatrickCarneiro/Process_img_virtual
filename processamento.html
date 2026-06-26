@@ -627,12 +627,19 @@
 
         <div
           class="ferramenta"
+          id="botaoFerramentaMedia"
+          onclick="selecionarFerramenta('Filtro Média', this)"
+        >
+          Filtro Média
+        </div>
+
+        <div
+          class="ferramenta"
           id="botaoFerramentaMediana"
           onclick="selecionarFerramenta('Filtro Mediana', this)"
         >
           Filtro Mediana
         </div>
-
       </div>
 
       <!-- Ferramenta de tons de cinza -->
@@ -772,6 +779,7 @@
 
   <script src="analise.js"></script>
   <script src="gaussiano.js"></script>
+  <script src="media.js"></script>
   <script src="mediana.js"></script>
   <script src="cinza.js"></script>
   <script src="processamento.js"></script>
