@@ -6,7 +6,6 @@
 // imboxfilt(A)
 // imboxfilt(A, filterSize)
 // imboxfilt(A, filterSize, 'Padding', ...)
-// imboxfilt(A, filterSize, 'NormalizationFactor', ...)
 //
 // Suporta:
 // - Imagem normal RGBA
@@ -14,14 +13,13 @@
 // - Kernel MxN
 // - Kernel ímpar, como no imboxfilt
 // - Padding: replicate, symmetric, circular, constant
-// - Média local: NormalizationFactor = 1 / (M*N)
-// - Soma local: NormalizationFactor = 1
+// - Normalização automática conforme o kernel: 1 / (M*N)
 // - Opção extra do site: ignorar pixel 0
 //
 // Para ficar igual ao MATLAB imboxfilt:
 // - Padding padrão: replicate
 // - Ignorar pixel 0: desmarcado
-// - NormalizationFactor: 1 / (M*N)
+// - O fator de normalização é calculado automaticamente: 1 / (M*N)
 // =====================================================
 
 
@@ -111,21 +109,21 @@ function normalizarPaddingMedia(padding, valorPadding) {
 
 
 // =====================================================
-// NORMALIZA NORMALIZATION FACTOR
+// CALCULA O FATOR DE NORMALIZAÇÃO AUTOMATICAMENTE
+//
+// Equivalente ao comportamento padrão do MATLAB:
+// - filterSize escalar N  -> 1 / N²
+// - filterSize [M N]      -> 1 / (M*N)
+//
+// Como internamente sempre trabalhamos com altura e largura,
+// os dois casos são representados por 1 / (altura * largura).
 // =====================================================
-function normalizarNormalizationFactorMedia(
-  normalizationFactor,
+function calcularNormalizationFactorAutomaticoMedia(
   kernelAltura,
   kernelLargura
 ) {
 
-  normalizationFactor = Number(normalizationFactor);
-
-  if (!Number.isFinite(normalizationFactor)) {
-    normalizationFactor = 1 / (kernelAltura * kernelLargura);
-  }
-
-  return normalizationFactor;
+  return 1 / (kernelAltura * kernelLargura);
 }
 
 
@@ -448,24 +446,24 @@ function obterValorVizinhoDicomMedia(
 function calcularValorMedia(
   soma,
   quantidadeValores,
-  normalizationFactor,
+  normalizationFactorAutomatico,
   ignorarZero
 ) {
 
+  // Opção adicional do site: quando pixels zero são ignorados,
+  // a média deve considerar somente os vizinhos válidos.
   if (ignorarZero) {
 
     if (quantidadeValores <= 0) {
       return 0;
     }
 
-    if (normalizationFactor === 1) {
-      return soma;
-    }
-
     return soma / quantidadeValores;
   }
 
-  return soma * normalizationFactor;
+  // Comportamento padrão do imboxfilt:
+  // soma da vizinhança multiplicada por 1 / (M*N).
+  return soma * normalizationFactorAutomatico;
 }
 
 
@@ -478,7 +476,6 @@ async function aplicarMediaEmCanvas(
   kernelLargura,
   padding,
   valorPadding,
-  normalizationFactor,
   ignorarZero,
   atualizarProgresso
 ) {
@@ -499,11 +496,11 @@ async function aplicarMediaEmCanvas(
   padding = paddingNormalizado.padding;
   valorPadding = paddingNormalizado.valorPadding;
 
-  normalizationFactor = normalizarNormalizationFactorMedia(
-    normalizationFactor,
-    kernelAltura,
-    kernelLargura
-  );
+  const normalizationFactorAutomatico =
+    calcularNormalizationFactorAutomaticoMedia(
+      kernelAltura,
+      kernelLargura
+    );
 
   ignorarZero = Boolean(ignorarZero);
 
@@ -585,7 +582,7 @@ async function aplicarMediaEmCanvas(
         let valorFinal = calcularValorMedia(
           soma,
           quantidadeValores,
-          normalizationFactor,
+          normalizationFactorAutomatico,
           ignorarZero
         );
 
@@ -624,7 +621,6 @@ async function aplicarMediaEmDicom(
   kernelLargura,
   padding,
   valorPadding,
-  normalizationFactor,
   ignorarZero,
   atualizarProgresso
 ) {
@@ -645,11 +641,11 @@ async function aplicarMediaEmDicom(
   padding = paddingNormalizado.padding;
   valorPadding = paddingNormalizado.valorPadding;
 
-  normalizationFactor = normalizarNormalizationFactorMedia(
-    normalizationFactor,
-    kernelAltura,
-    kernelLargura
-  );
+  const normalizationFactorAutomatico =
+    calcularNormalizationFactorAutomaticoMedia(
+      kernelAltura,
+      kernelLargura
+    );
 
   ignorarZero = Boolean(ignorarZero);
 
@@ -724,7 +720,7 @@ async function aplicarMediaEmDicom(
       let valorFinal = calcularValorMedia(
         soma,
         quantidadeValores,
-        normalizationFactor,
+        normalizationFactorAutomatico,
         ignorarZero
       );
 

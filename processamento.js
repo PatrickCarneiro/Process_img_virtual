@@ -611,26 +611,6 @@ function obterPaddingMediaSelecionado() {
   };
 }
 
-
-function obterNormalizacaoMediaSelecionada(kernelAltura, kernelLargura) {
-
-  const seletor = document.getElementById("paramModoMedia");
-  const modo = seletor ? String(seletor.value || "mean") : "mean";
-
-  if (modo === "sum") {
-    return {
-      modoNormalizacao: "sum",
-      normalizationFactor: 1
-    };
-  }
-
-  return {
-    modoNormalizacao: "mean",
-    normalizationFactor: 1 / (kernelAltura * kernelLargura)
-  };
-}
-
-
 function verificarAlertaZerosComIgnorarZeroMedia(padding, valorPadding, ignorarZero) {
 
   if (padding === "constant" && Number(valorPadding) === 0 && ignorarZero) {
@@ -776,20 +756,6 @@ function selecionarFerramenta(nome, botaoClicado) {
 
         <div class="caixa_info_parametro">
           Usado apenas quando o padding escolhido for constante numérico.
-        </div>
-      </div>
-
-      <div class="campo_parametro_info">
-        <label>Tipo de cálculo</label>
-
-        <select id="paramModoMedia">
-          <option value="mean">Média local</option>
-          <option value="sum">Soma local</option>
-        </select>
-
-        <div class="caixa_info_parametro">
-          Média local equivale ao imboxfilt padrão.
-          Soma local equivale a usar NormalizationFactor = 1.
         </div>
       </div>
 
@@ -987,11 +953,6 @@ async function aplicarFerramenta(nome) {
     const padding = paddingSelecionado.padding;
     const valorPadding = paddingSelecionado.valorPadding;
 
-    const normalizacao = obterNormalizacaoMediaSelecionada(
-      kernelAltura,
-      kernelLargura
-    );
-
     const ignorarZero = deveIgnorarPixelZeroFerramentas();
 
     verificarAlertaZerosComIgnorarZeroMedia(
@@ -1008,8 +969,6 @@ async function aplicarFerramenta(nome) {
         kernelLargura: kernelLargura,
         padding: padding,
         valorPadding: valorPadding,
-        modoNormalizacao: normalizacao.modoNormalizacao,
-        normalizationFactor: normalizacao.normalizationFactor,
         ignorarZero: ignorarZero
       }
     };
@@ -1125,11 +1084,21 @@ function desenharFluxograma() {
     }
 
     if (etapa.nome === "Filtro Média") {
+
+      const normalizationFactorAutomatico =
+        1 / (
+          etapa.parametros.kernelAltura *
+          etapa.parametros.kernelLargura
+        );
+
       textoParametros = `
         Kernel: ${etapa.parametros.kernelAltura}x${etapa.parametros.kernelLargura}<br>
-        Padding: ${formatarPaddingMedia(etapa.parametros.padding, etapa.parametros.valorPadding)}<br>
-        Tipo: ${etapa.parametros.modoNormalizacao === "sum" ? "Soma local" : "Média local"}<br>
-        NormalizationFactor: ${etapa.parametros.normalizationFactor}<br>
+        Padding: ${formatarPaddingMedia(
+          etapa.parametros.padding,
+          etapa.parametros.valorPadding
+        )}<br>
+        Cálculo: Média local automática<br>
+        NormalizationFactor automático: ${normalizationFactorAutomatico}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
@@ -2007,7 +1976,6 @@ async function processarImagemNormalPeloPipeline(item) {
         etapa.parametros.kernelLargura,
         etapa.parametros.padding || "replicate",
         etapa.parametros.valorPadding || 0,
-        etapa.parametros.normalizationFactor,
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );
@@ -2086,7 +2054,6 @@ async function processarDicomPeloPipeline(item) {
         etapa.parametros.kernelLargura,
         etapa.parametros.padding || "replicate",
         etapa.parametros.valorPadding || 0,
-        etapa.parametros.normalizationFactor,
         etapa.parametros.ignorarZero,
         atualizarBarraProcessamento
       );
