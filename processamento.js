@@ -2198,7 +2198,7 @@ async function processarImagemNormalPeloPipeline(item) {
       etapa.parametros.ignorarZero,
       atualizarBarraProcessamento
     );
-    }7
+    }
 
     if (etapa.nome === "Erosão") {
 
