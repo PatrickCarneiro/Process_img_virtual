@@ -812,10 +812,7 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
-  if (
-  nome === "Erosão" ||
-  nome === "Dilatação"
-) {
+  if (nome === "Erosão") {
 
     parametrosDiv.innerHTML = `
       <h4>Parâmetros</h4>
@@ -860,7 +857,7 @@ function selecionarFerramenta(nome, botaoClicado) {
 
       <button
         class="botao-aplicar"
-        onclick="aplicarFerramenta('${nome}')"
+        onclick="aplicarFerramenta('Erosão')"
       >
         Aplicar
       </button>
@@ -1159,112 +1156,64 @@ async function aplicarFerramenta(nome) {
     return;
   }
 
-  if (
-    nome === "Erosão" ||
-    nome === "Dilatação"
-  ) {
-    const seletorFormato =
-      document.getElementById(
-        "paramFormatoElementoErosao"
-      );
+  if (nome === "Erosão") {
 
-    const campoValor =
-      document.getElementById(
-        "paramValorElementoErosao"
-      );
+    const seletorFormato = document.getElementById(
+      "paramFormatoElementoErosao"
+    );
 
-    const formatoElemento =
-      seletorFormato
-        ? seletorFormato.value
-        : "square";
+    const campoValor = document.getElementById(
+      "paramValorElementoErosao"
+    );
 
-    const valorElemento =
-      campoValor
-        ? campoValor.value.trim()
-        : "";
+    const formatoElemento = seletorFormato
+      ? seletorFormato.value
+      : "square";
+
+    const valorElemento = campoValor
+      ? campoValor.value.trim()
+      : "";
 
     if (valorElemento === "") {
-      alert(
-        "Digite o valor do elemento estruturante."
-      );
-
+      alert("Digite o valor do elemento estruturante.");
       return;
     }
 
-    let elementoInterpretado;
-
-    if (nome === "Dilatação") {
-      elementoInterpretado =
-        interpretarElementoEstruturanteDilatacao(
-          formatoElemento,
-          valorElemento
-        );
-    } else {
-      elementoInterpretado =
-        interpretarElementoEstruturanteErosao(
-          formatoElemento,
-          valorElemento
-        );
-    }
-
-    if (!elementoInterpretado.valido) {
-      alert(
-        elementoInterpretado.mensagem
+    const elementoInterpretado =
+      interpretarElementoEstruturanteErosao(
+        formatoElemento,
+        valorElemento
       );
 
+    if (!elementoInterpretado.valido) {
+      alert(elementoInterpretado.mensagem);
       return;
     }
 
     const etapa = {
-      id:
-        proximoIdEtapa++,
+      id: proximoIdEtapa++,
 
-      nome:
-        nome,
+      nome: "Erosão",
 
       parametros: {
-        formatoElemento:
-          formatoElemento,
-
-        valorElemento:
-          valorElemento,
+        formatoElemento: formatoElemento,
+        valorElemento: valorElemento,
 
         elementoEstruturante: {
-          nhood:
-            elementoInterpretado.nhood,
-
-          descricao:
-            elementoInterpretado.descricao,
-
-          formato:
-            elementoInterpretado.formato,
-
-          parametros:
-            elementoInterpretado.parametros
+          nhood: elementoInterpretado.nhood,
+          descricao: elementoInterpretado.descricao
         },
 
-        formatoSaida:
-          "same"
+        formatoSaida: "same"
       }
     };
 
-    pipelineFerramentas.push(
-      etapa
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Erosão aplicada na imagem selecionada.",
+      "Erosão aplicada em todas as imagens."
     );
-
-    if (nome === "Dilatação") {
-      await aplicarPipelineAposAdicionarEtapa(
-        "Dilatação aplicada na imagem selecionada.",
-
-        "Dilatação aplicada em todas as imagens."
-      );
-    } else {
-      await aplicarPipelineAposAdicionarEtapa(
-        "Erosão aplicada na imagem selecionada.",
-
-        "Erosão aplicada em todas as imagens."
-      );
-    }
 
     return;
   }
@@ -1356,30 +1305,15 @@ function desenharFluxograma() {
       `;
     }
 
-    if (
-      etapa.nome === "Erosão" ||
-      etapa.nome === "Dilatação"
-    ) {
+    if (etapa.nome === "Erosão") {
+
       textoParametros = `
-        Formato:
-        ${etapa.parametros.formatoElemento}
-        <br>
-
-        Valor:
-        ${etapa.parametros.valorElemento}
-        <br>
-
-        Elemento:
-        ${etapa.parametros.elementoEstruturante.descricao}
-        <br>
-
-        Formato da saída:
-        ${
-          etapa.parametros.formatoSaida ||
-          etapa.parametros.formato ||
-          "same"
-        }
+        Formato: ${etapa.parametros.formatoElemento}<br>
+        Valor: ${etapa.parametros.valorElemento}<br>
+        Elemento: ${etapa.parametros.elementoEstruturante.descricao}<br>
+        Tamanho da saída: same
       `;
+
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -2267,29 +2201,14 @@ async function processarImagemNormalPeloPipeline(item) {
     }
 
     if (etapa.nome === "Erosão") {
-      canvasAtual =
-        await aplicarErosaoEmCanvas(
-          canvasAtual,
 
-          etapa.parametros.elementoEstruturante,
+      canvasAtual = await aplicarErosaoEmCanvas(
+        canvasAtual,
+        etapa.parametros.elementoEstruturante,
+        etapa.parametros.formatoSaida || "same",
+        atualizarBarraProcessamento
+      );
 
-          etapa.parametros.formatoSaida ||
-
-          atualizarBarraProcessamento
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      canvasAtual =
-        await aplicarDilatacaoEmCanvas(
-          canvasAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          atualizarBarraProcessamento
-        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -2371,29 +2290,14 @@ async function processarDicomPeloPipeline(item) {
     }
 
     if (etapa.nome === "Erosão") {
-      imagemAtual =
-        await aplicarErosaoEmDicom(
-          imagemAtual,
 
-          etapa.parametros.elementoEstruturante,
+      imagemAtual = await aplicarErosaoEmDicom(
+        imagemAtual,
+        etapa.parametros.elementoEstruturante,
+        etapa.parametros.formatoSaida || "same",
+        atualizarBarraProcessamento
+      );
 
-          etapa.parametros.formatoSaida,
-
-          atualizarBarraProcessamento
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      imagemAtual =
-        await aplicarDilatacaoEmDicom(
-          imagemAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          atualizarBarraProcessamento
-        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -2910,29 +2814,14 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
     }
 
     if (etapa.nome === "Erosão") {
-      canvasAtual =
-        await aplicarErosaoEmCanvas(
-          canvasAtual,
 
-          etapa.parametros.elementoEstruturante,
+      canvasAtual = await aplicarErosaoEmCanvas(
+        canvasAtual,
+        etapa.parametros.elementoEstruturante,
+        etapa.parametros.formatoSaida || "same",
+        function() {}
+      );
 
-          etapa.parametros.formatoSaida,
-          function() {}
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      canvasAtual =
-        await aplicarDilatacaoEmCanvas(
-          canvasAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-
-          function() {}
-        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -2976,29 +2865,14 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
     }
 
     if (etapa.nome === "Erosão") {
-      imagemAtual =
-        await aplicarErosaoEmDicom(
-          imagemAtual,
 
-          etapa.parametros.elementoEstruturante,
+      imagemAtual = await aplicarErosaoEmDicom(
+        imagemAtual,
+        etapa.parametros.elementoEstruturante,
+        etapa.parametros.formatoSaida || "same",
+        function() {}
+      );
 
-          etapa.parametros.formatoSaida,
-
-          function() {}
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      imagemAtual =
-        await aplicarDilatacaoEmDicom(
-          imagemAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          function() {}
-        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
