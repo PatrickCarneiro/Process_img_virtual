@@ -822,9 +822,10 @@ function selecionarFerramenta(nome, botaoClicado) {
   }
 
   if (
-  nome === "Erosão" ||
-  nome === "Dilatação"
-) {
+    nome === "Erosão" ||
+    nome === "Dilatação" ||
+    nome === "Abertura"
+  ) {
 
     parametrosDiv.innerHTML = `
       <h4>Parâmetros</h4>
@@ -1170,7 +1171,8 @@ async function aplicarFerramenta(nome) {
 
   if (
     nome === "Erosão" ||
-    nome === "Dilatação"
+    nome === "Dilatação" ||
+    nome === "Abertura"
   ) {
     const seletorFormato =
       document.getElementById(
@@ -1205,6 +1207,12 @@ async function aplicarFerramenta(nome) {
     if (nome === "Dilatação") {
       elementoInterpretado =
         interpretarElementoEstruturanteDilatacao(
+          formatoElemento,
+          valorElemento
+        );
+    } else if (nome === "Abertura") {
+      elementoInterpretado =
+        interpretarElementoEstruturanteAbertura(
           formatoElemento,
           valorElemento
         );
@@ -1252,6 +1260,10 @@ async function aplicarFerramenta(nome) {
             elementoInterpretado.parametros
         },
 
+        /*
+        * O imopen do MATLAB conserva o tamanho
+        * da imagem de entrada.
+        */
         formatoSaida:
           "same"
       }
@@ -1266,6 +1278,12 @@ async function aplicarFerramenta(nome) {
         "Dilatação aplicada na imagem selecionada.",
 
         "Dilatação aplicada em todas as imagens."
+      );
+    } else if (nome === "Abertura") {
+      await aplicarPipelineAposAdicionarEtapa(
+        "Abertura aplicada na imagem selecionada.",
+
+        "Abertura aplicada em todas as imagens."
       );
     } else {
       await aplicarPipelineAposAdicionarEtapa(
@@ -1367,7 +1385,8 @@ function desenharFluxograma() {
 
     if (
       etapa.nome === "Erosão" ||
-      etapa.nome === "Dilatação"
+      etapa.nome === "Dilatação" ||
+      etapa.nome === "Abertura"
     ) {
       textoParametros = `
         Formato:
@@ -1382,8 +1401,6 @@ function desenharFluxograma() {
         ${etapa.parametros.elementoEstruturante.descricao}
         <br>
 
-        Formato da saída:
-        ${etapa.parametros.formatoSaida || "same"}
       `;
     }
 
@@ -2297,6 +2314,19 @@ async function processarImagemNormalPeloPipeline(item) {
         );
     }
 
+    if (etapa.nome === "Abertura") {
+      canvasAtual =
+        await aplicarAberturaEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -2391,6 +2421,19 @@ async function processarDicomPeloPipeline(item) {
     if (etapa.nome === "Dilatação") {
       imagemAtual =
         await aplicarDilatacaoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Abertura") {
+      imagemAtual =
+        await aplicarAberturaEmDicom(
           imagemAtual,
 
           etapa.parametros.elementoEstruturante,
@@ -2988,6 +3031,19 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
         );
     }
 
+    if (etapa.nome === "Abertura") {
+      canvasAtual =
+        await aplicarAberturaEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -3044,6 +3100,19 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
     if (etapa.nome === "Dilatação") {
       imagemAtual =
         await aplicarDilatacaoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Abertura") {
+      imagemAtual =
+        await aplicarAberturaEmDicom(
           imagemAtual,
 
           etapa.parametros.elementoEstruturante,

@@ -1,7 +1,7 @@
 // =====================================================
 // morfologia.js
-// Erosão e dilatação 2D planas inspiradas no MATLAB
-// Funções equivalentes: strel, imerode e imdilate
+// Erosão, dilatação e abertura 2D planas inspiradas no MATLAB
+// Funções equivalentes: strel, imerode, imdilate e imopen
 // =====================================================
 
 
@@ -182,6 +182,30 @@ function interpretarElementoEstruturanteDilatacao(
   valorElemento
 ) {
   return interpretarElementoEstruturanteErosao(
+    formatoElemento,
+    valorElemento
+  );
+}
+
+
+// A abertura utiliza o mesmo elemento estruturante na erosão e na dilatação.
+function interpretarElementoEstruturanteAbertura(
+  formatoElemento,
+  valorElemento
+) {
+  return interpretarElementoEstruturanteErosao(
+    formatoElemento,
+    valorElemento
+  );
+}
+
+
+// Alias com o nome da função equivalente do MATLAB.
+function interpretarElementoEstruturanteImopen(
+  formatoElemento,
+  valorElemento
+) {
+  return interpretarElementoEstruturanteAbertura(
     formatoElemento,
     valorElemento
   );
@@ -1379,6 +1403,16 @@ function prepararElementoEstruturanteDilatacao(
 }
 
 
+function prepararElementoEstruturanteAbertura(
+  elemento
+) {
+  return prepararElementoEstruturante(
+    elemento,
+    "abertura"
+  );
+}
+
+
 // -----------------------------------------------------
 // Formato e geometria da saída
 // -----------------------------------------------------
@@ -1408,6 +1442,15 @@ function normalizarFormatoErosao(
 
 
 function normalizarFormatoDilatacao(
+  formatoSaida
+) {
+  return normalizarFormatoMorfologia(
+    formatoSaida
+  );
+}
+
+
+function normalizarFormatoAbertura(
   formatoSaida
 ) {
   return normalizarFormatoMorfologia(
@@ -1920,6 +1963,99 @@ async function aplicarDilatacaoEmCanvas(
     formatoSaida,
     atualizarProgresso,
     "dilatacao"
+  );
+}
+
+
+// -----------------------------------------------------
+// Abertura morfológica em Canvas - IMOPEN
+// -----------------------------------------------------
+
+/*
+ * Equivalente a:
+ *
+ * B = imopen(A, SE)
+ * B = imdilate(imerode(A, SE), SE)
+ *
+ * O mesmo elemento estruturante é utilizado nas duas etapas.
+ * A erosão ocupa de 0% a 50% do progresso e a dilatação
+ * ocupa de 50% a 100%.
+ */
+async function aplicarAberturaEmCanvas(
+  canvasEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  if (!canvasEntrada) {
+    throw new Error(
+      "Canvas de entrada inválido para a abertura morfológica."
+    );
+  }
+
+  const elemento =
+    prepararElementoEstruturanteAbertura(
+      elementoEstruturante
+    );
+
+  const formato =
+    normalizarFormatoAbertura(
+      formatoSaida
+    );
+
+  atualizarProgressoMorfologia(
+    atualizarProgresso,
+    0
+  );
+
+  const canvasErodido =
+    await aplicarErosaoEmCanvas(
+      canvasEntrada,
+      elemento,
+      formato,
+      function(porcentagemErosao) {
+        atualizarProgressoMorfologia(
+          atualizarProgresso,
+          Number(porcentagemErosao) * 0.5
+        );
+      }
+    );
+
+  const canvasAberto =
+    await aplicarDilatacaoEmCanvas(
+      canvasErodido,
+      elemento,
+      formato,
+      function(porcentagemDilatacao) {
+        atualizarProgressoMorfologia(
+          atualizarProgresso,
+          50 +
+          Number(porcentagemDilatacao) * 0.5
+        );
+      }
+    );
+
+  atualizarProgressoMorfologia(
+    atualizarProgresso,
+    100
+  );
+
+  return canvasAberto;
+}
+
+
+// Alias com o nome da função equivalente do MATLAB.
+async function aplicarImopenEmCanvas(
+  canvasEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  return aplicarAberturaEmCanvas(
+    canvasEntrada,
+    elementoEstruturante,
+    formatoSaida,
+    atualizarProgresso
   );
 }
 
@@ -2442,6 +2578,111 @@ async function aplicarDilatacaoEmDicom(
     formatoSaida,
     atualizarProgresso,
     "dilatacao"
+  );
+}
+
+
+// -----------------------------------------------------
+// Abertura morfológica em DICOM - IMOPEN
+// -----------------------------------------------------
+
+/*
+ * Equivalente a:
+ *
+ * B = imopen(A, SE)
+ * B = imdilate(imerode(A, SE), SE)
+ *
+ * O array de pixels da saída conserva a mesma classe tipada
+ * utilizada pela imagem DICOM de entrada.
+ */
+async function aplicarAberturaEmDicom(
+  imagemEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  if (
+    !imagemEntrada ||
+    typeof imagemEntrada.getPixelData !==
+      "function"
+  ) {
+    throw new Error(
+      "Imagem DICOM inválida para a abertura morfológica."
+    );
+  }
+
+  const elemento =
+    prepararElementoEstruturanteAbertura(
+      elementoEstruturante
+    );
+
+  const formato =
+    normalizarFormatoAbertura(
+      formatoSaida
+    );
+
+  atualizarProgressoMorfologia(
+    atualizarProgresso,
+    0
+  );
+
+  const imagemErodida =
+    await aplicarErosaoEmDicom(
+      imagemEntrada,
+      elemento,
+      formato,
+      function(porcentagemErosao) {
+        atualizarProgressoMorfologia(
+          atualizarProgresso,
+          Number(porcentagemErosao) * 0.5
+        );
+      }
+    );
+
+  const imagemDilatada =
+    await aplicarDilatacaoEmDicom(
+      imagemErodida,
+      elemento,
+      formato,
+      function(porcentagemDilatacao) {
+        atualizarProgressoMorfologia(
+          atualizarProgresso,
+          50 +
+          Number(porcentagemDilatacao) * 0.5
+        );
+      }
+    );
+
+  const imagemAberta =
+    criarImagemDicomMorfologia(
+      imagemDilatada.getPixelData(),
+      imagemDilatada.width,
+      imagemDilatada.height,
+      imagemEntrada,
+      `dicom_abertura_${Date.now()}`
+    );
+
+  atualizarProgressoMorfologia(
+    atualizarProgresso,
+    100
+  );
+
+  return imagemAberta;
+}
+
+
+// Alias com o nome da função equivalente do MATLAB.
+async function aplicarImopenEmDicom(
+  imagemEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  return aplicarAberturaEmDicom(
+    imagemEntrada,
+    elementoEstruturante,
+    formatoSaida,
+    atualizarProgresso
   );
 }
 
