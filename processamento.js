@@ -824,7 +824,10 @@ function selecionarFerramenta(nome, botaoClicado) {
   if (
     nome === "Erosão" ||
     nome === "Dilatação" ||
-    nome === "Abertura"
+    nome === "Abertura" ||
+    nome === "Fechamento" ||
+    nome === "Top-hat" ||
+    nome === "Bottom-hat"
   ) {
 
     parametrosDiv.innerHTML = `
@@ -1172,7 +1175,10 @@ async function aplicarFerramenta(nome) {
   if (
     nome === "Erosão" ||
     nome === "Dilatação" ||
-    nome === "Abertura"
+    nome === "Abertura" ||
+    nome === "Fechamento" ||
+    nome === "Top-hat" ||
+    nome === "Bottom-hat"
   ) {
     const seletorFormato =
       document.getElementById(
@@ -1210,12 +1216,35 @@ async function aplicarFerramenta(nome) {
           formatoElemento,
           valorElemento
         );
+
     } else if (nome === "Abertura") {
       elementoInterpretado =
         interpretarElementoEstruturanteAbertura(
           formatoElemento,
           valorElemento
         );
+
+    } else if (nome === "Fechamento") {
+      elementoInterpretado =
+        interpretarElementoEstruturanteFechamento(
+          formatoElemento,
+          valorElemento
+        );
+
+    } else if (nome === "Top-hat") {
+      elementoInterpretado =
+        interpretarElementoEstruturanteTopHat(
+          formatoElemento,
+          valorElemento
+        );
+
+    } else if (nome === "Bottom-hat") {
+      elementoInterpretado =
+        interpretarElementoEstruturanteBottomHat(
+          formatoElemento,
+          valorElemento
+        );
+
     } else {
       elementoInterpretado =
         interpretarElementoEstruturanteErosao(
@@ -1279,12 +1308,35 @@ async function aplicarFerramenta(nome) {
 
         "Dilatação aplicada em todas as imagens."
       );
+
     } else if (nome === "Abertura") {
       await aplicarPipelineAposAdicionarEtapa(
         "Abertura aplicada na imagem selecionada.",
 
         "Abertura aplicada em todas as imagens."
       );
+
+    } else if (nome === "Fechamento") {
+      await aplicarPipelineAposAdicionarEtapa(
+        "Fechamento aplicado na imagem selecionada.",
+
+        "Fechamento aplicado em todas as imagens."
+      );
+
+    } else if (nome === "Top-hat") {
+      await aplicarPipelineAposAdicionarEtapa(
+        "Top-hat aplicado na imagem selecionada.",
+
+        "Top-hat aplicado em todas as imagens."
+      );
+
+    } else if (nome === "Bottom-hat") {
+      await aplicarPipelineAposAdicionarEtapa(
+        "Bottom-hat aplicado na imagem selecionada.",
+
+        "Bottom-hat aplicado em todas as imagens."
+      );
+
     } else {
       await aplicarPipelineAposAdicionarEtapa(
         "Erosão aplicada na imagem selecionada.",
@@ -1292,7 +1344,6 @@ async function aplicarFerramenta(nome) {
         "Erosão aplicada em todas as imagens."
       );
     }
-
     return;
   }
 
@@ -1386,7 +1437,10 @@ function desenharFluxograma() {
     if (
       etapa.nome === "Erosão" ||
       etapa.nome === "Dilatação" ||
-      etapa.nome === "Abertura"
+      etapa.nome === "Abertura" ||
+      etapa.nome === "Fechamento" ||
+      etapa.nome === "Top-hat" ||
+      etapa.nome === "Bottom-hat"
     ) {
       textoParametros = `
         Formato:
@@ -2327,6 +2381,45 @@ async function processarImagemNormalPeloPipeline(item) {
         );
     }
 
+    if (etapa.nome === "Fechamento") {
+      canvasAtual =
+        await aplicarFechamentoEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Top-hat") {
+      canvasAtual =
+        await aplicarTopHatEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Bottom-hat") {
+      canvasAtual =
+        await aplicarBottomHatEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -2434,6 +2527,45 @@ async function processarDicomPeloPipeline(item) {
     if (etapa.nome === "Abertura") {
       imagemAtual =
         await aplicarAberturaEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Fechamento") {
+      imagemAtual =
+        await aplicarFechamentoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Top-hat") {
+      imagemAtual =
+        await aplicarTopHatEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Bottom-hat") {
+      imagemAtual =
+        await aplicarBottomHatEmDicom(
           imagemAtual,
 
           etapa.parametros.elementoEstruturante,
@@ -3044,6 +3176,45 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
         );
     }
 
+    if (etapa.nome === "Fechamento") {
+      canvasAtual =
+        await aplicarFechamentoEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Top-hat") {
+      canvasAtual =
+        await aplicarTopHatEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Bottom-hat") {
+      canvasAtual =
+        await aplicarBottomHatEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -3113,6 +3284,45 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
     if (etapa.nome === "Abertura") {
       imagemAtual =
         await aplicarAberturaEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Fechamento") {
+      imagemAtual =
+        await aplicarFechamentoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Top-hat") {
+      imagemAtual =
+        await aplicarTopHatEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Bottom-hat") {
+      imagemAtual =
+        await aplicarBottomHatEmDicom(
           imagemAtual,
 
           etapa.parametros.elementoEstruturante,
