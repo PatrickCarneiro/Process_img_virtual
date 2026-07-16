@@ -177,43 +177,16 @@ async function loadFiles() {
     }
 
     imagensProcessamento = files.map(function(item, index) {
-      const nomeArquivo =
-        String(item.name || "")
-          .toLowerCase();
-      const tipoMime =
-        String(
-          item.file &&
-          item.file.type
-            ? item.file.type
-            : ""
-        ).toLowerCase();
-      const ehDicom =
-        item.type === "dicom" ||
-        nomeArquivo.endsWith(".dcm") ||
-        nomeArquivo.endsWith(".dicom") ||
-        tipoMime === "application/dicom" ||
-        tipoMime === "application/dicom+json";
       return {
-        idProcessamento:
-          index + 1,
-        id:
-          item.id,
-        name:
-          item.name,
-        type:
-          ehDicom
-            ? "dicom"
-            : "image",
-        file:
-          item.file,
-        resultado:
-          null,
-        processado:
-          false,
-        assinaturaPipeline:
-          "",
-        cacheEtapas:
-          {}
+        idProcessamento: index + 1,
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        file: item.file,
+        resultado: null,
+        processado: false,
+        assinaturaPipeline: "",
+        cacheEtapas: {}
       };
     });
 
@@ -356,86 +329,28 @@ function atualizarCardSelecionado() {
 }
 
 // Função para renderizar miniatura DICOM
-async function renderDicomThumbnail(
-  item,
-  container
-) {
-  try {
+async function renderDicomThumbnail(item, container) { // Função para miniatura DICOM
 
-    if (
-      typeof cornerstone === "undefined"
-    ) {
-      throw new Error(
-        "A biblioteca Cornerstone não foi carregada."
-      );
-    }
+  try { // Tenta renderizar
 
-    if (
-      typeof cornerstoneWADOImageLoader ===
-      "undefined"
-    ) {
-      throw new Error(
-        "O Cornerstone WADO Image Loader não foi carregado."
-      );
-    }
+    cornerstone.enable(container); // Habilita container no Cornerstone
 
-    try {
-      cornerstone.getEnabledElement(
-        container
-      );
-    } catch {
-      cornerstone.enable(
-        container
-      );
-    }
+    const dicomFile = new File([item.file], item.name); // Recria arquivo DICOM
 
-    const arquivoDicom =
-      item.file instanceof File
-        ? item.file
-        : new File(
-            [item.file],
-            item.name || "imagem.dcm",
-            {
-              type: "application/dicom"
-            }
-          );
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile); // Adiciona arquivo ao loader
 
-    const imageId =
-      cornerstoneWADOImageLoader
-        .wadouri
-        .fileManager
-        .add(arquivoDicom);
+    const image = await cornerstone.loadImage(imageId); // Carrega imagem DICOM
 
-    const image =
-      await cornerstone.loadAndCacheImage(
-        imageId
-      );
+    cornerstone.displayImage(container, image); // Mostra imagem no container
 
-    cornerstone.displayImage(
-      container,
-      image
-    );
+    cornerstone.resize(container, true); // Ajusta tamanho
 
-    cornerstone.resize(
-      container,
-      true
-    );
+  } catch { // Se der erro
 
-  } catch (error) {
+    container.innerText = "DICOM"; // Mostra texto DICOM
 
-    console.error(
-      "Erro ao carregar miniatura DICOM:",
-      error
-    );
+  } 
 
-    container.innerText =
-      "Erro DICOM";
-
-    container.title =
-      error && error.message
-        ? error.message
-        : "Erro desconhecido ao abrir DICOM";
-  }
 }
 
 // =====================================================
@@ -897,65 +812,6 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
-  if (
-  nome === "Erosão" ||
-  nome === "Dilatação"
-) {
-
-    parametrosDiv.innerHTML = `
-      <h4>Parâmetros</h4>
-
-      <div class="campo_parametro_info">
-        <label>Formato do elemento estruturante</label>
-
-        <select
-          id="paramFormatoElementoErosao"
-          onchange="atualizarCampoElementoEstruturanteErosao()"
-        >
-          <option value="square">square</option>
-          <option value="rectangle">rectangle</option>
-          <option value="diamond">diamond</option>
-          <option value="disk">disk</option>
-          <option value="line">line</option>
-          <option value="octagon">octagon</option>
-        </select>
-
-        <div class="caixa_info_parametro">
-          Selecione o formato do elemento estruturante, equivalente aos
-          formatos disponíveis na função strel do MATLAB.
-        </div>
-      </div>
-
-      <div class="campo_parametro_info">
-        <label>Valor do elemento estruturante</label>
-
-        <input
-          type="text"
-          id="paramValorElementoErosao"
-          placeholder="Ex: 3"
-        >
-
-        <div
-          class="caixa_info_parametro"
-          id="ajudaElementoEstruturanteErosao"
-        >
-          Digite a largura do elemento quadrado. Exemplo: 3.
-        </div>
-      </div>
-
-      <button
-        class="botao-aplicar"
-        onclick="aplicarFerramenta('${nome}')"
-      >
-        Aplicar
-      </button>
-    `;
-
-    atualizarCampoElementoEstruturanteErosao();
-
-    return;
-  }
-
   if (nome.includes("tons de cinza")) {
 
     parametrosDiv.innerHTML = `
@@ -976,82 +832,6 @@ function selecionarFerramenta(nome, botaoClicado) {
       Aplicar
     </button>
   `;
-}
-
-function atualizarCampoElementoEstruturanteErosao() {
-
-  const seletorFormato = document.getElementById(
-    "paramFormatoElementoErosao"
-  );
-
-  const campoValor = document.getElementById(
-    "paramValorElementoErosao"
-  );
-
-  const caixaAjuda = document.getElementById(
-    "ajudaElementoEstruturanteErosao"
-  );
-
-  if (!seletorFormato || !campoValor || !caixaAjuda) {
-    return;
-  }
-
-  const formato = seletorFormato.value;
-
-  const configuracoes = {
-
-    square: {
-      placeholder: "Ex: 5",
-      ajuda:
-        "Digite a largura W do quadrado. " +
-        "Exemplo: 5 equivale a strel('square',5)."
-    },
-
-    rectangle: {
-      placeholder: "Ex: 3 5",
-      ajuda:
-        "Digite o número de linhas e colunas. " +
-        "Exemplo: 3 5 equivale a strel('rectangle',[3 5])."
-    },
-
-    diamond: {
-      placeholder: "Ex: 4",
-      ajuda:
-        "Digite o raio R do losango. " +
-        "Exemplo: 4 equivale a strel('diamond',4)."
-    },
-
-    disk: {
-      placeholder: "Ex: 5 ou 5 0",
-      ajuda:
-        "Digite o raio R. Opcionalmente, informe N depois do raio. " +
-        "N pode ser 0, 4, 6 ou 8. " +
-        "Exemplo: 5 0 equivale a strel('disk',5,0)."
-    },
-
-    line: {
-      placeholder: "Ex: 11 90",
-      ajuda:
-        "Digite o comprimento LEN e o ângulo DEG. " +
-        "Exemplo: 11 90 equivale a strel('line',11,90)."
-    },
-
-    octagon: {
-      placeholder: "Ex: 6",
-      ajuda:
-        "Digite o raio R do octógono. " +
-        "O valor deve ser um múltiplo não negativo de 3. " +
-        "Exemplo: 6 equivale a strel('octagon',6)."
-    }
-
-  };
-
-  const configuracao =
-    configuracoes[formato] || configuracoes.square;
-
-  campoValor.value = "";
-  campoValor.placeholder = configuracao.placeholder;
-  caixaAjuda.innerText = configuracao.ajuda;
 }
 
 // Função para aplicar uma ferramenta everificação das inserções
@@ -1244,116 +1024,6 @@ async function aplicarFerramenta(nome) {
     return;
   }
 
-  if (
-    nome === "Erosão" ||
-    nome === "Dilatação"
-  ) {
-    const seletorFormato =
-      document.getElementById(
-        "paramFormatoElementoErosao"
-      );
-
-    const campoValor =
-      document.getElementById(
-        "paramValorElementoErosao"
-      );
-
-    const formatoElemento =
-      seletorFormato
-        ? seletorFormato.value
-        : "square";
-
-    const valorElemento =
-      campoValor
-        ? campoValor.value.trim()
-        : "";
-
-    if (valorElemento === "") {
-      alert(
-        "Digite o valor do elemento estruturante."
-      );
-
-      return;
-    }
-
-    let elementoInterpretado;
-
-    if (nome === "Dilatação") {
-      elementoInterpretado =
-        interpretarElementoEstruturanteDilatacao(
-          formatoElemento,
-          valorElemento
-        );
-    } else {
-      elementoInterpretado =
-        interpretarElementoEstruturanteErosao(
-          formatoElemento,
-          valorElemento
-        );
-    }
-
-    if (!elementoInterpretado.valido) {
-      alert(
-        elementoInterpretado.mensagem
-      );
-
-      return;
-    }
-
-    const etapa = {
-      id:
-        proximoIdEtapa++,
-
-      nome:
-        nome,
-
-      parametros: {
-        formatoElemento:
-          formatoElemento,
-
-        valorElemento:
-          valorElemento,
-
-        elementoEstruturante: {
-          nhood:
-            elementoInterpretado.nhood,
-
-          descricao:
-            elementoInterpretado.descricao,
-
-          formato:
-            elementoInterpretado.formato,
-
-          parametros:
-            elementoInterpretado.parametros
-        },
-
-        formatoSaida:
-          "same"
-      }
-    };
-
-    pipelineFerramentas.push(
-      etapa
-    );
-
-    if (nome === "Dilatação") {
-      await aplicarPipelineAposAdicionarEtapa(
-        "Dilatação aplicada na imagem selecionada.",
-
-        "Dilatação aplicada em todas as imagens."
-      );
-    } else {
-      await aplicarPipelineAposAdicionarEtapa(
-        "Erosão aplicada na imagem selecionada.",
-
-        "Erosão aplicada em todas as imagens."
-      );
-    }
-
-    return;
-  }
-
   alert("Ferramenta ainda não implementada no pipeline.");
 }
 
@@ -1440,33 +1110,6 @@ function desenharFluxograma() {
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
-
-    if (
-      etapa.nome === "Erosão" ||
-      etapa.nome === "Dilatação"
-    ) {
-      textoParametros = `
-        Formato:
-        ${etapa.parametros.formatoElemento}
-        <br>
-
-        Valor:
-        ${etapa.parametros.valorElemento}
-        <br>
-
-        Elemento:
-        ${etapa.parametros.elementoEstruturante.descricao}
-        <br>
-
-        Formato da saída:
-        ${
-          etapa.parametros.formatoSaida ||
-          etapa.parametros.formato ||
-          "same"
-        }
-      `;
-    }
-
     if (etapa.nome.includes("tons de cinza")) {
     }
 
@@ -1774,40 +1417,10 @@ async function openFile(item) {
 
     let imagem;
 
-    try {
-
-      if (
-        item.resultado &&
-        item.resultado.tipo === "dicom"
-      ) {
-        imagem =
-          item.resultado.imagem;
-      } else {
-        imagem =
-          await carregarDicomOriginal(
-            item
-          );
-      }
-
-    } catch (error) {
-
-      console.error(
-        "Erro em openFile ao abrir DICOM:",
-        error
-      );
-
-      visualizadorDicom.style.display =
-        "none";
-
-      statusText.innerText =
-        "Erro ao abrir DICOM: " +
-        (
-          error && error.message
-            ? error.message
-            : item.name
-        );
-
-      return;
+    if (item.resultado && item.resultado.tipo === "dicom") {
+      imagem = item.resultado.imagem;
+    } else {
+      imagem = await carregarDicomOriginal(item);
     }
 
     imagemDicomAtual = imagem;
@@ -2381,32 +1994,6 @@ async function processarImagemNormalPeloPipeline(item) {
     );
     }
 
-    if (etapa.nome === "Erosão") {
-      canvasAtual =
-        await aplicarErosaoEmCanvas(
-          canvasAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida ||
-
-          atualizarBarraProcessamento
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      canvasAtual =
-        await aplicarDilatacaoEmCanvas(
-          canvasAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          atualizarBarraProcessamento
-        );
-    }
-
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -2483,32 +2070,7 @@ async function processarDicomPeloPipeline(item) {
       etapa.parametros.ignorarZero,
       atualizarBarraProcessamento
     );
-    }
 
-    if (etapa.nome === "Erosão") {
-      imagemAtual =
-        await aplicarErosaoEmDicom(
-          imagemAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          atualizarBarraProcessamento
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      imagemAtual =
-        await aplicarDilatacaoEmDicom(
-          imagemAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          atualizarBarraProcessamento
-        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -2557,110 +2119,20 @@ function criarCanvasOriginalImagemNormal(file) {
 
 }
 // Carrega um DICOM original.
-async function carregarDicomOriginal(
-  item
-) {
-  try {
+function carregarDicomOriginal(item) {
 
-    if (!item) {
-      throw new Error(
-        "Item DICOM não informado."
-      );
-    }
+  return new Promise(function(resolve, reject) {
+    const dicomFile = new File([item.file], item.name);
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
+    cornerstone.loadImage(imageId)
+      .then(function(image) {
+        resolve(image);
+      })
+      .catch(function(error) {
+        reject(error);
+      });
+  });
 
-    if (!item.file) {
-      throw new Error(
-        "O arquivo DICOM não foi encontrado no item."
-      );
-    }
-
-    if (
-      typeof cornerstone ===
-      "undefined"
-    ) {
-      throw new Error(
-        "A biblioteca Cornerstone não foi carregada."
-      );
-    }
-
-    if (
-      typeof cornerstoneWADOImageLoader ===
-      "undefined"
-    ) {
-      throw new Error(
-        "O Cornerstone WADO Image Loader não foi carregado."
-      );
-    }
-
-    const arquivoDicom =
-      item.file instanceof File
-        ? item.file
-        : new File(
-            [item.file],
-            item.name || "imagem.dcm",
-            {
-              type: "application/dicom"
-            }
-          );
-
-    const imageId =
-      cornerstoneWADOImageLoader
-        .wadouri
-        .fileManager
-        .add(arquivoDicom);
-
-    console.log(
-      "Tentando carregar DICOM:",
-      {
-        nome:
-          arquivoDicom.name,
-
-        tamanho:
-          arquivoDicom.size,
-
-        tipo:
-          arquivoDicom.type,
-
-        imageId:
-          imageId
-      }
-    );
-
-    const imagem =
-      await cornerstone.loadAndCacheImage(
-        imageId
-      );
-
-    if (!imagem) {
-      throw new Error(
-        "O Cornerstone não retornou a imagem DICOM."
-      );
-    }
-
-    if (
-      !Number.isFinite(
-        Number(imagem.width)
-      ) ||
-      !Number.isFinite(
-        Number(imagem.height)
-      )
-    ) {
-      throw new Error(
-        "O DICOM foi carregado, mas suas dimensões são inválidas."
-      );
-    }
-
-    return imagem;
-
-  } catch (error) {
-
-    console.error(
-      "Erro ao carregar DICOM original:",
-      error
-    );
-
-    throw error;
-  }
 }
 
 function deveIgnorarPixelZeroFerramentas() {
@@ -3114,32 +2586,6 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
     }
 
-    if (etapa.nome === "Erosão") {
-      canvasAtual =
-        await aplicarErosaoEmCanvas(
-          canvasAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-          function() {}
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      canvasAtual =
-        await aplicarDilatacaoEmCanvas(
-          canvasAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-
-          function() {}
-        );
-    }
-
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -3178,32 +2624,6 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
         function() {}
       );
 
-    }
-
-    if (etapa.nome === "Erosão") {
-      imagemAtual =
-        await aplicarErosaoEmDicom(
-          imagemAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          function() {}
-        );
-    }
-
-    if (etapa.nome === "Dilatação") {
-      imagemAtual =
-        await aplicarDilatacaoEmDicom(
-          imagemAtual,
-
-          etapa.parametros.elementoEstruturante,
-
-          etapa.parametros.formatoSaida,
-
-          function() {}
-        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
