@@ -211,8 +211,12 @@ async function loadFiles() {
     statusText.innerText = "Arquivos carregados.";
 
   } catch (error) {
-    console.error(error);
-    statusText.innerText = "Erro ao carregar arquivos.";
+    console.error(
+      "Erro ao carregar miniatura DICOM:",
+      item.name,
+      error
+    );
+    container.innerText = "Erro DICOM";
   }
 }
 
@@ -1375,9 +1379,9 @@ function desenharFluxograma() {
 
         Formato da saída:
         ${
-          etapa.parametros.formatoSaida ||
-          etapa.parametros.formato ||
-          "same"
+          etapa.parametros.formatoSaida,
+          etapa.parametros.formato,
+
         }
       `;
     }
@@ -2273,7 +2277,7 @@ async function processarImagemNormalPeloPipeline(item) {
 
           etapa.parametros.elementoEstruturante,
 
-          etapa.parametros.formatoSaida ||
+          etapa.parametros.formatoSaida,
 
           atualizarBarraProcessamento
         );
@@ -2442,20 +2446,61 @@ function criarCanvasOriginalImagemNormal(file) {
 
 }
 // Carrega um DICOM original.
-function carregarDicomOriginal(item) {
+async function carregarDicomOriginal(item) {
 
-  return new Promise(function(resolve, reject) {
-    const dicomFile = new File([item.file], item.name);
-    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dicomFile);
-    cornerstone.loadImage(imageId)
-      .then(function(image) {
-        resolve(image);
-      })
-      .catch(function(error) {
-        reject(error);
-      });
-  });
+  if (typeof cornerstone === "undefined") {
+    throw new Error("A biblioteca Cornerstone não foi carregada.");
+  }
 
+  if (typeof cornerstoneWADOImageLoader === "undefined") {
+    throw new Error(
+      "A biblioteca cornerstoneWADOImageLoader não foi carregada."
+    );
+  }
+
+  if (typeof dicomParser === "undefined") {
+    throw new Error("A biblioteca dicomParser não foi carregada.");
+  }
+
+  if (!item || !item.file) {
+    throw new Error("O arquivo DICOM não está disponível.");
+  }
+
+  try {
+
+    const dicomFile =
+      item.file instanceof File
+        ? item.file
+        : new File(
+            [item.file],
+            item.name || "imagem.dcm",
+            { type: "application/dicom" }
+          );
+
+    const imageId =
+      cornerstoneWADOImageLoader.wadouri.fileManager.add(
+        dicomFile
+      );
+
+    console.log("Carregando DICOM:", {
+      nome: item.name,
+      tipo: item.type,
+      tamanho: dicomFile.size,
+      imageId: imageId
+    });
+
+    const imagem = await cornerstone.loadImage(imageId);
+
+    return imagem;
+
+  } catch (error) {
+
+    console.error("Erro completo ao carregar arquivos:", error);
+
+    statusText.innerText =
+      "Erro ao carregar arquivos: " +
+      (error.message || String(error));
+  }
 }
 
 function deveIgnorarPixelZeroFerramentas() {
