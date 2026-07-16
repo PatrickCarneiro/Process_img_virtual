@@ -211,12 +211,12 @@ async function loadFiles() {
     statusText.innerText = "Arquivos carregados.";
 
   } catch (error) {
-    console.error(
-      "Erro ao carregar miniatura DICOM:",
-      item.name,
-      error
-    );
-    container.innerText = "Erro DICOM";
+
+    console.error("Erro ao carregar arquivos:", error);
+
+    statusText.innerText =
+      "Erro ao carregar arquivos: " +
+      (error.message || String(error));
   }
 }
 
@@ -349,11 +349,16 @@ async function renderDicomThumbnail(item, container) { // Função para miniatur
 
     cornerstone.resize(container, true); // Ajusta tamanho
 
-  } catch { // Se der erro
+  } catch (error) {
 
-    container.innerText = "DICOM"; // Mostra texto DICOM
+    console.error(
+      "Erro ao carregar miniatura DICOM:",
+      item.name,
+      error
+    );
 
-  } 
+    container.innerText = "Erro DICOM";
+  }
 
 }
 
@@ -1378,11 +1383,7 @@ function desenharFluxograma() {
         <br>
 
         Formato da saída:
-        ${
-          etapa.parametros.formatoSaida,
-          etapa.parametros.formato,
-
-        }
+        ${etapa.parametros.formatoSaida || "same"}
       `;
     }
 
@@ -2495,11 +2496,18 @@ async function carregarDicomOriginal(item) {
 
   } catch (error) {
 
-    console.error("Erro completo ao carregar arquivos:", error);
+    console.error(
+      "Erro ao carregar o DICOM:",
+      item.name,
+      error
+    );
 
-    statusText.innerText =
-      "Erro ao carregar arquivos: " +
-      (error.message || String(error));
+    throw new Error(
+      "Não foi possível carregar o DICOM " +
+      item.name +
+      ": " +
+      (error.message || String(error))
+    );
   }
 }
 
