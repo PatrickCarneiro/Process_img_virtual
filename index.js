@@ -212,7 +212,15 @@ fileInput.addEventListener("change", async function() { // Evento que roda quand
 
   for (const file of files) {
 
-    const type = file.name.endsWith(".dcm") ? "dicom" : "image";
+    const nomeArquivo =
+      file.name.toLowerCase();
+
+    const type =
+      nomeArquivo.endsWith(".dcm") ||
+      nomeArquivo.endsWith(".dicom") ||
+      file.type === "application/dicom"
+        ? "dicom"
+        : "image";
 
     const data = { // Cria um objeto com as informações do arquivo para armazenar no banco
       name: file.name,
