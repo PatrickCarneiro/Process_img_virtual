@@ -1,59 +1,26 @@
 // =====================================================
-// OPERAÇÕES MORFOLÓGICAS
-// EROSÃO 2D PLANA NO ESTILO MATLAB IMERODE + STREL
-//
-// Compatível com:
-// - Imagens comuns em Canvas (RGB/RGBA)
-// - Imagens DICOM de um canal
-// - Elementos estruturantes 2D planos:
-//     square
-//     rectangle
-//     diamond
-//     disk
-//     line
-//     octagon
-//
-// Função de interpretação:
-//
-// interpretarElementoEstruturanteErosao(formato, valor)
-//
-// Exemplos:
-// interpretarElementoEstruturanteErosao("square", "5")
-// interpretarElementoEstruturanteErosao("rectangle", "3 5")
-// interpretarElementoEstruturanteErosao("diamond", "4")
-// interpretarElementoEstruturanteErosao("disk", "5")
-// interpretarElementoEstruturanteErosao("disk", "5 0")
-// interpretarElementoEstruturanteErosao("line", "11 90")
-// interpretarElementoEstruturanteErosao("octagon", "6")
-//
-// A origem segue o MATLAB:
-//
-// FLOOR((SIZE(NHOOD) + 1) / 2)
-//
-// Em JavaScript, com índice começando em zero:
-//
-// FLOOR((SIZE(NHOOD) - 1) / 2)
-//
-// A saída utilizada pelo sistema é "same", padrão do imerode.
+// morfologia.js
+// Erosão e dilatação 2D planas inspiradas no MATLAB
+// Funções equivalentes: strel, imerode e imdilate
 // =====================================================
 
 
-// =====================================================
-// ATUALIZAÇÃO DA INTERFACE
-// =====================================================
+// -----------------------------------------------------
+// Utilidades gerais
+// -----------------------------------------------------
 
 function esperarAtualizacaoMorfologia() {
-  return new Promise(function(resolve) {
+  return new Promise((resolve) => {
     requestAnimationFrame(resolve);
   });
 }
 
 
 function atualizarProgressoMorfologia(
-  atualizarProgresso,
+  callback,
   porcentagem
 ) {
-  if (typeof atualizarProgresso !== "function") {
+  if (typeof callback !== "function") {
     return;
   }
 
@@ -63,86 +30,94 @@ function atualizarProgressoMorfologia(
     valor = 0;
   }
 
-  valor = Math.max(0, Math.min(100, valor));
-
-  atualizarProgresso(valor);
+  callback(
+    Math.max(
+      0,
+      Math.min(100, valor)
+    )
+  );
 }
 
 
-// =====================================================
-// LEITURA DOS PARÂMETROS
-// =====================================================
-
-function normalizarTextoFormatoElementoErosao(formato) {
+function normalizarFormatoElemento(formato) {
   return String(formato || "")
-    .toLowerCase()
-    .trim();
+    .trim()
+    .toLowerCase();
 }
 
 
-function separarValoresElementoEstruturanteErosao(
-  valorDigitado
-) {
-  let texto = String(valorDigitado || "").trim();
-
-  texto = texto
-    .replace(/\[/g, " ")
-    .replace(/\]/g, " ")
-    .replace(/\(/g, " ")
-    .replace(/\)/g, " ")
-    .replace(/,/g, " ")
-    .replace(/;/g, " ")
+function separarValoresElemento(valorDigitado) {
+  const texto = String(valorDigitado || "")
+    .trim()
+    .replace(/[\[\](),;]/g, " ")
     .replace(/x/gi, " ");
 
+  if (!texto) {
+    return [];
+  }
+
   return texto
-    .trim()
     .split(/\s+/)
-    .filter(function(parte) {
-      return parte !== "";
-    });
+    .filter(Boolean);
 }
 
 
-function converterInteiroElementoErosao(valor) {
+function converterInteiro(valor) {
   const numero = Number(valor);
 
   if (
-    !Number.isFinite(numero) ||
-    !Number.isInteger(numero)
+    Number.isFinite(numero) &&
+    Number.isInteger(numero)
   ) {
-    return null;
+    return numero;
   }
 
-  return numero;
+  return null;
 }
 
 
-function converterNumeroElementoErosao(valor) {
+function converterNumero(valor) {
   const numero = Number(valor);
 
-  if (!Number.isFinite(numero)) {
-    return null;
-  }
-
-  return numero;
+  return Number.isFinite(numero)
+    ? numero
+    : null;
 }
 
 
-// =====================================================
-// INTERPRETAÇÃO DO ELEMENTO ESTRUTURANTE
-// =====================================================
+function criarMatriz(
+  altura,
+  largura,
+  valor = 0
+) {
+  return Array.from(
+    {
+      length: altura
+    },
+    () => Array(largura).fill(valor)
+  );
+}
+
+
+// -----------------------------------------------------
+// Interpretação do STREL
+// -----------------------------------------------------
 
 function interpretarElementoEstruturanteErosao(
   formatoElemento,
   valorElemento
 ) {
   const formato =
-    normalizarTextoFormatoElementoErosao(formatoElemento);
+    normalizarFormatoElemento(
+      formatoElemento
+    );
 
   const valores =
-    separarValoresElementoEstruturanteErosao(valorElemento);
+    separarValoresElemento(
+      valorElemento
+    );
 
-  if (formato === "") {
+  if (!formato) {
     return {
       valido: false,
       mensagem:
@@ -158,100 +133,133 @@ function interpretarElementoEstruturanteErosao(
     };
   }
 
-  if (formato === "square") {
-    return interpretarSquareElementoErosao(valores);
-  }
+  switch (formato) {
+    case "square":
+      return interpretarSquare(
+        valores
+      );
 
-  if (formato === "rectangle") {
-    return interpretarRectangleElementoErosao(valores);
-  }
+    case "rectangle":
+      return interpretarRectangle(
+        valores
+      );
 
-  if (formato === "diamond") {
-    return interpretarDiamondElementoErosao(valores);
-  }
+    case "diamond":
+      return interpretarDiamond(
+        valores
+      );
 
-  if (formato === "disk") {
-    return interpretarDiskElementoErosao(valores);
-  }
+    case "disk":
+      return interpretarDisk(
+        valores
+      );
 
-  if (formato === "line") {
-    return interpretarLineElementoErosao(valores);
-  }
+    case "line":
+      return interpretarLine(
+        valores
+      );
 
-  if (formato === "octagon") {
-    return interpretarOctagonElementoErosao(valores);
-  }
+    case "octagon":
+      return interpretarOctagon(
+        valores
+      );
 
-  return {
-    valido: false,
-    mensagem:
-      "Formato de elemento estruturante não reconhecido. " +
-      "Use square, rectangle, diamond, disk, line ou octagon."
-  };
+    default:
+      return {
+        valido: false,
+
+        mensagem:
+          "Formato não reconhecido. Use square, rectangle, " +
+          "diamond, disk, line ou octagon."
+      };
+  }
 }
 
 
-// =====================================================
-// STREL('SQUARE', W)
-// =====================================================
+// A dilatação utiliza os mesmos formatos e parâmetros da erosão.
+function interpretarElementoEstruturanteDilatacao(
+  formatoElemento,
+  valorElemento
+) {
+  return interpretarElementoEstruturanteErosao(
+    formatoElemento,
+    valorElemento
+  );
+}
 
-function interpretarSquareElementoErosao(valores) {
+
+// -----------------------------------------------------
+// STREL("SQUARE", W)
+// -----------------------------------------------------
+
+function interpretarSquare(valores) {
   if (valores.length !== 1) {
     return {
       valido: false,
+
       mensagem:
         "Para square, digite somente a largura. Exemplo: 5."
     };
   }
 
   const largura =
-    converterInteiroElementoErosao(valores[0]);
+    converterInteiro(
+      valores[0]
+    );
 
-  if (largura === null || largura < 1) {
+  if (
+    largura === null ||
+    largura < 1
+  ) {
     return {
       valido: false,
+
       mensagem:
-        "A largura de square deve ser um número inteiro " +
-        "maior ou igual a 1."
+        "A largura de square deve ser um inteiro maior ou igual a 1."
     };
   }
 
-  const nhood = criarMatrizPreenchidaErosao(
-    largura,
-    largura,
-    1
-  );
+  return finalizarElementoEstruturante(
+    criarMatriz(
+      largura,
+      largura,
+      1
+    ),
 
-  return finalizarElementoEstruturanteErosao(
-    nhood,
-    "square com largura " + largura,
+    `square com largura ${largura}`,
+
     "square",
+
     {
-      largura: largura
+      largura
     }
   );
 }
 
 
-// =====================================================
-// STREL('RECTANGLE', [M N])
-// =====================================================
+// -----------------------------------------------------
+// STREL("RECTANGLE", [M N])
+// -----------------------------------------------------
 
-function interpretarRectangleElementoErosao(valores) {
+function interpretarRectangle(valores) {
   if (valores.length !== 2) {
     return {
       valido: false,
+
       mensagem:
-        "Para rectangle, digite linhas e colunas. " +
-        "Exemplo: 3 5."
+        "Para rectangle, digite linhas e colunas. Exemplo: 3 5."
     };
   }
 
   const linhas =
-    converterInteiroElementoErosao(valores[0]);
+    converterInteiro(
+      valores[0]
+    );
 
   const colunas =
-    converterInteiroElementoErosao(valores[1]);
+    converterInteiro(
+      valores[1]
+    );
 
   if (
     linhas === null ||
@@ -261,97 +269,122 @@ function interpretarRectangleElementoErosao(valores) {
   ) {
     return {
       valido: false,
+
       mensagem:
-        "As dimensões de rectangle devem ser números " +
-        "inteiros maiores ou iguais a 1."
+        "As dimensões de rectangle devem ser inteiros maiores ou iguais a 1."
     };
   }
 
-  const nhood = criarMatrizPreenchidaErosao(
-    linhas,
-    colunas,
-    1
-  );
+  return finalizarElementoEstruturante(
+    criarMatriz(
+      linhas,
+      colunas,
+      1
+    ),
 
-  return finalizarElementoEstruturanteErosao(
-    nhood,
-    "rectangle de " + linhas + "x" + colunas,
+    `rectangle de ${linhas}x${colunas}`,
+
     "rectangle",
+
     {
-      linhas: linhas,
-      colunas: colunas
+      linhas,
+      colunas
     }
   );
 }
 
 
-// =====================================================
-// STREL('DIAMOND', R)
-// =====================================================
+// -----------------------------------------------------
+// STREL("DIAMOND", R)
+// -----------------------------------------------------
 
-function interpretarDiamondElementoErosao(valores) {
+function interpretarDiamond(valores) {
   if (valores.length !== 1) {
     return {
       valido: false,
+
       mensagem:
         "Para diamond, digite somente o raio. Exemplo: 4."
     };
   }
 
   const raio =
-    converterInteiroElementoErosao(valores[0]);
+    converterInteiro(
+      valores[0]
+    );
 
-  if (raio === null || raio < 0) {
+  if (
+    raio === null ||
+    raio < 0
+  ) {
     return {
       valido: false,
+
       mensagem:
-        "O raio de diamond deve ser um número inteiro " +
-        "não negativo."
+        "O raio de diamond deve ser um inteiro não negativo."
     };
   }
 
-  const tamanho = 2 * raio + 1;
+  const tamanho =
+    2 * raio + 1;
 
-  const nhood = criarMatrizPreenchidaErosao(
-    tamanho,
-    tamanho,
-    0
-  );
+  const nhood =
+    criarMatriz(
+      tamanho,
+      tamanho,
+      0
+    );
 
-  for (let y = -raio; y <= raio; y++) {
-    for (let x = -raio; x <= raio; x++) {
-      if (Math.abs(y) + Math.abs(x) <= raio) {
-        nhood[y + raio][x + raio] = 1;
+  for (
+    let y = -raio;
+    y <= raio;
+    y++
+  ) {
+    for (
+      let x = -raio;
+      x <= raio;
+      x++
+    ) {
+      if (
+        Math.abs(x) +
+        Math.abs(y) <=
+        raio
+      ) {
+        nhood[
+          y + raio
+        ][
+          x + raio
+        ] = 1;
       }
     }
   }
 
-  return finalizarElementoEstruturanteErosao(
+  return finalizarElementoEstruturante(
     nhood,
-    "diamond com raio " + raio,
+
+    `diamond com raio ${raio}`,
+
     "diamond",
+
     {
-      raio: raio
+      raio
     }
   );
 }
 
 
-// =====================================================
-// STREL('DISK', R, N)
-//
-// N pode ser 0, 4, 6 ou 8.
-// Se N for omitido, o padrão do MATLAB é 4.
-// Para R menor que 3, o MATLAB força N = 0.
-// =====================================================
+// -----------------------------------------------------
+// STREL("DISK", R, N)
+// -----------------------------------------------------
 
-function interpretarDiskElementoErosao(valores) {
+function interpretarDisk(valores) {
   if (
     valores.length !== 1 &&
     valores.length !== 2
   ) {
     return {
       valido: false,
+
       mensagem:
         "Para disk, digite o raio e, opcionalmente, N. " +
         "Exemplos: 5 ou 5 0."
@@ -359,84 +392,102 @@ function interpretarDiskElementoErosao(valores) {
   }
 
   const raio =
-    converterInteiroElementoErosao(valores[0]);
+    converterInteiro(
+      valores[0]
+    );
 
-  if (raio === null || raio < 0) {
+  if (
+    raio === null ||
+    raio < 0
+  ) {
     return {
       valido: false,
+
       mensagem:
-        "O raio de disk deve ser um número inteiro " +
-        "não negativo."
+        "O raio de disk deve ser um inteiro não negativo."
     };
   }
 
-  let numeroDecomposicoes = 4;
+  let n =
+    valores.length === 2
+      ? converterInteiro(
+          valores[1]
+        )
+      : 4;
 
-  if (valores.length === 2) {
-    numeroDecomposicoes =
-      converterInteiroElementoErosao(valores[1]);
+  if (
+    n === null ||
+    ![
+      0,
+      4,
+      6,
+      8
+    ].includes(n)
+  ) {
+    return {
+      valido: false,
 
-    if (
-      numeroDecomposicoes === null ||
-      ![0, 4, 6, 8].includes(numeroDecomposicoes)
-    ) {
-      return {
-        valido: false,
-        mensagem:
-          "Em disk, N deve ser 0, 4, 6 ou 8."
-      };
-    }
+      mensagem:
+        "Em disk, N deve ser 0, 4, 6 ou 8."
+    };
   }
 
+  /*
+   * Assim como no MATLAB, para raios menores
+   * que 3 é utilizada a vizinhança exata.
+   */
   if (raio < 3) {
-    numeroDecomposicoes = 0;
+    n = 0;
   }
 
-  let nhood;
+  const nhood =
+    n === 0
+      ? criarDiscoExato(
+          raio
+        )
+      : criarDiscoAproximado(
+          raio,
+          n
+        );
 
-  if (numeroDecomposicoes === 0) {
-    nhood = criarDiscoExatoElementoErosao(raio);
-  } else {
-    nhood = criarDiscoAproximadoElementoErosao(
-      raio,
-      numeroDecomposicoes
-    );
-  }
-
-  return finalizarElementoEstruturanteErosao(
+  return finalizarElementoEstruturante(
     nhood,
-    "disk com raio " +
-      raio +
-      " e N " +
-      numeroDecomposicoes,
+
+    `disk com raio ${raio} e N ${n}`,
+
     "disk",
+
     {
-      raio: raio,
-      n: numeroDecomposicoes
+      raio,
+      n
     }
   );
 }
 
 
-// =====================================================
-// STREL('LINE', LEN, DEG)
-// =====================================================
+// -----------------------------------------------------
+// STREL("LINE", LEN, DEG)
+// -----------------------------------------------------
 
-function interpretarLineElementoErosao(valores) {
+function interpretarLine(valores) {
   if (valores.length !== 2) {
     return {
       valido: false,
+
       mensagem:
-        "Para line, digite o comprimento e o ângulo. " +
-        "Exemplo: 11 90."
+        "Para line, digite comprimento e ângulo. Exemplo: 11 90."
     };
   }
 
   const comprimento =
-    converterNumeroElementoErosao(valores[0]);
+    converterNumero(
+      valores[0]
+    );
 
   const angulo =
-    converterNumeroElementoErosao(valores[1]);
+    converterNumero(
+      valores[1]
+    );
 
   if (
     comprimento === null ||
@@ -444,145 +495,168 @@ function interpretarLineElementoErosao(valores) {
   ) {
     return {
       valido: false,
+
       mensagem:
-        "O comprimento de line deve ser um número finito " +
-        "maior ou igual a 1."
+        "O comprimento de line deve ser maior ou igual a 1."
     };
   }
 
   if (angulo === null) {
     return {
       valido: false,
+
       mensagem:
         "O ângulo de line deve ser um número finito."
     };
   }
 
-  const nhood = criarLinhaElementoErosao(
-    comprimento,
-    angulo
-  );
+  return finalizarElementoEstruturante(
+    criarLinha(
+      comprimento,
+      angulo
+    ),
 
-  return finalizarElementoEstruturanteErosao(
-    nhood,
-    "line com comprimento " +
-      comprimento +
-      " e ângulo " +
-      angulo +
-      "°",
+    `line com comprimento ${comprimento} e ângulo ${angulo}°`,
+
     "line",
+
     {
-      comprimento: comprimento,
-      angulo: angulo
+      comprimento,
+      angulo
     }
   );
 }
 
 
-// =====================================================
-// STREL('OCTAGON', R)
-// =====================================================
+// -----------------------------------------------------
+// STREL("OCTAGON", R)
+// -----------------------------------------------------
 
-function interpretarOctagonElementoErosao(valores) {
+function interpretarOctagon(valores) {
   if (valores.length !== 1) {
     return {
       valido: false,
+
       mensagem:
         "Para octagon, digite somente o raio. Exemplo: 6."
     };
   }
 
   const raio =
-    converterInteiroElementoErosao(valores[0]);
+    converterInteiro(
+      valores[0]
+    );
 
-  if (raio === null || raio < 0) {
+  if (
+    raio === null ||
+    raio < 0
+  ) {
     return {
       valido: false,
+
       mensagem:
-        "O raio de octagon deve ser um número inteiro " +
-        "não negativo."
+        "O raio de octagon deve ser um inteiro não negativo."
     };
   }
 
   if (raio % 3 !== 0) {
     return {
       valido: false,
+
       mensagem:
-        "O raio de octagon deve ser um múltiplo " +
-        "não negativo de 3."
+        "O raio de octagon deve ser múltiplo de 3."
     };
   }
 
-  const k = raio / 3;
-  const tamanho = 2 * raio + 1;
+  const tamanho =
+    2 * raio + 1;
 
-  const nhood = criarMatrizPreenchidaErosao(
-    tamanho,
-    tamanho,
-    0
-  );
+  const nhood =
+    criarMatriz(
+      tamanho,
+      tamanho,
+      0
+    );
 
-  for (let y = -raio; y <= raio; y++) {
-    for (let x = -raio; x <= raio; x++) {
+  const corte =
+    raio / 3;
+
+  for (
+    let y = -raio;
+    y <= raio;
+    y++
+  ) {
+    for (
+      let x = -raio;
+      x <= raio;
+      x++
+    ) {
       if (
-        Math.abs(y) + Math.abs(x) <= raio + k
+        Math.abs(x) +
+        Math.abs(y) <=
+        raio + corte
       ) {
-        nhood[y + raio][x + raio] = 1;
+        nhood[
+          y + raio
+        ][
+          x + raio
+        ] = 1;
       }
     }
   }
 
-  return finalizarElementoEstruturanteErosao(
+  return finalizarElementoEstruturante(
     nhood,
-    "octagon com raio " + raio,
+
+    `octagon com raio ${raio}`,
+
     "octagon",
+
     {
-      raio: raio
+      raio
     }
   );
 }
 
 
-// =====================================================
-// CRIAÇÃO DAS VIZINHANÇAS
-// =====================================================
+// -----------------------------------------------------
+// Geração das vizinhanças
+// -----------------------------------------------------
 
-function criarMatrizPreenchidaErosao(
-  altura,
-  largura,
-  valor
-) {
-  const matriz = new Array(altura);
+function criarDiscoExato(raio) {
+  const tamanho =
+    2 * raio + 1;
 
-  for (let y = 0; y < altura; y++) {
-    matriz[y] = new Array(largura);
+  const nhood =
+    criarMatriz(
+      tamanho,
+      tamanho,
+      0
+    );
 
-    for (let x = 0; x < largura; x++) {
-      matriz[y][x] = valor;
-    }
-  }
+  const raioQuadrado =
+    raio * raio;
 
-  return matriz;
-}
-
-
-function criarDiscoExatoElementoErosao(raio) {
-  const tamanho = 2 * raio + 1;
-
-  const nhood = criarMatrizPreenchidaErosao(
-    tamanho,
-    tamanho,
-    0
-  );
-
-  const raioQuadrado = raio * raio;
-
-  for (let y = -raio; y <= raio; y++) {
-    for (let x = -raio; x <= raio; x++) {
+  for (
+    let y = -raio;
+    y <= raio;
+    y++
+  ) {
+    for (
+      let x = -raio;
+      x <= raio;
+      x++
+    ) {
       if (
-        x * x + y * y <= raioQuadrado
+        x * x +
+        y * y <=
+        raioQuadrado
       ) {
-        nhood[y + raio][x + raio] = 1;
+        nhood[
+          y + raio
+        ][
+          x + raio
+        ] = 1;
       }
     }
   }
@@ -591,51 +665,48 @@ function criarDiscoExatoElementoErosao(raio) {
 }
 
 
-// =====================================================
-// DISCO APROXIMADO
-//
-// Aproximação radial para STREL('disk', R, N),
-// quando N é 4, 6 ou 8.
-// =====================================================
-
-function criarDiscoAproximadoElementoErosao(
+function criarDiscoAproximado(
   raio,
   n
 ) {
-  const vetoresBase =
-    obterVetoresBaseDiscoErosao(n);
+  const vetores =
+    obterVetoresDisco(n);
 
-  const theta = Math.PI / (2 * n);
+  const theta =
+    Math.PI /
+    (2 * n);
 
   const cotangente =
-    Math.cos(theta) / Math.sin(theta);
+    Math.cos(theta) /
+    Math.sin(theta);
 
   const k =
-    2 * raio /
+    (2 * raio) /
     (
       cotangente +
       1 / Math.sin(theta)
     );
 
-  let deslocamentosAcumulados =
-    new Set(["0,0"]);
+  let deslocamentos =
+    new Set([
+      "0,0"
+    ]);
 
   for (
-    let i = 0;
-    i < vetoresBase.length;
-    i++
+    const vetor of vetores
   ) {
-    const vetor = vetoresBase[i];
-
-    const norma = Math.sqrt(
-      vetor.dy * vetor.dy +
-      vetor.dx * vetor.dx
-    );
+    const norma =
+      Math.hypot(
+        vetor.dy,
+        vetor.dx
+      );
 
     const repeticoes =
-      Math.floor(k / norma);
+      Math.floor(
+        k / norma
+      );
 
-    const deslocamentosLinha =
+    const linha =
       new Set();
 
     for (
@@ -643,215 +714,318 @@ function criarDiscoAproximadoElementoErosao(
       p <= repeticoes;
       p++
     ) {
-      deslocamentosLinha.add(
-        String(p * vetor.dy) +
-        "," +
-        String(p * vetor.dx)
+      linha.add(
+        `${
+          p * vetor.dy
+        },${
+          p * vetor.dx
+        }`
       );
     }
 
-    deslocamentosAcumulados =
-      somarConjuntosDeslocamentosErosao(
-        deslocamentosAcumulados,
-        deslocamentosLinha
+    deslocamentos =
+      somarConjuntosDeslocamentos(
+        deslocamentos,
+        linha
       );
   }
 
   let maiorRaioVertical = 0;
 
-  deslocamentosAcumulados.forEach(
-    function(chave) {
-      const deslocamento =
-        converterChaveDeslocamentoErosao(chave);
-
-      maiorRaioVertical = Math.max(
-        maiorRaioVertical,
-        Math.abs(deslocamento.dy)
+  for (
+    const chave of deslocamentos
+  ) {
+    const {
+      dy
+    } =
+      converterChaveDeslocamento(
+        chave
       );
-    }
-  );
+
+    maiorRaioVertical =
+      Math.max(
+        maiorRaioVertical,
+        Math.abs(dy)
+      );
+  }
 
   const diferencaRadial =
-    raio - maiorRaioVertical;
+    raio -
+    maiorRaioVertical;
 
   const comprimentoCorrecao =
-    2 * (diferencaRadial - 1) + 1;
+    2 *
+    (
+      diferencaRadial -
+      1
+    ) +
+    1;
 
-  if (comprimentoCorrecao >= 3) {
-    const linhaHorizontal =
-      criarConjuntoLinhaElementoErosao(
-        comprimentoCorrecao,
-        0
+  if (
+    comprimentoCorrecao >= 3
+  ) {
+    deslocamentos =
+      somarConjuntosDeslocamentos(
+        deslocamentos,
+
+        criarConjuntoLinha(
+          comprimentoCorrecao,
+          0
+        )
       );
 
-    const linhaVertical =
-      criarConjuntoLinhaElementoErosao(
-        comprimentoCorrecao,
-        90
-      );
+    deslocamentos =
+      somarConjuntosDeslocamentos(
+        deslocamentos,
 
-    deslocamentosAcumulados =
-      somarConjuntosDeslocamentosErosao(
-        deslocamentosAcumulados,
-        linhaHorizontal
-      );
-
-    deslocamentosAcumulados =
-      somarConjuntosDeslocamentosErosao(
-        deslocamentosAcumulados,
-        linhaVertical
+        criarConjuntoLinha(
+          comprimentoCorrecao,
+          90
+        )
       );
   }
 
-  return criarNhoodAPartirDeslocamentosErosao(
-    deslocamentosAcumulados
-  );
-}
-
-
-function obterVetoresBaseDiscoErosao(n) {
-  if (n === 4) {
-    return [
-      { dy: 1, dx: 0 },
-      { dy: 1, dx: 1 },
-      { dy: 0, dx: 1 },
-      { dy: -1, dx: 1 }
-    ];
-  }
-
-  if (n === 6) {
-    return [
-      { dy: 1, dx: 0 },
-      { dy: 1, dx: 2 },
-      { dy: 2, dx: 1 },
-      { dy: 0, dx: 1 },
-      { dy: -1, dx: 2 },
-      { dy: -2, dx: 1 }
-    ];
-  }
-
-  return [
-    { dy: 1, dx: 0 },
-    { dy: 2, dx: 1 },
-    { dy: 1, dx: 1 },
-    { dy: 1, dx: 2 },
-    { dy: 0, dx: 1 },
-    { dy: -1, dx: 2 },
-    { dy: -1, dx: 1 },
-    { dy: -2, dx: 1 }
-  ];
-}
-
-
-function somarConjuntosDeslocamentosErosao(
-  conjuntoA,
-  conjuntoB
-) {
-  const resultado = new Set();
-
-  conjuntoA.forEach(function(chaveA) {
-    const a =
-      converterChaveDeslocamentoErosao(chaveA);
-
-    conjuntoB.forEach(function(chaveB) {
-      const b =
-        converterChaveDeslocamentoErosao(chaveB);
-
-      resultado.add(
-        String(a.dy + b.dy) +
-        "," +
-        String(a.dx + b.dx)
-      );
-    });
-  });
-
-  return resultado;
-}
-
-
-function converterChaveDeslocamentoErosao(
-  chave
-) {
-  const partes =
-    String(chave).split(",");
-
-  return {
-    dy: Number(partes[0]),
-    dx: Number(partes[1])
-  };
-}
-
-
-// =====================================================
-// ELEMENTO LINE
-// =====================================================
-
-function criarLinhaElementoErosao(
-  comprimento,
-  anguloGraus
-) {
-  const deslocamentos =
-    criarConjuntoLinhaElementoErosao(
-      comprimento,
-      anguloGraus
-    );
-
-  return criarNhoodAPartirDeslocamentosErosao(
+  return criarNhoodAPartirDeslocamentos(
     deslocamentos
   );
 }
 
 
-function criarConjuntoLinhaElementoErosao(
+function obterVetoresDisco(n) {
+  if (n === 4) {
+    return [
+      {
+        dy: 1,
+        dx: 0
+      },
+
+      {
+        dy: 1,
+        dx: 1
+      },
+
+      {
+        dy: 0,
+        dx: 1
+      },
+
+      {
+        dy: -1,
+        dx: 1
+      }
+    ];
+  }
+
+  if (n === 6) {
+    return [
+      {
+        dy: 1,
+        dx: 0
+      },
+
+      {
+        dy: 1,
+        dx: 2
+      },
+
+      {
+        dy: 2,
+        dx: 1
+      },
+
+      {
+        dy: 0,
+        dx: 1
+      },
+
+      {
+        dy: -1,
+        dx: 2
+      },
+
+      {
+        dy: -2,
+        dx: 1
+      }
+    ];
+  }
+
+  return [
+    {
+      dy: 1,
+      dx: 0
+    },
+
+    {
+      dy: 2,
+      dx: 1
+    },
+
+    {
+      dy: 1,
+      dx: 1
+    },
+
+    {
+      dy: 1,
+      dx: 2
+    },
+
+    {
+      dy: 0,
+      dx: 1
+    },
+
+    {
+      dy: -1,
+      dx: 2
+    },
+
+    {
+      dy: -1,
+      dx: 1
+    },
+
+    {
+      dy: -2,
+      dx: 1
+    }
+  ];
+}
+
+
+function converterChaveDeslocamento(
+  chave
+) {
+  const [
+    dy,
+    dx
+  ] =
+    String(chave)
+      .split(",")
+      .map(Number);
+
+  return {
+    dy,
+    dx
+  };
+}
+
+
+function somarConjuntosDeslocamentos(
+  conjuntoA,
+  conjuntoB
+) {
+  const resultado =
+    new Set();
+
+  for (
+    const chaveA of conjuntoA
+  ) {
+    const a =
+      converterChaveDeslocamento(
+        chaveA
+      );
+
+    for (
+      const chaveB of conjuntoB
+    ) {
+      const b =
+        converterChaveDeslocamento(
+          chaveB
+        );
+
+      resultado.add(
+        `${
+          a.dy + b.dy
+        },${
+          a.dx + b.dx
+        }`
+      );
+    }
+  }
+
+  return resultado;
+}
+
+
+function criarLinha(
+  comprimento,
+  anguloGraus
+) {
+  return criarNhoodAPartirDeslocamentos(
+    criarConjuntoLinha(
+      comprimento,
+      anguloGraus
+    )
+  );
+}
+
+
+function criarConjuntoLinha(
   comprimento,
   anguloGraus
 ) {
   const anguloNormalizado =
-    ((anguloGraus % 180) + 180) % 180;
+    (
+      (
+        anguloGraus %
+        180
+      ) +
+      180
+    ) %
+    180;
 
   const theta =
     anguloNormalizado *
     Math.PI /
     180;
 
-  const extremoX = Math.round(
-    ((comprimento - 1) / 2) *
-    Math.cos(theta)
-  );
+  const meio =
+    (
+      comprimento -
+      1
+    ) /
+    2;
 
-  const extremoY = -Math.round(
-    ((comprimento - 1) / 2) *
-    Math.sin(theta)
-  );
+  const extremoX =
+    Math.round(
+      meio *
+      Math.cos(theta)
+    );
+
+  /*
+   * No Canvas, o eixo Y aumenta para baixo.
+   */
+  const extremoY =
+    -Math.round(
+      meio *
+      Math.sin(theta)
+    );
 
   const pontos =
-    rasterizarLinhaInteiraErosao(
+    rasterizarLinha(
       -extremoX,
       -extremoY,
       extremoX,
       extremoY
     );
 
-  const deslocamentos = new Set();
-
-  for (
-    let i = 0;
-    i < pontos.length;
-    i++
-  ) {
-    deslocamentos.add(
-      String(pontos[i].y) +
-      "," +
-      String(pontos[i].x)
-    );
-  }
-
-  return deslocamentos;
+  return new Set(
+    pontos.map(
+      (ponto) =>
+        `${
+          ponto.y
+        },${
+          ponto.x
+        }`
+    )
+  );
 }
 
 
-// Algoritmo de Bresenham para gerar os pixels da linha.
-function rasterizarLinhaInteiraErosao(
+// Algoritmo de Bresenham.
+function rasterizarLinha(
   x0,
   y0,
   x1,
@@ -859,52 +1033,64 @@ function rasterizarLinhaInteiraErosao(
 ) {
   const pontos = [];
 
-  let xAtual = x0;
-  let yAtual = y0;
+  let x = x0;
+  let y = y0;
 
-  const deltaX =
-    Math.abs(x1 - x0);
+  const dx =
+    Math.abs(
+      x1 -
+      x0
+    );
 
-  const passoX =
-    x0 < x1 ? 1 : -1;
+  const sx =
+    x0 < x1
+      ? 1
+      : -1;
 
-  const deltaY =
-    -Math.abs(y1 - y0);
+  const dy =
+    -Math.abs(
+      y1 -
+      y0
+    );
 
-  const passoY =
-    y0 < y1 ? 1 : -1;
+  const sy =
+    y0 < y1
+      ? 1
+      : -1;
 
   let erro =
-    deltaX + deltaY;
+    dx +
+    dy;
 
   while (true) {
     pontos.push({
-      x: xAtual,
-      y: yAtual
+      x,
+      y
     });
 
     if (
-      xAtual === x1 &&
-      yAtual === y1
+      x === x1 &&
+      y === y1
     ) {
       break;
     }
 
-    const erroDuplicado =
-      2 * erro;
+    const erro2 =
+      2 *
+      erro;
 
     if (
-      erroDuplicado >= deltaY
+      erro2 >= dy
     ) {
-      erro += deltaY;
-      xAtual += passoX;
+      erro += dy;
+      x += sx;
     }
 
     if (
-      erroDuplicado <= deltaX
+      erro2 <= dx
     ) {
-      erro += deltaX;
-      yAtual += passoY;
+      erro += dx;
+      y += sy;
     }
   }
 
@@ -912,101 +1098,90 @@ function rasterizarLinhaInteiraErosao(
 }
 
 
-function criarNhoodAPartirDeslocamentosErosao(
+function criarNhoodAPartirDeslocamentos(
   deslocamentos
 ) {
-  let maiorAbsY = 0;
-  let maiorAbsX = 0;
+  let maxY = 0;
+  let maxX = 0;
 
-  deslocamentos.forEach(
-    function(chave) {
-      const deslocamento =
-        converterChaveDeslocamentoErosao(chave);
-
-      maiorAbsY = Math.max(
-        maiorAbsY,
-        Math.abs(deslocamento.dy)
+  for (
+    const chave of deslocamentos
+  ) {
+    const {
+      dy,
+      dx
+    } =
+      converterChaveDeslocamento(
+        chave
       );
 
-      maiorAbsX = Math.max(
-        maiorAbsX,
-        Math.abs(deslocamento.dx)
+    maxY =
+      Math.max(
+        maxY,
+        Math.abs(dy)
       );
-    }
-  );
+
+    maxX =
+      Math.max(
+        maxX,
+        Math.abs(dx)
+      );
+  }
 
   const altura =
-    2 * maiorAbsY + 1;
+    2 * maxY + 1;
 
   const largura =
-    2 * maiorAbsX + 1;
-
-  const origemY =
-    maiorAbsY;
-
-  const origemX =
-    maiorAbsX;
+    2 * maxX + 1;
 
   const nhood =
-    criarMatrizPreenchidaErosao(
+    criarMatriz(
       altura,
       largura,
       0
     );
 
-  deslocamentos.forEach(
-    function(chave) {
-      const deslocamento =
-        converterChaveDeslocamentoErosao(chave);
+  for (
+    const chave of deslocamentos
+  ) {
+    const {
+      dy,
+      dx
+    } =
+      converterChaveDeslocamento(
+        chave
+      );
 
-      const y =
-        origemY + deslocamento.dy;
-
-      const x =
-        origemX + deslocamento.dx;
-
-      if (
-        y >= 0 &&
-        y < altura &&
-        x >= 0 &&
-        x < largura
-      ) {
-        nhood[y][x] = 1;
-      }
-    }
-  );
+    nhood[
+      maxY + dy
+    ][
+      maxX + dx
+    ] = 1;
+  }
 
   return nhood;
 }
 
 
-// =====================================================
-// FINALIZAÇÃO E VALIDAÇÃO
-// =====================================================
+// -----------------------------------------------------
+// Finalização do elemento estruturante
+// -----------------------------------------------------
 
-function finalizarElementoEstruturanteErosao(
+function finalizarElementoEstruturante(
   nhood,
   descricao,
   formato,
-  parametros
+  parametros = {}
 ) {
   if (
     !Array.isArray(nhood) ||
-    nhood.length === 0
-  ) {
-    return {
-      valido: false,
-      mensagem:
-        "O elemento estruturante gerado está vazio."
-    };
-  }
-
-  if (
+    nhood.length === 0 ||
     !Array.isArray(nhood[0]) ||
     nhood[0].length === 0
   ) {
     return {
       valido: false,
+
       mensagem:
         "O elemento estruturante gerado está vazio."
     };
@@ -1019,28 +1194,45 @@ function finalizarElementoEstruturanteErosao(
     nhood[0].length;
 
   for (
-    let y = 0;
-    y < altura;
-    y++
+    const linha of nhood
   ) {
     if (
-      !Array.isArray(nhood[y]) ||
-      nhood[y].length !== largura
+      !Array.isArray(linha) ||
+      linha.length !== largura
     ) {
       return {
         valido: false,
+
         mensagem:
-          "O elemento estruturante possui linhas " +
-          "com tamanhos diferentes."
+          "O elemento estruturante possui linhas com tamanhos diferentes."
       };
     }
   }
 
+  /*
+   * Equivalente à definição do MATLAB:
+   *
+   * floor((size(NHOOD) + 1) / 2)
+   *
+   * Aqui os índices começam em zero.
+   */
   const origemY =
-    Math.floor((altura - 1) / 2);
+    Math.floor(
+      (
+        altura -
+        1
+      ) /
+      2
+    );
 
   const origemX =
-    Math.floor((largura - 1) / 2);
+    Math.floor(
+      (
+        largura -
+        1
+      ) /
+      2
+    );
 
   const deslocamentos = [];
 
@@ -1055,103 +1247,172 @@ function finalizarElementoEstruturanteErosao(
       x++
     ) {
       if (
-        Number(nhood[y][x]) !== 0
+        Number(
+          nhood[y][x]
+        ) !== 0
       ) {
         deslocamentos.push({
-          dy: y - origemY,
-          dx: x - origemX
+          dy:
+            y -
+            origemY,
+
+          dx:
+            x -
+            origemX
         });
       }
     }
   }
 
-  if (deslocamentos.length === 0) {
+  if (
+    deslocamentos.length === 0
+  ) {
     return {
       valido: false,
+
       mensagem:
-        "O elemento estruturante precisa possuir " +
-        "pelo menos um elemento ativo."
+        "O elemento estruturante precisa possuir pelo menos um elemento ativo."
     };
   }
 
   return {
     valido: true,
 
-    formato: formato,
+    formato:
+      formato ||
+      null,
 
-    parametros:
-      parametros || {},
+    parametros,
 
-    nhood: nhood,
+    nhood,
 
-    altura: altura,
-    largura: largura,
+    descricao:
+      descricao ||
+      "elemento estruturante",
 
-    origemY: origemY,
-    origemX: origemX,
+    altura,
+    largura,
 
-    deslocamentos:
-      deslocamentos,
+    origemY,
+    origemX,
 
-    descricao: descricao
+    deslocamentos
   };
 }
 
 
-// Recria origem e deslocamentos quando o elemento foi
-// salvo no pipeline somente com nhood e descrição.
-function prepararElementoEstruturanteErosao(
-  elemento
+/*
+ * Mantida com esse nome para compatibilidade
+ * com versões anteriores do processamento.js.
+ */
+function finalizarElementoEstruturanteErosao(
+  nhood,
+  descricao,
+  formato,
+  parametros
+) {
+  return finalizarElementoEstruturante(
+    nhood,
+    descricao,
+    formato,
+    parametros
+  );
+}
+
+
+function prepararElementoEstruturante(
+  elemento,
+  operacao
 ) {
   if (
     !elemento ||
-    !Array.isArray(elemento.nhood)
+    !Array.isArray(
+      elemento.nhood
+    )
   ) {
     throw new Error(
-      "Elemento estruturante inválido para a erosão."
+      `Elemento estruturante inválido para a ${operacao}.`
     );
   }
 
   const resultado =
-    finalizarElementoEstruturanteErosao(
+    finalizarElementoEstruturante(
       elemento.nhood,
 
       elemento.descricao ||
         "elemento estruturante",
 
-      elemento.formato || null,
+      elemento.formato ||
+        null,
 
-      elemento.parametros || {}
+      elemento.parametros ||
+        {}
     );
 
   if (!resultado.valido) {
-    throw new Error(resultado.mensagem);
+    throw new Error(
+      resultado.mensagem
+    );
   }
 
   return resultado;
 }
 
 
-// =====================================================
-// FORMATO DA SAÍDA
-//
-// O processamento.js utiliza "same".
-// O suporte interno a "full" foi mantido.
-// =====================================================
+function prepararElementoEstruturanteErosao(
+  elemento
+) {
+  return prepararElementoEstruturante(
+    elemento,
+    "erosão"
+  );
+}
+
+
+function prepararElementoEstruturanteDilatacao(
+  elemento
+) {
+  return prepararElementoEstruturante(
+    elemento,
+    "dilatação"
+  );
+}
+
+
+// -----------------------------------------------------
+// Formato e geometria da saída
+// -----------------------------------------------------
+
+function normalizarFormatoMorfologia(
+  formatoSaida
+) {
+  return String(
+    formatoSaida ||
+    "same"
+  )
+    .trim()
+    .toLowerCase() ===
+    "full"
+    ? "full"
+    : "same";
+}
+
 
 function normalizarFormatoErosao(
   formatoSaida
 ) {
-  const formato =
-    String(formatoSaida || "same")
-      .toLowerCase()
-      .trim();
+  return normalizarFormatoMorfologia(
+    formatoSaida
+  );
+}
 
-  if (formato === "full") {
-    return "full";
-  }
 
-  return "same";
+function normalizarFormatoDilatacao(
+  formatoSaida
+) {
+  return normalizarFormatoMorfologia(
+    formatoSaida
+  );
 }
 
 
@@ -1161,99 +1422,163 @@ function calcularGeometriaSaidaErosao(
   elemento,
   formatoSaida
 ) {
-  const formato =
-    normalizarFormatoErosao(formatoSaida);
-
-  if (formato === "full") {
+  if (
+    normalizarFormatoMorfologia(
+      formatoSaida
+    ) !== "full"
+  ) {
     return {
       largura:
-        larguraEntrada +
-        elemento.largura -
-        1,
+        larguraEntrada,
 
       altura:
-        alturaEntrada +
-        elemento.altura -
-        1,
+        alturaEntrada,
 
-      inicioX:
-        -(
-          elemento.largura -
-          1 -
-          elemento.origemX
-        ),
-
-      inicioY:
-        -(
-          elemento.altura -
-          1 -
-          elemento.origemY
-        )
+      inicioX: 0,
+      inicioY: 0
     };
   }
 
   return {
-    largura: larguraEntrada,
-    altura: alturaEntrada,
+    largura:
+      larguraEntrada +
+      elemento.largura -
+      1,
 
-    inicioX: 0,
-    inicioY: 0
+    altura:
+      alturaEntrada +
+      elemento.altura -
+      1,
+
+    inicioX:
+      -(
+        elemento.largura -
+        1 -
+        elemento.origemX
+      ),
+
+    inicioY:
+      -(
+        elemento.altura -
+        1 -
+        elemento.origemY
+      )
   };
 }
 
 
-// =====================================================
-// EROSÃO EM CANVAS
-//
-// Em imagens RGB, cada canal é erodido separadamente.
-//
-// Os pixels externos à imagem são ignorados, o que
-// corresponde ao uso do valor máximo como preenchimento
-// na erosão plana.
-// =====================================================
+function calcularGeometriaSaidaDilatacao(
+  larguraEntrada,
+  alturaEntrada,
+  elemento,
+  formatoSaida
+) {
+  if (
+    normalizarFormatoMorfologia(
+      formatoSaida
+    ) !== "full"
+  ) {
+    return {
+      largura:
+        larguraEntrada,
 
-async function aplicarErosaoEmCanvas(
+      altura:
+        alturaEntrada,
+
+      inicioX: 0,
+      inicioY: 0
+    };
+  }
+
+  return {
+    largura:
+      larguraEntrada +
+      elemento.largura -
+      1,
+
+    altura:
+      alturaEntrada +
+      elemento.altura -
+      1,
+
+    inicioX:
+      -elemento.origemX,
+
+    inicioY:
+      -elemento.origemY
+  };
+}
+
+
+// -----------------------------------------------------
+// Processamento em Canvas
+// -----------------------------------------------------
+
+async function aplicarMorfologiaEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida,
-  atualizarProgresso
+  atualizarProgresso,
+  operacao
 ) {
   if (!canvasEntrada) {
     throw new Error(
-      "Canvas de entrada inválido para a erosão."
+      "Canvas de entrada inválido."
     );
   }
 
-  const elemento =
-    prepararElementoEstruturanteErosao(
-      elementoEstruturante
-    );
+  const dilatar =
+    operacao ===
+    "dilatacao";
 
-  const formato =
-    normalizarFormatoErosao(formatoSaida);
+  const elemento =
+    dilatar
+      ? prepararElementoEstruturanteDilatacao(
+          elementoEstruturante
+        )
+      : prepararElementoEstruturanteErosao(
+          elementoEstruturante
+        );
 
   const larguraEntrada =
-    canvasEntrada.width;
+    Number(
+      canvasEntrada.width
+    );
 
   const alturaEntrada =
-    canvasEntrada.height;
+    Number(
+      canvasEntrada.height
+    );
 
   if (
+    !Number.isFinite(
+      larguraEntrada
+    ) ||
+    !Number.isFinite(
+      alturaEntrada
+    ) ||
     larguraEntrada <= 0 ||
     alturaEntrada <= 0
   ) {
     throw new Error(
-      "A imagem de entrada possui dimensões inválidas."
+      "O canvas possui dimensões inválidas."
     );
   }
 
   const geometria =
-    calcularGeometriaSaidaErosao(
-      larguraEntrada,
-      alturaEntrada,
-      elemento,
-      formato
-    );
+    dilatar
+      ? calcularGeometriaSaidaDilatacao(
+          larguraEntrada,
+          alturaEntrada,
+          elemento,
+          formatoSaida
+        )
+      : calcularGeometriaSaidaErosao(
+          larguraEntrada,
+          alturaEntrada,
+          elemento,
+          formatoSaida
+        );
 
   atualizarProgressoMorfologia(
     atualizarProgresso,
@@ -1265,6 +1590,7 @@ async function aplicarErosaoEmCanvas(
   const contextoEntrada =
     canvasEntrada.getContext(
       "2d",
+
       {
         willReadFrequently: true
       }
@@ -1288,7 +1614,9 @@ async function aplicarErosaoEmCanvas(
     imagemEntrada.data;
 
   const canvasSaida =
-    document.createElement("canvas");
+    document.createElement(
+      "canvas"
+    );
 
   canvasSaida.width =
     geometria.largura;
@@ -1297,7 +1625,9 @@ async function aplicarErosaoEmCanvas(
     geometria.altura;
 
   const contextoSaida =
-    canvasSaida.getContext("2d");
+    canvasSaida.getContext(
+      "2d"
+    );
 
   if (!contextoSaida) {
     throw new Error(
@@ -1320,7 +1650,8 @@ async function aplicarErosaoEmCanvas(
     ySaida++
   ) {
     const yCentro =
-      ySaida + geometria.inicioY;
+      ySaida +
+      geometria.inicioY;
 
     for (
       let xSaida = 0;
@@ -1328,27 +1659,47 @@ async function aplicarErosaoEmCanvas(
       xSaida++
     ) {
       const xCentro =
-        xSaida + geometria.inicioX;
+        xSaida +
+        geometria.inicioX;
 
-      let minimoR = Infinity;
-      let minimoG = Infinity;
-      let minimoB = Infinity;
+      let valorR =
+        dilatar
+          ? -Infinity
+          : Infinity;
+
+      let valorG =
+        dilatar
+          ? -Infinity
+          : Infinity;
+
+      let valorB =
+        dilatar
+          ? -Infinity
+          : Infinity;
 
       let encontrouPixel = false;
 
       for (
-        let k = 0;
-        k < elemento.deslocamentos.length;
-        k++
+        const deslocamento of
+          elemento.deslocamentos
       ) {
-        const deslocamento =
-          elemento.deslocamentos[k];
-
+        /*
+         * Na dilatação, o elemento estruturante
+         * é refletido.
+         */
         const xEntrada =
-          xCentro + deslocamento.dx;
+          dilatar
+            ? xCentro -
+              deslocamento.dx
+            : xCentro +
+              deslocamento.dx;
 
         const yEntrada =
-          yCentro + deslocamento.dy;
+          dilatar
+            ? yCentro -
+              deslocamento.dy
+            : yCentro +
+              deslocamento.dy;
 
         if (
           xEntrada < 0 ||
@@ -1366,27 +1717,50 @@ async function aplicarErosaoEmCanvas(
             yEntrada *
             larguraEntrada +
             xEntrada
-          ) * 4;
+          ) *
+          4;
 
         const r =
-          dadosEntrada[indiceEntrada];
+          dadosEntrada[
+            indiceEntrada
+          ];
 
         const g =
-          dadosEntrada[indiceEntrada + 1];
+          dadosEntrada[
+            indiceEntrada +
+            1
+          ];
 
         const b =
-          dadosEntrada[indiceEntrada + 2];
+          dadosEntrada[
+            indiceEntrada +
+            2
+          ];
 
-        if (r < minimoR) {
-          minimoR = r;
-        }
+        if (dilatar) {
+          if (r > valorR) {
+            valorR = r;
+          }
 
-        if (g < minimoG) {
-          minimoG = g;
-        }
+          if (g > valorG) {
+            valorG = g;
+          }
 
-        if (b < minimoB) {
-          minimoB = b;
+          if (b > valorB) {
+            valorB = b;
+          }
+        } else {
+          if (r < valorR) {
+            valorR = r;
+          }
+
+          if (g < valorG) {
+            valorG = g;
+          }
+
+          if (b < valorB) {
+            valorB = b;
+          }
         }
       }
 
@@ -1395,23 +1769,53 @@ async function aplicarErosaoEmCanvas(
           ySaida *
           geometria.largura +
           xSaida
-        ) * 4;
+        ) *
+        4;
 
       if (encontrouPixel) {
-        dadosSaida[indiceSaida] =
-          minimoR;
+        dadosSaida[
+          indiceSaida
+        ] = valorR;
 
-        dadosSaida[indiceSaida + 1] =
-          minimoG;
+        dadosSaida[
+          indiceSaida +
+          1
+        ] = valorG;
 
-        dadosSaida[indiceSaida + 2] =
-          minimoB;
+        dadosSaida[
+          indiceSaida +
+          2
+        ] = valorB;
       } else {
-        dadosSaida[indiceSaida] = 255;
-        dadosSaida[indiceSaida + 1] = 255;
-        dadosSaida[indiceSaida + 2] = 255;
+        /*
+         * Valor neutro:
+         *
+         * dilatação: mínimo possível
+         * erosão: máximo possível
+         */
+        const neutro =
+          dilatar
+            ? 0
+            : 255;
+
+        dadosSaida[
+          indiceSaida
+        ] = neutro;
+
+        dadosSaida[
+          indiceSaida +
+          1
+        ] = neutro;
+
+        dadosSaida[
+          indiceSaida +
+          2
+        ] = neutro;
       }
 
+      /*
+       * Preserva o canal alfa do pixel central.
+       */
       if (
         xCentro >= 0 &&
         yCentro >= 0 &&
@@ -1423,29 +1827,42 @@ async function aplicarErosaoEmCanvas(
             yCentro *
             larguraEntrada +
             xCentro
-          ) * 4;
+          ) *
+          4;
 
-        dadosSaida[indiceSaida + 3] =
-          dadosEntrada[indiceCentro + 3];
+        dadosSaida[
+          indiceSaida +
+          3
+        ] =
+          dadosEntrada[
+            indiceCentro +
+            3
+          ];
       } else {
-        dadosSaida[indiceSaida + 3] =
-          255;
+        dadosSaida[
+          indiceSaida +
+          3
+        ] = 255;
       }
     }
 
     if (
       ySaida % 8 === 0 ||
-      ySaida === geometria.altura - 1
+      ySaida ===
+        geometria.altura -
+        1
     ) {
-      const porcentagem =
-        (
-          (ySaida + 1) /
-          geometria.altura
-        ) * 100;
-
       atualizarProgressoMorfologia(
         atualizarProgresso,
-        porcentagem
+
+        (
+          (
+            ySaida +
+            1
+          ) /
+          geometria.altura
+        ) *
+        100
       );
 
       await esperarAtualizacaoMorfologia();
@@ -1467,9 +1884,49 @@ async function aplicarErosaoEmCanvas(
 }
 
 
-// =====================================================
-// TIPOS DE PIXEL DICOM
-// =====================================================
+// -----------------------------------------------------
+// Erosão em Canvas
+// -----------------------------------------------------
+
+async function aplicarErosaoEmCanvas(
+  canvasEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  return aplicarMorfologiaEmCanvas(
+    canvasEntrada,
+    elementoEstruturante,
+    formatoSaida,
+    atualizarProgresso,
+    "erosao"
+  );
+}
+
+
+// -----------------------------------------------------
+// Dilatação em Canvas
+// -----------------------------------------------------
+
+async function aplicarDilatacaoEmCanvas(
+  canvasEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  return aplicarMorfologiaEmCanvas(
+    canvasEntrada,
+    elementoEstruturante,
+    formatoSaida,
+    atualizarProgresso,
+    "dilatacao"
+  );
+}
+
+
+// -----------------------------------------------------
+// Tipos de pixel DICOM
+// -----------------------------------------------------
 
 function criarArrayMorfologiaMesmoTipo(
   arrayOriginal,
@@ -1479,66 +1936,86 @@ function criarArrayMorfologiaMesmoTipo(
     arrayOriginal instanceof
     Uint8ClampedArray
   ) {
-    return new Uint8ClampedArray(tamanho);
+    return new Uint8ClampedArray(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Uint8Array
   ) {
-    return new Uint8Array(tamanho);
+    return new Uint8Array(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Uint16Array
   ) {
-    return new Uint16Array(tamanho);
+    return new Uint16Array(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Uint32Array
   ) {
-    return new Uint32Array(tamanho);
+    return new Uint32Array(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Int8Array
   ) {
-    return new Int8Array(tamanho);
+    return new Int8Array(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Int16Array
   ) {
-    return new Int16Array(tamanho);
+    return new Int16Array(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Int32Array
   ) {
-    return new Int32Array(tamanho);
+    return new Int32Array(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Float32Array
   ) {
-    return new Float32Array(tamanho);
+    return new Float32Array(
+      tamanho
+    );
   }
 
   if (
     arrayOriginal instanceof
     Float64Array
   ) {
-    return new Float64Array(tamanho);
+    return new Float64Array(
+      tamanho
+    );
   }
 
-  return new Uint16Array(tamanho);
+  return new Float64Array(
+    tamanho
+  );
 }
 
 
@@ -1546,43 +2023,51 @@ function obterValorMaximoTipoPixelMorfologia(
   array
 ) {
   if (
-    array instanceof Uint8ClampedArray ||
-    array instanceof Uint8Array
+    array instanceof
+      Uint8ClampedArray ||
+    array instanceof
+      Uint8Array
   ) {
     return 255;
   }
 
   if (
-    array instanceof Uint16Array
+    array instanceof
+    Uint16Array
   ) {
     return 65535;
   }
 
   if (
-    array instanceof Uint32Array
+    array instanceof
+    Uint32Array
   ) {
     return 4294967295;
   }
 
   if (
-    array instanceof Int8Array
+    array instanceof
+    Int8Array
   ) {
     return 127;
   }
 
   if (
-    array instanceof Int16Array
+    array instanceof
+    Int16Array
   ) {
     return 32767;
   }
 
   if (
-    array instanceof Int32Array
+    array instanceof
+    Int32Array
   ) {
     return 2147483647;
   }
 
-  let maiorValor = -Infinity;
+  let maior =
+    -Infinity;
 
   for (
     let i = 0;
@@ -1590,33 +2075,98 @@ function obterValorMaximoTipoPixelMorfologia(
     i++
   ) {
     const valor =
-      Number(array[i]);
+      Number(
+        array[i]
+      );
 
     if (
       Number.isFinite(valor) &&
-      valor > maiorValor
+      valor > maior
     ) {
-      maiorValor = valor;
+      maior = valor;
     }
   }
 
-  if (maiorValor === -Infinity) {
-    return 0;
-  }
-
-  return maiorValor;
+  return maior === -Infinity
+    ? 0
+    : maior;
 }
 
 
-// =====================================================
-// EROSÃO EM DICOM
-// =====================================================
+function obterValorMinimoTipoPixelMorfologia(
+  array
+) {
+  if (
+    array instanceof
+      Uint8ClampedArray ||
+    array instanceof
+      Uint8Array ||
+    array instanceof
+      Uint16Array ||
+    array instanceof
+      Uint32Array
+  ) {
+    return 0;
+  }
 
-async function aplicarErosaoEmDicom(
+  if (
+    array instanceof
+    Int8Array
+  ) {
+    return -128;
+  }
+
+  if (
+    array instanceof
+    Int16Array
+  ) {
+    return -32768;
+  }
+
+  if (
+    array instanceof
+    Int32Array
+  ) {
+    return -2147483648;
+  }
+
+  let menor =
+    Infinity;
+
+  for (
+    let i = 0;
+    i < array.length;
+    i++
+  ) {
+    const valor =
+      Number(
+        array[i]
+      );
+
+    if (
+      Number.isFinite(valor) &&
+      valor < menor
+    ) {
+      menor = valor;
+    }
+  }
+
+  return menor === Infinity
+    ? 0
+    : menor;
+}
+
+
+// -----------------------------------------------------
+// Processamento em DICOM
+// -----------------------------------------------------
+
+async function aplicarMorfologiaEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida,
-  atualizarProgresso
+  atualizarProgresso,
+  operacao
 ) {
   if (
     !imagemEntrada ||
@@ -1624,40 +2174,52 @@ async function aplicarErosaoEmDicom(
       "function"
   ) {
     throw new Error(
-      "Imagem DICOM inválida para a erosão."
+      "Imagem DICOM inválida para a operação morfológica."
     );
   }
 
-  const elemento =
-    prepararElementoEstruturanteErosao(
-      elementoEstruturante
-    );
+  const dilatar =
+    operacao ===
+    "dilatacao";
 
-  const formato =
-    normalizarFormatoErosao(formatoSaida);
+  const elemento =
+    dilatar
+      ? prepararElementoEstruturanteDilatacao(
+          elementoEstruturante
+        )
+      : prepararElementoEstruturanteErosao(
+          elementoEstruturante
+        );
 
   const pixelsEntrada =
     imagemEntrada.getPixelData();
 
   const larguraEntrada =
-    Number(imagemEntrada.width);
+    Number(
+      imagemEntrada.width
+    );
 
   const alturaEntrada =
-    Number(imagemEntrada.height);
+    Number(
+      imagemEntrada.height
+    );
 
   if (
     !pixelsEntrada ||
     pixelsEntrada.length === 0
   ) {
     throw new Error(
-      "A imagem DICOM não possui pixels " +
-      "para aplicar a erosão."
+      "A imagem DICOM não possui pixels."
     );
   }
 
   if (
-    !Number.isFinite(larguraEntrada) ||
-    !Number.isFinite(alturaEntrada) ||
+    !Number.isFinite(
+      larguraEntrada
+    ) ||
+    !Number.isFinite(
+      alturaEntrada
+    ) ||
     larguraEntrada <= 0 ||
     alturaEntrada <= 0
   ) {
@@ -1667,24 +2229,36 @@ async function aplicarErosaoEmDicom(
   }
 
   const geometria =
-    calcularGeometriaSaidaErosao(
-      larguraEntrada,
-      alturaEntrada,
-      elemento,
-      formato
-    );
+    dilatar
+      ? calcularGeometriaSaidaDilatacao(
+          larguraEntrada,
+          alturaEntrada,
+          elemento,
+          formatoSaida
+        )
+      : calcularGeometriaSaidaErosao(
+          larguraEntrada,
+          alturaEntrada,
+          elemento,
+          formatoSaida
+        );
 
   const pixelsSaida =
     criarArrayMorfologiaMesmoTipo(
       pixelsEntrada,
+
       geometria.largura *
       geometria.altura
     );
 
   const valorNeutro =
-    obterValorMaximoTipoPixelMorfologia(
-      pixelsEntrada
-    );
+    dilatar
+      ? obterValorMinimoTipoPixelMorfologia(
+          pixelsEntrada
+        )
+      : obterValorMaximoTipoPixelMorfologia(
+          pixelsEntrada
+        );
 
   atualizarProgressoMorfologia(
     atualizarProgresso,
@@ -1699,7 +2273,8 @@ async function aplicarErosaoEmDicom(
     ySaida++
   ) {
     const yCentro =
-      ySaida + geometria.inicioY;
+      ySaida +
+      geometria.inicioY;
 
     for (
       let xSaida = 0;
@@ -1707,24 +2282,33 @@ async function aplicarErosaoEmDicom(
       xSaida++
     ) {
       const xCentro =
-        xSaida + geometria.inicioX;
+        xSaida +
+        geometria.inicioX;
 
-      let minimo = Infinity;
+      let acumulado =
+        dilatar
+          ? -Infinity
+          : Infinity;
+
       let encontrouPixel = false;
 
       for (
-        let k = 0;
-        k < elemento.deslocamentos.length;
-        k++
+        const deslocamento of
+          elemento.deslocamentos
       ) {
-        const deslocamento =
-          elemento.deslocamentos[k];
-
         const xEntrada =
-          xCentro + deslocamento.dx;
+          dilatar
+            ? xCentro -
+              deslocamento.dx
+            : xCentro +
+              deslocamento.dx;
 
         const yEntrada =
-          yCentro + deslocamento.dy;
+          dilatar
+            ? yCentro -
+              deslocamento.dy
+            : yCentro +
+              deslocamento.dy;
 
         if (
           xEntrada < 0 ||
@@ -1744,11 +2328,25 @@ async function aplicarErosaoEmDicom(
 
         const valor =
           Number(
-            pixelsEntrada[indiceEntrada]
+            pixelsEntrada[
+              indiceEntrada
+            ]
           );
 
-        if (valor < minimo) {
-          minimo = valor;
+        if (dilatar) {
+          if (
+            valor >
+            acumulado
+          ) {
+            acumulado =
+              valor;
+          }
+        } else if (
+          valor <
+          acumulado
+        ) {
+          acumulado =
+            valor;
         }
       }
 
@@ -1757,25 +2355,31 @@ async function aplicarErosaoEmDicom(
         geometria.largura +
         xSaida;
 
-      pixelsSaida[indiceSaida] =
+      pixelsSaida[
+        indiceSaida
+      ] =
         encontrouPixel
-          ? minimo
+          ? acumulado
           : valorNeutro;
     }
 
     if (
       ySaida % 8 === 0 ||
-      ySaida === geometria.altura - 1
+      ySaida ===
+        geometria.altura -
+        1
     ) {
-      const porcentagem =
-        (
-          (ySaida + 1) /
-          geometria.altura
-        ) * 100;
-
       atualizarProgressoMorfologia(
         atualizarProgresso,
-        porcentagem
+
+        (
+          (
+            ySaida +
+            1
+          ) /
+          geometria.altura
+        ) *
+        100
       );
 
       await esperarAtualizacaoMorfologia();
@@ -1792,14 +2396,59 @@ async function aplicarErosaoEmDicom(
     geometria.largura,
     geometria.altura,
     imagemEntrada,
-    "dicom_erosao_" + Date.now()
+
+    `${
+      dilatar
+        ? "dicom_dilatacao"
+        : "dicom_erosao"
+    }_${Date.now()}`
   );
 }
 
 
-// =====================================================
-// CRIA NOVA IMAGEM DICOM PARA O CORNERSTONE
-// =====================================================
+// -----------------------------------------------------
+// Erosão em DICOM
+// -----------------------------------------------------
+
+async function aplicarErosaoEmDicom(
+  imagemEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  return aplicarMorfologiaEmDicom(
+    imagemEntrada,
+    elementoEstruturante,
+    formatoSaida,
+    atualizarProgresso,
+    "erosao"
+  );
+}
+
+
+// -----------------------------------------------------
+// Dilatação em DICOM
+// -----------------------------------------------------
+
+async function aplicarDilatacaoEmDicom(
+  imagemEntrada,
+  elementoEstruturante,
+  formatoSaida = "same",
+  atualizarProgresso
+) {
+  return aplicarMorfologiaEmDicom(
+    imagemEntrada,
+    elementoEstruturante,
+    formatoSaida,
+    atualizarProgresso,
+    "dilatacao"
+  );
+}
+
+
+// -----------------------------------------------------
+// Criação da imagem DICOM processada
+// -----------------------------------------------------
 
 function criarImagemDicomMorfologia(
   pixels,
@@ -1808,8 +2457,11 @@ function criarImagemDicomMorfologia(
   imagemBase,
   imageId
 ) {
-  let minimo = Infinity;
-  let maximo = -Infinity;
+  let minimo =
+    Infinity;
+
+  let maximo =
+    -Infinity;
 
   for (
     let i = 0;
@@ -1817,18 +2469,30 @@ function criarImagemDicomMorfologia(
     i++
   ) {
     const valor =
-      Number(pixels[i]);
+      Number(
+        pixels[i]
+      );
 
-    if (!Number.isFinite(valor)) {
+    if (
+      !Number.isFinite(valor)
+    ) {
       continue;
     }
 
-    if (valor < minimo) {
-      minimo = valor;
+    if (
+      valor <
+      minimo
+    ) {
+      minimo =
+        valor;
     }
 
-    if (valor > maximo) {
-      maximo = valor;
+    if (
+      valor >
+      maximo
+    ) {
+      maximo =
+        valor;
     }
   }
 
@@ -1840,39 +2504,67 @@ function criarImagemDicomMorfologia(
     maximo = 1;
   }
 
-  if (minimo === maximo) {
-    maximo = minimo + 1;
+  if (
+    minimo === maximo
+  ) {
+    maximo =
+      minimo +
+      1;
   }
 
   const slope =
     Number.isFinite(
-      Number(imagemBase.slope)
+      Number(
+        imagemBase.slope
+      )
     )
-      ? Number(imagemBase.slope)
+      ? Number(
+          imagemBase.slope
+        )
       : 1;
 
   const intercept =
     Number.isFinite(
-      Number(imagemBase.intercept)
+      Number(
+        imagemBase.intercept
+      )
     )
-      ? Number(imagemBase.intercept)
+      ? Number(
+          imagemBase.intercept
+        )
       : 0;
 
+  const renderizador =
+    typeof cornerstone !==
+      "undefined" &&
+    typeof cornerstone.renderGrayscaleImage ===
+      "function"
+      ? cornerstone.renderGrayscaleImage
+      : imagemBase.render;
+
   return {
-    imageId: imageId,
+    imageId,
 
-    minPixelValue: minimo,
-    maxPixelValue: maximo,
+    minPixelValue:
+      minimo,
 
-    slope: slope,
-    intercept: intercept,
+    maxPixelValue:
+      maximo,
+
+    slope,
+    intercept,
 
     windowCenter:
-      (minimo + maximo) / 2,
+      (
+        minimo +
+        maximo
+      ) /
+      2,
 
     windowWidth:
       Math.max(
-        maximo - minimo,
+        maximo -
+        minimo,
         1
       ),
 
@@ -1887,20 +2579,29 @@ function criarImagemDicomMorfologia(
       imagemBase.voiLUT,
 
     render:
-      cornerstone.renderGrayscaleImage,
+      renderizador,
 
-    getPixelData: function() {
+    getPixelData() {
       return pixels;
     },
 
-    rows: altura,
-    columns: largura,
+    rows:
+      altura,
 
-    height: altura,
-    width: largura,
+    columns:
+      largura,
 
-    color: false,
-    rgba: false,
+    height:
+      altura,
+
+    width:
+      largura,
+
+    color:
+      false,
+
+    rgba:
+      false,
 
     columnPixelSpacing:
       imagemBase.columnPixelSpacing ||
@@ -1911,10 +2612,14 @@ function criarImagemDicomMorfologia(
       1,
 
     invert:
-      Boolean(imagemBase.invert),
+      imagemBase.invert ||
+      false,
 
     sizeInBytes:
       pixels.length *
-      pixels.BYTES_PER_ELEMENT
+      (
+        pixels.BYTES_PER_ELEMENT ||
+        8
+      )
   };
 }
