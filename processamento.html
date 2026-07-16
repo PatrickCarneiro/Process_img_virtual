@@ -611,7 +611,7 @@
 
       <!-- Categoria de filtros -->
       <div class="categoria-titulo" onclick="toggleCategoria('filtros')">
-        Filtros
+        Filtros de Suavização
       </div>
 
       <!-- Conteúdo da categoria filtros -->
@@ -640,6 +640,40 @@
         >
           Filtro Mediana
         </div>
+      </div>
+
+      <!-- Categoria de operações morfológicas -->
+      <div
+        class="categoria-titulo"
+        onclick="toggleCategoria('operacoesMorfologicas')"
+      >
+        Operações morfológicas
+      </div>
+
+      <!-- Conteúdo da categoria de operações morfológicas -->
+      <div
+        class="categoria-conteudo"
+        id="operacoesMorfologicas"
+      >
+
+        <!-- Ferramenta de erosão -->
+        <div
+          class="ferramenta"
+          id="botaoFerramentaErosao"
+          onclick="selecionarFerramenta('Erosão', this)"
+        >
+          Erosão
+        </div>
+
+        <!-- Ferramenta de dilatação -->
+        <div
+          class="ferramenta"
+          id="botaoFerramentaDilatacao"
+          onclick="selecionarFerramenta('Dilatação', this)"
+        >
+          Dilatação
+        </div>
+
       </div>
 
       <!-- Ferramenta de tons de cinza -->
@@ -781,6 +815,7 @@
   <script src="gaussiano.js"></script>
   <script src="media.js"></script>
   <script src="mediana.js"></script>
+  <script src="morfologia.js"></script>
   <script src="cinza.js"></script>
   <script src="processamento.js"></script>
 

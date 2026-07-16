@@ -812,6 +812,65 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
+  if (
+  nome === "Erosão" ||
+  nome === "Dilatação"
+) {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+        <label>Formato do elemento estruturante</label>
+
+        <select
+          id="paramFormatoElementoErosao"
+          onchange="atualizarCampoElementoEstruturanteErosao()"
+        >
+          <option value="square">square</option>
+          <option value="rectangle">rectangle</option>
+          <option value="diamond">diamond</option>
+          <option value="disk">disk</option>
+          <option value="line">line</option>
+          <option value="octagon">octagon</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          Selecione o formato do elemento estruturante, equivalente aos
+          formatos disponíveis na função strel do MATLAB.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Valor do elemento estruturante</label>
+
+        <input
+          type="text"
+          id="paramValorElementoErosao"
+          placeholder="Ex: 3"
+        >
+
+        <div
+          class="caixa_info_parametro"
+          id="ajudaElementoEstruturanteErosao"
+        >
+          Digite a largura do elemento quadrado. Exemplo: 3.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('${nome}')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    atualizarCampoElementoEstruturanteErosao();
+
+    return;
+  }
+
   if (nome.includes("tons de cinza")) {
 
     parametrosDiv.innerHTML = `
@@ -832,6 +891,82 @@ function selecionarFerramenta(nome, botaoClicado) {
       Aplicar
     </button>
   `;
+}
+
+function atualizarCampoElementoEstruturanteErosao() {
+
+  const seletorFormato = document.getElementById(
+    "paramFormatoElementoErosao"
+  );
+
+  const campoValor = document.getElementById(
+    "paramValorElementoErosao"
+  );
+
+  const caixaAjuda = document.getElementById(
+    "ajudaElementoEstruturanteErosao"
+  );
+
+  if (!seletorFormato || !campoValor || !caixaAjuda) {
+    return;
+  }
+
+  const formato = seletorFormato.value;
+
+  const configuracoes = {
+
+    square: {
+      placeholder: "Ex: 5",
+      ajuda:
+        "Digite a largura W do quadrado. " +
+        "Exemplo: 5 equivale a strel('square',5)."
+    },
+
+    rectangle: {
+      placeholder: "Ex: 3 5",
+      ajuda:
+        "Digite o número de linhas e colunas. " +
+        "Exemplo: 3 5 equivale a strel('rectangle',[3 5])."
+    },
+
+    diamond: {
+      placeholder: "Ex: 4",
+      ajuda:
+        "Digite o raio R do losango. " +
+        "Exemplo: 4 equivale a strel('diamond',4)."
+    },
+
+    disk: {
+      placeholder: "Ex: 5 ou 5 0",
+      ajuda:
+        "Digite o raio R. Opcionalmente, informe N depois do raio. " +
+        "N pode ser 0, 4, 6 ou 8. " +
+        "Exemplo: 5 0 equivale a strel('disk',5,0)."
+    },
+
+    line: {
+      placeholder: "Ex: 11 90",
+      ajuda:
+        "Digite o comprimento LEN e o ângulo DEG. " +
+        "Exemplo: 11 90 equivale a strel('line',11,90)."
+    },
+
+    octagon: {
+      placeholder: "Ex: 6",
+      ajuda:
+        "Digite o raio R do octógono. " +
+        "O valor deve ser um múltiplo não negativo de 3. " +
+        "Exemplo: 6 equivale a strel('octagon',6)."
+    }
+
+  };
+
+  const configuracao =
+    configuracoes[formato] || configuracoes.square;
+
+  campoValor.value = "";
+  campoValor.placeholder = configuracao.placeholder;
+  caixaAjuda.innerText = configuracao.ajuda;
 }
 
 // Função para aplicar uma ferramenta everificação das inserções
@@ -1024,6 +1159,116 @@ async function aplicarFerramenta(nome) {
     return;
   }
 
+  if (
+    nome === "Erosão" ||
+    nome === "Dilatação"
+  ) {
+    const seletorFormato =
+      document.getElementById(
+        "paramFormatoElementoErosao"
+      );
+
+    const campoValor =
+      document.getElementById(
+        "paramValorElementoErosao"
+      );
+
+    const formatoElemento =
+      seletorFormato
+        ? seletorFormato.value
+        : "square";
+
+    const valorElemento =
+      campoValor
+        ? campoValor.value.trim()
+        : "";
+
+    if (valorElemento === "") {
+      alert(
+        "Digite o valor do elemento estruturante."
+      );
+
+      return;
+    }
+
+    let elementoInterpretado;
+
+    if (nome === "Dilatação") {
+      elementoInterpretado =
+        interpretarElementoEstruturanteDilatacao(
+          formatoElemento,
+          valorElemento
+        );
+    } else {
+      elementoInterpretado =
+        interpretarElementoEstruturanteErosao(
+          formatoElemento,
+          valorElemento
+        );
+    }
+
+    if (!elementoInterpretado.valido) {
+      alert(
+        elementoInterpretado.mensagem
+      );
+
+      return;
+    }
+
+    const etapa = {
+      id:
+        proximoIdEtapa++,
+
+      nome:
+        nome,
+
+      parametros: {
+        formatoElemento:
+          formatoElemento,
+
+        valorElemento:
+          valorElemento,
+
+        elementoEstruturante: {
+          nhood:
+            elementoInterpretado.nhood,
+
+          descricao:
+            elementoInterpretado.descricao,
+
+          formato:
+            elementoInterpretado.formato,
+
+          parametros:
+            elementoInterpretado.parametros
+        },
+
+        formatoSaida:
+          "same"
+      }
+    };
+
+    pipelineFerramentas.push(
+      etapa
+    );
+
+    if (nome === "Dilatação") {
+      await aplicarPipelineAposAdicionarEtapa(
+        "Dilatação aplicada na imagem selecionada.",
+
+        "Dilatação aplicada em todas as imagens."
+      );
+    } else {
+      await aplicarPipelineAposAdicionarEtapa(
+        "Erosão aplicada na imagem selecionada.",
+
+        "Erosão aplicada em todas as imagens."
+      );
+    }
+
+    return;
+  }
+
   alert("Ferramenta ainda não implementada no pipeline.");
 }
 
@@ -1110,6 +1355,33 @@ function desenharFluxograma() {
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
+
+    if (
+      etapa.nome === "Erosão" ||
+      etapa.nome === "Dilatação"
+    ) {
+      textoParametros = `
+        Formato:
+        ${etapa.parametros.formatoElemento}
+        <br>
+
+        Valor:
+        ${etapa.parametros.valorElemento}
+        <br>
+
+        Elemento:
+        ${etapa.parametros.elementoEstruturante.descricao}
+        <br>
+
+        Formato da saída:
+        ${
+          etapa.parametros.formatoSaida ||
+          etapa.parametros.formato ||
+          "same"
+        }
+      `;
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
     }
 
@@ -1994,6 +2266,32 @@ async function processarImagemNormalPeloPipeline(item) {
     );
     }
 
+    if (etapa.nome === "Erosão") {
+      canvasAtual =
+        await aplicarErosaoEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida ||
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Dilatação") {
+      canvasAtual =
+        await aplicarDilatacaoEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -2070,7 +2368,32 @@ async function processarDicomPeloPipeline(item) {
       etapa.parametros.ignorarZero,
       atualizarBarraProcessamento
     );
+    }
 
+    if (etapa.nome === "Erosão") {
+      imagemAtual =
+        await aplicarErosaoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Dilatação") {
+      imagemAtual =
+        await aplicarDilatacaoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
@@ -2586,6 +2909,32 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
     }
 
+    if (etapa.nome === "Erosão") {
+      canvasAtual =
+        await aplicarErosaoEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Dilatação") {
+      canvasAtual =
+        await aplicarDilatacaoEmCanvas(
+          canvasAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+
+          function() {}
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -2624,6 +2973,32 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
         function() {}
       );
 
+    }
+
+    if (etapa.nome === "Erosão") {
+      imagemAtual =
+        await aplicarErosaoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Dilatação") {
+      imagemAtual =
+        await aplicarDilatacaoEmDicom(
+          imagemAtual,
+
+          etapa.parametros.elementoEstruturante,
+
+          etapa.parametros.formatoSaida,
+
+          function() {}
+        );
     }
 
     if (etapa.nome.includes("tons de cinza")) {
