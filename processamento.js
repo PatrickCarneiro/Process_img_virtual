@@ -644,6 +644,86 @@ function formatarPaddingMedia(padding, valorPadding) {
 
 // FUNÇÕES DE FERRAMENTAS E FLUXOGRAMA
 
+function atualizarCamposLimiarizacaoManual() {
+
+  const seletorTipo = document.getElementById(
+    "paramTipoLimiarizacaoManual"
+  );
+
+  const campoValorFinal = document.getElementById(
+    "campoValorFinalLimiarizacaoManual"
+  );
+
+  const labelValorInicial = document.getElementById(
+    "labelValorInicialLimiarizacaoManual"
+  );
+
+  const ajudaValores = document.getElementById(
+    "ajudaValoresLimiarizacaoManual"
+  );
+
+  if (
+    !seletorTipo ||
+    !campoValorFinal ||
+    !labelValorInicial ||
+    !ajudaValores
+  ) {
+    return;
+  }
+
+  if (seletorTipo.value === "faixa") {
+
+    labelValorInicial.innerText =
+      "Intensidade mínima";
+
+    campoValorFinal.style.display =
+      "block";
+
+    ajudaValores.innerText =
+      "Na opção igual, ficam brancos os pixels dentro da faixa. " +
+      "Menor e menor ou igual usam o limite mínimo. " +
+      "Maior e maior ou igual usam o limite máximo.";
+
+  } else {
+
+    labelValorInicial.innerText =
+      "Intensidade";
+
+    campoValorFinal.style.display =
+      "none";
+
+    const entradaFinal =
+      document.getElementById(
+        "paramValorFinalLimiarizacaoManual"
+      );
+
+    if (entradaFinal) {
+      entradaFinal.value = "";
+    }
+
+    ajudaValores.innerText =
+      "Digite uma intensidade e escolha a comparação que será aplicada.";
+  }
+}
+
+
+// Converte o nome interno do operador
+// para um texto mais fácil de entender.
+function formatarOperadorLimiarizacaoManual(
+  operador
+) {
+
+  const nomes = {
+    maior: "Maior que",
+    menor: "Menor que",
+    menor_igual: "Menor ou igual",
+    maior_igual: "Maior ou igual",
+    igual: "Igual"
+  };
+
+  return nomes[operador] || operador;
+}
+
 // Função para selecionar uma ferramenta, mostrando os parametros e informativos
 function selecionarFerramenta(nome, botaoClicado) {
 
@@ -884,6 +964,122 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
+    if (nome === "Limiarização Manual") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+
+        <label>Tipo de entrada</label>
+
+        <select
+          id="paramTipoLimiarizacaoManual"
+          onchange="atualizarCamposLimiarizacaoManual()"
+        >
+          <option value="intensidade">
+            Intensidade
+          </option>
+
+          <option value="faixa">
+            Faixa de intensidade
+          </option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          Escolha um valor único ou um intervalo de intensidades.
+        </div>
+
+      </div>
+
+
+      <div class="campo_parametro_info">
+
+        <label id="labelValorInicialLimiarizacaoManual">
+          Intensidade
+        </label>
+
+        <input
+          type="number"
+          id="paramValorInicialLimiarizacaoManual"
+          step="any"
+          placeholder="Ex: 120"
+        >
+
+      </div>
+
+
+      <div
+        class="campo_parametro_info"
+        id="campoValorFinalLimiarizacaoManual"
+        style="display:none;"
+      >
+
+        <label>
+          Intensidade máxima
+        </label>
+
+        <input
+          type="number"
+          id="paramValorFinalLimiarizacaoManual"
+          step="any"
+          placeholder="Ex: 180"
+        >
+
+      </div>
+
+
+      <div class="campo_parametro_info">
+
+        <label>Operador</label>
+
+        <select id="paramOperadorLimiarizacaoManual">
+
+          <option value="maior">
+            Maior que
+          </option>
+
+          <option value="menor">
+            Menor que
+          </option>
+
+          <option value="menor_igual">
+            Menor ou igual
+          </option>
+
+          <option value="maior_igual">
+            Maior ou igual
+          </option>
+
+          <option value="igual">
+            Igual
+          </option>
+
+        </select>
+
+        <div
+          class="caixa_info_parametro"
+          id="ajudaValoresLimiarizacaoManual"
+        >
+          Digite uma intensidade e escolha a comparação que será aplicada.
+        </div>
+
+      </div>
+
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Limiarização Manual')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    atualizarCamposLimiarizacaoManual();
+
+    return;
+  }
+
   if (nome.includes("tons de cinza")) {
 
     parametrosDiv.innerHTML = `
@@ -987,6 +1183,108 @@ async function aplicarFerramenta(nome) {
 
   if (imagensProcessamento.length === 0) {
     alert("Nenhuma imagem carregada para processar.");
+    return;
+  }
+
+    if (nome === "Limiarização Manual") {
+
+    const seletorTipo =
+      document.getElementById(
+        "paramTipoLimiarizacaoManual"
+      );
+
+    const entradaValorInicial =
+      document.getElementById(
+        "paramValorInicialLimiarizacaoManual"
+      );
+
+    const entradaValorFinal =
+      document.getElementById(
+        "paramValorFinalLimiarizacaoManual"
+      );
+
+    const seletorOperador =
+      document.getElementById(
+        "paramOperadorLimiarizacaoManual"
+      );
+
+
+    const tipoEntrada =
+      seletorTipo
+        ? seletorTipo.value
+        : "intensidade";
+
+
+    const valorInicial =
+      entradaValorInicial
+        ? entradaValorInicial.value.trim()
+        : "";
+
+
+    const valorFinal =
+      entradaValorFinal
+        ? entradaValorFinal.value.trim()
+        : "";
+
+
+    const operador =
+      seletorOperador
+        ? seletorOperador.value
+        : "maior";
+
+
+    /*
+     * Essa função pertence ao arquivo
+     * limiarizacao.js.
+     */
+    const configuracao =
+      interpretarLimiarizacaoManual(
+        tipoEntrada,
+        valorInicial,
+        valorFinal,
+        operador
+      );
+
+
+    if (!configuracao.valido) {
+
+      alert(
+        configuracao.mensagem
+      );
+
+      return;
+    }
+
+
+    const etapa = {
+
+      id:
+        proximoIdEtapa++,
+
+      nome:
+        "Limiarização Manual",
+
+      parametros: {
+
+        configuracao:
+          configuracao
+      }
+    };
+
+
+    pipelineFerramentas.push(
+      etapa
+    );
+
+
+    await aplicarPipelineAposAdicionarEtapa(
+
+      "Limiarização manual aplicada na imagem selecionada.",
+
+      "Limiarização manual aplicada em todas as imagens."
+    );
+
+
     return;
   }
 
@@ -1455,6 +1753,38 @@ function desenharFluxograma() {
         ${etapa.parametros.elementoEstruturante.descricao}
         <br>
 
+      `;
+    }
+
+    if (etapa.nome === "Limiarização Manual") {
+
+      const configuracao =
+        etapa.parametros.configuracao;
+
+      textoParametros = `
+        Tipo:
+        ${
+          configuracao.tipo === "faixa"
+            ? "Faixa de intensidade"
+            : "Intensidade"
+        }
+        <br>
+
+        Operador:
+        ${
+          formatarOperadorLimiarizacaoManual(
+            configuracao.operador
+          )
+        }
+        <br>
+
+        Regra:
+        ${configuracao.descricao}
+        <br>
+
+        Saída:
+        verdadeiro = 255;
+        falso = 0
       `;
     }
 
@@ -2420,6 +2750,22 @@ async function processarImagemNormalPeloPipeline(item) {
         );
     }
 
+        if (
+      etapa.nome ===
+      "Limiarização Manual"
+    ) {
+
+      canvasAtual =
+        await aplicarLimiarizacaoManualEmCanvas(
+
+          canvasAtual,
+
+          etapa.parametros.configuracao,
+
+          atualizarBarraProcessamento
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -2571,6 +2917,22 @@ async function processarDicomPeloPipeline(item) {
           etapa.parametros.elementoEstruturante,
 
           etapa.parametros.formatoSaida,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+        if (
+      etapa.nome ===
+      "Limiarização Manual"
+    ) {
+
+      imagemAtual =
+        await aplicarLimiarizacaoManualEmDicom(
+
+          imagemAtual,
+
+          etapa.parametros.configuracao,
 
           atualizarBarraProcessamento
         );
@@ -3215,6 +3577,22 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
         );
     }
 
+        if (
+      etapa.nome ===
+      "Limiarização Manual"
+    ) {
+
+      canvasAtual =
+        await aplicarLimiarizacaoManualEmCanvas(
+
+          canvasAtual,
+
+          etapa.parametros.configuracao,
+
+          function() {}
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -3328,6 +3706,22 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
           etapa.parametros.elementoEstruturante,
 
           etapa.parametros.formatoSaida,
+
+          function() {}
+        );
+    }
+
+        if (
+      etapa.nome ===
+      "Limiarização Manual"
+    ) {
+
+      imagemAtual =
+        await aplicarLimiarizacaoManualEmDicom(
+
+          imagemAtual,
+
+          etapa.parametros.configuracao,
 
           function() {}
         );

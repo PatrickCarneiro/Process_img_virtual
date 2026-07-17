@@ -712,6 +712,31 @@
 
       </div>
 
+            <!-- Categoria de limiarização -->
+      <div
+        class="categoria-titulo"
+        onclick="toggleCategoria('categoriaLimiarizacao')"
+      >
+        Limiarização
+      </div>
+
+      <!-- Conteúdo da categoria de limiarização -->
+      <div
+        class="categoria-conteudo"
+        id="categoriaLimiarizacao"
+      >
+
+        <!-- Ferramenta de limiarização manual -->
+        <div
+          class="ferramenta"
+          id="botaoLimiarizacaoManual"
+          onclick="selecionarFerramenta('Limiarização Manual', this)"
+        >
+          Manual
+        </div>
+
+      </div>
+
       <!-- Ferramenta de tons de cinza -->
       <div
         class="categoria-titulo"
@@ -852,6 +877,7 @@
   <script src="media.js"></script>
   <script src="mediana.js"></script>
   <script src="morfologia.js"></script>
+  <script src="limiarizacao.js"></script>
   <script src="cinza.js"></script>
   <script src="processamento.js"></script>
 
