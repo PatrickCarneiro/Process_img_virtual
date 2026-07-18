@@ -16,6 +16,10 @@
 //   menor_igual -> menor ou igual ao mínimo
 //   maior       -> acima do máximo
 //   maior_igual -> maior ou igual ao máximo
+//
+// Quando configuracao.ignorarZero for true:
+//   pixels com intensidade 0 não participam da comparação
+//   e permanecem com valor 0 na imagem de saída.
 // =====================================================
 
 "use strict";
@@ -219,12 +223,17 @@ function interpretarLimiarizacaoManual(
   //   minimo: 80,
   //   maximo: 180
   // }
+  let ignorarZeroInformado = false;
+
   if (
     tipoEntrada &&
     typeof tipoEntrada === "object" &&
     !Array.isArray(tipoEntrada)
   ) {
     const config = tipoEntrada;
+
+    ignorarZeroInformado =
+      config.ignorarZero === true;
 
     tipoEntrada =
       config.tipo ||
@@ -293,6 +302,7 @@ function interpretarLimiarizacaoManual(
       intensidade: intensidade,
       valorInicial: intensidade,
       valorFinal: null,
+      ignorarZero: ignorarZeroInformado,
       descricao:
         "intensidade " +
         obterSimboloOperadorLimiarizacao(operadorNormalizado) +
@@ -359,6 +369,7 @@ function interpretarLimiarizacaoManual(
       maximo: maximo,
       valorInicial: minimo,
       valorFinal: maximo,
+      ignorarZero: ignorarZeroInformado,
       descricao: descricao
     };
   }
@@ -553,6 +564,9 @@ async function aplicarLimiarizacaoManualEmCanvas(
   const config = prepararConfiguracaoLimiarizacaoManual(configuracao);
   const comparar = criarComparadorLimiarizacaoManual(config);
 
+  const ignorarZero =
+    config.ignorarZero === true;
+
   const largura = Number(canvasEntrada.width);
   const altura = Number(canvasEntrada.height);
 
@@ -607,7 +621,16 @@ async function aplicarLimiarizacaoManualEmCanvas(
         imagemEntrada.data[indice + 2]
       );
 
-      const valorSaida = comparar(intensidade) ? 255 : 0;
+      let valorSaida = 0;
+
+      /*
+       * Quando "Sem contabilizar pixels 0" estiver marcado,
+       * pixels originalmente iguais a 0 não participam da
+       * comparação e continuam iguais a 0 na imagem de saída.
+       */
+      if (!(ignorarZero && intensidade === 0)) {
+        valorSaida = comparar(intensidade) ? 255 : 0;
+      }
 
       imagemSaida.data[indice] = valorSaida;
       imagemSaida.data[indice + 1] = valorSaida;
@@ -726,6 +749,9 @@ async function aplicarLimiarizacaoManualEmDicom(
   const config = prepararConfiguracaoLimiarizacaoManual(configuracao);
   const comparar = criarComparadorLimiarizacaoManual(config);
 
+  const ignorarZero =
+    config.ignorarZero === true;
+
   const largura = Number(
     imagemEntrada.width || imagemEntrada.columns
   );
@@ -772,9 +798,19 @@ async function aplicarLimiarizacaoManualEmDicom(
     const fimLinha = inicioLinha + largura;
 
     for (let indice = inicioLinha; indice < fimLinha; indice++) {
-      pixelsSaida[indice] = comparar(pixelsEntrada[indice])
-        ? 255
-        : 0;
+      const valorPixel = Number(pixelsEntrada[indice]);
+
+      /*
+       * Quando "Sem contabilizar pixels 0" estiver marcado,
+       * pixels originalmente iguais a 0 continuam iguais a 0.
+       */
+      if (ignorarZero && valorPixel === 0) {
+        pixelsSaida[indice] = 0;
+      } else {
+        pixelsSaida[indice] = comparar(valorPixel)
+          ? 255
+          : 0;
+      }
     }
 
     atualizarProgressoLimiarizacao(

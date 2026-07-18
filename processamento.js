@@ -1232,6 +1232,8 @@ async function aplicarFerramenta(nome) {
         ? seletorOperador.value
         : "maior";
 
+    const ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
 
     /*
      * Essa função pertence ao arquivo
@@ -1254,6 +1256,9 @@ async function aplicarFerramenta(nome) {
 
       return;
     }
+
+    configuracao.ignorarZero =
+      ignorarZero;
 
 
     const etapa = {
@@ -1780,6 +1785,10 @@ function desenharFluxograma() {
 
         Regra:
         ${configuracao.descricao}
+        <br>
+
+        Ignorar pixel 0:
+        ${configuracao.ignorarZero ? "Sim" : "Não"}
         <br>
 
         Saída:
