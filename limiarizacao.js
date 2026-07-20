@@ -1,6 +1,6 @@
 // =====================================================
 // limiarizacao.js
-// Limiarização manual para imagens comuns (Canvas) e DICOM.
+// Limiarização manual e Otsu global para imagens comuns (Canvas) e DICOM.
 //
 // Saída binária:
 //   condição verdadeira = 255 (branco)
@@ -516,10 +516,17 @@ function calcularIntensidadePixelLimiarizacao(vermelho, verde, azul) {
   const g = Number(verde);
   const b = Number(azul);
 
-  if (r === g && g === b) return r;
+  // Se já estiver em tons de cinza, mantém o valor original.
+  if (r === g && g === b) {
+    return r;
+  }
 
-  // Conversão de RGB para luminância.
-  return 0.299 * r + 0.587 * g + 0.114 * b;
+  // Converte RGB para uma intensidade inteira entre 0 e 255.
+  return Math.round(
+    0.299 * r +
+    0.587 * g +
+    0.114 * b
+  );
 }
 
 function criarCanvasSaidaLimiarizacao(largura, altura) {
@@ -843,6 +850,900 @@ async function aplicarLimiarManualEmDicom(
   atualizarProgresso
 ) {
   return aplicarLimiarizacaoManualEmDicom(
+    imagemEntrada,
+    configuracao,
+    atualizarProgresso
+  );
+}
+
+// =====================================================
+// LIMIARIZAÇÃO GLOBAL POR OTSU
+// Equivalente a:
+//   level = graythresh(I);
+//   BW = imbinarize(I, level);
+//
+// - Histograma com 256 níveis.
+// - level normalizado em [0,1].
+// - EM em [0,1].
+// - Binarização com comparação estrita: pixel > limiar.
+// - Se ignorarZero=true, pixels 0 não entram no histograma
+//   e continuam 0 na saída.
+// =====================================================
+
+function limitarValorOtsu(valor, minimo, maximo) {
+  return Math.max(minimo, Math.min(maximo, valor));
+}
+
+function obterClasseNumericaOtsu(valores) {
+  if (
+    typeof Uint8ClampedArray !== "undefined" &&
+    valores instanceof Uint8ClampedArray
+  ) {
+    return { nome: "uint8", tipo: "inteiro", minimo: 0, maximo: 255 };
+  }
+
+  if (
+    typeof Uint8Array !== "undefined" &&
+    valores instanceof Uint8Array
+  ) {
+    return { nome: "uint8", tipo: "inteiro", minimo: 0, maximo: 255 };
+  }
+
+  if (
+    typeof Uint16Array !== "undefined" &&
+    valores instanceof Uint16Array
+  ) {
+    return { nome: "uint16", tipo: "inteiro", minimo: 0, maximo: 65535 };
+  }
+
+  if (
+    typeof Uint32Array !== "undefined" &&
+    valores instanceof Uint32Array
+  ) {
+    return {
+      nome: "uint32",
+      tipo: "inteiro",
+      minimo: 0,
+      maximo: 4294967295
+    };
+  }
+
+  if (
+    typeof Int8Array !== "undefined" &&
+    valores instanceof Int8Array
+  ) {
+    return { nome: "int8", tipo: "inteiro", minimo: -128, maximo: 127 };
+  }
+
+  if (
+    typeof Int16Array !== "undefined" &&
+    valores instanceof Int16Array
+  ) {
+    return {
+      nome: "int16",
+      tipo: "inteiro",
+      minimo: -32768,
+      maximo: 32767
+    };
+  }
+
+  if (
+    typeof Int32Array !== "undefined" &&
+    valores instanceof Int32Array
+  ) {
+    return {
+      nome: "int32",
+      tipo: "inteiro",
+      minimo: -2147483648,
+      maximo: 2147483647
+    };
+  }
+
+  if (
+    typeof Float32Array !== "undefined" &&
+    valores instanceof Float32Array
+  ) {
+    return { nome: "single", tipo: "float", minimo: 0, maximo: 1 };
+  }
+
+  if (
+    typeof Float64Array !== "undefined" &&
+    valores instanceof Float64Array
+  ) {
+    return { nome: "double", tipo: "float", minimo: 0, maximo: 1 };
+  }
+
+  // Arrays comuns são tratados como double, como no MATLAB.
+  return { nome: "double", tipo: "float", minimo: 0, maximo: 1 };
+}
+
+function converterValorParaUint8Otsu(valor, classe) {
+  let numero = Number(valor);
+
+  if (Number.isNaN(numero) || numero === -Infinity) {
+    numero = classe.minimo;
+  } else if (numero === Infinity) {
+    numero = classe.maximo;
+  }
+
+  if (classe.tipo === "float") {
+    return Math.round(limitarValorOtsu(numero, 0, 1) * 255);
+  }
+
+  numero = limitarValorOtsu(numero, classe.minimo, classe.maximo);
+
+  const normalizado =
+    (numero - classe.minimo) /
+    (classe.maximo - classe.minimo);
+
+  return Math.round(normalizado * 255);
+}
+
+function converterNivelOtsuParaClasseOriginal(level, classe) {
+  const nivel = limitarValorOtsu(Number(level), 0, 1);
+
+  if (classe.tipo === "float") {
+    return nivel;
+  }
+
+  return (
+    classe.minimo +
+    (classe.maximo - classe.minimo) * nivel
+  );
+}
+
+function criarHistogramaVazioOtsu() {
+  return new Float64Array(256);
+}
+
+function adicionarValorAoHistogramaOtsu(
+  histograma,
+  valor,
+  classe,
+  ignorarZero
+) {
+  const numero = Number(valor);
+
+  if (ignorarZero === true && numero === 0) {
+    return false;
+  }
+
+  const nivel = converterValorParaUint8Otsu(numero, classe);
+  histograma[nivel] += 1;
+
+  return true;
+}
+
+function calcularHistogramaOtsu(valores, configuracao) {
+  if (
+    !valores ||
+    typeof valores.length !== "number"
+  ) {
+    throw new Error("Valores inválidos para o histograma de Otsu.");
+  }
+
+  const opcoes = configuracao || {};
+  const classe =
+    opcoes.classeNumerica ||
+    obterClasseNumericaOtsu(valores);
+
+  const ignorarZero =
+    opcoes.ignorarZero === true;
+
+  const histograma =
+    criarHistogramaVazioOtsu();
+
+  let quantidadeConsiderada = 0;
+
+  for (let i = 0; i < valores.length; i++) {
+    if (
+      adicionarValorAoHistogramaOtsu(
+        histograma,
+        valores[i],
+        classe,
+        ignorarZero
+      )
+    ) {
+      quantidadeConsiderada++;
+    }
+  }
+
+  return {
+    histograma: histograma,
+    quantidadeConsiderada: quantidadeConsiderada,
+    classeNumerica: classe,
+    ignorarZero: ignorarZero
+  };
+}
+
+function otsuthreshLimiarizacao(contagens) {
+  if (
+    !contagens ||
+    typeof contagens.length !== "number" ||
+    contagens.length < 2
+  ) {
+    throw new Error("Histograma inválido para otsuthresh.");
+  }
+
+  const numeroBins = contagens.length;
+  let total = 0;
+
+  for (let i = 0; i < numeroBins; i++) {
+    const contagem = Number(contagens[i]);
+
+    if (Number.isFinite(contagem) && contagem > 0) {
+      total += contagem;
+    }
+  }
+
+  if (total <= 0) {
+    return {
+      level: 0,
+      em: 0,
+      indiceLimiar: 0,
+      varianciaEntreClasses: 0,
+      varianciaTotal: 0
+    };
+  }
+
+  const probabilidades =
+    new Float64Array(numeroBins);
+
+  let mediaTotal = 0;
+
+  for (let i = 0; i < numeroBins; i++) {
+    const contagem = Number(contagens[i]);
+
+    const probabilidade =
+      Number.isFinite(contagem) && contagem > 0
+        ? contagem / total
+        : 0;
+
+    probabilidades[i] = probabilidade;
+    mediaTotal += i * probabilidade;
+  }
+
+  let varianciaTotal = 0;
+
+  for (let i = 0; i < numeroBins; i++) {
+    const diferenca = i - mediaTotal;
+
+    varianciaTotal +=
+      probabilidades[i] *
+      diferenca *
+      diferenca;
+  }
+
+  if (
+    !Number.isFinite(varianciaTotal) ||
+    varianciaTotal <= 0
+  ) {
+    return {
+      level: 0,
+      em: 0,
+      indiceLimiar: 0,
+      varianciaEntreClasses: 0,
+      varianciaTotal: 0
+    };
+  }
+
+  const variancias =
+    new Float64Array(numeroBins);
+
+  let pesoAcumulado = 0;
+  let mediaAcumulada = 0;
+  let maiorVariancia = 0;
+
+  for (let i = 0; i < numeroBins; i++) {
+    pesoAcumulado += probabilidades[i];
+    mediaAcumulada += i * probabilidades[i];
+
+    const denominador =
+      pesoAcumulado *
+      (1 - pesoAcumulado);
+
+    let variancia = 0;
+
+    if (denominador > 0) {
+      const numerador =
+        mediaTotal * pesoAcumulado -
+        mediaAcumulada;
+
+      variancia =
+        (numerador * numerador) /
+        denominador;
+    }
+
+    if (!Number.isFinite(variancia)) {
+      variancia = 0;
+    }
+
+    variancias[i] = variancia;
+
+    if (variancia > maiorVariancia) {
+      maiorVariancia = variancia;
+    }
+  }
+
+  /*
+   * Se vários limiares tiverem a mesma variância máxima,
+   * utiliza a média dos índices, como no Otsu do MATLAB.
+   */
+  const tolerancia =
+    Math.max(
+      Number.EPSILON * 32,
+      Math.abs(maiorVariancia) * 1e-12
+    );
+
+  let somaIndices = 0;
+  let quantidadeIndices = 0;
+
+  for (let i = 0; i < numeroBins; i++) {
+    if (
+      Math.abs(
+        variancias[i] -
+        maiorVariancia
+      ) <= tolerancia
+    ) {
+      somaIndices += i;
+      quantidadeIndices++;
+    }
+  }
+
+  const indiceLimiar =
+    quantidadeIndices > 0
+      ? somaIndices / quantidadeIndices
+      : 0;
+
+  const level =
+    indiceLimiar /
+    (numeroBins - 1);
+
+  const em =
+    maiorVariancia /
+    varianciaTotal;
+
+  return {
+    level: limitarValorOtsu(level, 0, 1),
+    em: limitarValorOtsu(em, 0, 1),
+    indiceLimiar: indiceLimiar,
+    varianciaEntreClasses: maiorVariancia,
+    varianciaTotal: varianciaTotal
+  };
+}
+
+function graythreshLimiarizacao(valores, configuracao) {
+  const resultadoHistograma =
+    calcularHistogramaOtsu(
+      valores,
+      configuracao
+    );
+
+  const resultadoOtsu =
+    otsuthreshLimiarizacao(
+      resultadoHistograma.histograma
+    );
+
+  return {
+    level: resultadoOtsu.level,
+    em: resultadoOtsu.em,
+    indiceLimiar: resultadoOtsu.indiceLimiar,
+
+    limiarOriginal:
+      converterNivelOtsuParaClasseOriginal(
+        resultadoOtsu.level,
+        resultadoHistograma.classeNumerica
+      ),
+
+    histograma:
+      resultadoHistograma.histograma,
+
+    quantidadeConsiderada:
+      resultadoHistograma.quantidadeConsiderada,
+
+    classeNumerica:
+      resultadoHistograma.classeNumerica,
+
+    ignorarZero:
+      resultadoHistograma.ignorarZero,
+
+    varianciaEntreClasses:
+      resultadoOtsu.varianciaEntreClasses,
+
+    varianciaTotal:
+      resultadoOtsu.varianciaTotal
+  };
+}
+
+function valorAtendeLimiarOtsu(
+  valor,
+  limiar,
+  ignorarZero
+) {
+  const numero = Number(valor);
+
+  if (ignorarZero === true && numero === 0) {
+    return false;
+  }
+
+  // Mesmo critério de imbinarize: I > T.
+  return numero > limiar;
+}
+
+async function calcularGraythreshEmCanvas(
+  canvasEntrada,
+  configuracao,
+  atualizarProgresso
+) {
+  if (
+    !canvasEntrada ||
+    typeof canvasEntrada.getContext !== "function"
+  ) {
+    throw new Error("Canvas inválido para o método de Otsu.");
+  }
+
+  const opcoes = configuracao || {};
+  const ignorarZero =
+    opcoes.ignorarZero === true;
+
+  const largura = Number(canvasEntrada.width);
+  const altura = Number(canvasEntrada.height);
+
+  if (
+    !Number.isInteger(largura) ||
+    !Number.isInteger(altura) ||
+    largura < 1 ||
+    altura < 1
+  ) {
+    throw new Error("Dimensões inválidas para o método de Otsu.");
+  }
+
+  const contexto =
+    canvasEntrada.getContext(
+      "2d",
+      { willReadFrequently: true }
+    );
+
+  if (!contexto) {
+    throw new Error("Não foi possível acessar o Canvas.");
+  }
+
+  const imagem =
+    contexto.getImageData(
+      0,
+      0,
+      largura,
+      altura
+    );
+
+  const histograma =
+    criarHistogramaVazioOtsu();
+
+  const classeUint8 = {
+    nome: "uint8",
+    tipo: "inteiro",
+    minimo: 0,
+    maximo: 255
+  };
+
+  let quantidadeConsiderada = 0;
+
+  atualizarProgressoLimiarizacao(
+    atualizarProgresso,
+    0
+  );
+
+  for (let y = 0; y < altura; y++) {
+    for (let x = 0; x < largura; x++) {
+      const indice =
+        (y * largura + x) * 4;
+
+      const intensidade =
+        calcularIntensidadePixelLimiarizacao(
+          imagem.data[indice],
+          imagem.data[indice + 1],
+          imagem.data[indice + 2]
+        );
+
+      const intensidadeUint8 =
+        limitarValorOtsu(
+          Math.round(intensidade),
+          0,
+          255
+        );
+
+      if (
+        adicionarValorAoHistogramaOtsu(
+          histograma,
+          intensidadeUint8,
+          classeUint8,
+          ignorarZero
+        )
+      ) {
+        quantidadeConsiderada++;
+      }
+    }
+
+    atualizarProgressoLimiarizacao(
+      atualizarProgresso,
+      ((y + 1) / altura) * 50
+    );
+
+    if (y % 16 === 0 || y === altura - 1) {
+      await esperarAtualizacaoLimiarizacao();
+    }
+  }
+
+  const resultado =
+    otsuthreshLimiarizacao(histograma);
+
+  return {
+    level: resultado.level,
+    em: resultado.em,
+    indiceLimiar: resultado.indiceLimiar,
+    limiarOriginal: resultado.level * 255,
+    histograma: histograma,
+    quantidadeConsiderada: quantidadeConsiderada,
+    classeNumerica: classeUint8,
+    ignorarZero: ignorarZero,
+    varianciaEntreClasses:
+      resultado.varianciaEntreClasses,
+    varianciaTotal:
+      resultado.varianciaTotal
+  };
+}
+
+async function aplicarLimiarizacaoOtsuEmCanvas(
+  canvasEntrada,
+  configuracao,
+  atualizarProgresso
+) {
+  const resultadoOtsu =
+    await calcularGraythreshEmCanvas(
+      canvasEntrada,
+      configuracao || {},
+      atualizarProgresso
+    );
+
+  const largura = Number(canvasEntrada.width);
+  const altura = Number(canvasEntrada.height);
+
+  const contextoEntrada =
+    canvasEntrada.getContext(
+      "2d",
+      { willReadFrequently: true }
+    );
+
+  const imagemEntrada =
+    contextoEntrada.getImageData(
+      0,
+      0,
+      largura,
+      altura
+    );
+
+  const canvasSaida =
+    criarCanvasSaidaLimiarizacao(
+      largura,
+      altura
+    );
+
+  const contextoSaida =
+    canvasSaida.getContext("2d");
+
+  if (!contextoSaida) {
+    throw new Error(
+      "Não foi possível criar o Canvas de saída do Otsu."
+    );
+  }
+
+  const imagemSaida =
+    contextoSaida.createImageData(
+      largura,
+      altura
+    );
+
+  for (let y = 0; y < altura; y++) {
+    for (let x = 0; x < largura; x++) {
+      const indice =
+        (y * largura + x) * 4;
+
+      const intensidade =
+        calcularIntensidadePixelLimiarizacao(
+          imagemEntrada.data[indice],
+          imagemEntrada.data[indice + 1],
+          imagemEntrada.data[indice + 2]
+        );
+
+      const intensidadeUint8 =
+        limitarValorOtsu(
+          Math.round(intensidade),
+          0,
+          255
+        );
+
+      const valorSaida =
+        valorAtendeLimiarOtsu(
+          intensidadeUint8,
+          resultadoOtsu.limiarOriginal,
+          resultadoOtsu.ignorarZero
+        )
+          ? 255
+          : 0;
+
+      imagemSaida.data[indice] = valorSaida;
+      imagemSaida.data[indice + 1] = valorSaida;
+      imagemSaida.data[indice + 2] = valorSaida;
+      imagemSaida.data[indice + 3] =
+        imagemEntrada.data[indice + 3];
+    }
+
+    atualizarProgressoLimiarizacao(
+      atualizarProgresso,
+      50 +
+      ((y + 1) / altura) * 50
+    );
+
+    if (y % 16 === 0 || y === altura - 1) {
+      await esperarAtualizacaoLimiarizacao();
+    }
+  }
+
+  contextoSaida.putImageData(
+    imagemSaida,
+    0,
+    0
+  );
+
+  /*
+   * Mantém o retorno como Canvas, mas anexa os dados
+   * calculados para consulta posterior.
+   */
+  canvasSaida.resultadoOtsu = resultadoOtsu;
+  canvasSaida.levelOtsu = resultadoOtsu.level;
+  canvasSaida.efetividadeOtsu = resultadoOtsu.em;
+  canvasSaida.limiarOtsu =
+    resultadoOtsu.limiarOriginal;
+
+  atualizarProgressoLimiarizacao(
+    atualizarProgresso,
+    100
+  );
+
+  return canvasSaida;
+}
+
+async function aplicarOtsuEmCanvas(
+  canvasEntrada,
+  configuracao,
+  atualizarProgresso
+) {
+  return aplicarLimiarizacaoOtsuEmCanvas(
+    canvasEntrada,
+    configuracao,
+    atualizarProgresso
+  );
+}
+
+async function calcularGraythreshEmDicom(
+  imagemEntrada,
+  configuracao,
+  atualizarProgresso
+) {
+  if (
+    !imagemEntrada ||
+    typeof imagemEntrada.getPixelData !== "function"
+  ) {
+    throw new Error("Imagem DICOM inválida para o método de Otsu.");
+  }
+
+  const opcoes = configuracao || {};
+  const ignorarZero =
+    opcoes.ignorarZero === true;
+
+  const largura = Number(
+    imagemEntrada.width ||
+    imagemEntrada.columns
+  );
+
+  const altura = Number(
+    imagemEntrada.height ||
+    imagemEntrada.rows
+  );
+
+  if (
+    !Number.isInteger(largura) ||
+    !Number.isInteger(altura) ||
+    largura < 1 ||
+    altura < 1
+  ) {
+    throw new Error("Dimensões DICOM inválidas para o método de Otsu.");
+  }
+
+  const pixelsEntrada =
+    imagemEntrada.getPixelData();
+
+  const quantidadeEsperada =
+    largura * altura;
+
+  if (
+    !pixelsEntrada ||
+    typeof pixelsEntrada.length !== "number"
+  ) {
+    throw new Error("Não foi possível acessar os pixels DICOM.");
+  }
+
+  if (
+    pixelsEntrada.length !==
+    quantidadeEsperada
+  ) {
+    throw new Error(
+      "O Otsu deste módulo aceita imagens DICOM monocromáticas."
+    );
+  }
+
+  const classe =
+    obterClasseNumericaOtsu(
+      pixelsEntrada
+    );
+
+  const histograma =
+    criarHistogramaVazioOtsu();
+
+  let quantidadeConsiderada = 0;
+
+  atualizarProgressoLimiarizacao(
+    atualizarProgresso,
+    0
+  );
+
+  for (let y = 0; y < altura; y++) {
+    const inicio = y * largura;
+    const fim = inicio + largura;
+
+    for (let i = inicio; i < fim; i++) {
+      if (
+        adicionarValorAoHistogramaOtsu(
+          histograma,
+          pixelsEntrada[i],
+          classe,
+          ignorarZero
+        )
+      ) {
+        quantidadeConsiderada++;
+      }
+    }
+
+    atualizarProgressoLimiarizacao(
+      atualizarProgresso,
+      ((y + 1) / altura) * 50
+    );
+
+    if (y % 16 === 0 || y === altura - 1) {
+      await esperarAtualizacaoLimiarizacao();
+    }
+  }
+
+  const resultado =
+    otsuthreshLimiarizacao(
+      histograma
+    );
+
+  return {
+    level: resultado.level,
+    em: resultado.em,
+    indiceLimiar: resultado.indiceLimiar,
+
+    limiarOriginal:
+      converterNivelOtsuParaClasseOriginal(
+        resultado.level,
+        classe
+      ),
+
+    histograma: histograma,
+    quantidadeConsiderada:
+      quantidadeConsiderada,
+    classeNumerica: classe,
+    ignorarZero: ignorarZero,
+    varianciaEntreClasses:
+      resultado.varianciaEntreClasses,
+    varianciaTotal:
+      resultado.varianciaTotal
+  };
+}
+
+async function aplicarLimiarizacaoOtsuEmDicom(
+  imagemEntrada,
+  configuracao,
+  atualizarProgresso
+) {
+  const resultadoOtsu =
+    await calcularGraythreshEmDicom(
+      imagemEntrada,
+      configuracao || {},
+      atualizarProgresso
+    );
+
+  const largura = Number(
+    imagemEntrada.width ||
+    imagemEntrada.columns
+  );
+
+  const altura = Number(
+    imagemEntrada.height ||
+    imagemEntrada.rows
+  );
+
+  const pixelsEntrada =
+    imagemEntrada.getPixelData();
+
+  const pixelsSaida =
+    new Uint8Array(
+      largura * altura
+    );
+
+  for (let y = 0; y < altura; y++) {
+    const inicio = y * largura;
+    const fim = inicio + largura;
+
+    for (let i = inicio; i < fim; i++) {
+      pixelsSaida[i] =
+        valorAtendeLimiarOtsu(
+          pixelsEntrada[i],
+          resultadoOtsu.limiarOriginal,
+          resultadoOtsu.ignorarZero
+        )
+          ? 255
+          : 0;
+    }
+
+    atualizarProgressoLimiarizacao(
+      atualizarProgresso,
+      50 +
+      ((y + 1) / altura) * 50
+    );
+
+    if (y % 16 === 0 || y === altura - 1) {
+      await esperarAtualizacaoLimiarizacao();
+    }
+  }
+
+  const imagemSaida =
+    criarImagemDicomLimiarizacao(
+      pixelsSaida,
+      largura,
+      altura,
+      imagemEntrada,
+      "dicom_limiarizacao_otsu_" +
+      Date.now()
+    );
+
+  imagemSaida.resultadoOtsu =
+    resultadoOtsu;
+
+  imagemSaida.levelOtsu =
+    resultadoOtsu.level;
+
+  imagemSaida.efetividadeOtsu =
+    resultadoOtsu.em;
+
+  imagemSaida.limiarOtsu =
+    resultadoOtsu.limiarOriginal;
+
+  atualizarProgressoLimiarizacao(
+    atualizarProgresso,
+    100
+  );
+
+  return imagemSaida;
+}
+
+async function aplicarOtsuEmDicom(
+  imagemEntrada,
+  configuracao,
+  atualizarProgresso
+) {
+  return aplicarLimiarizacaoOtsuEmDicom(
     imagemEntrada,
     configuracao,
     atualizarProgresso
