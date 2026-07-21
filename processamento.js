@@ -1080,6 +1080,33 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
+  if (nome === "Limiarização Otsu") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Limiarização automática</h4>
+
+      <div class="caixa_info_parametro">
+        O limiar será calculado automaticamente pelo método global de Otsu.
+        O método utiliza um histograma com 256 níveis de intensidade
+        e seleciona o limiar que melhor separa o fundo e o objeto.
+      </div>
+
+      <div class="caixa_info_parametro">
+        A saída será uma imagem binária:
+        condição falsa = 0 e condição verdadeira = 255.
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Limiarização Otsu')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
   if (nome.includes("tons de cinza")) {
 
     parametrosDiv.innerHTML = `
@@ -1289,6 +1316,33 @@ async function aplicarFerramenta(nome) {
       "Limiarização manual aplicada em todas as imagens."
     );
 
+
+    return;
+  }
+
+  if (nome === "Limiarização Otsu") {
+
+    const ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const etapa = {
+      id: proximoIdEtapa++,
+
+      nome: "Limiarização Otsu",
+
+      parametros: {
+        configuracao: {
+          ignorarZero: ignorarZero
+        }
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Limiarização por Otsu aplicada na imagem selecionada.",
+      "Limiarização por Otsu aplicada em todas as imagens."
+    );
 
     return;
   }
@@ -1785,6 +1839,34 @@ function desenharFluxograma() {
 
         Regra:
         ${configuracao.descricao}
+        <br>
+
+        Ignorar pixel 0:
+        ${configuracao.ignorarZero ? "Sim" : "Não"}
+        <br>
+
+        Saída:
+        verdadeiro = 255;
+        falso = 0
+      `;
+    }
+
+    if (etapa.nome === "Limiarização Otsu") {
+
+      const configuracao =
+        etapa.parametros.configuracao || {};
+
+      textoParametros = `
+        Método:
+        Otsu global
+        <br>
+
+        Limiar:
+        Calculado automaticamente
+        <br>
+
+        Histograma:
+        256 níveis
         <br>
 
         Ignorar pixel 0:
@@ -2775,6 +2857,20 @@ async function processarImagemNormalPeloPipeline(item) {
         );
     }
 
+    if (etapa.nome === "Limiarização Otsu") {
+
+      canvasAtual =
+        await aplicarLimiarizacaoOtsuEmCanvas(
+
+          canvasAtual,
+
+          etapa.parametros.configuracao,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -2938,6 +3034,19 @@ async function processarDicomPeloPipeline(item) {
 
       imagemAtual =
         await aplicarLimiarizacaoManualEmDicom(
+
+          imagemAtual,
+
+          etapa.parametros.configuracao,
+
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Limiarização Otsu") {
+
+      imagemAtual =
+        await aplicarLimiarizacaoOtsuEmDicom(
 
           imagemAtual,
 
@@ -3602,6 +3711,19 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
         );
     }
 
+    if (etapa.nome === "Limiarização Otsu") {
+
+      canvasAtual =
+        await aplicarLimiarizacaoOtsuEmCanvas(
+
+          canvasAtual,
+
+          etapa.parametros.configuracao,
+
+          function() {}
+        );
+    }
+
     if (etapa.nome.includes("tons de cinza")) {
 
       const resultadoCinza = await aplicarCinzaEmCanvas(
@@ -3727,6 +3849,19 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
       imagemAtual =
         await aplicarLimiarizacaoManualEmDicom(
+
+          imagemAtual,
+
+          etapa.parametros.configuracao,
+
+          function() {}
+        );
+    }
+
+    if (etapa.nome === "Limiarização Otsu") {
+
+      imagemAtual =
+        await aplicarLimiarizacaoOtsuEmDicom(
 
           imagemAtual,
 
