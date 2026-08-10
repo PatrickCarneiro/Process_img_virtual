@@ -136,6 +136,31 @@
       border-left: 2px solid rgba(192,132,252,0.35);
     }
 
+    /* DESIGN DAS SUBCATEGORIAS DE FERRAMENTAS */
+
+    .subcategoria-titulo {
+      background: rgba(255,255,255,0.08);
+      color: #ffffff;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      border: 1px solid rgba(192,132,252,0.25);
+      transition: 0.3s;
+    }
+
+    .subcategoria-titulo:hover {
+      background: rgba(192,132,252,0.20);
+    }
+
+    .subcategoria-conteudo {
+      display: none;
+      margin-bottom: 12px;
+      padding-left: 10px;
+      border-left: 2px solid rgba(255,255,255,0.12);
+    }
+
     /* DESIGN DAS FERRAMENTAS */
 
     .ferramenta {
@@ -640,6 +665,94 @@
         >
           Filtro Mediana
         </div>
+      </div>
+
+      <!-- Categoria de transformações de intensidade -->
+      <div
+        class="categoria-titulo"
+        onclick="toggleCategoria('transformacoesIntensidade')"
+      >
+        Transformações de intensidade
+      </div>
+
+      <!-- Conteúdo da categoria de transformações de intensidade -->
+      <div
+        class="categoria-conteudo"
+        id="transformacoesIntensidade"
+      >
+
+        <!-- Subcategoria de transformações lineares -->
+        <div
+          class="subcategoria-titulo"
+          onclick="toggleCategoria('transformacoesLineares')"
+        >
+          Lineares
+        </div>
+
+        <div
+          class="subcategoria-conteudo"
+          id="transformacoesLineares"
+        >
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaNegativo"
+          >
+            Negativo
+          </div>
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaIdentidade"
+          >
+            Identidade
+          </div>
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaAlargamentoContraste"
+          >
+            Alargamento de contraste
+          </div>
+
+        </div>
+
+        <!-- Subcategoria de transformações não lineares -->
+        <div
+          class="subcategoria-titulo"
+          onclick="toggleCategoria('transformacoesNaoLineares')"
+        >
+          Não Lineares
+        </div>
+
+        <div
+          class="subcategoria-conteudo"
+          id="transformacoesNaoLineares"
+        >
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaPotencia"
+          >
+            Potência
+          </div>
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaLog"
+          >
+            Log
+          </div>
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaGamma"
+          >
+            Gamma
+          </div>
+
+        </div>
+
       </div>
 
       <!-- Categoria de operações morfológicas -->
