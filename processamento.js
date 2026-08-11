@@ -747,6 +747,117 @@ function selecionarFerramenta(nome, botaoClicado) {
 
   parametrosDiv.style.display = "block";
 
+  // TRANSFORMAÇÕES DE INTENSIDADE - LINEARES
+
+  if (nome === "Negativo") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Negativo</h4>
+
+      <div class="campo_parametro_info">
+        <label>Complemento da imagem</label>
+
+        <div class="caixa_info_parametro">
+          Equivalente ao imcomplement do MATLAB.
+          Os valores de intensidade são invertidos.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Negativo')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
+  if (nome === "Alargamento de contraste") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+        <label>Limite inferior de entrada</label>
+
+        <input
+          type="number"
+          id="paramLowInContraste"
+          min="0"
+          max="1"
+          step="any"
+          placeholder="Ex: 0.2"
+        >
+
+        <div class="caixa_info_parametro">
+          LOW_IN do imadjust. Deve estar entre 0 e 1 e ser menor que HIGH_IN.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Limite superior de entrada</label>
+
+        <input
+          type="number"
+          id="paramHighInContraste"
+          min="0"
+          max="1"
+          step="any"
+          placeholder="Ex: 0.8"
+        >
+
+        <div class="caixa_info_parametro">
+          HIGH_IN do imadjust. Deve estar entre 0 e 1 e ser maior que LOW_IN.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Limite inferior de saída</label>
+
+        <input
+          type="number"
+          id="paramLowOutContraste"
+          min="0"
+          max="1"
+          step="any"
+          placeholder="Ex: 0"
+        >
+
+        <div class="caixa_info_parametro">
+          LOW_OUT do imadjust. Deve estar entre 0 e 1.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Limite superior de saída</label>
+
+        <input
+          type="number"
+          id="paramHighOutContraste"
+          min="0"
+          max="1"
+          step="any"
+          placeholder="Ex: 1"
+        >
+
+        <div class="caixa_info_parametro">
+          HIGH_OUT do imadjust. Deve estar entre 0 e 1.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Alargamento de contraste')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
   if (nome.includes("Gaussiano")) {
 
     parametrosDiv.innerHTML = `
@@ -1210,6 +1321,94 @@ async function aplicarFerramenta(nome) {
 
   if (imagensProcessamento.length === 0) {
     alert("Nenhuma imagem carregada para processar.");
+    return;
+  }
+
+  // TRANSFORMAÇÕES DE INTENSIDADE - LINEARES
+
+  if (nome === "Negativo") {
+
+    const ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Negativo",
+      parametros: {
+        ignorarZero: ignorarZero
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Negativo aplicado na imagem selecionada.",
+      "Negativo aplicado em todas as imagens."
+    );
+
+    return;
+  }
+
+  if (nome === "Alargamento de contraste") {
+
+    const entradaLowIn =
+      document.getElementById("paramLowInContraste");
+
+    const entradaHighIn =
+      document.getElementById("paramHighInContraste");
+
+    const entradaLowOut =
+      document.getElementById("paramLowOutContraste");
+
+    const entradaHighOut =
+      document.getElementById("paramHighOutContraste");
+
+    const lowInTexto =
+      entradaLowIn ? entradaLowIn.value.trim() : "";
+
+    const highInTexto =
+      entradaHighIn ? entradaHighIn.value.trim() : "";
+
+    const lowOutTexto =
+      entradaLowOut ? entradaLowOut.value.trim() : "";
+
+    const highOutTexto =
+      entradaHighOut ? entradaHighOut.value.trim() : "";
+
+    const ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const configuracao =
+      interpretarParametrosAlargamentoContraste(
+        lowInTexto,
+        highInTexto,
+        lowOutTexto,
+        highOutTexto
+      );
+
+    if (!configuracao.valido) {
+      alert(configuracao.mensagem);
+      return;
+    }
+
+    configuracao.ignorarZero =
+      ignorarZero;
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Alargamento de contraste",
+      parametros: {
+        configuracao: configuracao
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Alargamento de contraste aplicado na imagem selecionada.",
+      "Alargamento de contraste aplicado em todas as imagens."
+    );
+
     return;
   }
 
@@ -1754,6 +1953,26 @@ function desenharFluxograma() {
     }
 
     let textoParametros = ""; // Texto dos parâmetros
+
+    if (etapa.nome === "Negativo") {
+      textoParametros = `
+        Operação: imcomplement<br>
+        Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+
+    if (etapa.nome === "Alargamento de contraste") {
+
+      const configuracao =
+        etapa.parametros.configuracao;
+
+      textoParametros = `
+        Entrada: [${configuracao.lowIn} ${configuracao.highIn}]<br>
+        Saída: [${configuracao.lowOut} ${configuracao.highOut}]<br>
+        Gamma: 1 (linear)<br>
+        Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
 
     if (etapa.nome.includes("Gaussiano")) {
       textoParametros = `
@@ -2763,6 +2982,26 @@ async function processarImagemNormalPeloPipeline(item) {
     );
     }
 
+    if (etapa.nome === "Negativo") {
+
+      canvasAtual =
+        await aplicarNegativoEmCanvas(
+          canvasAtual,
+          etapa.parametros.ignorarZero,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Alargamento de contraste") {
+
+      canvasAtual =
+        await aplicarAlargamentoContrasteEmCanvas(
+          canvasAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
     if (etapa.nome === "Erosão") {
       canvasAtual =
         await aplicarErosaoEmCanvas(
@@ -2947,6 +3186,26 @@ async function processarDicomPeloPipeline(item) {
       etapa.parametros.ignorarZero,
       atualizarBarraProcessamento
     );
+    }
+
+    if (etapa.nome === "Negativo") {
+
+      imagemAtual =
+        await aplicarNegativoEmDicom(
+          imagemAtual,
+          etapa.parametros.ignorarZero,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Alargamento de contraste") {
+
+      imagemAtual =
+        await aplicarAlargamentoContrasteEmDicom(
+          imagemAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
     }
 
     if (etapa.nome === "Erosão") {
