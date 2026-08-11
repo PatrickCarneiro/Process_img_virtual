@@ -826,6 +826,125 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
+  // TRANSFORMAÇÕES DE INTENSIDADE - NÃO LINEARES
+
+  if (nome === "Potência") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+        <label>Constante c</label>
+
+        <input
+          type="number"
+          id="paramConstantePotencia"
+          step="any"
+          placeholder="Ex: 1"
+        >
+
+        <div class="caixa_info_parametro">
+          Transformação de potência: s = c × r^p.
+          Se o campo ficar vazio, será usado c = 1.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Expoente p</label>
+
+        <input
+          type="number"
+          id="paramExpoentePotencia"
+          min="0.000001"
+          step="any"
+          placeholder="Ex: 2"
+        >
+
+        <div class="caixa_info_parametro">
+          Expoente da transformação de potência.
+          O valor deve ser maior que 0.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Potência')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
+  if (nome === "Log") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+        <label>Constante c</label>
+
+        <input
+          type="number"
+          id="paramConstanteLog"
+          min="0.000001"
+          step="any"
+          placeholder="Vazio = automático"
+        >
+
+        <div class="caixa_info_parametro">
+          Transformação logarítmica: s = c × log(1 + r).
+          Se o campo ficar vazio, a constante será calculada
+          automaticamente para manter a saída na faixa da imagem.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Log')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
+  if (nome === "Gamma") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Parâmetros</h4>
+
+      <div class="campo_parametro_info">
+        <label>Gamma</label>
+
+        <input
+          type="number"
+          id="paramGammaNaoLinear"
+          min="0.000001"
+          step="any"
+          placeholder="Ex: 0.5, 1 ou 2"
+        >
+
+        <div class="caixa_info_parametro">
+          Correção gamma equivalente ao parâmetro gamma do imadjust
+          do MATLAB, usando as faixas padrão [0 1].
+          O valor deve ser maior que 0.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Gamma')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    return;
+  }
+
   if (nome.includes("Gaussiano")) {
 
     parametrosDiv.innerHTML = `
@@ -1361,6 +1480,132 @@ async function aplicarFerramenta(nome) {
     await aplicarPipelineAposAdicionarEtapa(
       "Alargamento de contraste aplicado na imagem selecionada.",
       "Alargamento de contraste aplicado em todas as imagens."
+    );
+
+    return;
+  }
+
+  // TRANSFORMAÇÕES DE INTENSIDADE - NÃO LINEARES
+
+  if (nome === "Potência") {
+
+    const entradaConstante =
+      document.getElementById("paramConstantePotencia");
+
+    const entradaExpoente =
+      document.getElementById("paramExpoentePotencia");
+
+    const constanteTexto =
+      entradaConstante ? entradaConstante.value.trim() : "";
+
+    const expoenteTexto =
+      entradaExpoente ? entradaExpoente.value.trim() : "";
+
+    const configuracao =
+      interpretarParametrosPotenciaNaoLineares(
+        constanteTexto,
+        expoenteTexto
+      );
+
+    if (!configuracao.valido) {
+      alert(configuracao.mensagem);
+      return;
+    }
+
+    configuracao.ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Potência",
+      parametros: {
+        configuracao: configuracao
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Transformação de potência aplicada na imagem selecionada.",
+      "Transformação de potência aplicada em todas as imagens."
+    );
+
+    return;
+  }
+
+  if (nome === "Log") {
+
+    const entradaConstante =
+      document.getElementById("paramConstanteLog");
+
+    const constanteTexto =
+      entradaConstante ? entradaConstante.value.trim() : "";
+
+    const configuracao =
+      interpretarParametrosLogNaoLineares(
+        constanteTexto
+      );
+
+    if (!configuracao.valido) {
+      alert(configuracao.mensagem);
+      return;
+    }
+
+    configuracao.ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Log",
+      parametros: {
+        configuracao: configuracao
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Transformação logarítmica aplicada na imagem selecionada.",
+      "Transformação logarítmica aplicada em todas as imagens."
+    );
+
+    return;
+  }
+
+  if (nome === "Gamma") {
+
+    const entradaGamma =
+      document.getElementById("paramGammaNaoLinear");
+
+    const gammaTexto =
+      entradaGamma ? entradaGamma.value.trim() : "";
+
+    const configuracao =
+      interpretarParametrosGammaNaoLineares(
+        gammaTexto
+      );
+
+    if (!configuracao.valido) {
+      alert(configuracao.mensagem);
+      return;
+    }
+
+    configuracao.ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Gamma",
+      parametros: {
+        configuracao: configuracao
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Correção gamma aplicada na imagem selecionada.",
+      "Correção gamma aplicada em todas as imagens."
     );
 
     return;
@@ -1924,6 +2169,43 @@ function desenharFluxograma() {
         Entrada: [${configuracao.lowIn} ${configuracao.highIn}]<br>
         Saída: [${configuracao.lowOut} ${configuracao.highOut}]<br>
         Gamma: 1 (linear)<br>
+        Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+
+    if (etapa.nome === "Potência") {
+
+      const configuracao =
+        etapa.parametros.configuracao;
+
+      textoParametros = `
+        Fórmula: s = c × r^p<br>
+        c: ${configuracao.constante}<br>
+        Expoente p: ${configuracao.expoente}<br>
+        Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+
+    if (etapa.nome === "Log") {
+
+      const configuracao =
+        etapa.parametros.configuracao;
+
+      textoParametros = `
+        Fórmula: s = c × log(1 + r)<br>
+        c: ${configuracao.constanteAutomatica ? "Automático" : configuracao.constante}<br>
+        Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+
+    if (etapa.nome === "Gamma") {
+
+      const configuracao =
+        etapa.parametros.configuracao;
+
+      textoParametros = `
+        Operação: imadjust com gamma<br>
+        Gamma: ${configuracao.gamma}<br>
         Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
       `;
     }
@@ -2956,6 +3238,36 @@ async function processarImagemNormalPeloPipeline(item) {
         );
     }
 
+    if (etapa.nome === "Potência") {
+
+      canvasAtual =
+        await aplicarPotenciaEmCanvas(
+          canvasAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Log") {
+
+      canvasAtual =
+        await aplicarLogEmCanvas(
+          canvasAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Gamma") {
+
+      canvasAtual =
+        await aplicarGammaEmCanvas(
+          canvasAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
     if (etapa.nome === "Erosão") {
       canvasAtual =
         await aplicarErosaoEmCanvas(
@@ -3156,6 +3468,36 @@ async function processarDicomPeloPipeline(item) {
 
       imagemAtual =
         await aplicarAlargamentoContrasteEmDicom(
+          imagemAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Potência") {
+
+      imagemAtual =
+        await aplicarPotenciaEmDicom(
+          imagemAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Log") {
+
+      imagemAtual =
+        await aplicarLogEmDicom(
+          imagemAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Gamma") {
+
+      imagemAtual =
+        await aplicarGammaEmDicom(
           imagemAtual,
           etapa.parametros.configuracao,
           atualizarBarraProcessamento
