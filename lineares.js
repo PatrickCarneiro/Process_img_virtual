@@ -54,75 +54,188 @@ function atualizarProgressoLineares(
 // VALIDAÇÃO DOS PARÂMETROS DO ALARGAMENTO DE CONTRASTE
 // =========================================================
 
-function interpretarParametrosAlargamentoContraste(
-  lowInTexto,
-  highInTexto,
-  lowOutTexto,
-  highOutTexto
+function interpretarFaixaImadjust(
+  texto,
+  nomeFaixa
 ) {
-  const textos = [
-    lowInTexto,
-    highInTexto,
-    lowOutTexto,
-    highOutTexto
-  ];
+  const original =
+    texto === undefined || texto === null
+      ? ""
+      : String(texto);
 
+  const textoSemBordas =
+    original.trim();
+
+  // Campo vazio e [] usam o padrão do imadjust: [0 1].
   if (
-    textos.some(function(valor) {
-      return String(valor).trim() === "";
-    })
+    textoSemBordas === "" ||
+    textoSemBordas === "[]"
   ) {
     return {
-      valido: false,
-      mensagem:
-        "Preencha os quatro limites do alargamento de contraste."
-    };
-  }
-
-  const lowIn =
-    Number(lowInTexto);
-
-  const highIn =
-    Number(highInTexto);
-
-  const lowOut =
-    Number(lowOutTexto);
-
-  const highOut =
-    Number(highOutTexto);
-
-  if (
-    !Number.isFinite(lowIn) ||
-    !Number.isFinite(highIn) ||
-    !Number.isFinite(lowOut) ||
-    !Number.isFinite(highOut)
-  ) {
-    return {
-      valido: false,
-      mensagem:
-        "Os limites do alargamento de contraste devem ser números válidos."
+      valido: true,
+      low: 0,
+      high: 1
     };
   }
 
   if (
-    lowIn < 0 ||
-    lowIn > 1 ||
-    highIn < 0 ||
-    highIn > 1 ||
-    lowOut < 0 ||
-    lowOut > 1 ||
-    highOut < 0 ||
-    highOut > 1
+    !textoSemBordas.startsWith("[") ||
+    !textoSemBordas.endsWith("]")
   ) {
     return {
       valido: false,
       mensagem:
-        "LOW_IN, HIGH_IN, LOW_OUT e HIGH_OUT devem estar entre 0 e 1."
+        nomeFaixa +
+        " deve ser informada entre colchetes. Exemplo: [0.2 0.8]."
+    };
+  }
+
+  const conteudo =
+    textoSemBordas.slice(1, -1);
+
+  let lowTexto = "";
+  let highTexto = "";
+
+  // Com vírgula ou ponto e vírgula é possível indicar
+  // explicitamente qual dos dois limites foi omitido.
+  if (
+    conteudo.includes(",") ||
+    conteudo.includes(";")
+  ) {
+    const partes =
+      conteudo.split(/[,;]/);
+
+    if (partes.length !== 2) {
+      return {
+        valido: false,
+        mensagem:
+          nomeFaixa +
+          " deve possuir no máximo dois limites."
+      };
+    }
+
+    lowTexto =
+      partes[0].trim();
+
+    highTexto =
+      partes[1].trim();
+
+  } else {
+    const comecaComEspaco =
+      /^\s/.test(conteudo);
+
+    const terminaComEspaco =
+      /\s$/.test(conteudo);
+
+    const conteudoLimpo =
+      conteudo.trim();
+
+    const partes =
+      conteudoLimpo === ""
+        ? []
+        : conteudoLimpo.split(/\s+/);
+
+    if (partes.length > 2) {
+      return {
+        valido: false,
+        mensagem:
+          nomeFaixa +
+          " deve possuir no máximo dois limites."
+      };
+    }
+
+    if (partes.length === 2) {
+      lowTexto = partes[0];
+      highTexto = partes[1];
+
+    } else if (partes.length === 1) {
+
+      // [ 0.8] = somente limite superior.
+      if (
+        comecaComEspaco &&
+        !terminaComEspaco
+      ) {
+        highTexto = partes[0];
+      } else {
+        // [0.2] ou [0.2 ] = somente limite inferior.
+        lowTexto = partes[0];
+      }
+    }
+  }
+
+  // Limites omitidos recebem os padrões do imadjust.
+  const low =
+    lowTexto === ""
+      ? 0
+      : Number(lowTexto);
+
+  const high =
+    highTexto === ""
+      ? 1
+      : Number(highTexto);
+
+  if (
+    !Number.isFinite(low) ||
+    !Number.isFinite(high)
+  ) {
+    return {
+      valido: false,
+      mensagem:
+        nomeFaixa +
+        " deve conter apenas valores numéricos válidos."
     };
   }
 
   if (
-    lowIn >= highIn
+    low < 0 ||
+    low > 1 ||
+    high < 0 ||
+    high > 1
+  ) {
+    return {
+      valido: false,
+      mensagem:
+        "Os limites de " +
+        nomeFaixa.toLowerCase() +
+        " devem estar entre 0 e 1."
+    };
+  }
+
+  return {
+    valido: true,
+    low: low,
+    high: high
+  };
+}
+
+
+function interpretarParametrosAlargamentoContraste(
+  faixaEntradaTexto,
+  faixaSaidaTexto
+) {
+  const faixaEntrada =
+    interpretarFaixaImadjust(
+      faixaEntradaTexto,
+      "Faixa de entrada"
+    );
+
+  if (!faixaEntrada.valido) {
+    return faixaEntrada;
+  }
+
+  const faixaSaida =
+    interpretarFaixaImadjust(
+      faixaSaidaTexto,
+      "Faixa de saída"
+    );
+
+  if (!faixaSaida.valido) {
+    return faixaSaida;
+  }
+
+  if (
+    faixaEntrada.low >=
+    faixaEntrada.high
   ) {
     return {
       valido: false,
@@ -134,10 +247,17 @@ function interpretarParametrosAlargamentoContraste(
   return {
     valido: true,
 
-    lowIn,
-    highIn,
-    lowOut,
-    highOut,
+    lowIn:
+      faixaEntrada.low,
+
+    highIn:
+      faixaEntrada.high,
+
+    lowOut:
+      faixaSaida.low,
+
+    highOut:
+      faixaSaida.high,
 
     // O alargamento deste grupo é linear.
     gamma: 1,

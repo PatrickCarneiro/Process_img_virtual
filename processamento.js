@@ -780,70 +780,38 @@ function selecionarFerramenta(nome, botaoClicado) {
       <h4>Parâmetros</h4>
 
       <div class="campo_parametro_info">
-        <label>Limite inferior de entrada</label>
+        <label>Faixa de entrada [LOW_IN HIGH_IN]</label>
 
         <input
-          type="number"
-          id="paramLowInContraste"
-          min="0"
-          max="1"
-          step="any"
-          placeholder="Ex: 0.2"
+          type="text"
+          id="paramFaixaEntradaContraste"
+          placeholder="Ex: [0.2 0.8], [0.2,] ou [,0.8]"
         >
 
         <div class="caixa_info_parametro">
-          LOW_IN do imadjust. Deve estar entre 0 e 1 e ser menor que HIGH_IN.
+          Equivalente à faixa de entrada do imadjust.
+          Use [0.2 0.8] para informar os dois limites,
+          [0.2,] para informar somente o inferior,
+          [,0.8] para informar somente o superior
+          ou [] para usar [0 1].
         </div>
       </div>
 
       <div class="campo_parametro_info">
-        <label>Limite superior de entrada</label>
+        <label>Faixa de saída [LOW_OUT HIGH_OUT]</label>
 
         <input
-          type="number"
-          id="paramHighInContraste"
-          min="0"
-          max="1"
-          step="any"
-          placeholder="Ex: 0.8"
+          type="text"
+          id="paramFaixaSaidaContraste"
+          placeholder="Ex: [0 1], [0.1,] ou [,0.9]"
         >
 
         <div class="caixa_info_parametro">
-          HIGH_IN do imadjust. Deve estar entre 0 e 1 e ser maior que LOW_IN.
-        </div>
-      </div>
-
-      <div class="campo_parametro_info">
-        <label>Limite inferior de saída</label>
-
-        <input
-          type="number"
-          id="paramLowOutContraste"
-          min="0"
-          max="1"
-          step="any"
-          placeholder="Ex: 0"
-        >
-
-        <div class="caixa_info_parametro">
-          LOW_OUT do imadjust. Deve estar entre 0 e 1.
-        </div>
-      </div>
-
-      <div class="campo_parametro_info">
-        <label>Limite superior de saída</label>
-
-        <input
-          type="number"
-          id="paramHighOutContraste"
-          min="0"
-          max="1"
-          step="any"
-          placeholder="Ex: 1"
-        >
-
-        <div class="caixa_info_parametro">
-          HIGH_OUT do imadjust. Deve estar entre 0 e 1.
+          Equivalente à faixa de saída do imadjust.
+          Use [0 1] para informar os dois limites,
+          [0.1,] para informar somente o inferior,
+          [,0.9] para informar somente o superior
+          ou [] para usar [0 1].
         </div>
       </div>
 
@@ -1351,39 +1319,25 @@ async function aplicarFerramenta(nome) {
 
   if (nome === "Alargamento de contraste") {
 
-    const entradaLowIn =
-      document.getElementById("paramLowInContraste");
+    const entradaFaixaEntrada =
+      document.getElementById("paramFaixaEntradaContraste");
 
-    const entradaHighIn =
-      document.getElementById("paramHighInContraste");
+    const entradaFaixaSaida =
+      document.getElementById("paramFaixaSaidaContraste");
 
-    const entradaLowOut =
-      document.getElementById("paramLowOutContraste");
+    const faixaEntradaTexto =
+      entradaFaixaEntrada ? entradaFaixaEntrada.value : "";
 
-    const entradaHighOut =
-      document.getElementById("paramHighOutContraste");
-
-    const lowInTexto =
-      entradaLowIn ? entradaLowIn.value.trim() : "";
-
-    const highInTexto =
-      entradaHighIn ? entradaHighIn.value.trim() : "";
-
-    const lowOutTexto =
-      entradaLowOut ? entradaLowOut.value.trim() : "";
-
-    const highOutTexto =
-      entradaHighOut ? entradaHighOut.value.trim() : "";
+    const faixaSaidaTexto =
+      entradaFaixaSaida ? entradaFaixaSaida.value : "";
 
     const ignorarZero =
       deveIgnorarPixelZeroFerramentas();
 
     const configuracao =
       interpretarParametrosAlargamentoContraste(
-        lowInTexto,
-        highInTexto,
-        lowOutTexto,
-        highOutTexto
+        faixaEntradaTexto,
+        faixaSaidaTexto
       );
 
     if (!configuracao.valido) {
