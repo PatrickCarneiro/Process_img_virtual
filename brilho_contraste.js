@@ -1463,105 +1463,6 @@ function converterValorParaTipoDicomBrilhoContraste(
 
 
 // =========================================================
-// DICOM - DOMÍNIO VISUAL
-// =========================================================
-
-/*
- * Em alguns DICOMs, principalmente MONOCHROME1, o Cornerstone
- * usa invert = true. Nesses casos, um valor de pixel maior é
- * mostrado mais escuro na tela.
- *
- * Para que o controle continue intuitivo, fazemos brilho e
- * contraste sobre a intensidade VISUAL. A matemática continua:
- *
- *   brilho:    intensidadeSaida = intensidadeEntrada + delta
- *   contraste: intensidadeSaida = intensidadeEntrada * fator
- *
- * Depois convertemos novamente para o valor armazenado no DICOM.
- * Em imagens não invertidas, nenhuma conversão é feita.
- */
-function dicomEstaInvertidoBrilhoContraste(
-  imagem
-) {
-  return Boolean(
-    imagem && imagem.invert === true
-  );
-}
-
-
-function converterPixelParaIntensidadeVisualDicomBrilhoContraste(
-  valor,
-  imagem
-) {
-  const numero = Number(valor);
-
-  if (
-    !dicomEstaInvertidoBrilhoContraste(imagem)
-  ) {
-    return numero;
-  }
-
-  const minimo = Number(
-    estadoBrilhoContraste.intensidadeMinimaBase
-  );
-
-  const maximo = Number(
-    estadoBrilhoContraste.intensidadeMaximaBase
-  );
-
-  if (
-    !Number.isFinite(minimo) ||
-    !Number.isFinite(maximo) ||
-    maximo <= minimo
-  ) {
-    return numero;
-  }
-
-  return (
-    minimo +
-    maximo -
-    numero
-  );
-}
-
-
-function converterIntensidadeVisualParaPixelDicomBrilhoContraste(
-  valor,
-  imagem
-) {
-  const numero = Number(valor);
-
-  if (
-    !dicomEstaInvertidoBrilhoContraste(imagem)
-  ) {
-    return numero;
-  }
-
-  const minimo = Number(
-    estadoBrilhoContraste.intensidadeMinimaBase
-  );
-
-  const maximo = Number(
-    estadoBrilhoContraste.intensidadeMaximaBase
-  );
-
-  if (
-    !Number.isFinite(minimo) ||
-    !Number.isFinite(maximo) ||
-    maximo <= minimo
-  ) {
-    return numero;
-  }
-
-  return (
-    minimo +
-    maximo -
-    numero
-  );
-}
-
-
-// =========================================================
 // DICOM - APLICAÇÃO
 // =========================================================
 
@@ -1632,37 +1533,20 @@ function aplicarBrilhoContrasteDicom() {
         estadoBrilhoContraste.contrasteMaximo
       );
 
-    /*
-     * Faz o cálculo no domínio visual.
-     * Em MONOCHROME2 o valor permanece igual ao pixel armazenado.
-     * Em MONOCHROME1 o valor é espelhado dentro da faixa original
-     * antes do cálculo, evitando que aumentar brilho/contraste
-     * faça a região saturar em preto por causa da inversão.
-     */
-    let valorVisual =
-      converterPixelParaIntensidadeVisualDicomBrilhoContraste(
-        original,
-        imagemBase
-      );
+    let valor = original;
 
     if (aplicarBrilho) {
-      valorVisual += deltaBrilho;
+      valor += deltaBrilho;
     }
 
     // Multiplicação direta mantida conforme solicitado.
     if (aplicarContraste) {
-      valorVisual *= fatorContraste;
+      valor *= fatorContraste;
     }
-
-    const valorArmazenado =
-      converterIntensidadeVisualParaPixelDicomBrilhoContraste(
-        valorVisual,
-        imagemBase
-      );
 
     pixelsSaida[i] =
       converterValorParaTipoDicomBrilhoContraste(
-        valorArmazenado,
+        valor,
         informacoesTipo
       );
   }
@@ -1735,10 +1619,9 @@ function criarImagemDicomBrilhoContraste(
     faixa.maximo;
 
   /*
-   * Mantém a mesma janela de visualização da imagem-base.
-   * Assim o efeito de soma/multiplicação continua perceptível:
-   * valores que ultrapassam a janela saturam no extremo visual
-   * correspondente, em vez de a imagem ser renormalizada a cada arraste.
+   * Mantemos windowCenter/windowWidth da imagem-base.
+   * Isso é importante para o ajuste continuar visível em tempo real,
+   * sem o Cornerstone renormalizar automaticamente cada resultado.
    */
   imagemSaida.windowCenter =
     imagemBase.windowCenter;
