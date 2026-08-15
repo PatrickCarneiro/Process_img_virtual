@@ -71,6 +71,22 @@ let modoComparativoAtivo = false;
 let etapaComparativoSelecionada = "original"; 
 let imagemDicomOriginalAtual = null;
 
+const areaImagemProcessada = document.getElementById("areaImagemProcessada");
+const botaoRecorte = document.getElementById("botaoRecorte");
+const opcoesRecorte = document.getElementById("opcoesRecorte");
+const botaoRecorteRetangular = document.getElementById("botaoRecorteRetangular");
+const botaoRecorteLivre = document.getElementById("botaoRecorteLivre");
+const canvasRecorte = document.getElementById("canvasRecorte");
+const contextoCanvasRecorte = canvasRecorte ? canvasRecorte.getContext("2d") : null;
+const modalConfirmacaoRecorte = document.getElementById("modalConfirmacaoRecorte");
+let ferramentaRecorteAberta = false;
+let modoRecorteAtivo = null;
+let recorteEmAndamento = false;
+let pontoInicialRecorte = null;
+let retanguloRecorteAtual = null;
+let caminhoRecorteLivreAtual = [];
+let dadosRecortePendente = null;
+
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
 cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
@@ -2956,6 +2972,8 @@ async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTo
 // Função para abrir a imagem selecionada, fazendo a montagem da imagem na tela
 async function openFile(item) { 
 
+  cancelarOperacaoRecorte(true);
+
   imagemAtualSelecionada = item; // Define a imagem atual selecionada como a imagem do card clicado
 
   const arquivoAtual = document.getElementById("arquivoAtual");
@@ -3018,6 +3036,8 @@ async function openFile(item) {
         imagemNormal.style.display = "block";
         imagemNormal.style.visibility = "visible";
 
+        atualizarCanvasRecorte();
+
         statusText.innerText = "Imagem carregada: " + item.name;
 
         resolve();
@@ -3042,6 +3062,8 @@ async function openFile(item) {
     if (modoComparativoAtivo) { // Se estiver no modo comparativo, atualiza a imagem comparativa
           await atualizarImagemComparativa();
         }
+
+    atualizarCanvasRecorte();
 
     return;
   }
@@ -3111,6 +3133,8 @@ async function openFile(item) {
     visualizacaoBox.scrollLeft = 0;
     visualizacaoBox.scrollTop = 0;
 
+    atualizarCanvasRecorte();
+
     statusText.innerText = "DICOM carregado: " + item.name;
 
     // Prepara o DICOM atual para os ajustes de brilho e contraste em tempo real.
@@ -3122,6 +3146,8 @@ async function openFile(item) {
     if (modoComparativoAtivo) {
       await atualizarImagemComparativa();
     }
+
+    atualizarCanvasRecorte();
 
     return;
   }
@@ -3473,6 +3499,8 @@ function atualizarTamanhoImagemAtual() {
   } else {
     visualizacaoBox.classList.remove("zoom_aplicado");
   }
+
+  atualizarCanvasRecorte();
 }
 function togglePanImagem() { 
 
@@ -4350,6 +4378,8 @@ async function toggleComparativo() {
     visualizacaoBox.scrollLeft = 0;
     visualizacaoBox.scrollTop = 0;
 
+    atualizarCanvasRecorte();
+
     statusText.innerText = "Modo comparativo ativo.";
 
   } else {
@@ -4374,6 +4404,8 @@ async function toggleComparativo() {
 
     visualizacaoBox.scrollLeft = 0;
     visualizacaoBox.scrollTop = 0;
+
+    atualizarCanvasRecorte();
 
     statusText.innerText = "Modo comparativo desativado.";
   }
@@ -4950,117 +4982,136 @@ visualizadorDicomOriginal.addEventListener("wheel", function(event) {
 }, { passive: false });
 
 
+// FUNÇÕES DE RECORTE ----------------------------------------------------------------
 
-// =====================================================================
-// FUNÇÕES DA FERRAMENTA DE RECORTE
-// =====================================================================
+function toggleFerramentaRecorte() {
 
-const botaoRecorte = document.getElementById("botaoRecorte");
-const botaoRecorteRetangular = document.getElementById("botaoRecorteRetangular");
-const botaoRecorteLivre = document.getElementById("botaoRecorteLivre");
-const opcoesRecorte = document.getElementById("opcoesRecorte");
-const areaImagemProcessada = document.getElementById("areaImagemProcessada");
-const canvasRecorte = document.getElementById("canvasRecorte");
-const modalSalvarRecorte = document.getElementById("modalSalvarRecorte");
-const contextoRecorte = canvasRecorte ? canvasRecorte.getContext("2d") : null;
+  ferramentaRecorteAberta = !ferramentaRecorteAberta;
 
-let menuRecorteAberto = false;
-let modoRecorteAtivo = false;
-let tipoRecorteAtivo = null; // "retangular" ou "livre"
-let desenhandoRecorte = false;
-let inicioRecorte = null;
-let retanguloRecorteAtual = null;
-let pontosRecorteLivre = [];
-let recortePendente = null;
+  if (botaoRecorte) {
+    botaoRecorte.classList.toggle("ativo", ferramentaRecorteAberta);
+  }
 
-function toggleMenuRecorte() {
+  if (opcoesRecorte) {
+    opcoesRecorte.classList.toggle("ativo", ferramentaRecorteAberta);
+  }
 
-  if (!botaoRecorte || !opcoesRecorte) return;
-
-  menuRecorteAberto = !menuRecorteAberto;
-
-  if (menuRecorteAberto) {
-    botaoRecorte.classList.add("ativo");
-    opcoesRecorte.classList.add("ativo");
-    statusText.innerText = "Ferramenta de recorte aberta. Escolha recorte retangular ou recorte livre.";
-  } else {
-    botaoRecorte.classList.remove("ativo");
-    opcoesRecorte.classList.remove("ativo");
-    encerrarModoRecorteSemSalvar();
-    statusText.innerText = "Ferramenta de recorte fechada.";
+  if (!ferramentaRecorteAberta) {
+    cancelarOperacaoRecorte(true);
   }
 }
 
 function ativarRecorteRetangular() {
-  iniciarModoRecorte("retangular");
-}
-
-function ativarRecorteLivre() {
-  iniciarModoRecorte("livre");
-}
-
-function iniciarModoRecorte(tipo) {
 
   if (!imagemAtualSelecionada) {
     alert("Nenhuma imagem carregada para recortar.");
     return;
   }
 
-  if (!canvasRecorte || !contextoRecorte) {
-    alert("A camada de recorte não foi encontrada no HTML.");
+  prepararModoRecorte("retangular");
+}
+
+function ativarRecorteLivre() {
+
+  if (!imagemAtualSelecionada) {
+    alert("Nenhuma imagem carregada para recortar.");
     return;
   }
 
-  const elementoAtivo = obterElementoAtivoParaRecorte();
+  prepararModoRecorte("livre");
+}
 
-  if (!elementoAtivo) {
-    alert("Nenhuma imagem visível disponível para recorte.");
+function prepararModoRecorte(modo) {
+
+  if (!canvasRecorte || !contextoCanvasRecorte) {
+    alert("A camada de recorte não foi encontrada.");
+    return;
+  }
+
+  const elementoAlvo = obterElementoAlvoRecorte();
+
+  if (!elementoAlvo) {
+    alert("Não foi possível iniciar o recorte nesta visualização.");
     return;
   }
 
   modoZoomAtivo = false;
   modoPanAtivo = false;
-  arrastandoImagem = false;
 
   if (botaoZoom) botaoZoom.classList.remove("ativo");
   if (botaoPan) botaoPan.classList.remove("ativo");
 
-  imagemNormal.classList.remove("zoom_ativo");
-  imagemOriginalNormal.classList.remove("zoom_ativo");
   visualizadorDicom.classList.remove("zoom_ativo");
   visualizadorDicomOriginal.classList.remove("zoom_ativo");
+  imagemOriginalNormal.classList.remove("zoom_ativo");
+  imagemNormal.classList.remove("zoom_ativo");
   visualizacaoBox.classList.remove("pan_ativo");
   visualizacaoBox.classList.remove("pan_arrastando");
 
-  modoRecorteAtivo = true;
-  tipoRecorteAtivo = tipo;
-  desenhandoRecorte = false;
-  inicioRecorte = null;
+  ferramentaRecorteAberta = true;
+  modoRecorteAtivo = modo;
+  recorteEmAndamento = false;
+  pontoInicialRecorte = null;
   retanguloRecorteAtual = null;
-  pontosRecorteLivre = [];
-  recortePendente = null;
+  caminhoRecorteLivreAtual = [];
+  dadosRecortePendente = null;
 
-  sincronizarCanvasRecorteComElementoAtivo();
-  limparDesenhoRecorte();
+  if (botaoRecorte) botaoRecorte.classList.add("ativo");
+  if (opcoesRecorte) opcoesRecorte.classList.add("ativo");
+  if (botaoRecorteRetangular) botaoRecorteRetangular.classList.toggle("ativo", modo === "retangular");
+  if (botaoRecorteLivre) botaoRecorteLivre.classList.toggle("ativo", modo === "livre");
 
+  atualizarCanvasRecorte();
   canvasRecorte.classList.add("ativo");
+  limparCanvasRecorteVisual();
 
-  if (botaoRecorteRetangular) {
-    botaoRecorteRetangular.classList.toggle("ativo", tipo === "retangular");
-  }
-
-  if (botaoRecorteLivre) {
-    botaoRecorteLivre.classList.toggle("ativo", tipo === "livre");
-  }
-
-  if (tipo === "retangular") {
+  if (modo === "retangular") {
     statusText.innerText = "Recorte retangular ativo: clique e arraste sobre a imagem.";
   } else {
-    statusText.innerText = "Recorte livre ativo: clique, desenhe o contorno e solte o mouse para finalizar.";
+    statusText.innerText = "Recorte livre ativo: pressione e desenhe sobre a imagem.";
   }
 }
 
-function obterElementoAtivoParaRecorte() {
+function cancelarOperacaoRecorte(fecharFerramenta) {
+
+  recorteEmAndamento = false;
+  pontoInicialRecorte = null;
+  retanguloRecorteAtual = null;
+  caminhoRecorteLivreAtual = [];
+  dadosRecortePendente = null;
+
+  if (modalConfirmacaoRecorte) {
+    modalConfirmacaoRecorte.classList.remove("ativo");
+  }
+
+  limparCanvasRecorteVisual();
+
+  if (canvasRecorte) {
+    canvasRecorte.classList.remove("ativo");
+  }
+
+  if (fecharFerramenta) {
+    ferramentaRecorteAberta = false;
+    modoRecorteAtivo = null;
+
+    if (botaoRecorte) botaoRecorte.classList.remove("ativo");
+    if (opcoesRecorte) opcoesRecorte.classList.remove("ativo");
+    if (botaoRecorteRetangular) botaoRecorteRetangular.classList.remove("ativo");
+    if (botaoRecorteLivre) botaoRecorteLivre.classList.remove("ativo");
+  } else {
+    if (botaoRecorteRetangular) botaoRecorteRetangular.classList.toggle("ativo", modoRecorteAtivo === "retangular");
+    if (botaoRecorteLivre) botaoRecorteLivre.classList.toggle("ativo", modoRecorteAtivo === "livre");
+  }
+}
+
+function limparCanvasRecorteVisual() {
+
+  if (!contextoCanvasRecorte || !canvasRecorte) return;
+
+  contextoCanvasRecorte.clearRect(0, 0, canvasRecorte.width, canvasRecorte.height);
+}
+
+function obterElementoAlvoRecorte() {
 
   if (imagemNormal && imagemNormal.style.display === "block") {
     return imagemNormal;
@@ -5073,568 +5124,531 @@ function obterElementoAtivoParaRecorte() {
   return null;
 }
 
-function sincronizarCanvasRecorteComElementoAtivo() {
+function atualizarCanvasRecorte() {
 
   if (!canvasRecorte || !areaImagemProcessada) return;
 
-  const elemento = obterElementoAtivoParaRecorte();
+  const elementoAlvo = obterElementoAlvoRecorte();
 
-  if (!elemento) {
+  if (!elementoAlvo || elementoAlvo.offsetWidth <= 0 || elementoAlvo.offsetHeight <= 0) {
     canvasRecorte.classList.remove("ativo");
+    limparCanvasRecorteVisual();
     return;
   }
 
-  const largura = Math.max(1, Math.round(elemento.clientWidth));
-  const altura = Math.max(1, Math.round(elemento.clientHeight));
+  const rectAlvo = elementoAlvo.getBoundingClientRect();
+  const rectPai = areaImagemProcessada.getBoundingClientRect();
 
-  canvasRecorte.width = largura;
-  canvasRecorte.height = altura;
+  const largura = Math.max(1, Math.round(rectAlvo.width));
+  const altura = Math.max(1, Math.round(rectAlvo.height));
 
-  canvasRecorte.style.width = largura + "px";
-  canvasRecorte.style.height = altura + "px";
-  canvasRecorte.style.left = elemento.offsetLeft + "px";
-  canvasRecorte.style.top = elemento.offsetTop + "px";
+  canvasRecorte.style.left = (rectAlvo.left - rectPai.left) + "px";
+  canvasRecorte.style.top = (rectAlvo.top - rectPai.top) + "px";
+  canvasRecorte.style.width = rectAlvo.width + "px";
+  canvasRecorte.style.height = rectAlvo.height + "px";
 
-  if (retanguloRecorteAtual || pontosRecorteLivre.length > 0) {
-    redesenharCanvasRecorte();
+  if (canvasRecorte.width !== largura || canvasRecorte.height !== altura) {
+    canvasRecorte.width = largura;
+    canvasRecorte.height = altura;
+  }
+
+  if (modoRecorteAtivo) {
+    canvasRecorte.classList.add("ativo");
+    redesenharSelecaoRecorte();
   }
 }
 
-function limparDesenhoRecorte() {
-  if (!contextoRecorte || !canvasRecorte) return;
-  contextoRecorte.clearRect(0, 0, canvasRecorte.width, canvasRecorte.height);
-}
+function redesenharSelecaoRecorte() {
 
-function redesenharCanvasRecorte() {
+  limparCanvasRecorteVisual();
 
-  if (!contextoRecorte || !canvasRecorte) return;
+  if (!contextoCanvasRecorte || !modoRecorteAtivo) return;
 
-  limparDesenhoRecorte();
+  contextoCanvasRecorte.save();
+  contextoCanvasRecorte.lineWidth = 2;
+  contextoCanvasRecorte.strokeStyle = "#c084fc";
+  contextoCanvasRecorte.fillStyle = "rgba(192, 132, 252, 0.18)";
+  contextoCanvasRecorte.setLineDash([8, 6]);
 
-  contextoRecorte.lineWidth = 2;
-  contextoRecorte.strokeStyle = "#38bdf8";
-  contextoRecorte.fillStyle = "rgba(56, 189, 248, 0.18)";
-  contextoRecorte.setLineDash([8, 5]);
-
-  if (tipoRecorteAtivo === "retangular" && retanguloRecorteAtual) {
-
-    contextoRecorte.fillRect(
-      retanguloRecorteAtual.x,
-      retanguloRecorteAtual.y,
-      retanguloRecorteAtual.largura,
-      retanguloRecorteAtual.altura
-    );
-
-    contextoRecorte.strokeRect(
-      retanguloRecorteAtual.x,
-      retanguloRecorteAtual.y,
-      retanguloRecorteAtual.largura,
-      retanguloRecorteAtual.altura
-    );
+  if (modoRecorteAtivo === "retangular" && retanguloRecorteAtual) {
+    const r = normalizarRetanguloRecorte(retanguloRecorteAtual);
+    contextoCanvasRecorte.fillRect(r.x, r.y, r.largura, r.altura);
+    contextoCanvasRecorte.strokeRect(r.x, r.y, r.largura, r.altura);
   }
 
-  if (tipoRecorteAtivo === "livre" && pontosRecorteLivre.length > 1) {
+  if (modoRecorteAtivo === "livre" && caminhoRecorteLivreAtual.length > 0) {
+    contextoCanvasRecorte.beginPath();
+    contextoCanvasRecorte.moveTo(caminhoRecorteLivreAtual[0].x, caminhoRecorteLivreAtual[0].y);
 
-    contextoRecorte.beginPath();
-    contextoRecorte.moveTo(pontosRecorteLivre[0].x, pontosRecorteLivre[0].y);
-
-    for (let i = 1; i < pontosRecorteLivre.length; i++) {
-      contextoRecorte.lineTo(pontosRecorteLivre[i].x, pontosRecorteLivre[i].y);
+    for (let i = 1; i < caminhoRecorteLivreAtual.length; i++) {
+      contextoCanvasRecorte.lineTo(caminhoRecorteLivreAtual[i].x, caminhoRecorteLivreAtual[i].y);
     }
 
-    contextoRecorte.closePath();
-    contextoRecorte.fill();
-    contextoRecorte.stroke();
+    if (!recorteEmAndamento && caminhoRecorteLivreAtual.length > 2) {
+      contextoCanvasRecorte.closePath();
+      contextoCanvasRecorte.fill();
+    }
+
+    contextoCanvasRecorte.stroke();
   }
 
-  contextoRecorte.setLineDash([]);
+  contextoCanvasRecorte.restore();
 }
 
-function obterPosicaoMouseNoCanvasRecorte(event) {
-
-  if (!canvasRecorte) {
-    return { x: 0, y: 0 };
-  }
+function obterPosicaoNoCanvasRecorte(event) {
 
   const rect = canvasRecorte.getBoundingClientRect();
 
-  let x = event.clientX - rect.left;
-  let y = event.clientY - rect.top;
-
-  x = Math.max(0, Math.min(canvasRecorte.width, x));
-  y = Math.max(0, Math.min(canvasRecorte.height, y));
-
-  return { x: x, y: y };
-}
-
-function iniciarDesenhoRecorte(event) {
-
-  if (!modoRecorteAtivo) return;
-  if (!canvasRecorte || !canvasRecorte.classList.contains("ativo")) return;
-
-  event.preventDefault();
-
-  sincronizarCanvasRecorteComElementoAtivo();
-
-  const posicao = obterPosicaoMouseNoCanvasRecorte(event);
-
-  desenhandoRecorte = true;
-  recortePendente = null;
-
-  if (tipoRecorteAtivo === "retangular") {
-    inicioRecorte = posicao;
-    retanguloRecorteAtual = {
-      x: posicao.x,
-      y: posicao.y,
-      largura: 0,
-      altura: 0
-    };
-    pontosRecorteLivre = [];
-  }
-
-  if (tipoRecorteAtivo === "livre") {
-    inicioRecorte = posicao;
-    pontosRecorteLivre = [posicao];
-    retanguloRecorteAtual = null;
-  }
-
-  redesenharCanvasRecorte();
-}
-
-function atualizarDesenhoRecorte(event) {
-
-  if (!modoRecorteAtivo) return;
-  if (!desenhandoRecorte) return;
-
-  event.preventDefault();
-
-  const posicao = obterPosicaoMouseNoCanvasRecorte(event);
-
-  if (tipoRecorteAtivo === "retangular" && inicioRecorte) {
-
-    const x = Math.min(inicioRecorte.x, posicao.x);
-    const y = Math.min(inicioRecorte.y, posicao.y);
-    const largura = Math.abs(posicao.x - inicioRecorte.x);
-    const altura = Math.abs(posicao.y - inicioRecorte.y);
-
-    retanguloRecorteAtual = {
-      x: x,
-      y: y,
-      largura: largura,
-      altura: altura
-    };
-  }
-
-  if (tipoRecorteAtivo === "livre") {
-    pontosRecorteLivre.push(posicao);
-  }
-
-  redesenharCanvasRecorte();
-}
-
-function finalizarDesenhoRecorte(event) {
-
-  if (!modoRecorteAtivo) return;
-  if (!desenhandoRecorte) return;
-
-  event.preventDefault();
-
-  desenhandoRecorte = false;
-
-  if (tipoRecorteAtivo === "retangular") {
-
-    if (!retanguloRecorteAtual || retanguloRecorteAtual.largura < 5 || retanguloRecorteAtual.altura < 5) {
-      statusText.innerText = "Seleção de recorte muito pequena. Tente novamente.";
-      retanguloRecorteAtual = null;
-      limparDesenhoRecorte();
-      return;
-    }
-  }
-
-  if (tipoRecorteAtivo === "livre") {
-
-    if (!pontosRecorteLivre || pontosRecorteLivre.length < 3) {
-      statusText.innerText = "Desenho livre muito pequeno. Tente novamente.";
-      pontosRecorteLivre = [];
-      limparDesenhoRecorte();
-      return;
-    }
-  }
-
-  const canvasResultado = gerarCanvasDoRecorteAtual();
-
-  if (!canvasResultado) {
-    alert("Não foi possível gerar o recorte.");
-    return;
-  }
-
-  recortePendente = {
-    modo: tipoRecorteAtivo,
-    canvas: canvasResultado
+  return {
+    x: Math.max(0, Math.min(canvasRecorte.width, event.clientX - rect.left)),
+    y: Math.max(0, Math.min(canvasRecorte.height, event.clientY - rect.top))
   };
-
-  abrirModalSalvarRecorte();
 }
 
-function gerarCanvasDoRecorteAtual() {
+function normalizarRetanguloRecorte(retangulo) {
 
-  const origem = obterOrigemDoRecorteAtual();
+  const x = Math.min(retangulo.x1, retangulo.x2);
+  const y = Math.min(retangulo.y1, retangulo.y2);
+  const largura = Math.abs(retangulo.x2 - retangulo.x1);
+  const altura = Math.abs(retangulo.y2 - retangulo.y1);
 
-  if (!origem || !origem.canvas) {
-    return null;
-  }
-
-  if (tipoRecorteAtivo === "retangular") {
-    return gerarCanvasRecortadoRetangular(origem);
-  }
-
-  if (tipoRecorteAtivo === "livre") {
-    return gerarCanvasRecortadoLivre(origem);
-  }
-
-  return null;
+  return { x, y, largura, altura };
 }
 
-function obterOrigemDoRecorteAtual() {
+function calcularCaixaCaminhoRecorte(caminho) {
 
-  if (!canvasRecorte) return null;
+  const xs = caminho.map(function(ponto) { return ponto.x; });
+  const ys = caminho.map(function(ponto) { return ponto.y; });
 
-  if (imagemNormal && imagemNormal.style.display === "block") {
+  const minX = Math.min.apply(null, xs);
+  const maxX = Math.max.apply(null, xs);
+  const minY = Math.min.apply(null, ys);
+  const maxY = Math.max.apply(null, ys);
 
-    const canvasOrigem = document.createElement("canvas");
-    canvasOrigem.width = imagemNormal.naturalWidth;
-    canvasOrigem.height = imagemNormal.naturalHeight;
-
-    const contextoOrigem = canvasOrigem.getContext("2d");
-    contextoOrigem.drawImage(imagemNormal, 0, 0, canvasOrigem.width, canvasOrigem.height);
-
-    return {
-      tipo: "image",
-      canvas: canvasOrigem,
-      escalaX: canvasOrigem.width / canvasRecorte.width,
-      escalaY: canvasOrigem.height / canvasRecorte.height
-    };
-  }
-
-  if (visualizadorDicom && visualizadorDicom.style.display === "block") {
-
-    const canvasDicom = visualizadorDicom.querySelector("canvas");
-
-    if (!canvasDicom) {
-      return null;
-    }
-
-    return {
-      tipo: "dicom",
-      canvas: canvasDicom,
-      escalaX: canvasDicom.width / canvasRecorte.width,
-      escalaY: canvasDicom.height / canvasRecorte.height
-    };
-  }
-
-  return null;
+  return {
+    minX: minX,
+    minY: minY,
+    maxX: maxX,
+    maxY: maxY,
+    largura: maxX - minX,
+    altura: maxY - minY
+  };
 }
 
-function gerarCanvasRecortadoRetangular(origem) {
+function abrirModalConfirmacaoRecorte() {
 
-  if (!retanguloRecorteAtual) return null;
+  if (!dadosRecortePendente || !modalConfirmacaoRecorte) return;
 
-  const origemX = Math.max(0, Math.round(retanguloRecorteAtual.x * origem.escalaX));
-  const origemY = Math.max(0, Math.round(retanguloRecorteAtual.y * origem.escalaY));
-  const largura = Math.max(1, Math.round(retanguloRecorteAtual.largura * origem.escalaX));
-  const altura = Math.max(1, Math.round(retanguloRecorteAtual.altura * origem.escalaY));
-
-  const larguraClamped = Math.min(largura, origem.canvas.width - origemX);
-  const alturaClamped = Math.min(altura, origem.canvas.height - origemY);
-
-  if (larguraClamped <= 0 || alturaClamped <= 0) {
-    return null;
-  }
-
-  const canvasSaida = document.createElement("canvas");
-  canvasSaida.width = larguraClamped;
-  canvasSaida.height = alturaClamped;
-
-  const contextoSaida = canvasSaida.getContext("2d");
-
-  contextoSaida.drawImage(
-    origem.canvas,
-    origemX,
-    origemY,
-    larguraClamped,
-    alturaClamped,
-    0,
-    0,
-    larguraClamped,
-    alturaClamped
-  );
-
-  return canvasSaida;
+  modalConfirmacaoRecorte.classList.add("ativo");
+  statusText.innerText = "Recorte concluído. Escolha como deseja salvar.";
 }
 
-function gerarCanvasRecortadoLivre(origem) {
-
-  if (!pontosRecorteLivre || pontosRecorteLivre.length < 3) {
-    return null;
-  }
-
-  const pontosEscalados = pontosRecorteLivre.map(function(ponto) {
-    return {
-      x: ponto.x * origem.escalaX,
-      y: ponto.y * origem.escalaY
-    };
-  });
-
-  const xs = pontosEscalados.map(function(ponto) { return ponto.x; });
-  const ys = pontosEscalados.map(function(ponto) { return ponto.y; });
-
-  const minX = Math.max(0, Math.floor(Math.min.apply(null, xs)));
-  const minY = Math.max(0, Math.floor(Math.min.apply(null, ys)));
-  const maxX = Math.min(origem.canvas.width, Math.ceil(Math.max.apply(null, xs)));
-  const maxY = Math.min(origem.canvas.height, Math.ceil(Math.max.apply(null, ys)));
-
-  const largura = Math.max(1, maxX - minX);
-  const altura = Math.max(1, maxY - minY);
-
-  const canvasSaida = document.createElement("canvas");
-  canvasSaida.width = largura;
-  canvasSaida.height = altura;
-
-  const contextoSaida = canvasSaida.getContext("2d");
-  contextoSaida.save();
-  contextoSaida.beginPath();
-  contextoSaida.moveTo(pontosEscalados[0].x - minX, pontosEscalados[0].y - minY);
-
-  for (let i = 1; i < pontosEscalados.length; i++) {
-    contextoSaida.lineTo(pontosEscalados[i].x - minX, pontosEscalados[i].y - minY);
-  }
-
-  contextoSaida.closePath();
-  contextoSaida.clip();
-  contextoSaida.drawImage(origem.canvas, -minX, -minY);
-  contextoSaida.restore();
-
-  return canvasSaida;
-}
-
-function abrirModalSalvarRecorte() {
-  if (!modalSalvarRecorte) return;
-  modalSalvarRecorte.classList.add("ativo");
-}
-
-function fecharModalSalvarRecorte() {
-  if (!modalSalvarRecorte) return;
-  modalSalvarRecorte.classList.remove("ativo");
-}
-
-function encerrarModoRecorteSemSalvar() {
-
-  modoRecorteAtivo = false;
-  tipoRecorteAtivo = null;
-  desenhandoRecorte = false;
-  inicioRecorte = null;
-  retanguloRecorteAtual = null;
-  pontosRecorteLivre = [];
-  recortePendente = null;
-
-  if (canvasRecorte) {
-    canvasRecorte.classList.remove("ativo");
-  }
-
-  if (botaoRecorteRetangular) {
-    botaoRecorteRetangular.classList.remove("ativo");
-  }
-
-  if (botaoRecorteLivre) {
-    botaoRecorteLivre.classList.remove("ativo");
-  }
-
-  limparDesenhoRecorte();
-}
-
-function cancelarRecorte() {
-  fecharModalSalvarRecorte();
-  encerrarModoRecorteSemSalvar();
+function cancelarSalvamentoRecorte() {
+  cancelarOperacaoRecorte(true);
   statusText.innerText = "Recorte cancelado.";
 }
 
-function reconstruirCardsDasImagens() {
-  imagensTrabalho.innerHTML = "";
-  imagensProcessamento.forEach(function(item) {
-    criarCardImagem(item);
-  });
-  atualizarCardSelecionado();
-}
+async function confirmarSalvarRecorte(acao) {
 
-function obterProximoIdProcessamentoLocal() {
-
-  if (!imagensProcessamento.length) {
-    return 1;
-  }
-
-  const ids = imagensProcessamento.map(function(item) {
-    return Number(item.idProcessamento) || 0;
-  });
-
-  return Math.max.apply(null, ids) + 1;
-}
-
-function removerExtensaoDoNome(nome) {
-  return String(nome || "imagem").replace(/\.[^.]+$/, "");
-}
-
-function gerarNomeArquivoRecorte(item, comoNovaImagem) {
-
-  const base = removerExtensaoDoNome(item && item.name ? item.name : "imagem");
-
-  if (comoNovaImagem) {
-    return base + "_recorte.png";
-  }
-
-  return base + ".png";
-}
-
-function converterCanvasEmArquivo(canvas, nomeArquivo) {
-
-  return new Promise(function(resolve, reject) {
-
-    canvas.toBlob(function(blob) {
-
-      if (!blob) {
-        reject(new Error("Não foi possível converter o recorte em arquivo."));
-        return;
-      }
-
-      const arquivo = new File([blob], nomeArquivo, { type: "image/png" });
-      resolve(arquivo);
-
-    }, "image/png");
-  });
-}
-
-async function salvarRecorte() {
-  await aplicarRecorteFinal(false);
-}
-
-async function salvarRecorteComoNovaImagem() {
-  await aplicarRecorteFinal(true);
-}
-
-async function aplicarRecorteFinal(comoNovaImagem) {
-
-  if (!imagemAtualSelecionada) {
-    alert("Nenhuma imagem selecionada para salvar o recorte.");
-    return;
-  }
-
-  if (!recortePendente || !recortePendente.canvas) {
-    alert("Nenhum recorte foi gerado ainda.");
+  if (!dadosRecortePendente) {
+    alert("Nenhum recorte pendente para salvar.");
     return;
   }
 
   try {
+    const canvasFonte = await gerarCanvasFonteParaRecorte();
+    const canvasRecortado = criarCanvasRecortadoPendente(canvasFonte, dadosRecortePendente);
 
-    const nomeArquivo = gerarNomeArquivoRecorte(imagemAtualSelecionada, comoNovaImagem);
-    const arquivoRecortado = await converterCanvasEmArquivo(recortePendente.canvas, nomeArquivo);
-    const dataURLRecorte = recortePendente.canvas.toDataURL("image/png");
-    const assinaturaAtual = gerarAssinaturaPipeline();
+    if (!canvasRecortado) {
+      throw new Error("Não foi possível gerar o recorte.");
+    }
 
-    if (comoNovaImagem) {
+    const dataURL = canvasRecortado.toDataURL("image/png");
+    const nomeArquivo = gerarNomeArquivoRecorte(imagemAtualSelecionada ? imagemAtualSelecionada.name : "imagem");
+    const arquivoRecortado = await converterCanvasParaArquivoPng(canvasRecortado, nomeArquivo);
 
-      const novoItem = {
-        idProcessamento: obterProximoIdProcessamentoLocal(),
-        id: Date.now(),
-        name: nomeArquivo,
-        type: "image",
-        file: arquivoRecortado,
-        resultado: {
-          tipo: "image",
-          dataURL: dataURLRecorte
-        },
-        processado: true,
-        assinaturaPipeline: assinaturaAtual,
-        cacheEtapas: {}
-      };
-
-      imagensProcessamento.push(novoItem);
-      imagemAtualSelecionada = novoItem;
-
-      reconstruirCardsDasImagens();
-      fecharModalSalvarRecorte();
-      encerrarModoRecorteSemSalvar();
-
-      await openFile(novoItem);
-
-      if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-        await atualizarAnaliseDaImagemAtual();
-      }
-
+    if (acao === "salvar") {
+      await salvarRecorteSubstituindoImagemAtual(arquivoRecortado, dataURL, canvasRecortado.width, canvasRecortado.height, nomeArquivo);
+      statusText.innerText = "Recorte salvo substituindo a imagem atual.";
+    } else {
+      await salvarRecorteComoNovaImagem(arquivoRecortado, dataURL, canvasRecortado.width, canvasRecortado.height, nomeArquivo);
       statusText.innerText = "Recorte salvo como nova imagem.";
-      return;
     }
 
-    imagemAtualSelecionada.name = nomeArquivo;
-    imagemAtualSelecionada.type = "image";
-    imagemAtualSelecionada.file = arquivoRecortado;
-    imagemAtualSelecionada.resultado = {
-      tipo: "image",
-      dataURL: dataURLRecorte
-    };
-    imagemAtualSelecionada.processado = true;
-    imagemAtualSelecionada.assinaturaPipeline = assinaturaAtual;
-    imagemAtualSelecionada.cacheEtapas = {};
-
-    reconstruirCardsDasImagens();
-    fecharModalSalvarRecorte();
-    encerrarModoRecorteSemSalvar();
-
-    await openFile(imagemAtualSelecionada);
-
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
-
-    statusText.innerText = "Recorte salvo na imagem atual.";
+    cancelarOperacaoRecorte(true);
 
   } catch (error) {
-
     console.error("Erro ao salvar recorte:", error);
-    alert("Erro ao salvar o recorte.");
+    alert("Erro ao salvar recorte: " + (error.message || String(error)));
   }
 }
 
-const openFileOriginalRecorte = openFile;
-openFile = async function(item) {
-  fecharModalSalvarRecorte();
-  encerrarModoRecorteSemSalvar();
-  return await openFileOriginalRecorte(item);
-};
+async function gerarCanvasFonteParaRecorte() {
 
-const atualizarTamanhoImagemAtualOriginalRecorte = atualizarTamanhoImagemAtual;
-atualizarTamanhoImagemAtual = function() {
-  atualizarTamanhoImagemAtualOriginalRecorte();
-  sincronizarCanvasRecorteComElementoAtivo();
-};
+  const elementoAlvo = obterElementoAlvoRecorte();
 
-const toggleComparativoOriginalRecorte = toggleComparativo;
-toggleComparativo = async function() {
-  fecharModalSalvarRecorte();
-  encerrarModoRecorteSemSalvar();
-  return await toggleComparativoOriginalRecorte();
-};
+  if (!elementoAlvo) {
+    throw new Error("Nenhuma imagem visível para recorte.");
+  }
 
-if (canvasRecorte) {
-  canvasRecorte.addEventListener("mousedown", iniciarDesenhoRecorte);
+  if (imagemNormal && imagemNormal.style.display === "block") {
+    const canvasFonte = document.createElement("canvas");
+    canvasFonte.width = imagemNormal.naturalWidth;
+    canvasFonte.height = imagemNormal.naturalHeight;
+
+    const contexto = canvasFonte.getContext("2d");
+    contexto.drawImage(imagemNormal, 0, 0, canvasFonte.width, canvasFonte.height);
+    return canvasFonte;
+  }
+
+  if (visualizadorDicom && visualizadorDicom.style.display === "block") {
+    const canvasDicom = visualizadorDicom.querySelector("canvas");
+
+    if (!canvasDicom) {
+      throw new Error("O DICOM ainda não está pronto para recorte.");
+    }
+
+    const canvasFonte = document.createElement("canvas");
+    canvasFonte.width = canvasDicom.width;
+    canvasFonte.height = canvasDicom.height;
+
+    const contexto = canvasFonte.getContext("2d");
+    contexto.drawImage(canvasDicom, 0, 0);
+    return canvasFonte;
+  }
+
+  throw new Error("Tipo de imagem não suportado para recorte.");
 }
 
-document.addEventListener("mousemove", function(event) {
-  atualizarDesenhoRecorte(event);
-});
+function criarCanvasRecortadoPendente(canvasFonte, selecao) {
 
-document.addEventListener("mouseup", function(event) {
-  finalizarDesenhoRecorte(event);
-});
+  const escalaX = canvasFonte.width / canvasRecorte.width;
+  const escalaY = canvasFonte.height / canvasRecorte.height;
+
+  if (selecao.tipo === "retangular") {
+    const rTela = normalizarRetanguloRecorte(selecao.retangulo);
+
+    const sx = Math.max(0, Math.round(rTela.x * escalaX));
+    const sy = Math.max(0, Math.round(rTela.y * escalaY));
+    const sw = Math.max(1, Math.round(rTela.largura * escalaX));
+    const sh = Math.max(1, Math.round(rTela.altura * escalaY));
+
+    const canvasSaida = document.createElement("canvas");
+    canvasSaida.width = sw;
+    canvasSaida.height = sh;
+
+    const contexto = canvasSaida.getContext("2d");
+    contexto.drawImage(canvasFonte, sx, sy, sw, sh, 0, 0, sw, sh);
+    return canvasSaida;
+  }
+
+  if (selecao.tipo === "livre") {
+    const pontosFonte = selecao.caminho.map(function(ponto) {
+      return {
+        x: ponto.x * escalaX,
+        y: ponto.y * escalaY
+      };
+    });
+
+    const caixa = calcularCaixaCaminhoRecorte(pontosFonte);
+    const largura = Math.max(1, Math.ceil(caixa.largura));
+    const altura = Math.max(1, Math.ceil(caixa.altura));
+
+    const canvasSaida = document.createElement("canvas");
+    canvasSaida.width = largura;
+    canvasSaida.height = altura;
+
+    const contexto = canvasSaida.getContext("2d");
+    contexto.save();
+    contexto.beginPath();
+    contexto.moveTo(pontosFonte[0].x - caixa.minX, pontosFonte[0].y - caixa.minY);
+
+    for (let i = 1; i < pontosFonte.length; i++) {
+      contexto.lineTo(pontosFonte[i].x - caixa.minX, pontosFonte[i].y - caixa.minY);
+    }
+
+    contexto.closePath();
+    contexto.clip();
+    contexto.drawImage(canvasFonte, -caixa.minX, -caixa.minY);
+    contexto.restore();
+
+    return canvasSaida;
+  }
+
+  return null;
+}
+
+function gerarNomeArquivoRecorte(nomeOriginal) {
+
+  const nomeBase = String(nomeOriginal || "imagem")
+    .replace(/\r/g, "")
+    .replace(/\n/g, "")
+    .replace(/\\|\//g, "_")
+    .replace(/\.[^.]+$/, "");
+
+  return nomeBase + "_recorte.png";
+}
+
+function converterCanvasParaArquivoPng(canvas, nomeArquivo) {
+
+  return new Promise(function(resolve, reject) {
+    canvas.toBlob(function(blob) {
+      if (!blob) {
+        reject(new Error("Não foi possível converter o recorte em arquivo PNG."));
+        return;
+      }
+
+      resolve(new File([blob], nomeArquivo, { type: "image/png" }));
+    }, "image/png");
+  });
+}
+
+async function salvarRecorteSubstituindoImagemAtual(arquivoRecortado, dataURL, largura, altura, nomeArquivo) {
+
+  if (!imagemAtualSelecionada) {
+    throw new Error("Nenhuma imagem atual selecionada.");
+  }
+
+  const assinaturaAtual = gerarAssinaturaPipeline();
+
+  imagemAtualSelecionada.name = nomeArquivo;
+  imagemAtualSelecionada.type = "image";
+  imagemAtualSelecionada.file = arquivoRecortado;
+  imagemAtualSelecionada.resultado = {
+    tipo: "image",
+    dataURL: dataURL,
+    largura: largura,
+    altura: altura
+  };
+  imagemAtualSelecionada.processado = pipelineFerramentas.length > 0;
+  imagemAtualSelecionada.assinaturaPipeline = assinaturaAtual;
+  imagemAtualSelecionada.cacheEtapas = {};
+
+  await atualizarRegistroArquivoNoBanco({
+    id: imagemAtualSelecionada.id,
+    name: nomeArquivo,
+    type: "image",
+    file: arquivoRecortado
+  });
+
+  redesenharCardsImagens();
+  await openFile(imagemAtualSelecionada);
+
+  if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+    await atualizarAnaliseDaImagemAtual();
+  }
+}
+
+async function salvarRecorteComoNovaImagem(arquivoRecortado, dataURL, largura, altura, nomeArquivo) {
+
+  const assinaturaAtual = gerarAssinaturaPipeline();
+
+  const idNovoArquivo = await adicionarRegistroArquivoNoBanco({
+    name: nomeArquivo,
+    type: "image",
+    file: arquivoRecortado
+  });
+
+  const proximoIdProcessamento = imagensProcessamento.length > 0
+    ? Math.max.apply(null, imagensProcessamento.map(function(item) {
+        return item.idProcessamento;
+      })) + 1
+    : 1;
+
+  const novoItem = {
+    idProcessamento: proximoIdProcessamento,
+    id: idNovoArquivo,
+    name: nomeArquivo,
+    type: "image",
+    file: arquivoRecortado,
+    resultado: {
+      tipo: "image",
+      dataURL: dataURL,
+      largura: largura,
+      altura: altura
+    },
+    processado: pipelineFerramentas.length > 0,
+    assinaturaPipeline: assinaturaAtual,
+    cacheEtapas: {}
+  };
+
+  imagensProcessamento.push(novoItem);
+  imagemAtualSelecionada = novoItem;
+
+  redesenharCardsImagens();
+  await openFile(novoItem);
+
+  if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
+    await atualizarAnaliseDaImagemAtual();
+  }
+}
+
+function redesenharCardsImagens() {
+
+  imagensTrabalho.innerHTML = "";
+
+  imagensProcessamento.forEach(function(item) {
+    criarCardImagem(item);
+  });
+
+  atualizarCardSelecionado();
+}
+
+function atualizarRegistroArquivoNoBanco(registro) {
+
+  return new Promise(async function(resolve, reject) {
+    try {
+      const db = await openDatabase();
+      const transaction = db.transaction("files", "readwrite");
+      const store = transaction.objectStore("files");
+      const request = store.put(registro);
+
+      request.onsuccess = function() {
+        resolve(registro.id);
+      };
+
+      request.onerror = function() {
+        reject(request.error);
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function adicionarRegistroArquivoNoBanco(registro) {
+
+  return new Promise(async function(resolve, reject) {
+    try {
+      const db = await openDatabase();
+      const transaction = db.transaction("files", "readwrite");
+      const store = transaction.objectStore("files");
+      const request = store.add(registro);
+
+      request.onsuccess = function() {
+        resolve(request.result);
+      };
+
+      request.onerror = function() {
+        reject(request.error);
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+if (canvasRecorte) {
+  canvasRecorte.addEventListener("mousedown", function(event) {
+
+    if (!modoRecorteAtivo) return;
+
+    event.preventDefault();
+
+    const posicao = obterPosicaoNoCanvasRecorte(event);
+
+    recorteEmAndamento = true;
+
+    if (modoRecorteAtivo === "retangular") {
+      pontoInicialRecorte = posicao;
+      retanguloRecorteAtual = {
+        x1: posicao.x,
+        y1: posicao.y,
+        x2: posicao.x,
+        y2: posicao.y
+      };
+    }
+
+    if (modoRecorteAtivo === "livre") {
+      caminhoRecorteLivreAtual = [posicao];
+    }
+
+    redesenharSelecaoRecorte();
+  });
+
+  canvasRecorte.addEventListener("mousemove", function(event) {
+
+    if (!modoRecorteAtivo || !recorteEmAndamento) return;
+
+    const posicao = obterPosicaoNoCanvasRecorte(event);
+
+    if (modoRecorteAtivo === "retangular" && retanguloRecorteAtual) {
+      retanguloRecorteAtual.x2 = posicao.x;
+      retanguloRecorteAtual.y2 = posicao.y;
+    }
+
+    if (modoRecorteAtivo === "livre") {
+      const ultimoPonto = caminhoRecorteLivreAtual[caminhoRecorteLivreAtual.length - 1];
+
+      if (!ultimoPonto || Math.abs(ultimoPonto.x - posicao.x) > 1 || Math.abs(ultimoPonto.y - posicao.y) > 1) {
+        caminhoRecorteLivreAtual.push(posicao);
+      }
+    }
+
+    redesenharSelecaoRecorte();
+  });
+
+  window.addEventListener("mouseup", function() {
+
+    if (!modoRecorteAtivo || !recorteEmAndamento) return;
+
+    recorteEmAndamento = false;
+
+    if (modoRecorteAtivo === "retangular") {
+      const r = retanguloRecorteAtual ? normalizarRetanguloRecorte(retanguloRecorteAtual) : null;
+
+      if (!r || r.largura < 5 || r.altura < 5) {
+        retanguloRecorteAtual = null;
+        limparCanvasRecorteVisual();
+        statusText.innerText = "Seleção de recorte muito pequena. Tente novamente.";
+        return;
+      }
+
+      dadosRecortePendente = {
+        tipo: "retangular",
+        retangulo: {
+          x1: retanguloRecorteAtual.x1,
+          y1: retanguloRecorteAtual.y1,
+          x2: retanguloRecorteAtual.x2,
+          y2: retanguloRecorteAtual.y2
+        }
+      };
+
+      redesenharSelecaoRecorte();
+      abrirModalConfirmacaoRecorte();
+      return;
+    }
+
+    if (modoRecorteAtivo === "livre") {
+      if (caminhoRecorteLivreAtual.length < 3) {
+        caminhoRecorteLivreAtual = [];
+        limparCanvasRecorteVisual();
+        statusText.innerText = "Desenhe uma área maior para concluir o recorte livre.";
+        return;
+      }
+
+      const caixa = calcularCaixaCaminhoRecorte(caminhoRecorteLivreAtual);
+
+      if (caixa.largura < 5 || caixa.altura < 5) {
+        caminhoRecorteLivreAtual = [];
+        limparCanvasRecorteVisual();
+        statusText.innerText = "Desenhe uma área maior para concluir o recorte livre.";
+        return;
+      }
+
+      dadosRecortePendente = {
+        tipo: "livre",
+        caminho: caminhoRecorteLivreAtual.map(function(ponto) {
+          return { x: ponto.x, y: ponto.y };
+        })
+      };
+
+      redesenharSelecaoRecorte();
+      abrirModalConfirmacaoRecorte();
+    }
+  });
+}
 
 window.addEventListener("resize", function() {
-  sincronizarCanvasRecorteComElementoAtivo();
+  atualizarCanvasRecorte();
 });

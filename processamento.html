@@ -216,54 +216,6 @@
       background: rgba(192,132,252,0.55);
     }
 
-    /* DESIGN DOS CONTROLES POR FAIXA (SLIDERS) */
-
-    .controle-faixa {
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .faixa-cabecalho {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-
-    .valor-faixa {
-      min-width: 58px;
-      padding: 4px 8px;
-      border-radius: 8px;
-      background: rgba(192,132,252,0.18);
-      border: 1px solid rgba(192,132,252,0.45);
-      color: white;
-      text-align: center;
-      font-weight: 600;
-    }
-
-    .parametros input[type="range"] {
-      width: 100%;
-      padding: 0;
-      margin-top: 6px;
-      cursor: pointer;
-      accent-color: #c084fc;
-      background: transparent;
-    }
-
-    .marcacoes-faixa {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      margin-top: 4px;
-      font-size: 11px;
-      opacity: 0.7;
-    }
-
     /* DESIGN DA ÁREA CENTRAL DE VISUALIZAÇÃO */
 
     .area_visualizacao {
@@ -325,7 +277,7 @@
     .botao_pan,
     .botao_original,
     .botao_recorte,
-    .botao_recorte_opcao {
+    .botao_modo_recorte {
       width: 42px;
       height: 42px;
       border-radius: 50%; /* Deixa circular */
@@ -350,13 +302,31 @@
     .botao_pan,
     .botao_original,
     .botao_recorte,
-    .botao_recorte_opcao {
+    .botao_modo_recorte {
       font-size: 20px;
     }
+    .botao_pixel:hover,
+    .botao_zoom:hover,
+    .botao_pan:hover,
+    .botao_original:hover,
+    .botao_recorte:hover,
+    .botao_modo_recorte:hover {
+      background: rgba(192,132,252,0.35);
+      transform: scale(1.05);
+    }
+    .botao_pixel.ativo,
+    .botao_zoom.ativo,
+    .botao_pan.ativo,
+    .botao_original.ativo,
+    .botao_recorte.ativo,
+    .botao_modo_recorte.ativo {
+      background: rgba(192,132,252,0.55);
+      box-shadow: 0 0 12px rgba(192,132,252,0.65);
+    }
 
-    /* GRUPO DA FERRAMENTA DE RECORTE */
+    /* DESIGN DA FERRAMENTA DE RECORTE */
 
-    .grupo_recorte_lateral {
+    .grupo_recorte {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -374,38 +344,13 @@
       display: flex;
     }
 
-    .botao_recorte_opcao {
+    .botao_modo_recorte {
       width: 36px;
       height: 36px;
-      font-size: 18px;
-      background: rgba(56,189,248,0.14);
-      border-color: rgba(56,189,248,0.55);
+      background: rgba(255,255,255,0.055);
+      border-color: rgba(192,132,252,0.38);
+      font-size: 17px;
     }
-
-    .botao_recorte_opcao.ativo {
-      background: rgba(56,189,248,0.42);
-      border-color: rgba(56,189,248,0.95);
-      box-shadow: 0 0 12px rgba(56,189,248,0.45);
-    }
-    .botao_pixel:hover,
-    .botao_zoom:hover,
-    .botao_pan:hover,
-    .botao_original:hover,
-    .botao_recorte:hover,
-    .botao_recorte_opcao:hover {
-      background: rgba(192,132,252,0.35);
-      transform: scale(1.05);
-    }
-    .botao_pixel.ativo,
-    .botao_zoom.ativo,
-    .botao_pan.ativo,
-    .botao_original.ativo,
-    .botao_recorte.ativo {
-      background: rgba(192,132,252,0.55);
-      box-shadow: 0 0 12px rgba(192,132,252,0.65);
-    }
-
-    /* CAMADA DE DESENHO DO RECORTE */
 
     .area_imagem_processada {
       position: relative;
@@ -414,9 +359,9 @@
     #canvasRecorte {
       display: none;
       position: absolute;
+      z-index: 30;
       left: 0;
       top: 0;
-      z-index: 30;
       pointer-events: none;
       touch-action: none;
     }
@@ -424,42 +369,40 @@
     #canvasRecorte.ativo {
       display: block;
       pointer-events: auto;
-      cursor: crosshair;
     }
 
-    /* CAIXA DE DECISÃO APÓS O RECORTE */
-
-    .fundo_modal_recorte {
+    .modal_recorte {
       display: none;
       position: fixed;
       inset: 0;
       z-index: 5000;
-      background: rgba(3, 8, 20, 0.72);
       align-items: center;
       justify-content: center;
       padding: 20px;
+      background: rgba(2, 7, 18, 0.72);
+      backdrop-filter: blur(4px);
     }
 
-    .fundo_modal_recorte.ativo {
+    .modal_recorte.ativo {
       display: flex;
     }
 
-    .modal_recorte {
+    .caixa_modal_recorte {
       width: min(430px, 100%);
-      background: rgba(10, 20, 40, 0.98);
-      border: 1px solid rgba(192,132,252,0.55);
-      border-radius: 18px;
       padding: 22px;
-      box-shadow: 0 18px 55px rgba(0,0,0,0.45);
+      border-radius: 18px;
+      background: #0b162c;
+      border: 1px solid rgba(192,132,252,0.45);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
       text-align: center;
     }
 
-    .modal_recorte h3 {
-      margin-bottom: 8px;
-      color: white;
+    .caixa_modal_recorte h3 {
+      margin-bottom: 10px;
+      color: #ffffff;
     }
 
-    .modal_recorte p {
+    .caixa_modal_recorte p {
       margin-bottom: 18px;
       color: rgba(255,255,255,0.78);
       font-size: 13px;
@@ -469,32 +412,181 @@
     .acoes_modal_recorte {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
       justify-content: center;
+      gap: 8px;
     }
 
-    .acao_recorte {
+    .botao_modal_recorte {
+      padding: 10px 14px;
       border: 1px solid rgba(192,132,252,0.45);
       border-radius: 10px;
-      padding: 10px 14px;
+      background: rgba(192,132,252,0.18);
       color: white;
-      background: rgba(192,132,252,0.22);
       cursor: pointer;
-      transition: 0.2s;
+      transition: 0.2s ease;
     }
 
-    .acao_recorte:hover {
-      background: rgba(192,132,252,0.42);
+    .botao_modal_recorte:hover {
+      background: rgba(192,132,252,0.35);
     }
 
-    .acao_recorte.secundaria {
-      background: rgba(56,189,248,0.16);
-      border-color: rgba(56,189,248,0.45);
+    .botao_modal_recorte.secundario {
+      background: rgba(255,255,255,0.055);
+      border-color: rgba(255,255,255,0.12);
     }
 
-    .acao_recorte.cancelar {
-      background: rgba(255,255,255,0.07);
-      border-color: rgba(255,255,255,0.14);
+    /* DESIGN DOS CONTROLES DE BRILHO E CONTRASTE */
+
+    .controles_brilho_contraste {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .botoes_brilho_contraste {
+      display: flex;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .botao_ajuste_imagem {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.055);
+      color: rgba(255,255,255,0.88);
+      cursor: pointer;
+      transition: 0.18s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .botao_ajuste_imagem .icone_ajuste {
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .botao_ajuste_imagem:hover {
+      background: rgba(192,132,252,0.12);
+      border-color: rgba(192,132,252,0.35);
+    }
+
+    .botao_ajuste_imagem.ativo {
+      background: rgba(192,132,252,0.18);
+      border-color: rgba(192,132,252,0.50);
+      color: #ffffff;
+    }
+
+    .painel_ajuste_imagem {
+      display: none;
+      width: min(360px, 100%);
+      padding: 8px;
+      border-radius: 11px;
+      background: rgba(8,16,32,0.88);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .painel_ajuste_imagem.ativo {
+      display: block;
+    }
+
+    .seletor_modo_ajuste {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .opcao_modo_ajuste {
+      height: 30px;
+      padding: 0 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.045);
+      color: rgba(255,255,255,0.78);
+      cursor: pointer;
+      font-size: 11px;
+      transition: 0.15s ease;
+    }
+
+    .opcao_modo_ajuste:hover {
+      background: rgba(192,132,252,0.10);
+    }
+
+    .opcao_modo_ajuste.ativo {
+      background: rgba(192,132,252,0.18);
+      border-color: rgba(192,132,252,0.42);
+      color: #ffffff;
+    }
+
+    .conteudo_ajuste_escolhido {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .conteudo_ajuste_escolhido.ativo {
+      display: block;
+    }
+
+    .campos_faixa_ajuste {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .campos_faixa_ajuste.ativo {
+      display: grid;
+    }
+
+    .campo_faixa_ajuste label {
+      display: none;
+    }
+
+    .campo_faixa_ajuste input {
+      width: 100%;
+      height: 30px;
+      padding: 0 9px;
+      border-radius: 7px;
+      border: 1px solid rgba(255,255,255,0.08);
+      outline: none;
+      background: rgba(255,255,255,0.055);
+      color: white;
+      font-size: 11px;
+    }
+
+    .campo_faixa_ajuste input:focus {
+      border-color: rgba(192,132,252,0.48);
+      background: rgba(255,255,255,0.075);
+    }
+
+    .campo_faixa_ajuste input::placeholder {
+      color: rgba(255,255,255,0.38);
+    }
+
+    .controle_arraste_ajuste {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      padding: 2px 1px;
+    }
+
+    .controle_arraste_ajuste input[type="range"] {
+      width: 100%;
+      height: 18px;
+      cursor: ew-resize;
+      accent-color: #c084fc;
+    }
+
+    .escala_arraste_ajuste,
+    .valor_ajuste_tempo_real,
+    .ajuda_ajuste_tempo_real {
+      display: none;
     }
 
     /* DESIGN DA INFORMAÇÃO DO PIXEL */
@@ -892,22 +984,6 @@
 
           <div
             class="ferramenta"
-            id="botaoFerramentaBrilho"
-            onclick="selecionarFerramenta('Brilho', this)"
-          >
-            Brilho
-          </div>
-
-          <div
-            class="ferramenta"
-            id="botaoFerramentaContraste"
-            onclick="selecionarFerramenta('Contraste', this)"
-          >
-            Contraste
-          </div>
-
-          <div
-            class="ferramenta"
             id="botaoFerramentaAlargamentoContraste"
             onclick="selecionarFerramenta('Alargamento de contraste', this)"
           >
@@ -953,6 +1029,38 @@
             Gamma
           </div>
 
+        </div>
+
+      </div>
+
+      <!-- Categoria de equalização -->
+      <div
+        class="categoria-titulo"
+        onclick="toggleCategoria('equalizacao')"
+      >
+        Equalização
+      </div>
+
+      <!-- Conteúdo da categoria de equalização -->
+      <div
+        class="categoria-conteudo"
+        id="equalizacao"
+      >
+
+        <div
+          class="ferramenta"
+          id="botaoFerramentaEqualizacaoConvencional"
+          onclick="selecionarFerramenta('Equalização Convencional', this)"
+        >
+          Convencional
+        </div>
+
+        <div
+          class="ferramenta"
+          id="botaoFerramentaClahe"
+          onclick="selecionarFerramenta('CLAHE', this)"
+        >
+          CLAHE
         </div>
 
       </div>
@@ -1123,24 +1231,24 @@
           </button>
 
           <!-- Ferramenta de recorte -->
-          <div class="grupo_recorte_lateral">
+          <div class="grupo_recorte">
 
             <!-- Botão principal do recorte -->
             <button
               class="botao_recorte"
               id="botaoRecorte"
-              onclick="toggleMenuRecorte()"
+              onclick="toggleFerramentaRecorte()"
               title="Recortar imagem"
             >
               ✂
             </button>
 
-            <!-- Opções que aparecem ao abrir a ferramenta de recorte -->
+            <!-- Modos de recorte que aparecem ao abrir a ferramenta -->
             <div class="opcoes_recorte" id="opcoesRecorte">
 
-              <!-- Recorte retangular -->
+              <!-- Recorte retangular, como em editores de fotos -->
               <button
-                class="botao_recorte_opcao"
+                class="botao_modo_recorte"
                 id="botaoRecorteRetangular"
                 onclick="ativarRecorteRetangular()"
                 title="Recorte retangular"
@@ -1148,9 +1256,9 @@
                 ▭
               </button>
 
-              <!-- Recorte livre -->
+              <!-- Recorte livre desenhado pelo usuário -->
               <button
-                class="botao_recorte_opcao"
+                class="botao_modo_recorte"
                 id="botaoRecorteLivre"
                 onclick="ativarRecorteLivre()"
                 title="Recorte livre"
@@ -1184,8 +1292,176 @@
 
             <img id="imagemNormal">
 
-            <!-- Camada transparente usada para desenhar a seleção do recorte -->
+            <!-- Camada usada para desenhar a seleção do recorte -->
             <canvas id="canvasRecorte"></canvas>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- CONTROLES DE BRILHO E CONTRASTE -->
+
+      <div class="controles_brilho_contraste" id="controlesBrilhoContraste">
+
+        <div class="botoes_brilho_contraste">
+
+          <button
+            class="botao_ajuste_imagem"
+            id="botaoBrilho"
+            onclick="toggleControleBrilho(); document.getElementById('conteudoBrilhoAjuste').classList.remove('ativo'); document.getElementById('brilhoTodosPixels').classList.remove('ativo'); document.getElementById('brilhoFaixaPixels').classList.remove('ativo')"
+            title="Brilho"
+          >
+            <span class="icone_ajuste">☀</span>
+            <span>Brilho</span>
+          </button>
+
+          <button
+            class="botao_ajuste_imagem"
+            id="botaoContraste"
+            onclick="toggleControleContraste(); document.getElementById('conteudoContrasteAjuste').classList.remove('ativo'); document.getElementById('contrasteTodosPixels').classList.remove('ativo'); document.getElementById('contrasteFaixaPixels').classList.remove('ativo')"
+            title="Contraste"
+          >
+            <span class="icone_ajuste">◐</span>
+            <span>Contraste</span>
+          </button>
+
+        </div>
+
+        <!-- BRILHO -->
+        <div class="painel_ajuste_imagem" id="painelBrilho">
+
+          <div class="seletor_modo_ajuste">
+
+            <button
+              class="opcao_modo_ajuste"
+              id="brilhoTodosPixels"
+              onclick="selecionarModoBrilho('todos'); document.getElementById('conteudoBrilhoAjuste').classList.add('ativo')"
+            >
+              Todos os pixels
+            </button>
+
+            <button
+              class="opcao_modo_ajuste"
+              id="brilhoFaixaPixels"
+              onclick="selecionarModoBrilho('faixa'); document.getElementById('conteudoBrilhoAjuste').classList.add('ativo')"
+            >
+              Faixa de pixel
+            </button>
+
+          </div>
+
+          <div class="conteudo_ajuste_escolhido" id="conteudoBrilhoAjuste">
+
+            <div class="campos_faixa_ajuste" id="camposFaixaBrilho">
+
+              <div class="campo_faixa_ajuste">
+                <label for="brilhoIntensidadeMinima">Mínimo</label>
+                <input
+                  type="number"
+                  id="brilhoIntensidadeMinima"
+                  step="any"
+                  placeholder="Mínimo"
+                  oninput="atualizarFaixaBrilhoTempoReal()"
+                >
+              </div>
+
+              <div class="campo_faixa_ajuste">
+                <label for="brilhoIntensidadeMaxima">Máximo</label>
+                <input
+                  type="number"
+                  id="brilhoIntensidadeMaxima"
+                  step="any"
+                  placeholder="Máximo"
+                  oninput="atualizarFaixaBrilhoTempoReal()"
+                >
+              </div>
+
+            </div>
+
+            <div class="controle_arraste_ajuste">
+              <input
+                type="range"
+                id="sliderBrilho"
+                min="-1"
+                max="1"
+                step="0.01"
+                value="0"
+                oninput="atualizarBrilhoTempoReal(this.value)"
+              >
+            </div>
+
+            <div class="valor_ajuste_tempo_real" id="valorBrilhoTempoReal"></div>
+
+          </div>
+
+        </div>
+
+        <!-- CONTRASTE -->
+        <div class="painel_ajuste_imagem" id="painelContraste">
+
+          <div class="seletor_modo_ajuste">
+
+            <button
+              class="opcao_modo_ajuste"
+              id="contrasteTodosPixels"
+              onclick="selecionarModoContraste('todos'); document.getElementById('conteudoContrasteAjuste').classList.add('ativo')"
+            >
+              Todos os pixels
+            </button>
+
+            <button
+              class="opcao_modo_ajuste"
+              id="contrasteFaixaPixels"
+              onclick="selecionarModoContraste('faixa'); document.getElementById('conteudoContrasteAjuste').classList.add('ativo')"
+            >
+              Faixa de pixel
+            </button>
+
+          </div>
+
+          <div class="conteudo_ajuste_escolhido" id="conteudoContrasteAjuste">
+
+            <div class="campos_faixa_ajuste" id="camposFaixaContraste">
+
+              <div class="campo_faixa_ajuste">
+                <label for="contrasteIntensidadeMinima">Mínimo</label>
+                <input
+                  type="number"
+                  id="contrasteIntensidadeMinima"
+                  step="any"
+                  placeholder="Mínimo"
+                  oninput="atualizarFaixaContrasteTempoReal()"
+                >
+              </div>
+
+              <div class="campo_faixa_ajuste">
+                <label for="contrasteIntensidadeMaxima">Máximo</label>
+                <input
+                  type="number"
+                  id="contrasteIntensidadeMaxima"
+                  step="any"
+                  placeholder="Máximo"
+                  oninput="atualizarFaixaContrasteTempoReal()"
+                >
+              </div>
+
+            </div>
+
+            <div class="controle_arraste_ajuste">
+              <input
+                type="range"
+                id="sliderContraste"
+                min="0.5"
+                max="2"
+                step="0.01"
+                value="1"
+                oninput="atualizarContrasteTempoReal(this.value)"
+              >
+            </div>
+
+            <div class="valor_ajuste_tempo_real" id="valorContrasteTempoReal"></div>
 
           </div>
 
@@ -1228,41 +1504,41 @@
 
   </div>
 
-  <!-- ÁREA DA ABA DE ANÁLISE -->
+  <!-- MODAL DE CONFIRMAÇÃO DO RECORTE -->
 
-  <div id="areaAnalise"></div>
+  <div class="modal_recorte" id="modalConfirmacaoRecorte">
 
-  <!-- MODAL EXIBIDO QUANDO O USUÁRIO TERMINAR O RECORTE -->
-  <div class="fundo_modal_recorte" id="modalSalvarRecorte">
+    <div class="caixa_modal_recorte">
 
-    <div class="modal_recorte">
+      <h3>Salvar recorte</h3>
 
-      <h3>Recorte concluído</h3>
-
-      <p>Escolha se deseja substituir a imagem atual pelo recorte ou adicionar o resultado como uma nova imagem.</p>
+      <p>
+        Escolha se o recorte deve substituir a imagem atual
+        ou ser adicionado como uma nova imagem.
+      </p>
 
       <div class="acoes_modal_recorte">
 
         <button
-          class="acao_recorte"
+          class="botao_modal_recorte"
           id="botaoSalvarRecorte"
-          onclick="salvarRecorte()"
+          onclick="confirmarSalvarRecorte('salvar')"
         >
           Salvar
         </button>
 
         <button
-          class="acao_recorte secundaria"
-          id="botaoSalvarRecorteNovaImagem"
-          onclick="salvarRecorteComoNovaImagem()"
+          class="botao_modal_recorte"
+          id="botaoSalvarComoNovaImagemRecorte"
+          onclick="confirmarSalvarRecorte('nova')"
         >
           Salvar como nova imagem
         </button>
 
         <button
-          class="acao_recorte cancelar"
+          class="botao_modal_recorte secundario"
           id="botaoCancelarRecorte"
-          onclick="cancelarRecorte()"
+          onclick="cancelarSalvamentoRecorte()"
         >
           Cancelar
         </button>
@@ -1272,6 +1548,10 @@
     </div>
 
   </div>
+
+  <!-- ÁREA DA ABA DE ANÁLISE -->
+
+  <div id="areaAnalise"></div>
 
   <!-- BIBLIOTECA OPENCV -->
 
@@ -1288,7 +1568,9 @@
   <script src="cinza.js"></script>
   <script src="lineares.js"></script>
   <script src="naolineares.js"></script>
+  <script src="Equalização.js"></script>
   <script src="processamento.js"></script>
+  <script src="brilho_contraste.js"></script>
 
   <!-- INICIALIZAÇÃO DA PÁGINA -->
 
