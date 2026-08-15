@@ -912,35 +912,36 @@
 
         </div>
 
-        <!-- Subcategoria de equalização -->
+      </div>
+
+      <!-- Categoria de equalização -->
+      <div
+        class="categoria-titulo"
+        onclick="toggleCategoria('equalizacao')"
+      >
+        Equalização
+      </div>
+
+      <!-- Conteúdo da categoria de equalização -->
+      <div
+        class="categoria-conteudo"
+        id="equalizacao"
+      >
+
         <div
-          class="subcategoria-titulo"
-          onclick="toggleCategoria('equalizacao')"
+          class="ferramenta"
+          id="botaoFerramentaEqualizacaoConvencional"
+          onclick="selecionarFerramenta('Equalização Convencional', this)"
         >
-          Equalização
+          Convencional
         </div>
 
         <div
-          class="subcategoria-conteudo"
-          id="equalizacao"
+          class="ferramenta"
+          id="botaoFerramentaClahe"
+          onclick="selecionarFerramenta('CLAHE', this)"
         >
-
-          <div
-            class="ferramenta"
-            id="botaoFerramentaEqualizacaoConvencional"
-            onclick="selecionarFerramenta('Equalização Convencional', this)"
-          >
-            Convencional
-          </div>
-
-          <div
-            class="ferramenta"
-            id="botaoFerramentaClahe"
-            onclick="selecionarFerramenta('CLAHE', this)"
-          >
-            CLAHE
-          </div>
-
+          CLAHE
         </div>
 
       </div>
