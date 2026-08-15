@@ -31,6 +31,8 @@
  * - A seleção por faixa considera a intensidade ORIGINAL do pixel.
  * - A opção global "Sem contabilizar pixels 0" é respeitada.
  * - Funciona com imagens comuns (Canvas) e DICOM (Cornerstone).
+ * - No DICOM, respeita Rescale Slope/Intercept, Window Center e invert.
+ * - O DICOM é saturado na faixa REAL da imagem-base, não no limite teórico do tipo.
  */
 
 
@@ -1463,6 +1465,290 @@ function converterValorParaTipoDicomBrilhoContraste(
 
 
 // =========================================================
+// DICOM - DOMÍNIO VISUAL E WINDOW/LEVEL
+// =========================================================
+
+/*
+ * O Cornerstone não mostra diretamente o número armazenado no DICOM.
+ * Antes da exibição, o valor pode passar por Rescale Slope/Intercept,
+ * Window Center/Width e, em MONOCHROME1, por inversão.
+ *
+ * Por isso, para o controle ser intuitivo, fazemos a conta em um
+ * domínio visual linear:
+ *
+ *   brilho:    valorVisualSaida = valorVisualEntrada + delta
+ *   contraste: valorVisualSaida = valorVisualEntrada * fator
+ *
+ * A fórmula continua sendo SOMA para brilho e MULTIPLICAÇÃO DIRETA
+ * para contraste. Depois o valor é convertido novamente para o pixel
+ * armazenado que o Cornerstone espera.
+ *
+ * A inversão de MONOCHROME1 é feita em torno do Window Center da
+ * própria imagem. Isso é mais correto do que inverter usando somente
+ * mínimo + máximo da matriz de pixels.
+ */
+
+function obterPrimeiroNumeroDicomBrilhoContraste(
+  valor,
+  padrao
+) {
+  if (
+    Array.isArray(valor) ||
+    ArrayBuffer.isView(valor)
+  ) {
+    if (valor.length > 0) {
+      const primeiro = Number(valor[0]);
+
+      if (Number.isFinite(primeiro)) {
+        return primeiro;
+      }
+    }
+
+    return padrao;
+  }
+
+  const numero = Number(valor);
+
+  return Number.isFinite(numero)
+    ? numero
+    : padrao;
+}
+
+
+function obterSlopeDicomBrilhoContraste(
+  imagem
+) {
+  const slope =
+    obterPrimeiroNumeroDicomBrilhoContraste(
+      imagem ? imagem.slope : null,
+      1
+    );
+
+  if (
+    !Number.isFinite(slope) ||
+    slope === 0
+  ) {
+    return 1;
+  }
+
+  return slope;
+}
+
+
+function obterInterceptDicomBrilhoContraste(
+  imagem
+) {
+  return obterPrimeiroNumeroDicomBrilhoContraste(
+    imagem ? imagem.intercept : null,
+    0
+  );
+}
+
+
+function dicomEstaInvertidoBrilhoContraste(
+  imagem
+) {
+  return Boolean(
+    imagem && imagem.invert === true
+  );
+}
+
+
+function converterPixelArmazenadoParaModalidadeBrilhoContraste(
+  valor,
+  imagem
+) {
+  const slope =
+    obterSlopeDicomBrilhoContraste(imagem);
+
+  const intercept =
+    obterInterceptDicomBrilhoContraste(imagem);
+
+  return (
+    Number(valor) * slope +
+    intercept
+  );
+}
+
+
+function converterModalidadeParaPixelArmazenadoBrilhoContraste(
+  valor,
+  imagem
+) {
+  const slope =
+    obterSlopeDicomBrilhoContraste(imagem);
+
+  const intercept =
+    obterInterceptDicomBrilhoContraste(imagem);
+
+  return (
+    (Number(valor) - intercept) /
+    slope
+  );
+}
+
+
+function obterCentroJanelaDicomBrilhoContraste(
+  imagem
+) {
+  const centroInformado =
+    obterPrimeiroNumeroDicomBrilhoContraste(
+      imagem ? imagem.windowCenter : null,
+      NaN
+    );
+
+  if (Number.isFinite(centroInformado)) {
+    return centroInformado;
+  }
+
+  // Se o DICOM não fornecer Window Center válido,
+  // usa o centro da faixa REAL da imagem já em unidades de modalidade.
+  const minimoArmazenado = Number(
+    estadoBrilhoContraste.intensidadeMinimaBase
+  );
+
+  const maximoArmazenado = Number(
+    estadoBrilhoContraste.intensidadeMaximaBase
+  );
+
+  const minimoModalidade =
+    converterPixelArmazenadoParaModalidadeBrilhoContraste(
+      minimoArmazenado,
+      imagem
+    );
+
+  const maximoModalidade =
+    converterPixelArmazenadoParaModalidadeBrilhoContraste(
+      maximoArmazenado,
+      imagem
+    );
+
+  if (
+    Number.isFinite(minimoModalidade) &&
+    Number.isFinite(maximoModalidade)
+  ) {
+    return (
+      minimoModalidade +
+      maximoModalidade
+    ) / 2;
+  }
+
+  return 0;
+}
+
+
+function converterPixelParaIntensidadeVisualDicomBrilhoContraste(
+  valor,
+  imagem
+) {
+  const modalidade =
+    converterPixelArmazenadoParaModalidadeBrilhoContraste(
+      valor,
+      imagem
+    );
+
+  if (
+    !dicomEstaInvertidoBrilhoContraste(imagem)
+  ) {
+    return modalidade;
+  }
+
+  const centro =
+    obterCentroJanelaDicomBrilhoContraste(
+      imagem
+    );
+
+  // MONOCHROME1: espelha em torno do Window Center.
+  return (
+    2 * centro -
+    modalidade
+  );
+}
+
+
+function converterIntensidadeVisualParaPixelDicomBrilhoContraste(
+  valor,
+  imagem
+) {
+  let modalidade = Number(valor);
+
+  if (
+    dicomEstaInvertidoBrilhoContraste(imagem)
+  ) {
+    const centro =
+      obterCentroJanelaDicomBrilhoContraste(
+        imagem
+      );
+
+    modalidade =
+      2 * centro -
+      modalidade;
+  }
+
+  return converterModalidadeParaPixelArmazenadoBrilhoContraste(
+    modalidade,
+    imagem
+  );
+}
+
+
+function obterFaixaVisualRealDicomBrilhoContraste(
+  imagem
+) {
+  const minimoArmazenado = Number(
+    estadoBrilhoContraste.intensidadeMinimaBase
+  );
+
+  const maximoArmazenado = Number(
+    estadoBrilhoContraste.intensidadeMaximaBase
+  );
+
+  const visualA =
+    converterPixelParaIntensidadeVisualDicomBrilhoContraste(
+      minimoArmazenado,
+      imagem
+    );
+
+  const visualB =
+    converterPixelParaIntensidadeVisualDicomBrilhoContraste(
+      maximoArmazenado,
+      imagem
+    );
+
+  if (
+    !Number.isFinite(visualA) ||
+    !Number.isFinite(visualB)
+  ) {
+    return {
+      minimo: minimoArmazenado,
+      maximo: maximoArmazenado
+    };
+  }
+
+  return {
+    minimo: Math.min(visualA, visualB),
+    maximo: Math.max(visualA, visualB)
+  };
+}
+
+
+function converterDeltaBrilhoParaDominioVisualDicomBrilhoContraste(
+  delta,
+  imagem
+) {
+  /*
+   * O slider calcula delta usando a faixa dos pixels armazenados.
+   * Como o domínio visual está em unidades de modalidade, convertemos
+   * somente a amplitude pelo módulo do Rescale Slope.
+   */
+  const slope = Math.abs(
+    obterSlopeDicomBrilhoContraste(imagem)
+  );
+
+  return Number(delta) * slope;
+}
+
+// =========================================================
 // DICOM - APLICAÇÃO
 // =========================================================
 
@@ -1501,6 +1787,36 @@ function aplicarBrilhoContrasteDicom() {
       estadoBrilhoContraste.fatorContraste
     );
 
+  let minimoReal = Number(
+    estadoBrilhoContraste.intensidadeMinimaBase
+  );
+
+  let maximoReal = Number(
+    estadoBrilhoContraste.intensidadeMaximaBase
+  );
+
+  if (!Number.isFinite(minimoReal)) {
+    minimoReal = Number(informacoesTipo.minimo);
+  }
+
+  if (!Number.isFinite(maximoReal)) {
+    maximoReal = Number(informacoesTipo.maximo);
+  }
+
+  if (!Number.isFinite(minimoReal)) {
+    minimoReal = 0;
+  }
+
+  if (!Number.isFinite(maximoReal)) {
+    maximoReal = 1;
+  }
+
+  if (minimoReal > maximoReal) {
+    const temporario = minimoReal;
+    minimoReal = maximoReal;
+    maximoReal = temporario;
+  }
+
   for (
     let i = 0;
     i < pixelsBase.length;
@@ -1513,7 +1829,15 @@ function aplicarBrilhoContrasteDicom() {
       ignorarZero &&
       original === 0
     ) {
-      pixelsSaida[i] = 0;
+      pixelsSaida[i] =
+        converterValorParaTipoDicomBrilhoContraste(
+          original,
+          {
+            minimo: minimoReal,
+            maximo: maximoReal,
+            inteiro: informacoesTipo.inteiro
+          }
+        );
       continue;
     }
 
@@ -1539,22 +1863,34 @@ function aplicarBrilhoContrasteDicom() {
       valor += deltaBrilho;
     }
 
-    // Multiplicação direta mantida conforme solicitado.
     if (aplicarContraste) {
       valor *= fatorContraste;
     }
 
+    valor =
+      limitarValorBrilhoContraste(
+        valor,
+        minimoReal,
+        maximoReal
+      );
+
     pixelsSaida[i] =
       converterValorParaTipoDicomBrilhoContraste(
         valor,
-        informacoesTipo
+        {
+          minimo: minimoReal,
+          maximo: maximoReal,
+          inteiro: informacoesTipo.inteiro
+        }
       );
   }
 
   const imagemSaida =
     criarImagemDicomBrilhoContraste(
       pixelsSaida,
-      imagemBase
+      imagemBase,
+      minimoReal,
+      maximoReal
     );
 
   if (
@@ -1581,26 +1917,57 @@ function aplicarBrilhoContrasteDicom() {
     imagemSaida
   );
 
+  const larguraJanela = Math.max(
+    1,
+    maximoReal - minimoReal
+  );
+
+  const centroJanela =
+    (minimoReal + maximoReal) / 2;
+
   if (viewportAtual) {
+    viewportAtual.voi = {
+      windowCenter: centroJanela,
+      windowWidth: larguraJanela
+    };
+
     cornerstone.setViewport(
       visualizadorDicom,
       viewportAtual
     );
   }
 
-  // Atualiza a referência usada pela inspeção de pixel.
   imagemDicomAtual = imagemSaida;
 }
 
 
 function criarImagemDicomBrilhoContraste(
   pixels,
-  imagemBase
+  imagemBase,
+  minimoReal,
+  maximoReal
 ) {
   const faixa =
     calcularFaixaArrayBrilhoContraste(
       pixels
     );
+
+  let minimoFaixa = Number(minimoReal);
+  let maximoFaixa = Number(maximoReal);
+
+  if (!Number.isFinite(minimoFaixa)) {
+    minimoFaixa = faixa.minimo;
+  }
+
+  if (!Number.isFinite(maximoFaixa)) {
+    maximoFaixa = faixa.maximo;
+  }
+
+  if (minimoFaixa > maximoFaixa) {
+    const temporario = minimoFaixa;
+    minimoFaixa = maximoFaixa;
+    maximoFaixa = temporario;
+  }
 
   const imagemSaida =
     Object.assign(
@@ -1613,21 +1980,19 @@ function criarImagemDicomBrilhoContraste(
     Date.now();
 
   imagemSaida.minPixelValue =
-    faixa.minimo;
+    minimoFaixa;
 
   imagemSaida.maxPixelValue =
-    faixa.maximo;
+    maximoFaixa;
 
-  /*
-   * Mantemos windowCenter/windowWidth da imagem-base.
-   * Isso é importante para o ajuste continuar visível em tempo real,
-   * sem o Cornerstone renormalizar automaticamente cada resultado.
-   */
   imagemSaida.windowCenter =
-    imagemBase.windowCenter;
+    (minimoFaixa + maximoFaixa) / 2;
 
   imagemSaida.windowWidth =
-    imagemBase.windowWidth;
+    Math.max(
+      1,
+      maximoFaixa - minimoFaixa
+    );
 
   imagemSaida.getPixelData =
     function() {
