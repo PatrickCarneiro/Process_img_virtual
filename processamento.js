@@ -2611,6 +2611,12 @@ async function openFile(item) {
 
     });
 
+    // Prepara a imagem atual para os ajustes de brilho e contraste em tempo real.
+    // A implementacao fica no arquivo brilho_contraste.js.
+    if (typeof prepararBrilhoContrasteParaImagemAtual === "function") {
+      await prepararBrilhoContrasteParaImagemAtual(item);
+    }
+
     if (modoComparativoAtivo) { // Se estiver no modo comparativo, atualiza a imagem comparativa
           await atualizarImagemComparativa();
         }
@@ -2684,6 +2690,12 @@ async function openFile(item) {
     visualizacaoBox.scrollTop = 0;
 
     statusText.innerText = "DICOM carregado: " + item.name;
+
+    // Prepara o DICOM atual para os ajustes de brilho e contraste em tempo real.
+    // A implementacao fica no arquivo brilho_contraste.js.
+    if (typeof prepararBrilhoContrasteParaImagemAtual === "function") {
+      await prepararBrilhoContrasteParaImagemAtual(item);
+    }
 
     if (modoComparativoAtivo) {
       await atualizarImagemComparativa();

@@ -316,6 +316,168 @@
       box-shadow: 0 0 12px rgba(192,132,252,0.65);
     }
 
+    /* DESIGN DOS CONTROLES DE BRILHO E CONTRASTE */
+
+    .controles_brilho_contraste {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .botoes_brilho_contraste {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .botao_ajuste_imagem {
+      min-width: 120px;
+      min-height: 42px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(192,132,252,0.55);
+      background: rgba(192,132,252,0.18);
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .botao_ajuste_imagem .icone_ajuste {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .botao_ajuste_imagem:hover {
+      background: rgba(192,132,252,0.35);
+      transform: translateY(-1px);
+    }
+
+    .botao_ajuste_imagem.ativo {
+      background: rgba(192,132,252,0.55);
+      box-shadow: 0 0 12px rgba(192,132,252,0.45);
+    }
+
+    .painel_ajuste_imagem {
+      display: none;
+      width: min(620px, 100%);
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .painel_ajuste_imagem.ativo {
+      display: block;
+    }
+
+    .painel_ajuste_imagem h4 {
+      color: #c084fc;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .seletor_modo_ajuste {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .opcao_modo_ajuste {
+      padding: 9px 10px;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .opcao_modo_ajuste:hover,
+    .opcao_modo_ajuste.ativo {
+      background: rgba(192,132,252,0.30);
+      border-color: rgba(192,132,252,0.60);
+    }
+
+    .campos_faixa_ajuste {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .campos_faixa_ajuste.ativo {
+      display: grid;
+    }
+
+    .campo_faixa_ajuste label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+      opacity: 0.9;
+    }
+
+    .campo_faixa_ajuste input {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+
+    .controle_arraste_ajuste {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .controle_arraste_ajuste input[type="range"] {
+      width: 100%;
+      cursor: ew-resize;
+      accent-color: #c084fc;
+    }
+
+    .escala_arraste_ajuste {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 11px;
+      opacity: 0.75;
+    }
+
+    .escala_arraste_ajuste span:first-child {
+      text-align: left;
+    }
+
+    .escala_arraste_ajuste span:last-child {
+      text-align: right;
+    }
+
+    .valor_ajuste_tempo_real {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 13px;
+      color: #ffffff;
+    }
+
+    .ajuda_ajuste_tempo_real {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.35;
+      opacity: 0.7;
+      text-align: center;
+    }
+
     /* DESIGN DA INFORMAÇÃO DO PIXEL */
 
     .info_pixel {
@@ -953,6 +1115,201 @@
 
       </div>
 
+      <!-- CONTROLES DE BRILHO E CONTRASTE -->
+
+      <div class="controles_brilho_contraste" id="controlesBrilhoContraste">
+
+        <!-- Ícones para abrir os ajustes em tempo real -->
+        <div class="botoes_brilho_contraste">
+
+          <button
+            class="botao_ajuste_imagem"
+            id="botaoBrilho"
+            onclick="toggleControleBrilho()"
+            title="Ajustar brilho"
+          >
+            <span class="icone_ajuste">☀</span>
+            <span>Brilho</span>
+          </button>
+
+          <button
+            class="botao_ajuste_imagem"
+            id="botaoContraste"
+            onclick="toggleControleContraste()"
+            title="Ajustar contraste"
+          >
+            <span class="icone_ajuste">◐</span>
+            <span>Contraste</span>
+          </button>
+
+        </div>
+
+        <!-- Painel de ajuste do brilho -->
+        <div class="painel_ajuste_imagem" id="painelBrilho">
+
+          <h4>Brilho</h4>
+
+          <div class="seletor_modo_ajuste">
+
+            <button
+              class="opcao_modo_ajuste ativo"
+              id="brilhoTodosPixels"
+              onclick="selecionarModoBrilho('todos')"
+            >
+              Todos os pixels
+            </button>
+
+            <button
+              class="opcao_modo_ajuste"
+              id="brilhoFaixaPixels"
+              onclick="selecionarModoBrilho('faixa')"
+            >
+              Faixa de pixel
+            </button>
+
+          </div>
+
+          <!-- Só aparece quando Faixa de pixel estiver selecionada -->
+          <div class="campos_faixa_ajuste" id="camposFaixaBrilho">
+
+            <div class="campo_faixa_ajuste">
+              <label for="brilhoIntensidadeMinima">Intensidade mínima</label>
+              <input
+                type="number"
+                id="brilhoIntensidadeMinima"
+                step="any"
+                placeholder="Ex: 50"
+                oninput="atualizarFaixaBrilhoTempoReal()"
+              >
+            </div>
+
+            <div class="campo_faixa_ajuste">
+              <label for="brilhoIntensidadeMaxima">Intensidade máxima</label>
+              <input
+                type="number"
+                id="brilhoIntensidadeMaxima"
+                step="any"
+                placeholder="Ex: 180"
+                oninput="atualizarFaixaBrilhoTempoReal()"
+              >
+            </div>
+
+          </div>
+
+          <!-- Arraste para a esquerda ou direita. O JS converte -1..1 em soma proporcional à faixa da imagem. -->
+          <div class="controle_arraste_ajuste">
+            <input
+              type="range"
+              id="sliderBrilho"
+              min="-1"
+              max="1"
+              step="0.01"
+              value="0"
+              oninput="atualizarBrilhoTempoReal(this.value)"
+            >
+
+            <div class="escala_arraste_ajuste">
+              <span>− brilho</span>
+              <span>0</span>
+              <span>+ brilho</span>
+            </div>
+
+            <div class="valor_ajuste_tempo_real" id="valorBrilhoTempoReal">
+              Soma: 0
+            </div>
+          </div>
+
+          <div class="ajuda_ajuste_tempo_real">
+            À direita soma um valor positivo aos pixels selecionados; à esquerda soma um valor negativo.
+            A opção global “Sem contabilizar pixels 0” também será respeitada.
+          </div>
+
+        </div>
+
+        <!-- Painel de ajuste do contraste -->
+        <div class="painel_ajuste_imagem" id="painelContraste">
+
+          <h4>Contraste</h4>
+
+          <div class="seletor_modo_ajuste">
+
+            <button
+              class="opcao_modo_ajuste ativo"
+              id="contrasteTodosPixels"
+              onclick="selecionarModoContraste('todos')"
+            >
+              Todos os pixels
+            </button>
+
+            <button
+              class="opcao_modo_ajuste"
+              id="contrasteFaixaPixels"
+              onclick="selecionarModoContraste('faixa')"
+            >
+              Faixa de pixel
+            </button>
+
+          </div>
+
+          <!-- Só aparece quando Faixa de pixel estiver selecionada -->
+          <div class="campos_faixa_ajuste" id="camposFaixaContraste">
+
+            <div class="campo_faixa_ajuste">
+              <label for="contrasteIntensidadeMinima">Intensidade mínima</label>
+              <input
+                type="number"
+                id="contrasteIntensidadeMinima"
+                step="any"
+                placeholder="Ex: 50"
+                oninput="atualizarFaixaContrasteTempoReal()"
+              >
+            </div>
+
+            <div class="campo_faixa_ajuste">
+              <label for="contrasteIntensidadeMaxima">Intensidade máxima</label>
+              <input
+                type="number"
+                id="contrasteIntensidadeMaxima"
+                step="any"
+                placeholder="Ex: 180"
+                oninput="atualizarFaixaContrasteTempoReal()"
+              >
+            </div>
+
+          </div>
+
+          <!-- Multiplicação direta: esquerda reduz o fator, centro = 1x e direita aumenta o fator. -->
+          <div class="controle_arraste_ajuste">
+            <input
+              type="range"
+              id="sliderContraste"
+              min="0.5"
+              max="2"
+              step="0.01"
+              value="1"
+              oninput="atualizarContrasteTempoReal(this.value)"
+            >
+
+            <div class="escala_arraste_ajuste">
+              <span>0,5×</span>
+              <span>1×</span>
+              <span>2×</span>
+            </div>
+
+            <div class="valor_ajuste_tempo_real" id="valorContrasteTempoReal">
+              Multiplicação: 1,00×
+            </div>
+          </div>
+
+          <div class="ajuda_ajuste_tempo_real">
+            O pixel selecionado será multiplicado pelo fator do controle: valores menores que 1 reduzem e valores maiores que 1 aumentam.
+            A opção global “Sem contabilizar pixels 0” também será respeitada.
+          </div>
+
+        </div>
+
+      </div>
+
       <!-- INFORMAÇÃO DO PIXEL -->
 
       <div class="info_pixel" id="infoPixel">
@@ -1008,6 +1365,7 @@
   <script src="lineares.js"></script>
   <script src="naolineares.js"></script>
   <script src="processamento.js"></script>
+  <script src="brilho_contraste.js"></script>
 
   <!-- INICIALIZAÇÃO DA PÁGINA -->
 
