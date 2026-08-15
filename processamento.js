@@ -945,6 +945,208 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
+  // EQUALIZAÇÃO DE HISTOGRAMA
+
+  if (nome === "Equalização Convencional") {
+
+    parametrosDiv.innerHTML = `
+      <h4>Equalização Convencional</h4>
+
+      <div class="campo_parametro_info">
+        <label>Modo do HISTEQ</label>
+
+        <select
+          id="paramModoHisteq"
+          onchange="atualizarCamposEqualizacaoConvencional()"
+        >
+          <option value="padrao">histeq(I) - padrão</option>
+          <option value="niveis">histeq(I,N) - número de níveis</option>
+          <option value="hgram">histeq(I,HGRAM) - histograma desejado</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          No modo padrão, o MATLAB utiliza N = 64 níveis.
+          Também é possível informar N ou um histograma desejado HGRAM.
+        </div>
+      </div>
+
+      <div
+        class="campo_parametro_info"
+        id="campoNumeroNiveisHisteq"
+        style="display:none;"
+      >
+        <label>N - número de níveis discretos</label>
+
+        <input
+          type="number"
+          id="paramNumeroNiveisHisteq"
+          min="1"
+          step="1"
+          placeholder="Ex: 64"
+        >
+
+        <div class="caixa_info_parametro">
+          Equivalente a histeq(I,N).
+          N deve ser um número inteiro positivo.
+        </div>
+      </div>
+
+      <div
+        class="campo_parametro_info"
+        id="campoHgramHisteq"
+        style="display:none;"
+      >
+        <label>HGRAM - histograma desejado</label>
+
+        <input
+          type="text"
+          id="paramHgramHisteq"
+          placeholder="Ex: [1 1 1 1]"
+        >
+
+        <div class="caixa_info_parametro">
+          Equivalente a histeq(I,HGRAM).
+          Informe um vetor real e não vazio com as contagens desejadas.
+          A implementação fará a normalização de HGRAM como no MATLAB.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Equalização Convencional')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    atualizarCamposEqualizacaoConvencional();
+
+    return;
+  }
+
+  if (nome === "CLAHE") {
+
+    parametrosDiv.innerHTML = `
+      <h4>CLAHE</h4>
+
+      <div class="campo_parametro_info">
+        <label>NumTiles</label>
+
+        <input
+          type="text"
+          id="paramNumTilesClahe"
+          placeholder="Vazio = [8 8]"
+        >
+
+        <div class="caixa_info_parametro">
+          Número de regiões contextuais no formato [M N].
+          M e N devem ser inteiros e pelo menos 2.
+          Padrão do MATLAB: [8 8].
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>ClipLimit</label>
+
+        <input
+          type="number"
+          id="paramClipLimitClahe"
+          min="0"
+          max="1"
+          step="any"
+          placeholder="Vazio = 0.01"
+        >
+
+        <div class="caixa_info_parametro">
+          Limite normalizado de contraste entre 0 e 1.
+          Padrão do MATLAB: 0.01.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>NBins</label>
+
+        <input
+          type="number"
+          id="paramNBinsClahe"
+          min="1"
+          step="1"
+          placeholder="Vazio = 256"
+        >
+
+        <div class="caixa_info_parametro">
+          Número de bins usados na construção do histograma de cada região.
+          Padrão do MATLAB: 256.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Range</label>
+
+        <select id="paramRangeClahe">
+          <option value="full">full</option>
+          <option value="original">original</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          full utiliza a faixa completa da classe da imagem.
+          original limita a saída à faixa [min(I(:)) max(I(:))].
+          Padrão do MATLAB: full.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Distribution</label>
+
+        <select
+          id="paramDistributionClahe"
+          onchange="atualizarCampoAlphaClahe()"
+        >
+          <option value="uniform">uniform</option>
+          <option value="rayleigh">rayleigh</option>
+          <option value="exponential">exponential</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          Distribuição desejada para o histograma de cada região.
+          Padrão do MATLAB: uniform.
+        </div>
+      </div>
+
+      <div
+        class="campo_parametro_info"
+        id="campoAlphaClahe"
+        style="display:none;"
+      >
+        <label>Alpha</label>
+
+        <input
+          type="number"
+          id="paramAlphaClahe"
+          min="0.000001"
+          step="any"
+          placeholder="Vazio = 0.4"
+        >
+
+        <div class="caixa_info_parametro">
+          Parâmetro da distribuição usado com rayleigh ou exponential.
+          Padrão do MATLAB: 0.4.
+        </div>
+      </div>
+
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('CLAHE')"
+      >
+        Aplicar
+      </button>
+    `;
+
+    atualizarCampoAlphaClahe();
+
+    return;
+  }
+
   if (nome.includes("Gaussiano")) {
 
     parametrosDiv.innerHTML = `
@@ -1327,6 +1529,46 @@ function selecionarFerramenta(nome, botaoClicado) {
   `;
 }
 
+function atualizarCamposEqualizacaoConvencional() {
+
+  const seletorModo =
+    document.getElementById("paramModoHisteq");
+
+  const campoNumeroNiveis =
+    document.getElementById("campoNumeroNiveisHisteq");
+
+  const campoHgram =
+    document.getElementById("campoHgramHisteq");
+
+  if (!seletorModo || !campoNumeroNiveis || !campoHgram) {
+    return;
+  }
+
+  campoNumeroNiveis.style.display =
+    seletorModo.value === "niveis" ? "block" : "none";
+
+  campoHgram.style.display =
+    seletorModo.value === "hgram" ? "block" : "none";
+}
+
+function atualizarCampoAlphaClahe() {
+
+  const seletorDistribuicao =
+    document.getElementById("paramDistributionClahe");
+
+  const campoAlpha =
+    document.getElementById("campoAlphaClahe");
+
+  if (!seletorDistribuicao || !campoAlpha) {
+    return;
+  }
+
+  campoAlpha.style.display =
+    seletorDistribuicao.value === "uniform"
+      ? "none"
+      : "block";
+}
+
 function atualizarCampoElementoEstruturanteErosao() {
 
   const seletorFormato = document.getElementById(
@@ -1606,6 +1848,141 @@ async function aplicarFerramenta(nome) {
     await aplicarPipelineAposAdicionarEtapa(
       "Correção gamma aplicada na imagem selecionada.",
       "Correção gamma aplicada em todas as imagens."
+    );
+
+    return;
+  }
+
+  // EQUALIZAÇÃO DE HISTOGRAMA
+
+  if (nome === "Equalização Convencional") {
+
+    const seletorModo =
+      document.getElementById("paramModoHisteq");
+
+    const entradaNumeroNiveis =
+      document.getElementById("paramNumeroNiveisHisteq");
+
+    const entradaHgram =
+      document.getElementById("paramHgramHisteq");
+
+    const modo =
+      seletorModo ? seletorModo.value : "padrao";
+
+    const numeroNiveisTexto =
+      entradaNumeroNiveis
+        ? entradaNumeroNiveis.value.trim()
+        : "";
+
+    const hgramTexto =
+      entradaHgram
+        ? entradaHgram.value.trim()
+        : "";
+
+    const configuracao =
+      interpretarParametrosHisteqEqualizacao(
+        modo,
+        numeroNiveisTexto,
+        hgramTexto
+      );
+
+    if (!configuracao.valido) {
+      alert(configuracao.mensagem);
+      return;
+    }
+
+    configuracao.ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "Equalização Convencional",
+      parametros: {
+        configuracao: configuracao
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "Equalização convencional aplicada na imagem selecionada.",
+      "Equalização convencional aplicada em todas as imagens."
+    );
+
+    return;
+  }
+
+  if (nome === "CLAHE") {
+
+    const entradaNumTiles =
+      document.getElementById("paramNumTilesClahe");
+
+    const entradaClipLimit =
+      document.getElementById("paramClipLimitClahe");
+
+    const entradaNBins =
+      document.getElementById("paramNBinsClahe");
+
+    const seletorRange =
+      document.getElementById("paramRangeClahe");
+
+    const seletorDistribution =
+      document.getElementById("paramDistributionClahe");
+
+    const entradaAlpha =
+      document.getElementById("paramAlphaClahe");
+
+    const numTilesTexto =
+      entradaNumTiles ? entradaNumTiles.value.trim() : "";
+
+    const clipLimitTexto =
+      entradaClipLimit ? entradaClipLimit.value.trim() : "";
+
+    const nBinsTexto =
+      entradaNBins ? entradaNBins.value.trim() : "";
+
+    const range =
+      seletorRange ? seletorRange.value : "full";
+
+    const distribution =
+      seletorDistribution
+        ? seletorDistribution.value
+        : "uniform";
+
+    const alphaTexto =
+      entradaAlpha ? entradaAlpha.value.trim() : "";
+
+    const configuracao =
+      interpretarParametrosClaheEqualizacao(
+        numTilesTexto,
+        clipLimitTexto,
+        nBinsTexto,
+        range,
+        distribution,
+        alphaTexto
+      );
+
+    if (!configuracao.valido) {
+      alert(configuracao.mensagem);
+      return;
+    }
+
+    configuracao.ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
+    const etapa = {
+      id: proximoIdEtapa++,
+      nome: "CLAHE",
+      parametros: {
+        configuracao: configuracao
+      }
+    };
+
+    pipelineFerramentas.push(etapa);
+
+    await aplicarPipelineAposAdicionarEtapa(
+      "CLAHE aplicado na imagem selecionada.",
+      "CLAHE aplicado em todas as imagens."
     );
 
     return;
@@ -2206,6 +2583,51 @@ function desenharFluxograma() {
       textoParametros = `
         Operação: imadjust com gamma<br>
         Gamma: ${configuracao.gamma}<br>
+        Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+
+    if (etapa.nome === "Equalização Convencional") {
+
+      const configuracao =
+        etapa.parametros.configuracao;
+
+      let operacaoHisteq = "histeq(I)";
+      let parametrosHisteq =
+        "N: 64 (padrão MATLAB)<br>";
+
+      if (configuracao.modo === "niveis") {
+        operacaoHisteq = "histeq(I,N)";
+        parametrosHisteq =
+          `N: ${configuracao.numeroNiveis}<br>`;
+      }
+
+      if (configuracao.modo === "hgram") {
+        operacaoHisteq = "histeq(I,HGRAM)";
+        parametrosHisteq =
+          `HGRAM: [${configuracao.hgram.join(" ")}]<br>`;
+      }
+
+      textoParametros = `
+        Operação: ${operacaoHisteq}<br>
+        ${parametrosHisteq}
+        Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
+      `;
+    }
+
+    if (etapa.nome === "CLAHE") {
+
+      const configuracao =
+        etapa.parametros.configuracao;
+
+      textoParametros = `
+        Operação: adapthisteq<br>
+        NumTiles: [${configuracao.numTiles[0]} ${configuracao.numTiles[1]}]<br>
+        ClipLimit: ${configuracao.clipLimit}<br>
+        NBins: ${configuracao.numBins}<br>
+        Range: ${configuracao.range}<br>
+        Distribution: ${configuracao.distribution}<br>
+        ${configuracao.distribution === "uniform" ? "" : `Alpha: ${configuracao.alpha}<br>`}
         Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
       `;
     }
@@ -3280,6 +3702,26 @@ async function processarImagemNormalPeloPipeline(item) {
         );
     }
 
+    if (etapa.nome === "Equalização Convencional") {
+
+      canvasAtual =
+        await aplicarHisteqEmCanvas(
+          canvasAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "CLAHE") {
+
+      canvasAtual =
+        await aplicarClaheEmCanvas(
+          canvasAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
     if (etapa.nome === "Erosão") {
       canvasAtual =
         await aplicarErosaoEmCanvas(
@@ -3510,6 +3952,26 @@ async function processarDicomPeloPipeline(item) {
 
       imagemAtual =
         await aplicarGammaEmDicom(
+          imagemAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "Equalização Convencional") {
+
+      imagemAtual =
+        await aplicarHisteqEmDicom(
+          imagemAtual,
+          etapa.parametros.configuracao,
+          atualizarBarraProcessamento
+        );
+    }
+
+    if (etapa.nome === "CLAHE") {
+
+      imagemAtual =
+        await aplicarClaheEmDicom(
           imagemAtual,
           etapa.parametros.configuracao,
           atualizarBarraProcessamento

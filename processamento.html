@@ -912,6 +912,37 @@
 
         </div>
 
+        <!-- Subcategoria de equalização -->
+        <div
+          class="subcategoria-titulo"
+          onclick="toggleCategoria('equalizacao')"
+        >
+          Equalização
+        </div>
+
+        <div
+          class="subcategoria-conteudo"
+          id="equalizacao"
+        >
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaEqualizacaoConvencional"
+            onclick="selecionarFerramenta('Equalização Convencional', this)"
+          >
+            Convencional
+          </div>
+
+          <div
+            class="ferramenta"
+            id="botaoFerramentaClahe"
+            onclick="selecionarFerramenta('CLAHE', this)"
+          >
+            CLAHE
+          </div>
+
+        </div>
+
       </div>
 
       <!-- Categoria de operações morfológicas -->
@@ -1329,6 +1360,7 @@
   <script src="cinza.js"></script>
   <script src="lineares.js"></script>
   <script src="naolineares.js"></script>
+  <script src="Equalização.js"></script>
   <script src="processamento.js"></script>
   <script src="brilho_contraste.js"></script>
 
