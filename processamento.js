@@ -3008,7 +3008,7 @@ function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 // Fecha a parte da função zoom --------------------------------------------------------
 
 // Funções da mãozinha para arrastar a imagem ----------------------------------------------------------------
-// Atualiza o tamanho real da imagem exibida
+// Atxualiza o tamanho real da imagem exibida
 function atualizarTamanhoImagemAtual() {
 
   const larguraFinal = larguraOriginalAtual * escalaBaseAtual * zoomAtual;
