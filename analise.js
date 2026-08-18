@@ -10,6 +10,7 @@ let analiseCarregada = false;
 let dadosOriginaisAnaliseAtual = {
   tipo: null,
   imagemRGB: false,
+  classeHistograma: "uint8", // Classe usada para reproduzir a lógica do imhist do MATLAB
   cinza: [],
   media: [],
   r: [],
@@ -226,10 +227,12 @@ function criarControleIgnorarPixelZero() {
 }
 
 
-function criarHistogramaComFiltroZero(valores) {
+function criarHistogramaComFiltroZero(valores, classeHistograma) {
+
+  const classe = classeHistograma || "uint8";
 
   if (!ignorarPixelZeroAnalise) {
-    return criarHistograma(valores);
+    return criarHistograma(valores, classe);
   }
 
   const valoresSemZero = [];
@@ -244,7 +247,7 @@ function criarHistogramaComFiltroZero(valores) {
 
   }
 
-  return criarHistograma(valoresSemZero);
+  return criarHistograma(valoresSemZero, classe);
 
 }
 
@@ -253,21 +256,26 @@ function recalcularAnaliseComFiltroZero() {
 
   if (!dadosOriginaisAnaliseAtual || !dadosOriginaisAnaliseAtual.tipo) return;
 
+  const classeHistograma = dadosOriginaisAnaliseAtual.classeHistograma || "uint8";
+
   if (dadosOriginaisAnaliseAtual.tipo === "normal") {
 
     histogramasImagemAtual = {
-      cinza: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.cinza),
-      media: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.media),
-      r: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.r),
-      g: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.g),
-      b: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.b)
+      cinza: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.cinza, classeHistograma),
+      media: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.media, classeHistograma),
+      r: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.r, classeHistograma),
+      g: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.g, classeHistograma),
+      b: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.b, classeHistograma)
     };
 
   }
 
   if (dadosOriginaisAnaliseAtual.tipo === "dicom") {
 
-    const histDicom = criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.cinza);
+    const histDicom = criarHistogramaComFiltroZero(
+      dadosOriginaisAnaliseAtual.cinza,
+      classeHistograma
+    );
 
     histogramasImagemAtual = {
       cinza: histDicom,
@@ -335,9 +343,15 @@ function gerarAnaliseImagemNormal(img, arquivo) {
 
   }
 
+  // Imagens comuns lidas pelo canvas chegam como 8 bits por canal.
+  // Portanto, o histograma segue o comportamento do imhist para uint8:
+  // 256 bins distribuídos entre 0 e 255.
+  const classeHistograma = "uint8";
+
   dadosOriginaisAnaliseAtual = {
     tipo: "normal",
     imagemRGB: imagemRGB,
+    classeHistograma: classeHistograma,
     cinza: valoresMedia,
     media: valoresMedia,
     r: valoresR,
@@ -346,11 +360,11 @@ function gerarAnaliseImagemNormal(img, arquivo) {
   };
 
   histogramasImagemAtual = {
-    cinza: criarHistogramaComFiltroZero(valoresMedia),
-    media: criarHistogramaComFiltroZero(valoresMedia),
-    r: criarHistogramaComFiltroZero(valoresR),
-    g: criarHistogramaComFiltroZero(valoresG),
-    b: criarHistogramaComFiltroZero(valoresB)
+    cinza: criarHistogramaComFiltroZero(valoresMedia, classeHistograma),
+    media: criarHistogramaComFiltroZero(valoresMedia, classeHistograma),
+    r: criarHistogramaComFiltroZero(valoresR, classeHistograma),
+    g: criarHistogramaComFiltroZero(valoresG, classeHistograma),
+    b: criarHistogramaComFiltroZero(valoresB, classeHistograma)
   };
 
   const botoesRGB = document.getElementById("botoesCanaisRGB"); // Área dos botões RGB
@@ -387,7 +401,8 @@ function gerarAnaliseDicom(image) {
 
   if (!pixels || pixels.length === 0) return;
 
-  const tipoImagem = identificarTipoPelosPixels(pixels); // Identifica uint8, uint12, uint16 etc.
+  const tipoImagem = identificarTipoPelosPixels(pixels); // Identifica a classe dos pixels
+  const classeHistograma = identificarClasseImhist(pixels); // Classe usada para definir faixa e bins como no imhist
 
   atualizarTipoImagemAtual(
     "DICOM - " + tipoImagem,
@@ -404,6 +419,7 @@ function gerarAnaliseDicom(image) {
   dadosOriginaisAnaliseAtual = {
     tipo: "dicom",
     imagemRGB: false,
+    classeHistograma: classeHistograma,
     cinza: valores,
     media: [],
     r: [],
@@ -411,7 +427,7 @@ function gerarAnaliseDicom(image) {
     b: []
   };
 
-  const histDicom = criarHistogramaComFiltroZero(valores);
+  const histDicom = criarHistogramaComFiltroZero(valores, classeHistograma);
 
   histogramasImagemAtual = {
     cinza: histDicom,
@@ -436,31 +452,117 @@ function gerarAnaliseDicom(image) {
 
 // FUNÇÃO PARA CRIAR HISTOGRAMA
 
-function criarHistograma(valores) {
+function obterConfiguracaoImhist(classeHistograma) {
+
+  const classe = String(classeHistograma || "uint8").toLowerCase();
+
+  if (classe === "logical") {
+    return {
+      classe: "logical",
+      numeroBins: 2,
+      minimoClasse: 0,
+      maximoClasse: 1
+    };
+  }
+
+  if (classe === "int8") {
+    return {
+      classe: "int8",
+      numeroBins: 256,
+      minimoClasse: -128,
+      maximoClasse: 127
+    };
+  }
+
+  if (classe === "uint16") {
+    return {
+      classe: "uint16",
+      numeroBins: 256,
+      minimoClasse: 0,
+      maximoClasse: 65535
+    };
+  }
+
+  if (classe === "int16") {
+    return {
+      classe: "int16",
+      numeroBins: 256,
+      minimoClasse: -32768,
+      maximoClasse: 32767
+    };
+  }
+
+  if (classe === "uint32") {
+    return {
+      classe: "uint32",
+      numeroBins: 256,
+      minimoClasse: 0,
+      maximoClasse: 4294967295
+    };
+  }
+
+  if (classe === "int32") {
+    return {
+      classe: "int32",
+      numeroBins: 256,
+      minimoClasse: -2147483648,
+      maximoClasse: 2147483647
+    };
+  }
+
+  if (classe === "single" || classe === "double" || classe === "float32" || classe === "float64") {
+    return {
+      classe: classe === "single" || classe === "float32" ? "single" : "double",
+      numeroBins: 256,
+      minimoClasse: 0,
+      maximoClasse: 1
+    };
+  }
+
+  // Padrão das imagens comuns exibidas no canvas.
+  return {
+    classe: "uint8",
+    numeroBins: 256,
+    minimoClasse: 0,
+    maximoClasse: 255
+  };
+}
+
+
+function criarHistograma(valores, classeHistograma) {
+
+  const configuracao = obterConfiguracaoImhist(classeHistograma);
 
   const valoresValidos = [];
-
   let soma = 0;
   let min = Infinity;
   let max = -Infinity;
-  let temDecimal = false;
+
+  // A moda continua sendo calculada a partir dos valores reais da imagem,
+  // e não a partir do centro do bin. Assim, o parâmetro mostrado na interface
+  // continua representando o valor de pixel mais frequente.
+  const frequenciasValores = new Map();
+  let moda = NaN;
+  let maiorFrequenciaModa = 0;
 
   for (let i = 0; i < valores.length; i++) {
 
     const valor = Number(valores[i]);
 
-    if (Number.isFinite(valor)) {
+    if (!Number.isFinite(valor)) continue;
 
-      valoresValidos.push(valor);
-      soma += valor;
+    valoresValidos.push(valor);
+    soma += valor;
 
-      if (valor < min) min = valor;
-      if (valor > max) max = valor;
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
 
-      if (!Number.isInteger(valor)) {
-        temDecimal = true;
-      }
+    const frequencia = (frequenciasValores.get(valor) || 0) + 1;
+    frequenciasValores.set(valor, frequencia);
 
+    if (frequencia > maiorFrequenciaModa) {
+      maiorFrequenciaModa = frequencia;
+      moda = valor;
     }
 
   }
@@ -470,188 +572,86 @@ function criarHistograma(valores) {
     return {
       contagens: [],
       bordas: [],
+      centros: [],
       min: 0,
       max: 0,
       soma: 0,
       total: 0,
       moda: NaN,
-      tipo: "vazio"
+      tipo: "vazio",
+      classe: configuracao.classe,
+      numeroBins: configuracao.numeroBins
     };
 
   }
 
-  if (min === max) {
+  const numeroBins = configuracao.numeroBins;
+  const minimoClasse = configuracao.minimoClasse;
+  const maximoClasse = configuracao.maximoClasse;
 
-    return {
-      contagens: [valoresValidos.length],
-      bordas: [min - 0.5, max + 0.5],
-      min: min,
-      max: max,
-      soma: soma,
-      total: valoresValidos.length,
-      moda: min,
-      tipo: "unico"
-    };
+  const contagens = new Array(numeroBins).fill(0);
+  const centros = new Array(numeroBins);
+  const bordas = new Array(numeroBins + 1);
 
+  // No imhist, os centros dos bins são igualmente espaçados dentro da faixa
+  // completa da classe. Para uint8, por exemplo, são 0,1,2,...,255.
+  const passo =
+    numeroBins > 1
+      ? (maximoClasse - minimoClasse) / (numeroBins - 1)
+      : 1;
+
+  for (let i = 0; i < numeroBins; i++) {
+    centros[i] = minimoClasse + i * passo;
   }
 
-  // =====================================================
-  // HISTOGRAMA ESTILO MATLAB PARA DADOS INTEIROS
-  // Equivalente visual ao histogram(X,'BinMethod','integers')
-  // Cada valor inteiro recebe uma barra.
-  // Exemplo: 5, 6, 7, ..., 1500, 2000 etc.
-  // =====================================================
+  // As bordas ficam a meio passo entre dois centros consecutivos.
+  // Ex.: uint8 -> -0.5, 0.5, 1.5, ..., 255.5.
+  bordas[0] = centros[0] - passo / 2;
 
-  const limiteMaximoBins = 65536;
-
-  let contagens = [];
-  let bordas = [];
-  let moda = NaN;
-
-  if (!temDecimal) {
-
-    const minInt = Math.floor(min);
-    const maxInt = Math.ceil(max);
-
-    const quantidadeBinsNecessaria = maxInt - minInt + 1;
-
-    // Caso normal: uma barra para cada intensidade inteira
-    if (quantidadeBinsNecessaria <= limiteMaximoBins) {
-
-      contagens = new Array(quantidadeBinsNecessaria).fill(0);
-      bordas = new Array(quantidadeBinsNecessaria + 1);
-
-      // MATLAB no modo integers usa bordas no meio dos inteiros:
-      // valor 5 fica entre 4.5 e 5.5
-      for (let i = 0; i <= quantidadeBinsNecessaria; i++) {
-        bordas[i] = minInt + i;
-      }
-      for (let i = 0; i < valoresValidos.length; i++) {
-        const indice = valoresValidos[i] - minInt;
-
-        if (indice >= 0 && indice < contagens.length) {
-          contagens[indice]++;
-        }
-      }
-
-      let indiceModa = 0;
-
-      for (let i = 1; i < contagens.length; i++) {
-        if (contagens[i] > contagens[indiceModa]) {
-          indiceModa = i;
-        }
-      }
-
-      moda = minInt + indiceModa;
-
-      return {
-        contagens: contagens,
-        bordas: bordas,
-        min: min,
-        max: max,
-        soma: soma,
-        total: valoresValidos.length,
-        moda: moda,
-        tipo: "inteiros"
-      };
-
-    }
-
-    // Caso a faixa seja muito grande: limita em até 65536 bins,
-    // parecido com a proteção do MATLAB
-    const larguraBin = Math.ceil(quantidadeBinsNecessaria / limiteMaximoBins);
-    const numBins = Math.ceil(quantidadeBinsNecessaria / larguraBin);
-
-    contagens = new Array(numBins).fill(0);
-    bordas = new Array(numBins + 1);
-
-    for (let i = 0; i <= numBins; i++) {
-      bordas[i] = minInt + i * larguraBin;
-    }
-
-    for (let i = 0; i < valoresValidos.length; i++) {
-
-      let indice = Math.floor((valoresValidos[i] - minInt) / larguraBin);
-
-      if (indice < 0) indice = 0;
-      if (indice >= numBins) indice = numBins - 1;
-
-      contagens[indice]++;
-
-    }
-
-    let indiceModa = 0;
-
-    for (let i = 1; i < contagens.length; i++) {
-      if (contagens[i] > contagens[indiceModa]) {
-        indiceModa = i;
-      }
-    }
-
-    moda = Math.round((bordas[indiceModa] + bordas[indiceModa + 1]) / 2);
-
-    return {
-      contagens: contagens,
-      bordas: bordas,
-      min: min,
-      max: max,
-      soma: soma,
-      total: valoresValidos.length,
-      moda: moda,
-      tipo: "inteiros_agrupado"
-    };
-
+  for (let i = 1; i < numeroBins; i++) {
+    bordas[i] = (centros[i - 1] + centros[i]) / 2;
   }
 
-  // =====================================================
-  // CASO TENHA DECIMAIS
-  // Exemplo: média RGB pode gerar valores como 120.33
-  // Aqui usa binagem automática simples, parecida com histograma contínuo.
-  // =====================================================
-  const minBin = Math.floor(min);
-  const maxBin = Math.ceil(max);
-
-  const numBins = maxBin - minBin;
-
-  contagens = new Array(numBins).fill(0);
-  bordas = new Array(numBins + 1);
-
-  for (let i = 0; i <= numBins; i++) {
-    bordas[i] = minBin + i;
-  }
+  bordas[numeroBins] = centros[numeroBins - 1] + passo / 2;
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    let indice = Math.floor(valoresValidos[i]) - minBin;
+    const valor = valoresValidos[i];
+    let indice;
 
+    if (configuracao.classe === "logical") {
+      indice = valor === 0 ? 0 : 1;
+    } else {
+      indice = Math.round((valor - minimoClasse) / passo);
+    }
+
+    // Mantém valores fora da faixa no primeiro/último bin,
+    // comportamento compatível com imagens de intensidade escaladas.
     if (indice < 0) indice = 0;
-    if (indice >= numBins) indice = numBins - 1;
+    if (indice >= numeroBins) indice = numeroBins - 1;
 
     contagens[indice]++;
 
   }
 
-  let indiceModa = 0;
-
-  for (let i = 1; i < contagens.length; i++) {
-    if (contagens[i] > contagens[indiceModa]) {
-      indiceModa = i;
-    }
-  }
-
-  moda = minBin + indiceModa;
-
   return {
     contagens: contagens,
     bordas: bordas,
+    centros: centros,
     min: min,
     max: max,
     soma: soma,
     total: valoresValidos.length,
     moda: moda,
-    tipo: "continuo"
+    tipo: "imhist",
+    classe: configuracao.classe,
+    numeroBins: numeroBins,
+    minimoClasse: minimoClasse,
+    maximoClasse: maximoClasse,
+    passo: passo
   };
 }
+
 
 function formatarNumeroEixoX(valor) {
 
@@ -659,7 +659,21 @@ function formatarNumeroEixoX(valor) {
     return "---";
   }
 
-  return Math.floor(valor).toString();
+  if (Number.isInteger(valor)) {
+    return valor.toString();
+  }
+
+  const absoluto = Math.abs(valor);
+
+  if (absoluto > 0 && absoluto < 2) {
+    return valor.toFixed(2);
+  }
+
+  if (absoluto >= 1000000) {
+    return valor.toExponential(2);
+  }
+
+  return valor.toFixed(1);
 
 }
 
@@ -731,7 +745,7 @@ function desenharHistograma(ctx, canvas) {
   const margemEsquerda = 65;
   const margemDireita = 25;
   const margemSuperior = 25;
-  const margemInferior = 55;
+  const margemInferior = 68;
 
   const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
   const alturaGrafico = canvas.height - margemSuperior - margemInferior;
@@ -745,17 +759,16 @@ function desenharHistograma(ctx, canvas) {
 
   if (histVisivel.length === 0) return;
 
-  let maior = 1;
+  // O imhist define o limite superior do eixo Y a partir de
+  // 2,5 vezes o RMS das contagens, em vez de simplesmente usar o pico máximo.
+  let somaQuadrados = 0;
 
   for (let i = 0; i < histVisivel.length; i++) {
-
-    if (histVisivel[i] > maior) {
-      maior = histVisivel[i];
-    }
-
+    somaQuadrados += histVisivel[i] * histVisivel[i];
   }
 
-  const larguraBarra = larguraGrafico / histVisivel.length;
+  const rmsContagens = Math.sqrt(somaQuadrados / histVisivel.length);
+  const maior = Math.max(1, 2.5 * rmsContagens);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -773,19 +786,46 @@ function desenharHistograma(ctx, canvas) {
     alturaGrafico
   );
 
+  // O imhist do MATLAB desenha o histograma no estilo stem:
+  // uma linha vertical por bin, sem marcador.
   definirCorBarrasHistograma(ctx);
+  ctx.lineWidth = 1;
 
-  for (let i = 0; i < histVisivel.length; i++) {
+  const quantidadeVisivel = histVisivel.length;
+
+  for (let i = 0; i < quantidadeVisivel; i++) {
 
     const valor = histVisivel[i];
-    const altura = (valor / maior) * alturaGrafico;
+    const altura = Math.min(valor / maior, 1) * alturaGrafico;
 
-    const x = margemEsquerda + i * larguraBarra;
-    const y = margemSuperior + alturaGrafico - altura;
+    let x;
 
-    ctx.fillRect(x, y, Math.max(larguraBarra - 1, 1), altura);
+    if (quantidadeVisivel === 1) {
+      x = margemEsquerda + larguraGrafico / 2;
+    } else {
+      x = margemEsquerda + (i / (quantidadeVisivel - 1)) * larguraGrafico;
+    }
+
+    const yBase = margemSuperior + alturaGrafico;
+    const yTopo = yBase - altura;
+
+    ctx.beginPath();
+    ctx.moveTo(x, yBase);
+    ctx.lineTo(x, yTopo);
+    ctx.stroke();
 
   }
+
+  desenharFaixaIntensidadeHistograma(
+    ctx,
+    canvas,
+    margemEsquerda,
+    margemDireita,
+    margemSuperior,
+    margemInferior,
+    larguraGrafico,
+    alturaGrafico
+  );
 
   desenharEixosHistograma(
     ctx,
@@ -804,6 +844,7 @@ function desenharHistograma(ctx, canvas) {
   ativarInteracaoHistograma(canvas);
 
 }
+
 
 function desenharGradeHistograma(
   ctx,
@@ -846,14 +887,80 @@ function desenharGradeHistograma(
 function definirCorBarrasHistograma(ctx) {
 
   if (canalHistogramaAtual === "r") {
-    ctx.fillStyle = "rgba(255,80,80,0.85)";
+    ctx.strokeStyle = "rgba(255,80,80,0.92)";
+    ctx.fillStyle = "rgba(255,80,80,0.92)";
   } else if (canalHistogramaAtual === "g") {
-    ctx.fillStyle = "rgba(80,255,140,0.85)";
+    ctx.strokeStyle = "rgba(80,255,140,0.92)";
+    ctx.fillStyle = "rgba(80,255,140,0.92)";
   } else if (canalHistogramaAtual === "b") {
-    ctx.fillStyle = "rgba(80,150,255,0.85)";
+    ctx.strokeStyle = "rgba(80,150,255,0.92)";
+    ctx.fillStyle = "rgba(80,150,255,0.92)";
   } else {
-    ctx.fillStyle = "rgba(192,132,252,0.85)";
+    ctx.strokeStyle = "rgba(220,220,220,0.95)";
+    ctx.fillStyle = "rgba(220,220,220,0.95)";
   }
+
+}
+
+
+function desenharFaixaIntensidadeHistograma(
+  ctx,
+  canvas,
+  margemEsquerda,
+  margemDireita,
+  margemSuperior,
+  margemInferior,
+  larguraGrafico,
+  alturaGrafico
+) {
+
+  const yInicio = margemSuperior + alturaGrafico + 7;
+  const alturaFaixa = 10;
+
+  let gradiente = ctx.createLinearGradient(
+    margemEsquerda,
+    0,
+    canvas.width - margemDireita,
+    0
+  );
+
+  const maximoIndice = Math.max(histogramaAtual.length - 1, 1);
+  const fracaoInicio = faixaInicioHistograma / maximoIndice;
+  const fracaoFim = faixaFimHistograma / maximoIndice;
+
+  const nivelInicio = Math.max(0, Math.min(255, Math.round(fracaoInicio * 255)));
+  const nivelFim = Math.max(0, Math.min(255, Math.round(fracaoFim * 255)));
+
+  if (canalHistogramaAtual === "r") {
+    gradiente.addColorStop(0, `rgb(${nivelInicio},0,0)`);
+    gradiente.addColorStop(1, `rgb(${nivelFim},0,0)`);
+  } else if (canalHistogramaAtual === "g") {
+    gradiente.addColorStop(0, `rgb(0,${nivelInicio},0)`);
+    gradiente.addColorStop(1, `rgb(0,${nivelFim},0)`);
+  } else if (canalHistogramaAtual === "b") {
+    gradiente.addColorStop(0, `rgb(0,0,${nivelInicio})`);
+    gradiente.addColorStop(1, `rgb(0,0,${nivelFim})`);
+  } else {
+    gradiente.addColorStop(0, `rgb(${nivelInicio},${nivelInicio},${nivelInicio})`);
+    gradiente.addColorStop(1, `rgb(${nivelFim},${nivelFim},${nivelFim})`);
+  }
+
+  ctx.fillStyle = gradiente;
+  ctx.fillRect(
+    margemEsquerda,
+    yInicio,
+    larguraGrafico,
+    alturaFaixa
+  );
+
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(
+    margemEsquerda,
+    yInicio,
+    larguraGrafico,
+    alturaFaixa
+  );
 
 }
 
@@ -1015,31 +1122,13 @@ function definirFaixaAutomaticaHistograma() {
 
   }
 
-  let inicio = 0;
-  let fim = histogramaAtual.length - 1;
-
-  for (let i = 0; i < histogramaAtual.length; i++) {
-
-    if (histogramaAtual[i] > 0) {
-      inicio = i;
-      break;
-    }
-
-  }
-
-  for (let i = histogramaAtual.length - 1; i >= 0; i--) {
-
-    if (histogramaAtual[i] > 0) {
-      fim = i;
-      break;
-    }
-
-  }
-
-  faixaInicioHistograma = inicio;
-  faixaFimHistograma = fim;
+  // O imhist apresenta inicialmente a faixa completa definida pela classe
+  // da imagem. O usuário continua podendo restringir a visualização pelas alças.
+  faixaInicioHistograma = 0;
+  faixaFimHistograma = histogramaAtual.length - 1;
 
 }
+
 
 function configurarSeletorFaixaHistograma() {
 
@@ -1197,9 +1286,11 @@ function mostrarTooltipHistograma(event, canvas) {
   const quantidade = histogramaAtual[indice] || 0;
   const inicioBin = bordasHistogramaAtual[indice];
   const fimBin = bordasHistogramaAtual[indice + 1];
+  const centroBin = obterCentroDoBin(indice);
 
   tooltip.innerHTML = `
-    <strong>Faixa:</strong> ${formatarFaixaDecimalBin(inicioBin, fimBin)}<br>
+    <strong>Intensidade:</strong> ${formatarNumero(centroBin)}<br>
+    <strong>Intervalo do bin:</strong> ${formatarFaixaDecimalBin(inicioBin, fimBin)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
@@ -1358,10 +1449,114 @@ async function atualizarTipoImagemNormal(img, arquivo) {
 
 }
 
+function identificarClasseImhist(pixels) {
+
+  if (!pixels || pixels.length === 0) {
+    return "uint8";
+  }
+
+  if (pixels instanceof Uint8ClampedArray || pixels instanceof Uint8Array) {
+    return "uint8";
+  }
+
+  if (pixels instanceof Int8Array) {
+    return "int8";
+  }
+
+  if (pixels instanceof Uint16Array) {
+    return "uint16";
+  }
+
+  if (pixels instanceof Int16Array) {
+    return "int16";
+  }
+
+  if (pixels instanceof Uint32Array) {
+    return "uint32";
+  }
+
+  if (pixels instanceof Int32Array) {
+    return "int32";
+  }
+
+  if (pixels instanceof Float32Array) {
+    return "single";
+  }
+
+  if (pixels instanceof Float64Array) {
+    return "double";
+  }
+
+  // Fallback para arrays JavaScript comuns.
+  let min = Infinity;
+  let max = -Infinity;
+  let temDecimal = false;
+
+  for (let i = 0; i < pixels.length; i++) {
+
+    const valor = Number(pixels[i]);
+
+    if (!Number.isFinite(valor)) continue;
+
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
+
+    if (!Number.isInteger(valor)) {
+      temDecimal = true;
+    }
+
+  }
+
+  if (temDecimal) return "double";
+  if (min >= 0 && max <= 255) return "uint8";
+  if (min >= -128 && max <= 127) return "int8";
+  if (min >= 0 && max <= 65535) return "uint16";
+  if (min >= -32768 && max <= 32767) return "int16";
+  if (min >= 0 && max <= 4294967295) return "uint32";
+  if (min >= -2147483648 && max <= 2147483647) return "int32";
+
+  return "double";
+}
+
+
 function identificarTipoPelosPixels(pixels) {
 
   if (!pixels || pixels.length === 0) {
     return "vazio";
+  }
+
+  // Primeiro respeita a classe real do TypedArray, como o MATLAB faz
+  // quando decide a faixa do imhist pela classe da imagem.
+  if (pixels instanceof Uint8Array || pixels instanceof Uint8ClampedArray) {
+    return "uint8";
+  }
+
+  if (pixels instanceof Int8Array) {
+    return "int8";
+  }
+
+  if (pixels instanceof Uint16Array) {
+    return "uint16";
+  }
+
+  if (pixels instanceof Int16Array) {
+    return "int16";
+  }
+
+  if (pixels instanceof Uint32Array) {
+    return "uint32";
+  }
+
+  if (pixels instanceof Int32Array) {
+    return "int32";
+  }
+
+  if (pixels instanceof Float32Array) {
+    return "single";
+  }
+
+  if (pixels instanceof Float64Array) {
+    return "double";
   }
 
   let min = Infinity;
@@ -1391,18 +1586,6 @@ function identificarTipoPelosPixels(pixels) {
     return "logical";
   }
 
-  if (pixels instanceof Uint8Array || pixels instanceof Uint8ClampedArray) {
-    return "uint8";
-  }
-
-  if (pixels instanceof Uint16Array) {
-    return "uint16";
-  }
-
-  if (pixels instanceof Float32Array || pixels instanceof Float64Array) {
-    return "double";
-  }
-
   if (temDecimal) {
     return "double";
   }
@@ -1411,12 +1594,24 @@ function identificarTipoPelosPixels(pixels) {
     return "uint8";
   }
 
+  if (min >= -128 && max <= 127) {
+    return "int8";
+  }
+
   if (min >= 0 && max <= 65535) {
     return "uint16";
   }
 
   if (min >= -32768 && max <= 32767) {
     return "int16";
+  }
+
+  if (min >= 0 && max <= 4294967295) {
+    return "uint32";
+  }
+
+  if (min >= -2147483648 && max <= 2147483647) {
+    return "int32";
   }
 
   return "double";
@@ -1619,10 +1814,27 @@ function formatarFaixaDecimalBin(inicioBin, fimBin) {
     return "---";
   }
 
-  const inicio = Math.floor(inicioBin);
-  const fim = fimBin - 0.01;
+  function formatarLimite(valor) {
 
-  return inicio + " até " + fim.toFixed(2);
+    if (Number.isInteger(valor)) {
+      return valor.toString();
+    }
+
+    const absoluto = Math.abs(valor);
+
+    if (absoluto > 0 && absoluto < 2) {
+      return valor.toFixed(3);
+    }
+
+    if (absoluto >= 1000000) {
+      return valor.toExponential(3);
+    }
+
+    return valor.toFixed(2);
+  }
+
+  // Intervalo meio-aberto, seguindo a definição do imhist: [início, fim)
+  return "[" + formatarLimite(inicioBin) + ", " + formatarLimite(fimBin) + ")";
 
 }
 
