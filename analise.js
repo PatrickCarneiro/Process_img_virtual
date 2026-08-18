@@ -745,7 +745,7 @@ function desenharHistograma(ctx, canvas) {
   const margemEsquerda = 65;
   const margemDireita = 25;
   const margemSuperior = 25;
-  const margemInferior = 68;
+  const margemInferior = 55;
 
   const larguraGrafico = canvas.width - margemEsquerda - margemDireita;
   const alturaGrafico = canvas.height - margemSuperior - margemInferior;
@@ -815,17 +815,6 @@ function desenharHistograma(ctx, canvas) {
     ctx.stroke();
 
   }
-
-  desenharFaixaIntensidadeHistograma(
-    ctx,
-    canvas,
-    margemEsquerda,
-    margemDireita,
-    margemSuperior,
-    margemInferior,
-    larguraGrafico,
-    alturaGrafico
-  );
 
   desenharEixosHistograma(
     ctx,
@@ -902,67 +891,6 @@ function definirCorBarrasHistograma(ctx) {
 
 }
 
-
-function desenharFaixaIntensidadeHistograma(
-  ctx,
-  canvas,
-  margemEsquerda,
-  margemDireita,
-  margemSuperior,
-  margemInferior,
-  larguraGrafico,
-  alturaGrafico
-) {
-
-  const yInicio = margemSuperior + alturaGrafico + 7;
-  const alturaFaixa = 10;
-
-  let gradiente = ctx.createLinearGradient(
-    margemEsquerda,
-    0,
-    canvas.width - margemDireita,
-    0
-  );
-
-  const maximoIndice = Math.max(histogramaAtual.length - 1, 1);
-  const fracaoInicio = faixaInicioHistograma / maximoIndice;
-  const fracaoFim = faixaFimHistograma / maximoIndice;
-
-  const nivelInicio = Math.max(0, Math.min(255, Math.round(fracaoInicio * 255)));
-  const nivelFim = Math.max(0, Math.min(255, Math.round(fracaoFim * 255)));
-
-  if (canalHistogramaAtual === "r") {
-    gradiente.addColorStop(0, `rgb(${nivelInicio},0,0)`);
-    gradiente.addColorStop(1, `rgb(${nivelFim},0,0)`);
-  } else if (canalHistogramaAtual === "g") {
-    gradiente.addColorStop(0, `rgb(0,${nivelInicio},0)`);
-    gradiente.addColorStop(1, `rgb(0,${nivelFim},0)`);
-  } else if (canalHistogramaAtual === "b") {
-    gradiente.addColorStop(0, `rgb(0,0,${nivelInicio})`);
-    gradiente.addColorStop(1, `rgb(0,0,${nivelFim})`);
-  } else {
-    gradiente.addColorStop(0, `rgb(${nivelInicio},${nivelInicio},${nivelInicio})`);
-    gradiente.addColorStop(1, `rgb(${nivelFim},${nivelFim},${nivelFim})`);
-  }
-
-  ctx.fillStyle = gradiente;
-  ctx.fillRect(
-    margemEsquerda,
-    yInicio,
-    larguraGrafico,
-    alturaFaixa
-  );
-
-  ctx.strokeStyle = "rgba(255,255,255,0.55)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(
-    margemEsquerda,
-    yInicio,
-    larguraGrafico,
-    alturaFaixa
-  );
-
-}
 
 function desenharEixosHistograma(
   ctx,
@@ -1284,13 +1212,10 @@ function mostrarTooltipHistograma(event, canvas) {
   }
 
   const quantidade = histogramaAtual[indice] || 0;
-  const inicioBin = bordasHistogramaAtual[indice];
-  const fimBin = bordasHistogramaAtual[indice + 1];
-  const centroBin = obterCentroDoBin(indice);
+  const valorPixel = obterCentroDoBin(indice);
 
   tooltip.innerHTML = `
-    <strong>Intensidade:</strong> ${formatarNumero(centroBin)}<br>
-    <strong>Intervalo do bin:</strong> ${formatarFaixaDecimalBin(inicioBin, fimBin)}<br>
+    <strong>Valor do pixel:</strong> ${formatarNumero(valorPixel)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
