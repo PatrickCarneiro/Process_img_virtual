@@ -586,8 +586,23 @@ function criarHistograma(valores, classeHistograma) {
   }
 
   const numeroBins = configuracao.numeroBins;
-  const minimoClasse = configuracao.minimoClasse;
-  const maximoClasse = configuracao.maximoClasse;
+
+  // Em alguns DICOMs o Cornerstone entrega um Int8Array/Int16Array mesmo
+  // quando todos os valores realmente presentes na imagem são não negativos.
+  // Nesse caso, não faz sentido exibir a metade negativa da faixa assinada,
+  // porque isso cria valores no eixo/tooltip que não existem na imagem.
+  let minimoClasse = configuracao.minimoClasse;
+  let maximoClasse = configuracao.maximoClasse;
+
+  if (min >= 0 && minimoClasse < 0) {
+    minimoClasse = 0;
+  }
+
+  // Segurança adicional para nunca deixar a faixa configurada menor que
+  // os valores reais encontrados na imagem.
+  if (max > maximoClasse) {
+    maximoClasse = max;
+  }
 
   const contagens = new Array(numeroBins).fill(0);
   const centros = new Array(numeroBins);
@@ -1263,7 +1278,36 @@ function obterCentroDoBin(indice) {
     indice = bordasHistogramaAtual.length - 2;
   }
 
-  return (bordasHistogramaAtual[indice] + bordasHistogramaAtual[indice + 1]) / 2;
+  const histSelecionado = histogramasImagemAtual[canalHistogramaAtual];
+
+  let centro;
+
+  // Se o histograma guardou os centros calculados, usa diretamente esse valor.
+  if (
+    histSelecionado &&
+    Array.isArray(histSelecionado.centros) &&
+    Number.isFinite(histSelecionado.centros[indice])
+  ) {
+    centro = histSelecionado.centros[indice];
+  } else {
+    centro = (bordasHistogramaAtual[indice] + bordasHistogramaAtual[indice + 1]) / 2;
+  }
+
+  // Se a imagem real não possui nenhum pixel negativo, nunca mostra um
+  // valor negativo criado apenas pela faixa teórica de uma classe assinada.
+  if (histSelecionado && Number.isFinite(histSelecionado.min) && histSelecionado.min >= 0 && centro < 0) {
+    centro = 0;
+  }
+
+  // Classes inteiras representam intensidades inteiras de pixel.
+  if (
+    histSelecionado &&
+    ["logical", "uint8", "int8", "uint16", "int16", "uint32", "int32"].includes(histSelecionado.classe)
+  ) {
+    centro = Math.round(centro);
+  }
+
+  return centro;
 
 }
 
