@@ -688,6 +688,60 @@
       background: rgba(255,80,80,0.45);
     }
 
+    /* CONTROLES DE EXECUÇÃO DO FLUXO */
+
+    #containerSalvarFluxoProjeto {
+      display: none;
+      width: 100%;
+      margin-top: 14px;
+    }
+
+    .botoes_controle_fluxo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .botao_controle_fluxo {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid rgba(192,132,252,0.45);
+      border-radius: 10px;
+      background: rgba(192,132,252,0.22);
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+
+    .botao_controle_fluxo:hover {
+      background: rgba(192,132,252,0.38);
+      border-color: rgba(192,132,252,0.65);
+    }
+
+    .opcao_aplicar_fluxo_todas {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .opcao_aplicar_fluxo_todas label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .opcao_aplicar_fluxo_todas input {
+      width: auto;
+      cursor: pointer;
+    }
+
     /* DESIGN DA ÁREA DE IMAGENS EMBAIXO */
 
     .imagens_trabalho {
@@ -1187,14 +1241,6 @@
         </label>
       </div>
 
-      <!-- Opção para aplicar em todas as imagens -->
-      <div class="caixa_ignorar_zero">
-        <label>
-          <input type="checkbox" id="checkAplicarTodasImagens">
-          Aplicar ferramentas em todas as imagens
-        </label>
-      </div>
-
     </div>
 
     <!-- ÁREA CENTRAL DE VISUALIZAÇÃO -->
@@ -1493,6 +1539,40 @@
       <div id="areaFluxograma">
 
         <p style="opacity: 0.6;">Aplique uma ferramenta para montar o fluxo.</p>
+
+      </div>
+
+      <!-- Controles do fluxo -->
+      <div id="containerSalvarFluxoProjeto">
+
+        <div class="botoes_controle_fluxo">
+
+          <button
+            type="button"
+            id="botaoSalvarFluxoProjeto"
+            class="botao_controle_fluxo"
+          >
+            Salvar fluxo
+          </button>
+
+          <button
+            type="button"
+            id="botaoProcessarFluxo"
+            class="botao_controle_fluxo"
+          >
+            Processar fluxo
+          </button>
+
+        </div>
+
+        <div class="opcao_aplicar_fluxo_todas">
+
+          <label>
+            <input type="checkbox" id="checkAplicarTodasImagens">
+            Aplicar fluxo em todas as imagens
+          </label>
+
+        </div>
 
       </div>
 

@@ -404,6 +404,7 @@ function configurarInterfaceSalvarFluxoProjeto() {
     botaoSalvarFluxo.innerText = "Salvar fluxo";
 
     botaoSalvarFluxo.addEventListener("click", abrirModalSalvarFluxoProjeto);
+    botaoSalvarFluxo.dataset.listenerProjeto = "true";
 
     containerSalvarFluxoProjeto.appendChild(botaoSalvarFluxo);
 
@@ -412,6 +413,39 @@ function configurarInterfaceSalvarFluxoProjeto() {
       containerSalvarFluxoProjeto
     );
 
+  }
+
+  // Liga os controles que já existem no processamento.html.
+  const botaoSalvarFluxoProjeto =
+    document.getElementById("botaoSalvarFluxoProjeto");
+
+  if (
+    botaoSalvarFluxoProjeto &&
+    botaoSalvarFluxoProjeto.dataset.listenerProjeto !== "true"
+  ) {
+
+    botaoSalvarFluxoProjeto.addEventListener(
+      "click",
+      abrirModalSalvarFluxoProjeto
+    );
+
+    botaoSalvarFluxoProjeto.dataset.listenerProjeto = "true";
+  }
+
+  const botaoProcessarFluxo =
+    document.getElementById("botaoProcessarFluxo");
+
+  if (
+    botaoProcessarFluxo &&
+    botaoProcessarFluxo.dataset.listenerFluxo !== "true"
+  ) {
+
+    botaoProcessarFluxo.addEventListener(
+      "click",
+      processarFluxoPeloBotao
+    );
+
+    botaoProcessarFluxo.dataset.listenerFluxo = "true";
   }
 
   modalSalvarFluxoProjeto = document.getElementById("modalSalvarFluxoProjeto");
@@ -804,12 +838,9 @@ async function loadFiles() {
     });
 
     // Se a página foi aberta a partir de um projeto salvo,
-    // aplica o fluxo restaurado à primeira imagem antes de exibi-la.
-    if (projetoRestaurado && pipelineFerramentas.length > 0) {
-      await processarImagemSelecionada(imagemAtualSelecionada);
-    }
-
-    // Abre automaticamente a primeira imagem na tela principal
+    // o fluxograma é restaurado, mas NÃO é processado automaticamente.
+    // A primeira imagem permanece sem processamento até o usuário
+    // clicar em "Processar fluxo".
     await openFile(imagemAtualSelecionada);
 
     // Se a aba de análise já estiver carregada, atualiza a análise da primeira imagem
@@ -819,7 +850,7 @@ async function loadFiles() {
 
     statusText.innerText =
       projetoRestaurado
-        ? "Projeto carregado e primeira imagem processada."
+        ? "Projeto carregado. Clique em Processar fluxo para executar o fluxograma."
         : "Arquivos carregados.";
 
   } catch (error) {
@@ -909,10 +940,8 @@ function criarCardImagem(item) {
 
     atualizarCardSelecionado();
 
-    if (imagemPrecisaProcessar(item)) { // Se precisa processar
-      await processarImagemSelecionada(item);
-    }
-
+    // Apenas abre a imagem escolhida.
+    // O processamento agora acontece somente pelo botão "Processar fluxo".
     await openFile(item);
 
     if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
@@ -3405,21 +3434,18 @@ function desenharFluxograma() {
   atualizarControleSalvarFluxoProjeto();
 }
 
-// Função para remover uma etapa do pipeline, reprocessar as imagens e atualizar a interface
+// Função para remover uma etapa do pipeline sem executar o processamento
 async function removerEtapaPipeline(idEtapa) {
 
-  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) { // Remove a etapa do pipeline
+  pipelineFerramentas = pipelineFerramentas.filter(function(etapa) {
     return etapa.id !== idEtapa;
   });
 
-  invalidarProcessamentoDeTodasAsImagens(); // Invalida o processamento de todas as imagens
+  // Qualquer resultado anterior deixa de representar o fluxograma atual.
+  invalidarProcessamentoDeTodasAsImagens();
 
+  // A imagem atual volta a ser exibida sem o resultado antigo.
   if (imagemAtualSelecionada) {
-
-    if (pipelineFerramentas.length > 0) {
-      await processarImagemSelecionada(imagemAtualSelecionada);
-    }
-
     await openFile(imagemAtualSelecionada);
   }
 
@@ -3430,6 +3456,11 @@ async function removerEtapaPipeline(idEtapa) {
     await atualizarImagemComparativa();
     desenharFluxograma();
   }
+
+  statusText.innerText =
+    pipelineFerramentas.length > 0
+      ? "Etapa removida do fluxograma. Clique em Processar fluxo para executar o fluxo atualizado."
+      : "Fluxograma vazio.";
 }
 
 // Função que processa a imagem selecionada pelo pipeline.
@@ -3496,7 +3527,7 @@ async function processarTodasAsImagensComPipeline() {
     const porcentagemBase = (i / imagensProcessamento.length) * 100;
 
     statusText.innerText =
-      "Aplicando ferramenta em todas as imagens: " +
+      "Processando fluxo em todas as imagens: " +
       (i + 1) +
       "/" +
       imagensProcessamento.length +
@@ -3512,7 +3543,7 @@ async function processarTodasAsImagensComPipeline() {
 
   atualizarBarraProcessamento(100);
 
-  statusText.innerText = "Ferramenta aplicada em todas as imagens.";
+  statusText.innerText = "Fluxo processado em todas as imagens.";
 
   setTimeout(function() {
     barraProcessamentoContainer.style.display = "none";
@@ -3522,50 +3553,114 @@ async function processarTodasAsImagensComPipeline() {
 
 }
 
-// Define se deve aplicar as ferramentas em todas as imagens ou apenas na selecionada, baseado no estado do checkbox
-async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
+// Executa o fluxograma somente quando o usuário clicar
+// no botão "Processar fluxo".
+async function processarFluxoPeloBotao() {
 
-  if (deveAplicarFerramentasEmTodasImagens()) { // Se o checkbox de aplicar em todas as imagens estiver marcado, processa todas as imagens com o pipeline
-
-    await processarTodasAsImagensComPipeline(); // Processa todas as imagens
-
-    if (imagemAtualSelecionada) {
-      await openFile(imagemAtualSelecionada);
-    }
-
-    atualizarCardSelecionado();
-
-    desenharFluxograma();
-
-    if (modoComparativoAtivo) {
-      await atualizarImagemComparativa();
-    }
-
-    if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-      await atualizarAnaliseDaImagemAtual();
-    }
-
-    statusText.innerText = mensagemTodasImagens;
-
+  if (pipelineFerramentas.length === 0) {
+    alert("Adicione pelo menos uma ferramenta ao fluxograma antes de processar.");
     return;
   }
 
-  if (imagemAtualSelecionada) {
+  if (!imagemAtualSelecionada) {
+    alert("Nenhuma imagem está selecionada para processamento.");
+    return;
+  }
+
+  try {
+
+    // Checkbox marcado: aplica o fluxo em todas as imagens carregadas.
+    if (deveAplicarFluxoEmTodasImagens()) {
+
+      await processarTodasAsImagensComPipeline();
+
+      // Mantém na tela a imagem que já estava selecionada.
+      await openFile(imagemAtualSelecionada);
+
+      atualizarCardSelecionado();
+
+      if (modoComparativoAtivo) {
+        etapaComparativoSelecionada = "original";
+        await atualizarImagemComparativa();
+        desenharFluxograma();
+      }
+
+      if (
+        analiseCarregada &&
+        typeof atualizarAnaliseDaImagemAtual === "function"
+      ) {
+        await atualizarAnaliseDaImagemAtual();
+      }
+
+      statusText.innerText = "Fluxo processado em todas as imagens.";
+      return;
+    }
+
+    // Checkbox desmarcado: processa somente a imagem exibida.
     await processarImagemSelecionada(imagemAtualSelecionada);
+
+    await openFile(imagemAtualSelecionada);
+
+    atualizarCardSelecionado();
+
+    if (modoComparativoAtivo) {
+      etapaComparativoSelecionada = "original";
+      await atualizarImagemComparativa();
+      desenharFluxograma();
+    }
+
+    if (
+      analiseCarregada &&
+      typeof atualizarAnaliseDaImagemAtual === "function"
+    ) {
+      await atualizarAnaliseDaImagemAtual();
+    }
+
+    statusText.innerText =
+      "Fluxo processado na imagem atual: " +
+      imagemAtualSelecionada.name;
+
+  } catch (error) {
+
+    console.error("Erro ao processar fluxo:", error);
+
+    alert(
+      "Não foi possível processar o fluxo: " +
+      (error.message || String(error))
+    );
+  }
+}
+
+
+// Depois de adicionar uma ferramenta, apenas atualiza o fluxograma.
+// Nenhum processamento é executado nesta etapa.
+async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
+
+  // Os resultados anteriores não correspondem mais ao novo fluxo.
+  invalidarProcessamentoDeTodasAsImagens();
+
+  // Mostra novamente a imagem sem o resultado antigo.
+  if (imagemAtualSelecionada) {
     await openFile(imagemAtualSelecionada);
   }
 
   desenharFluxograma();
 
   if (modoComparativoAtivo) {
-    await atualizarImagemComparativa();  // Atualiza imagem comparativa
+    etapaComparativoSelecionada = "original";
+    await atualizarImagemComparativa();
+    desenharFluxograma();
   }
 
-  if (analiseCarregada && typeof atualizarAnaliseDaImagemAtual === "function") {
-    await atualizarAnaliseDaImagemAtual(); // Atualiza análise da imagem atual
+  if (
+    analiseCarregada &&
+    typeof atualizarAnaliseDaImagemAtual === "function"
+  ) {
+    await atualizarAnaliseDaImagemAtual();
   }
 
-  statusText.innerText = mensagemImagemAtual;
+  statusText.innerText =
+    "Ferramenta adicionada ao fluxograma. Clique em Processar fluxo para executar.";
 }
 
 // Função para abrir a imagem selecionada, fazendo a montagem da imagem na tela
@@ -4832,7 +4927,7 @@ function deveIgnorarPixelZeroFerramentas() {
 
 }
 
-function deveAplicarFerramentasEmTodasImagens() {
+function deveAplicarFluxoEmTodasImagens() {
 
   const check = document.getElementById("checkAplicarTodasImagens");
 
@@ -5017,16 +5112,17 @@ async function atualizarImagemComparativa() {
 
   const item = imagemAtualSelecionada;
 
-  // Se não estiver processado ainda, processa uma vez e cria o cache
-  if (imagemPrecisaProcessar(item)) {
+  // O comparativo não inicia processamento automaticamente.
+  // A imagem original pode ser visualizada sem executar o fluxo.
+  if (
+    imagemPrecisaProcessar(item) &&
+    etapaComparativoSelecionada !== "original"
+  ) {
 
-    statusText.innerText = "Processando imagem para gerar cache do comparativo...";
+    statusText.innerText =
+      "Processe o fluxo antes de visualizar uma etapa processada no comparativo.";
 
-    await esperarAtualizacaoTela();
-
-    await processarImagemSelecionada(item);
-
-    await openFile(item);
+    return;
   }
 
   if (!item.cacheEtapas) {
@@ -5066,15 +5162,10 @@ async function atualizarImagemComparativa() {
 
   if (!cache) {
 
-    statusText.innerText = "Cache da etapa não encontrado. Reprocessando imagem...";
+    statusText.innerText =
+      "Essa etapa ainda não possui resultado. Clique em Processar fluxo.";
 
-    await esperarAtualizacaoTela();
-
-    await processarImagemSelecionada(item);
-
-    await openFile(item);
-
-    return atualizarImagemComparativa();
+    return;
   }
 
   statusText.innerText = "Carregando etapa salva no comparativo: " + etapa.nome + "...";
