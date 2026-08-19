@@ -1018,11 +1018,24 @@ function atualizarTextosHistograma() {
 
   if (faixaTexto) {
 
-    const inicioBin = bordasHistogramaAtual[faixaInicioHistograma];
-    const fimBin = bordasHistogramaAtual[faixaFimHistograma + 1];
+    // A faixa exibida ao usuário deve representar os VALORES/CENTROS
+    // dos bins, e não suas bordas matemáticas.
+    // Exemplo uint16 no imhist: o primeiro centro é 0, embora a primeira
+    // borda interna do bin seja -128,5. Portanto a interface deve mostrar 0.
+    let inicioValor = obterCentroDoBin(faixaInicioHistograma);
+    let fimValor = obterCentroDoBin(faixaFimHistograma);
+
+    // Para imagens cujos pixels reais são todos não negativos, evita que
+    // qualquer detalhe interno da binagem apareça como intensidade negativa.
+    const histSelecionado = histogramasImagemAtual[canalHistogramaAtual];
+    if (histSelecionado && Number.isFinite(histSelecionado.min) && histSelecionado.min >= 0) {
+      inicioValor = Math.max(0, inicioValor);
+      fimValor = Math.max(0, fimValor);
+    }
 
     faixaTexto.innerText =
-      "Intensidade de " + formatarFaixaDecimalBin(inicioBin, fimBin);
+      "Intensidade de " + formatarNumeroEixoX(inicioValor) +
+      " até " + formatarNumeroEixoX(fimValor);
 
   }
 
@@ -1450,9 +1463,24 @@ function identificarClasseImhistDicom(image, pixels) {
   }
 
   // DICOM Pixel Representation: 0 = unsigned; 1 = signed.
+  // Porém, para o histograma da matriz efetivamente recebida, se nenhum
+  // pixel real for negativo, usamos a classe unsigned correspondente.
+  // Isso evita criar uma escala negativa apenas por metadado quando os
+  // valores analisados na aplicação são todos >= 0.
   if (Number.isFinite(bitsAllocated) && Number.isFinite(pixelRepresentation)) {
 
-    const assinado = pixelRepresentation === 1;
+    let possuiPixelNegativo = false;
+
+    if (pixels && pixels.length) {
+      for (let i = 0; i < pixels.length; i++) {
+        if (Number(pixels[i]) < 0) {
+          possuiPixelNegativo = true;
+          break;
+        }
+      }
+    }
+
+    const assinado = pixelRepresentation === 1 && possuiPixelNegativo;
 
     if (bitsAllocated <= 8) {
       return assinado ? "int8" : "uint8";
