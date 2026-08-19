@@ -1,6 +1,8 @@
 // =============================================================
 // PROJETO.JS
-// Página responsável por listar e abrir os fluxos salvos
+// Página responsável por listar os fluxos salvos e abrir um
+// projeto escolhendo NOVAS imagens do computador.
+// O projeto guarda SOMENTE o fluxograma, nunca as imagens.
 // =============================================================
 
 
@@ -8,10 +10,7 @@
 // CONFIGURAÇÃO DO BANCO DE DADOS
 // =============================================================
 
-// Mesmo banco usado pelo index.js e processamento.js
 const DB_NAME = "MedicalImagesDB";
-
-// Nova versão porque será adicionada a tabela "projects"
 const DB_VERSION = 7;
 
 
@@ -19,145 +18,173 @@ const DB_VERSION = 7;
 // ELEMENTOS DO HTML
 // =============================================================
 
-// Área onde os cards dos projetos serão adicionados
 const listaProjetos = document.getElementById("listaProjetos");
-
-// Mensagem mostrada quando não existe nenhum projeto
 const estadoVazioProjetos = document.getElementById("estadoVazioProjetos");
-
-// Texto de status
 const statusProjetos = document.getElementById("statusProjetos");
+
+
+// =============================================================
+// CONTROLE DO PROJETO QUE ESTÁ AGUARDANDO SELEÇÃO DE IMAGENS
+// =============================================================
+
+let projetoAguardandoImagens = null;
+
+
+// =============================================================
+// INPUT DE ARQUIVOS DO PROJETO
+// =============================================================
+//
+// É criado pelo JavaScript para não ser necessário alterar
+// o projeto.html.
+//
+// Funciona da mesma forma que o "Selecionar arquivos" do index.
+//
+
+const inputImagensProjeto = document.createElement("input");
+
+inputImagensProjeto.type = "file";
+inputImagensProjeto.multiple = true;
+inputImagensProjeto.accept =
+  ".png,.jpg,.jpeg,.tif,.tiff,.dcm,.dicom";
+
+inputImagensProjeto.style.display = "none";
+
+document.body.appendChild(inputImagensProjeto);
 
 
 // =============================================================
 // BANCO DE DADOS
 // =============================================================
 
-
-// Função responsável por abrir o IndexedDB
 function openDatabase() {
 
   return new Promise((resolve, reject) => {
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request =
+      indexedDB.open(
+        DB_NAME,
+        DB_VERSION
+      );
 
 
-    // =========================================================
-    // ATUALIZAÇÃO DO BANCO
-    // =========================================================
+    request.onupgradeneeded =
+      function(event) {
 
-    request.onupgradeneeded = function(event) {
-
-      const db = event.target.result;
+        const db =
+          event.target.result;
 
 
-      // -------------------------------------------------------
-      // Mantém a tabela "files"
-      // -------------------------------------------------------
+        // -----------------------------------------------------
+        // STORE DE ARQUIVOS ENVIADOS PARA PROCESSAMENTO
+        // -----------------------------------------------------
 
-      if (!db.objectStoreNames.contains("files")) {
+        if (
+          !db.objectStoreNames.contains("files")
+        ) {
 
-        db.createObjectStore("files", {
+          db.createObjectStore(
+            "files",
+            {
+              keyPath: "id",
+              autoIncrement: true
+            }
+          );
 
-          keyPath: "id",
-
-          autoIncrement: true
-
-        });
-
-      }
-
-
-      // -------------------------------------------------------
-      // Mantém a tabela "recent"
-      // -------------------------------------------------------
-
-      if (!db.objectStoreNames.contains("recent")) {
-
-        db.createObjectStore("recent", {
-
-          keyPath: "id",
-
-          autoIncrement: true
-
-        });
-
-      }
+        }
 
 
-      // -------------------------------------------------------
-      // NOVA TABELA DE PROJETOS
-      // -------------------------------------------------------
+        // -----------------------------------------------------
+        // STORE DE IMAGENS RECENTES
+        // -----------------------------------------------------
 
-      if (!db.objectStoreNames.contains("projects")) {
+        if (
+          !db.objectStoreNames.contains("recent")
+        ) {
 
-        const storeProjetos = db.createObjectStore(
-          "projects",
-          {
+          db.createObjectStore(
+            "recent",
+            {
+              keyPath: "id",
+              autoIncrement: true
+            }
+          );
 
-            keyPath: "id",
+        }
 
-            autoIncrement: true
 
-          }
+        // -----------------------------------------------------
+        // STORE DOS PROJETOS
+        //
+        // O projeto guarda somente informações do fluxograma.
+        // Nenhuma imagem é armazenada dentro do projeto.
+        // -----------------------------------------------------
+
+        if (
+          !db.objectStoreNames.contains("projects")
+        ) {
+
+          const storeProjetos =
+            db.createObjectStore(
+              "projects",
+              {
+                keyPath: "id",
+                autoIncrement: true
+              }
+            );
+
+
+          storeProjetos.createIndex(
+            "nome",
+            "nome",
+            {
+              unique: false
+            }
+          );
+
+
+          storeProjetos.createIndex(
+            "createdAt",
+            "createdAt",
+            {
+              unique: false
+            }
+          );
+
+        }
+
+      };
+
+
+    request.onsuccess =
+      function() {
+
+        resolve(
+          request.result
         );
 
+      };
 
-        // Índice para pesquisar pelo nome
-        storeProjetos.createIndex(
-          "nome",
-          "nome",
-          {
-            unique: false
-          }
+
+    request.onerror =
+      function() {
+
+        reject(
+          request.error
         );
 
-
-        // Índice para ordenar pela data
-        storeProjetos.createIndex(
-          "createdAt",
-          "createdAt",
-          {
-            unique: false
-          }
-        );
-
-      }
-
-    };
-
-
-    // =========================================================
-    // BANCO ABERTO COM SUCESSO
-    // =========================================================
-
-    request.onsuccess = function() {
-
-      resolve(request.result);
-
-    };
-
-
-    // =========================================================
-    // ERRO AO ABRIR BANCO
-    // =========================================================
-
-    request.onerror = function() {
-
-      reject(request.error);
-
-    };
+      };
 
   });
 
 }
 
 
-
 // =============================================================
-// BUSCAR TODOS OS PROJETOS
+// FUNÇÕES AUXILIARES DO INDEXEDDB
 // =============================================================
 
+
+// Busca todos os projetos
 function getProjetos(db) {
 
   return new Promise((resolve, reject) => {
@@ -179,30 +206,35 @@ function getProjetos(db) {
       store.getAll();
 
 
-    request.onsuccess = function() {
+    request.onsuccess =
+      function() {
 
-      resolve(request.result);
+        resolve(
+          request.result
+        );
 
-    };
+      };
 
 
-    request.onerror = function() {
+    request.onerror =
+      function() {
 
-      reject(request.error);
+        reject(
+          request.error
+        );
 
-    };
+      };
 
   });
 
 }
 
 
-
-// =============================================================
-// BUSCAR UM PROJETO PELO ID
-// =============================================================
-
-function getProjetoPorId(db, idProjeto) {
+// Busca um projeto pelo ID
+function getProjetoPorId(
+  db,
+  idProjeto
+) {
 
   return new Promise((resolve, reject) => {
 
@@ -220,33 +252,139 @@ function getProjetoPorId(db, idProjeto) {
 
 
     const request =
-      store.get(idProjeto);
+      store.get(
+        idProjeto
+      );
 
 
-    request.onsuccess = function() {
+    request.onsuccess =
+      function() {
 
-      resolve(request.result);
+        resolve(
+          request.result
+        );
 
-    };
+      };
 
 
-    request.onerror = function() {
+    request.onerror =
+      function() {
 
-      reject(request.error);
+        reject(
+          request.error
+        );
 
-    };
+      };
 
   });
 
 }
 
 
+// Adiciona um item a uma store
+function addToStore(
+  db,
+  storeName,
+  data
+) {
 
-// =============================================================
-// EXCLUIR PROJETO
-// =============================================================
+  return new Promise((resolve, reject) => {
 
-function excluirProjetoBanco(db, idProjeto) {
+    const transaction =
+      db.transaction(
+        storeName,
+        "readwrite"
+      );
+
+
+    const store =
+      transaction.objectStore(
+        storeName
+      );
+
+
+    const request =
+      store.add(
+        data
+      );
+
+
+    request.onsuccess =
+      function() {
+
+        resolve(
+          request.result
+        );
+
+      };
+
+
+    request.onerror =
+      function() {
+
+        reject(
+          request.error
+        );
+
+      };
+
+  });
+
+}
+
+
+// Limpa uma store
+function clearStore(
+  db,
+  storeName
+) {
+
+  return new Promise((resolve, reject) => {
+
+    const transaction =
+      db.transaction(
+        storeName,
+        "readwrite"
+      );
+
+
+    const store =
+      transaction.objectStore(
+        storeName
+      );
+
+
+    const request =
+      store.clear();
+
+
+    request.onsuccess =
+      function() {
+
+        resolve();
+
+      };
+
+
+    request.onerror =
+      function() {
+
+        reject(
+          request.error
+        );
+
+      };
+
+  });
+
+}
+
+
+// Exclui um projeto
+function excluirProjetoBanco(
+  db,
+  idProjeto
+) {
 
   return new Promise((resolve, reject) => {
 
@@ -264,26 +402,31 @@ function excluirProjetoBanco(db, idProjeto) {
 
 
     const request =
-      store.delete(idProjeto);
+      store.delete(
+        idProjeto
+      );
 
 
-    request.onsuccess = function() {
+    request.onsuccess =
+      function() {
 
-      resolve();
+        resolve();
 
-    };
+      };
 
 
-    request.onerror = function() {
+    request.onerror =
+      function() {
 
-      reject(request.error);
+        reject(
+          request.error
+        );
 
-    };
+      };
 
   });
 
 }
-
 
 
 // =============================================================
@@ -317,43 +460,37 @@ function formatarDataProjeto(data) {
   return dataObjeto.toLocaleString(
     "pt-BR",
     {
-
       day: "2-digit",
-
       month: "2-digit",
-
       year: "numeric",
-
       hour: "2-digit",
-
       minute: "2-digit"
-
     }
   );
 
 }
 
 
-
 // =============================================================
-// PEGAR PIPELINE DO PROJETO
+// PEGAR O PIPELINE DO PROJETO
 // =============================================================
-
-// Esta função foi feita assim para facilitar a integração
-// com o processamento.js.
 //
-// O processamento.js usa atualmente o nome:
-// pipelineFerramentas
+// O projeto deve guardar SOMENTE o pipeline.
 //
-// Portanto o projeto poderá guardar:
+// O nome principal utilizado é:
 // projeto.pipelineFerramentas
 //
-// Também deixei suporte para "pipeline" caso seja necessário.
+// O suporte a projeto.pipeline é mantido apenas para
+// compatibilidade caso exista algum projeto salvo anteriormente.
+//
+
 function obterPipelineProjeto(projeto) {
 
   if (
     projeto &&
-    Array.isArray(projeto.pipelineFerramentas)
+    Array.isArray(
+      projeto.pipelineFerramentas
+    )
   ) {
 
     return projeto.pipelineFerramentas;
@@ -363,7 +500,9 @@ function obterPipelineProjeto(projeto) {
 
   if (
     projeto &&
-    Array.isArray(projeto.pipeline)
+    Array.isArray(
+      projeto.pipeline
+    )
   ) {
 
     return projeto.pipeline;
@@ -376,45 +515,51 @@ function obterPipelineProjeto(projeto) {
 }
 
 
-
 // =============================================================
-// PEGAR NOME DA FERRAMENTA
+// PEGAR NOME DE UMA FERRAMENTA
 // =============================================================
 
 function obterNomeFerramenta(etapa) {
 
   if (!etapa) {
 
-    return "?";
+    return "Etapa";
 
   }
 
 
-  // Possíveis formatos que poderão existir no pipeline
   if (etapa.nome) {
 
-    return String(etapa.nome);
+    return String(
+      etapa.nome
+    );
 
   }
 
 
   if (etapa.ferramenta) {
 
-    return String(etapa.ferramenta);
+    return String(
+      etapa.ferramenta
+    );
 
   }
 
 
   if (etapa.nomeFerramenta) {
 
-    return String(etapa.nomeFerramenta);
+    return String(
+      etapa.nomeFerramenta
+    );
 
   }
 
 
   if (etapa.tipo) {
 
-    return String(etapa.tipo);
+    return String(
+      etapa.tipo
+    );
 
   }
 
@@ -424,15 +569,16 @@ function obterNomeFerramenta(etapa) {
 }
 
 
-
 // =============================================================
-// CRIAR MINIATURA DO FLUXO
+// CRIAR PRÉ-VISUALIZAÇÃO DO FLUXOGRAMA
 // =============================================================
 
 function criarPreviewFluxo(projeto) {
 
   const preview =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   preview.className =
@@ -440,17 +586,23 @@ function criarPreviewFluxo(projeto) {
 
 
   const pipeline =
-    obterPipelineProjeto(projeto);
+    obterPipelineProjeto(
+      projeto
+    );
 
 
-  // ===========================================================
-  // PROJETO SEM ETAPAS
-  // ===========================================================
+  // -----------------------------------------------------------
+  // SEM ETAPAS
+  // -----------------------------------------------------------
 
-  if (pipeline.length === 0) {
+  if (
+    pipeline.length === 0
+  ) {
 
     const etapaVazia =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
 
     etapaVazia.className =
@@ -471,12 +623,10 @@ function criarPreviewFluxo(projeto) {
   }
 
 
-  // ===========================================================
-  // LIMITA O PREVIEW
-  // ===========================================================
+  // -----------------------------------------------------------
+  // MOSTRA ATÉ 5 ETAPAS NO CARD
+  // -----------------------------------------------------------
 
-  // Não mostra dezenas de quadrados dentro do card.
-  // Mostra até 5 etapas.
   const quantidadeMostrar =
     Math.min(
       pipeline.length,
@@ -494,30 +644,24 @@ function criarPreviewFluxo(projeto) {
       pipeline[i];
 
 
-    // ---------------------------------------------------------
-    // Quadrado da etapa
-    // ---------------------------------------------------------
-
     const miniEtapa =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
 
     miniEtapa.className =
       "mini_etapa";
 
 
-    const nomeFerramenta =
-      obterNomeFerramenta(etapa);
-
-
-    // Mostra um número para não deixar o card poluído
     miniEtapa.innerText =
       String(i + 1);
 
 
-    // Nome completo aparece ao passar o mouse
     miniEtapa.title =
-      nomeFerramenta;
+      obterNomeFerramenta(
+        etapa
+      );
 
 
     preview.appendChild(
@@ -525,17 +669,15 @@ function criarPreviewFluxo(projeto) {
     );
 
 
-    // ---------------------------------------------------------
-    // Linha entre as etapas
-    // ---------------------------------------------------------
-
     if (
       i <
       quantidadeMostrar - 1
     ) {
 
       const linha =
-        document.createElement("div");
+        document.createElement(
+          "div"
+        );
 
 
       linha.className =
@@ -551,9 +693,9 @@ function criarPreviewFluxo(projeto) {
   }
 
 
-  // ===========================================================
-  // INDICA QUE EXISTEM MAIS ETAPAS
-  // ===========================================================
+  // -----------------------------------------------------------
+  // INDICA ETAPAS ADICIONAIS
+  // -----------------------------------------------------------
 
   if (
     pipeline.length >
@@ -561,7 +703,9 @@ function criarPreviewFluxo(projeto) {
   ) {
 
     const linha =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
 
     linha.className =
@@ -574,7 +718,9 @@ function criarPreviewFluxo(projeto) {
 
 
     const mais =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
 
     mais.className =
@@ -605,12 +751,21 @@ function criarPreviewFluxo(projeto) {
 }
 
 
-
 // =============================================================
 // ABRIR PROJETO
 // =============================================================
+//
+// IMPORTANTE:
+//
+// Aqui o projeto NÃO abre diretamente o processamento.html.
+//
+// Primeiro o usuário escolhe as imagens que serão processadas
+// com aquele fluxograma.
+//
 
-async function abrirProjeto(idProjeto) {
+async function abrirProjeto(
+  idProjeto
+) {
 
   try {
 
@@ -639,38 +794,45 @@ async function abrirProjeto(idProjeto) {
     }
 
 
-    // =========================================================
-    // GUARDA QUAL PROJETO DEVE SER ABERTO
-    // =========================================================
-
-    // O processamento.js que vamos adaptar depois vai ler
-    // este ID e restaurar o pipeline salvo.
-    localStorage.setItem(
-      "projetoAtualId",
-      String(idProjeto)
-    );
+    const pipeline =
+      obterPipelineProjeto(
+        projeto
+      );
 
 
-    // Indica que a tela de processamento foi aberta
-    // a partir da página de projetos
-    localStorage.setItem(
-      "abrirProjetoSalvo",
-      "true"
-    );
+    if (
+      pipeline.length === 0
+    ) {
+
+      alert(
+        "Esse projeto não possui etapas no fluxograma."
+      );
+
+      return;
+
+    }
 
 
-    // =========================================================
-    // ABRE A TELA DE PROCESSAMENTO
-    // =========================================================
+    // Guarda apenas temporariamente qual projeto
+    // receberá as imagens escolhidas.
+    projetoAguardandoImagens =
+      projeto;
 
-    window.location.href =
-      "processamento.html";
+
+    // Limpa uma eventual seleção anterior para que
+    // escolher o mesmo arquivo novamente funcione.
+    inputImagensProjeto.value =
+      "";
+
+
+    // Abre o seletor padrão do computador.
+    inputImagensProjeto.click();
 
 
   } catch (error) {
 
     console.error(
-      "Erro ao abrir projeto:",
+      "Erro ao preparar abertura do projeto:",
       error
     );
 
@@ -684,12 +846,214 @@ async function abrirProjeto(idProjeto) {
 }
 
 
+// =============================================================
+// QUANDO O USUÁRIO ESCOLHER AS IMAGENS
+// =============================================================
+
+inputImagensProjeto.addEventListener(
+  "change",
+  async function() {
+
+    const arquivos =
+      Array.from(
+        inputImagensProjeto.files || []
+      );
+
+
+    // ---------------------------------------------------------
+    // USUÁRIO CANCELOU O SELETOR
+    // ---------------------------------------------------------
+
+    if (
+      arquivos.length === 0
+    ) {
+
+      projetoAguardandoImagens =
+        null;
+
+      return;
+
+    }
+
+
+    // ---------------------------------------------------------
+    // GARANTE QUE EXISTE UM PROJETO SELECIONADO
+    // ---------------------------------------------------------
+
+    if (
+      !projetoAguardandoImagens
+    ) {
+
+      alert(
+        "Nenhum projeto foi selecionado."
+      );
+
+      return;
+
+    }
+
+
+    try {
+
+      statusProjetos.innerText =
+        "Preparando imagens para processamento...";
+
+
+      const db =
+        await openDatabase();
+
+
+      // =======================================================
+      // A STORE FILES DEVE TER SOMENTE AS IMAGENS
+      // ESCOLHIDAS PARA ESTA EXECUÇÃO DO PROJETO
+      // =======================================================
+
+      await clearStore(
+        db,
+        "files"
+      );
+
+
+      // =======================================================
+      // SALVA AS NOVAS IMAGENS
+      // =======================================================
+
+      for (
+        const file of arquivos
+      ) {
+
+        const nomeArquivo =
+          file.name.toLowerCase();
+
+
+        const type =
+          nomeArquivo.endsWith(".dcm") ||
+          nomeArquivo.endsWith(".dicom") ||
+          file.type === "application/dicom"
+            ? "dicom"
+            : "image";
+
+
+        const data = {
+
+          name:
+            file.name,
+
+          type:
+            type,
+
+          file:
+            file,
+
+          createdAt:
+            Date.now()
+
+        };
+
+
+        // -----------------------------------------------------
+        // FILES
+        //
+        // Imagens que irão para a área de processamento.
+        // -----------------------------------------------------
+
+        await addToStore(
+          db,
+          "files",
+          data
+        );
+
+
+        // -----------------------------------------------------
+        // RECENT
+        //
+        // Mantém o mesmo comportamento do upload feito
+        // pela página inicial.
+        // -----------------------------------------------------
+
+        await addToStore(
+          db,
+          "recent",
+          data
+        );
+
+      }
+
+
+      db.close();
+
+
+      // =======================================================
+      // INFORMA AO PROCESSAMENTO.JS QUAL FLUXO DEVE SER ABERTO
+      // =======================================================
+
+      localStorage.setItem(
+        "projetoAtualId",
+        String(
+          projetoAguardandoImagens.id
+        )
+      );
+
+
+      localStorage.setItem(
+        "abrirProjetoSalvo",
+        "true"
+      );
+
+
+      // -------------------------------------------------------
+      // Limpa qualquer indicação anterior que possa existir
+      // de processamento normal.
+      // -------------------------------------------------------
+
+      localStorage.setItem(
+        "origemProcessamento",
+        "projeto"
+      );
+
+
+      // =======================================================
+      // ENTRA NA TELA DE PROCESSAMENTO
+      // =======================================================
+
+      window.location.href =
+        "processamento.html";
+
+
+    } catch (error) {
+
+      console.error(
+        "Erro ao carregar imagens do projeto:",
+        error
+      );
+
+
+      statusProjetos.innerText =
+        "Erro ao preparar as imagens.";
+
+
+      alert(
+        "Não foi possível carregar as imagens para esse projeto."
+      );
+
+
+      projetoAguardandoImagens =
+        null;
+
+    }
+
+  }
+);
+
 
 // =============================================================
 // EXCLUIR PROJETO
 // =============================================================
 
-async function excluirProjeto(idProjeto, nomeProjeto) {
+async function excluirProjeto(
+  idProjeto,
+  nomeProjeto
+) {
 
   const confirmar =
     confirm(
@@ -721,7 +1085,6 @@ async function excluirProjeto(idProjeto, nomeProjeto) {
     db.close();
 
 
-    // Recarrega a lista
     await carregarProjetos();
 
 
@@ -742,19 +1105,20 @@ async function excluirProjeto(idProjeto, nomeProjeto) {
 }
 
 
-
 // =============================================================
 // CRIAR CARD DO PROJETO
 // =============================================================
 
 function criarCardProjeto(projeto) {
 
-  // ===========================================================
-  // CARD PRINCIPAL
-  // ===========================================================
+  // -----------------------------------------------------------
+  // CARD
+  // -----------------------------------------------------------
 
   const card =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   card.className =
@@ -765,27 +1129,24 @@ function criarCardProjeto(projeto) {
     projeto.id;
 
 
-
-  // ===========================================================
-  // PREVIEW
-  // ===========================================================
+  // -----------------------------------------------------------
+  // PREVIEW DO FLUXOGRAMA
+  // -----------------------------------------------------------
 
   const areaPreview =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   areaPreview.className =
     "preview_projeto";
 
 
-  const previewFluxo =
+  areaPreview.appendChild(
     criarPreviewFluxo(
       projeto
-    );
-
-
-  areaPreview.appendChild(
-    previewFluxo
+    )
   );
 
 
@@ -794,23 +1155,24 @@ function criarCardProjeto(projeto) {
   );
 
 
-
-  // ===========================================================
+  // -----------------------------------------------------------
   // INFORMAÇÕES
-  // ===========================================================
+  // -----------------------------------------------------------
 
   const informacoes =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   informacoes.className =
     "informacoes_projeto";
 
 
-
-  // Nome
   const nome =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   nome.className =
@@ -827,13 +1189,14 @@ function criarCardProjeto(projeto) {
   );
 
 
-
-  // ===========================================================
-  // DETALHES
-  // ===========================================================
+  // -----------------------------------------------------------
+  // QUANTIDADE DE ETAPAS E DATA
+  // -----------------------------------------------------------
 
   const detalhes =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   detalhes.className =
@@ -853,7 +1216,8 @@ function criarCardProjeto(projeto) {
   const textoQuantidade =
     quantidadeEtapas === 1
       ? "1 etapa"
-      : quantidadeEtapas + " etapas";
+      : quantidadeEtapas +
+        " etapas";
 
 
   const dataProjeto =
@@ -880,34 +1244,38 @@ function criarCardProjeto(projeto) {
   );
 
 
-
-  // ===========================================================
-  // BOTÕES
-  // ===========================================================
+  // -----------------------------------------------------------
+  // ÁREA DOS BOTÕES
+  // -----------------------------------------------------------
 
   const areaAcoes =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   areaAcoes.className =
     "acoes_projeto";
 
 
-
   // -----------------------------------------------------------
-  // BOTÃO ABRIR
+  // BOTÃO USAR PROJETO
   // -----------------------------------------------------------
 
   const botaoAbrir =
-    document.createElement("button");
+    document.createElement(
+      "button"
+    );
 
 
   botaoAbrir.className =
     "botao_projeto";
 
 
+  // O texto deixa claro que primeiro serão
+  // selecionadas novas imagens.
   botaoAbrir.innerText =
-    "Abrir projeto";
+    "Selecionar imagens";
 
 
   botaoAbrir.onclick =
@@ -928,13 +1296,14 @@ function criarCardProjeto(projeto) {
   );
 
 
-
   // -----------------------------------------------------------
   // BOTÃO EXCLUIR
   // -----------------------------------------------------------
 
   const botaoExcluir =
-    document.createElement("button");
+    document.createElement(
+      "button"
+    );
 
 
   botaoExcluir.className =
@@ -965,16 +1334,15 @@ function criarCardProjeto(projeto) {
   );
 
 
-
   card.appendChild(
     areaAcoes
   );
 
 
-
-  // ===========================================================
-  // CLICAR NO CARD TAMBÉM ABRE
-  // ===========================================================
+  // -----------------------------------------------------------
+  // CLICAR NO CARD FAZ A MESMA COISA:
+  // ABRE A SELEÇÃO DE IMAGENS
+  // -----------------------------------------------------------
 
   card.onclick =
     function() {
@@ -993,9 +1361,8 @@ function criarCardProjeto(projeto) {
 }
 
 
-
 // =============================================================
-// MOSTRAR ESTADO VAZIO
+// ESTADO VAZIO
 // =============================================================
 
 function mostrarEstadoVazio() {
@@ -1014,9 +1381,8 @@ function mostrarEstadoVazio() {
 }
 
 
-
 // =============================================================
-// MOSTRAR LISTA
+// MOSTRAR LISTA DE PROJETOS
 // =============================================================
 
 function mostrarListaProjetos() {
@@ -1029,7 +1395,6 @@ function mostrarListaProjetos() {
     "grid";
 
 }
-
 
 
 // =============================================================
@@ -1049,20 +1414,21 @@ async function carregarProjetos() {
 
 
     const projetos =
-      await getProjetos(db);
+      await getProjetos(
+        db
+      );
 
 
     db.close();
 
 
-    // Limpa a lista antes de recriar
     listaProjetos.innerHTML =
       "";
 
 
-    // =========================================================
-    // NENHUM PROJETO
-    // =========================================================
+    // ---------------------------------------------------------
+    // NÃO EXISTE PROJETO
+    // ---------------------------------------------------------
 
     if (
       !projetos ||
@@ -1081,10 +1447,9 @@ async function carregarProjetos() {
     }
 
 
-
-    // =========================================================
+    // ---------------------------------------------------------
     // ORDENA DO MAIS RECENTE PARA O MAIS ANTIGO
-    // =========================================================
+    // ---------------------------------------------------------
 
     projetos.sort(
       function(a, b) {
@@ -1107,13 +1472,11 @@ async function carregarProjetos() {
     );
 
 
-
-    // =========================================================
-    // MOSTRA LISTA
-    // =========================================================
+    // ---------------------------------------------------------
+    // MOSTRA OS PROJETOS
+    // ---------------------------------------------------------
 
     mostrarListaProjetos();
-
 
 
     projetos.forEach(
@@ -1157,11 +1520,8 @@ async function carregarProjetos() {
 }
 
 
-
 // =============================================================
 // INICIALIZAÇÃO
 // =============================================================
 
-// Quando projeto.html abrir,
-// busca automaticamente os projetos armazenados.
 carregarProjetos();

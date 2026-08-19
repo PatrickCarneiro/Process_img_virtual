@@ -710,6 +710,8 @@ async function restaurarProjetoSalvoSeNecessario() {
 
     localStorage.removeItem("projetoAtualId");
 
+    localStorage.removeItem("origemProcessamento");
+
     return true;
 
   } catch (error) {
@@ -719,6 +721,8 @@ async function restaurarProjetoSalvoSeNecessario() {
     localStorage.removeItem("abrirProjetoSalvo");
 
     localStorage.removeItem("projetoAtualId");
+
+    localStorage.removeItem("origemProcessamento");
 
     alert(
       "Não foi possível abrir o projeto salvo: " +
@@ -815,7 +819,7 @@ async function loadFiles() {
 
     statusText.innerText =
       projetoRestaurado
-        ? "Projeto carregado."
+        ? "Projeto carregado e primeira imagem processada."
         : "Arquivos carregados.";
 
   } catch (error) {
