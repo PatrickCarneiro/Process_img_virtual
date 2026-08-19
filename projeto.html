@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Projetos</title>
+
+  <!-- Fonte usada no sistema -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  >
+
+  <style>
+
+    /* =========================================================
+       RESET GERAL
+       ========================================================= */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+
+    /* =========================================================
+       CORPO DA PÁGINA
+       ========================================================= */
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0b1d3a, #050c1a);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+    }
+
+
+    /* =========================================================
+       MENU LATERAL
+       ========================================================= */
+
+    .menulateral {
+      width: 250px;
+      min-height: 100vh;
+      background: rgba(10, 20, 40, 0.9);
+      padding: 20px;
+      border-right: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+
+
+    /* =========================================================
+       LOGO
+       ========================================================= */
+
+    .logo {
+      font-size: 25px;
+      font-weight: 600;
+      margin-bottom: 50px;
+    }
+
+
+    /* =========================================================
+       MENU
+       ========================================================= */
+
+    .menu {
+      list-style: none;
+    }
+
+    .menu li {
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+
+    .menu li:hover {
+      background: rgba(192,132,252,0.15);
+      color: #c084fc;
+    }
+
+    .menu .active {
+      background: rgba(192,132,252,0.2);
+      color: #c084fc;
+    }
+
+
+    /* =========================================================
+       CONTEÚDO PRINCIPAL
+       ========================================================= */
+
+    .main {
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+      min-width: 0;
+    }
+
+
+    /* =========================================================
+       CABEÇALHO
+       ========================================================= */
+
+    .cabecalho {
+      margin-bottom: 35px;
+    }
+
+    .cabecalho h1 {
+      font-size: 52px;
+      margin-bottom: 10px;
+    }
+
+    .cabecalho p {
+      opacity: 0.7;
+      font-size: 15px;
+    }
+
+
+    /* =========================================================
+       ÁREA DOS PROJETOS
+       ========================================================= */
+
+    .area_projetos {
+      width: 100%;
+    }
+
+
+    /* =========================================================
+       GRID DOS PROJETOS
+       ========================================================= */
+
+    .grid_projetos {
+      display: grid;
+
+      grid-template-columns:
+        repeat(auto-fill, minmax(260px, 1fr));
+
+      gap: 20px;
+
+      width: 100%;
+    }
+
+
+    /* =========================================================
+       CARD DO PROJETO
+       ========================================================= */
+
+    .card_projeto {
+      background: rgba(255,255,255,0.05);
+
+      border:
+        1px solid rgba(255,255,255,0.08);
+
+      border-radius: 18px;
+
+      overflow: hidden;
+
+      transition: 0.25s ease;
+
+      cursor: pointer;
+
+      min-height: 230px;
+
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card_projeto:hover {
+      background: rgba(192,132,252,0.10);
+
+      border-color:
+        rgba(192,132,252,0.45);
+
+      transform: translateY(-4px);
+
+      box-shadow:
+        0 12px 30px rgba(0,0,0,0.25);
+    }
+
+
+    /* =========================================================
+       PRÉ-VISUALIZAÇÃO DO FLUXO
+       ========================================================= */
+
+    .preview_projeto {
+      height: 145px;
+
+      background:
+        rgba(0,0,0,0.22);
+
+      border-bottom:
+        1px solid rgba(255,255,255,0.06);
+
+      position: relative;
+
+      overflow: hidden;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+    }
+
+
+    /* Elemento visual que representa o fluxo */
+
+    .preview_fluxo {
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      gap: 7px;
+
+      padding: 15px;
+    }
+
+
+    /* Quadrados representando etapas */
+
+    .mini_etapa {
+      width: 38px;
+      height: 38px;
+
+      border-radius: 8px;
+
+      background:
+        rgba(192,132,252,0.22);
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      font-size: 11px;
+
+      color: white;
+    }
+
+
+    /* Linha entre as etapas */
+
+    .mini_linha {
+      width: 18px;
+
+      height: 2px;
+
+      background:
+        rgba(192,132,252,0.55);
+    }
+
+
+    /* =========================================================
+       INFORMAÇÕES DO PROJETO
+       ========================================================= */
+
+    .informacoes_projeto {
+      padding: 16px;
+
+      flex: 1;
+    }
+
+    .nome_projeto {
+      font-size: 16px;
+
+      font-weight: 600;
+
+      margin-bottom: 7px;
+
+      word-break: break-word;
+    }
+
+    .detalhes_projeto {
+      font-size: 12px;
+
+      opacity: 0.55;
+
+      line-height: 1.6;
+    }
+
+
+    /* =========================================================
+       RODAPÉ DO CARD
+       ========================================================= */
+
+    .acoes_projeto {
+      padding: 0 16px 16px 16px;
+
+      display: flex;
+
+      gap: 8px;
+    }
+
+
+    /* =========================================================
+       BOTÕES DOS PROJETOS
+       ========================================================= */
+
+    .botao_projeto {
+      flex: 1;
+
+      padding: 9px 12px;
+
+      border-radius: 9px;
+
+      border:
+        1px solid rgba(192,132,252,0.35);
+
+      background:
+        rgba(192,132,252,0.18);
+
+      color: white;
+
+      cursor: pointer;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      font-size: 12px;
+
+      transition: 0.2s;
+    }
+
+    .botao_projeto:hover {
+      background:
+        rgba(192,132,252,0.35);
+    }
+
+
+    /* =========================================================
+       ESTADO SEM PROJETOS
+       ========================================================= */
+
+    .estado_vazio {
+      width: 100%;
+
+      min-height: 320px;
+
+      border:
+        2px dashed rgba(255,255,255,0.12);
+
+      border-radius: 20px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      justify-content: center;
+
+      text-align: center;
+
+      padding: 40px;
+
+      background:
+        rgba(255,255,255,0.02);
+    }
+
+
+    .estado_vazio_icone {
+      width: 70px;
+      height: 70px;
+
+      border-radius: 18px;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      background:
+        rgba(192,132,252,0.13);
+
+      border:
+        1px solid rgba(192,132,252,0.30);
+
+      margin-bottom: 18px;
+
+      font-size: 31px;
+    }
+
+
+    .estado_vazio h2 {
+      font-size: 20px;
+
+      margin-bottom: 8px;
+    }
+
+
+    .estado_vazio p {
+      opacity: 0.55;
+
+      font-size: 13px;
+
+      max-width: 430px;
+
+      line-height: 1.6;
+    }
+
+
+    /* =========================================================
+       STATUS
+       ========================================================= */
+
+    #statusProjetos {
+      margin-top: 20px;
+
+      font-size: 12px;
+
+      opacity: 0.55;
+    }
+
+
+    /* =========================================================
+       RESPONSIVIDADE
+       ========================================================= */
+
+    @media (max-width: 900px) {
+
+      body {
+        flex-direction: column;
+      }
+
+      .menulateral {
+        width: 100%;
+        min-height: auto;
+      }
+
+      .logo {
+        margin-bottom: 20px;
+      }
+
+      .menu {
+        display: flex;
+        gap: 8px;
+      }
+
+      .menu li {
+        flex: 1;
+        text-align: center;
+      }
+
+      .main {
+        padding: 25px;
+      }
+
+      .cabecalho h1 {
+        font-size: 36px;
+      }
+
+    }
+
+
+    @media (max-width: 550px) {
+
+      .grid_projetos {
+        grid-template-columns: 1fr;
+      }
+
+      .cabecalho h1 {
+        font-size: 30px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+  <!-- =======================================================
+       MENU LATERAL
+       ======================================================= -->
+
+  <div class="menulateral">
+
+    <!-- Nome do sistema -->
+
+    <div class="logo">
+
+      Processamento Imagem Médica
+
+    </div>
+
+
+    <!-- Menu -->
+
+    <ul class="menu">
+
+      <!-- Volta para página inicial -->
+
+      <li
+        onclick="window.location.href='index.html'"
+      >
+        Início
+      </li>
+
+
+      <!-- Página atual -->
+
+      <li class="active">
+
+        Projetos
+
+      </li>
+
+    </ul>
+
+  </div>
+
+
+
+  <!-- =======================================================
+       ÁREA PRINCIPAL
+       ======================================================= -->
+
+  <main class="main">
+
+
+    <!-- =====================================================
+         CABEÇALHO
+         ===================================================== -->
+
+    <div class="cabecalho">
+
+      <h1>Projetos</h1>
+
+      <p>
+        Acesse os fluxos de processamento que você salvou.
+      </p>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         ÁREA DOS PROJETOS
+         ===================================================== -->
+
+    <section class="area_projetos">
+
+
+      <!-- ===================================================
+           MENSAGEM QUANDO NÃO EXISTIR NENHUM PROJETO
+           =================================================== -->
+
+      <div
+        id="estadoVazioProjetos"
+        class="estado_vazio"
+      >
+
+        <div class="estado_vazio_icone">
+
+          ◇
+
+        </div>
+
+
+        <h2>
+
+          Nenhum projeto salvo
+
+        </h2>
+
+
+        <p>
+
+          Quando você montar um fluxo de processamento
+          e utilizar a opção "Salvar fluxo",
+          ele aparecerá aqui.
+
+        </p>
+
+      </div>
+
+
+
+      <!-- ===================================================
+           PROJETOS SALVOS
+
+           O projeto.js irá inserir os cards aqui.
+           =================================================== -->
+
+      <div
+        id="listaProjetos"
+        class="grid_projetos"
+        style="display: none;"
+      >
+
+      </div>
+
+
+
+      <!-- Status utilizado pelo JavaScript -->
+
+      <p id="statusProjetos"></p>
+
+
+    </section>
+
+
+  </main>
+
+
+
+  <!-- =======================================================
+       JAVASCRIPT DA PÁGINA DE PROJETOS
+       ======================================================= -->
+
+  <script src="projeto.js"></script>
+
+
+</body>
+
+</html>

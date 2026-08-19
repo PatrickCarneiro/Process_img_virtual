@@ -1,7 +1,7 @@
 // Java da tela principal
 
 const DB_NAME = "MedicalImagesDB"; // Nome do banco de dados (futuramente mudar para o Supabase)
-const DB_VERSION = 6; // Versão do banco 
+const DB_VERSION = 7; // Versão do banco 
 
 // Pegando elementos do HTML
 const fileInput = document.getElementById("fileInput"); 
@@ -50,6 +50,20 @@ function openDatabase() {
 
           autoIncrement: true
         });
+      }
+
+      // Verifica se a tabela "projects" NÃO existe
+      if (!db.objectStoreNames.contains("projects")) {
+
+        const storeProjetos = db.createObjectStore("projects", {
+
+          keyPath: "id",
+
+          autoIncrement: true
+        });
+
+        storeProjetos.createIndex("nome", "nome", { unique: false });
+        storeProjetos.createIndex("createdAt", "createdAt", { unique: false });
       }
     };
 

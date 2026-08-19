@@ -3,7 +3,7 @@
 // VARIÁVEIS GLOBAIS 
 
 const DB_NAME = "MedicalImagesDB"; // Nome do banco IndexedDB usado pelo sistema
-const DB_VERSION = 6; // Versão do banco IndexedDB
+const DB_VERSION = 7; // Versão do banco IndexedDB (v7 adiciona a store de projetos)
 
 const visualizadorDicom = document.getElementById("visualizadorDicom"); // Pega o container DICOM
 const imagemNormal = document.getElementById("imagemNormal"); // Pega a imagem comum
@@ -87,6 +87,11 @@ let retanguloRecorteAtual = null;
 let caminhoRecorteLivreAtual = [];
 let dadosRecortePendente = null;
 
+// VARIÁVEIS DA OPERAÇÃO DE SALVAR/ABRIR PROJETOS
+let containerSalvarFluxoProjeto = null;
+let modalSalvarFluxoProjeto = null;
+let inputNomeProjetoFluxo = null;
+
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
 cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
@@ -135,6 +140,23 @@ function openDatabase() {
 
       } 
 
+      // Store usada exclusivamente para salvar os fluxos como projetos
+      if (!db.objectStoreNames.contains("projects")) {
+
+        const storeProjetos = db.createObjectStore("projects", {
+
+          keyPath: "id",
+
+          autoIncrement: true
+
+        });
+
+        storeProjetos.createIndex("nome", "nome", { unique: false });
+
+        storeProjetos.createIndex("createdAt", "createdAt", { unique: false });
+
+      }
+
     }; 
 
     request.onsuccess = function() { // Se abrir com sucesso
@@ -180,6 +202,561 @@ function getFiles(db) {
 
 } 
 
+// =============================================================
+// FUNÇÕES DE PROJETOS
+// Estas funções cuidam somente de salvar e restaurar o fluxograma.
+// =============================================================
+
+// Faz uma cópia independente do pipeline antes de armazená-lo no IndexedDB
+function clonarPipelineParaProjeto(pipeline) {
+
+  return JSON.parse(JSON.stringify(pipeline || []));
+
+}
+
+// Adiciona um novo projeto à store "projects"
+function adicionarProjetoAoBanco(db, projeto) {
+
+  return new Promise((resolve, reject) => {
+
+    const transaction = db.transaction("projects", "readwrite");
+
+    const store = transaction.objectStore("projects");
+
+    const request = store.add(projeto);
+
+    request.onsuccess = function() {
+
+      resolve(request.result);
+
+    };
+
+    request.onerror = function() {
+
+      reject(request.error);
+
+    };
+
+  });
+
+}
+
+// Busca um projeto salvo pelo ID
+function getProjetoSalvoPorId(db, idProjeto) {
+
+  return new Promise((resolve, reject) => {
+
+    const transaction = db.transaction("projects", "readonly");
+
+    const store = transaction.objectStore("projects");
+
+    const request = store.get(idProjeto);
+
+    request.onsuccess = function() {
+
+      resolve(request.result);
+
+    };
+
+    request.onerror = function() {
+
+      reject(request.error);
+
+    };
+
+  });
+
+}
+
+// Cria somente a interface necessária para salvar o fluxo.
+// O botão é colocado logo abaixo da área do fluxograma.
+function configurarInterfaceSalvarFluxoProjeto() {
+
+  if (!areaFluxograma) return;
+
+  if (!document.getElementById("estiloSalvarFluxoProjeto")) {
+
+    const estilo = document.createElement("style");
+
+    estilo.id = "estiloSalvarFluxoProjeto";
+
+    estilo.textContent = `
+      #containerSalvarFluxoProjeto {
+        display: none;
+        width: 100%;
+        margin-top: 14px;
+      }
+
+      #botaoSalvarFluxoProjeto {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1px solid rgba(192,132,252,0.45);
+        border-radius: 10px;
+        background: rgba(192,132,252,0.22);
+        color: #ffffff;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: 0.2s ease;
+      }
+
+      #botaoSalvarFluxoProjeto:hover {
+        background: rgba(192,132,252,0.38);
+        border-color: rgba(192,132,252,0.65);
+      }
+
+      #modalSalvarFluxoProjeto {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 6000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(2,7,18,0.76);
+        backdrop-filter: blur(4px);
+      }
+
+      #modalSalvarFluxoProjeto.ativo {
+        display: flex;
+      }
+
+      #caixaSalvarFluxoProjeto {
+        width: min(430px, 100%);
+        padding: 22px;
+        border-radius: 18px;
+        background: #0b162c;
+        border: 1px solid rgba(192,132,252,0.45);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+      }
+
+      #caixaSalvarFluxoProjeto h3 {
+        margin-bottom: 8px;
+        color: #ffffff;
+      }
+
+      #caixaSalvarFluxoProjeto p {
+        margin-bottom: 14px;
+        color: rgba(255,255,255,0.70);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      #inputNomeProjetoFluxo {
+        width: 100%;
+        padding: 10px 11px;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 9px;
+        outline: none;
+        background: rgba(255,255,255,0.07);
+        color: #ffffff;
+        font-size: 13px;
+      }
+
+      #inputNomeProjetoFluxo:focus {
+        border-color: rgba(192,132,252,0.60);
+      }
+
+      #acoesSalvarFluxoProjeto {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .botaoSalvarFluxoModalProjeto {
+        padding: 10px 14px;
+        border: 1px solid rgba(192,132,252,0.45);
+        border-radius: 9px;
+        background: rgba(192,132,252,0.20);
+        color: #ffffff;
+        cursor: pointer;
+      }
+
+      .botaoSalvarFluxoModalProjeto:hover {
+        background: rgba(192,132,252,0.35);
+      }
+
+      .botaoSalvarFluxoModalProjeto.cancelar {
+        background: rgba(255,255,255,0.055);
+        border-color: rgba(255,255,255,0.12);
+      }
+    `;
+
+    document.head.appendChild(estilo);
+
+  }
+
+  containerSalvarFluxoProjeto = document.getElementById("containerSalvarFluxoProjeto");
+
+  if (!containerSalvarFluxoProjeto) {
+
+    containerSalvarFluxoProjeto = document.createElement("div");
+
+    containerSalvarFluxoProjeto.id = "containerSalvarFluxoProjeto";
+
+    const botaoSalvarFluxo = document.createElement("button");
+
+    botaoSalvarFluxo.id = "botaoSalvarFluxoProjeto";
+
+    botaoSalvarFluxo.type = "button";
+
+    botaoSalvarFluxo.innerText = "Salvar fluxo";
+
+    botaoSalvarFluxo.addEventListener("click", abrirModalSalvarFluxoProjeto);
+
+    containerSalvarFluxoProjeto.appendChild(botaoSalvarFluxo);
+
+    areaFluxograma.insertAdjacentElement(
+      "afterend",
+      containerSalvarFluxoProjeto
+    );
+
+  }
+
+  modalSalvarFluxoProjeto = document.getElementById("modalSalvarFluxoProjeto");
+
+  if (!modalSalvarFluxoProjeto) {
+
+    modalSalvarFluxoProjeto = document.createElement("div");
+
+    modalSalvarFluxoProjeto.id = "modalSalvarFluxoProjeto";
+
+    modalSalvarFluxoProjeto.innerHTML = `
+      <div id="caixaSalvarFluxoProjeto">
+        <h3>Salvar fluxo</h3>
+
+        <p>
+          Digite o nome do projeto para armazenar este fluxo
+          na aba de Projetos.
+        </p>
+
+        <input
+          id="inputNomeProjetoFluxo"
+          type="text"
+          maxlength="100"
+          placeholder="Nome do projeto"
+          autocomplete="off"
+        >
+
+        <div id="acoesSalvarFluxoProjeto">
+          <button
+            type="button"
+            class="botaoSalvarFluxoModalProjeto cancelar"
+            id="botaoCancelarSalvarFluxoProjeto"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            class="botaoSalvarFluxoModalProjeto"
+            id="botaoConfirmarSalvarFluxoProjeto"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalSalvarFluxoProjeto);
+
+    inputNomeProjetoFluxo =
+      document.getElementById("inputNomeProjetoFluxo");
+
+    document
+      .getElementById("botaoCancelarSalvarFluxoProjeto")
+      .addEventListener("click", fecharModalSalvarFluxoProjeto);
+
+    document
+      .getElementById("botaoConfirmarSalvarFluxoProjeto")
+      .addEventListener("click", salvarFluxoComoProjeto);
+
+    inputNomeProjetoFluxo.addEventListener("keydown", function(event) {
+
+      if (event.key === "Enter") {
+
+        event.preventDefault();
+
+        salvarFluxoComoProjeto();
+
+      }
+
+      if (event.key === "Escape") {
+
+        event.preventDefault();
+
+        fecharModalSalvarFluxoProjeto();
+
+      }
+
+    });
+
+    modalSalvarFluxoProjeto.addEventListener("click", function(event) {
+
+      if (event.target === modalSalvarFluxoProjeto) {
+
+        fecharModalSalvarFluxoProjeto();
+
+      }
+
+    });
+
+  } else {
+
+    inputNomeProjetoFluxo =
+      document.getElementById("inputNomeProjetoFluxo");
+
+  }
+
+  atualizarControleSalvarFluxoProjeto();
+
+}
+
+// Mostra o botão somente depois que o usuário realmente iniciou um fluxo
+function atualizarControleSalvarFluxoProjeto() {
+
+  if (!containerSalvarFluxoProjeto) return;
+
+  containerSalvarFluxoProjeto.style.display =
+    pipelineFerramentas.length > 0
+      ? "block"
+      : "none";
+
+}
+
+// Abre a caixa para digitar o nome do projeto
+function abrirModalSalvarFluxoProjeto() {
+
+  if (pipelineFerramentas.length === 0) {
+
+    alert("Adicione pelo menos uma ferramenta ao fluxo antes de salvar.");
+
+    return;
+
+  }
+
+  if (!modalSalvarFluxoProjeto || !inputNomeProjetoFluxo) {
+
+    configurarInterfaceSalvarFluxoProjeto();
+
+  }
+
+  inputNomeProjetoFluxo.value = "";
+
+  modalSalvarFluxoProjeto.classList.add("ativo");
+
+  setTimeout(function() {
+
+    inputNomeProjetoFluxo.focus();
+
+  }, 0);
+
+}
+
+// Fecha a caixa de salvamento
+function fecharModalSalvarFluxoProjeto() {
+
+  if (!modalSalvarFluxoProjeto) return;
+
+  modalSalvarFluxoProjeto.classList.remove("ativo");
+
+}
+
+// Salva o pipeline atual como um novo projeto
+async function salvarFluxoComoProjeto() {
+
+  if (pipelineFerramentas.length === 0) {
+
+    alert("Adicione pelo menos uma ferramenta ao fluxo antes de salvar.");
+
+    return;
+
+  }
+
+  const nomeProjeto =
+    inputNomeProjetoFluxo
+      ? inputNomeProjetoFluxo.value.trim()
+      : "";
+
+  if (!nomeProjeto) {
+
+    alert("Digite um nome para o projeto.");
+
+    if (inputNomeProjetoFluxo) {
+
+      inputNomeProjetoFluxo.focus();
+
+    }
+
+    return;
+
+  }
+
+  try {
+
+    const agora = Date.now();
+
+    const projeto = {
+
+      nome: nomeProjeto,
+
+      pipelineFerramentas:
+        clonarPipelineParaProjeto(pipelineFerramentas),
+
+      quantidadeEtapas:
+        pipelineFerramentas.length,
+
+      createdAt: agora,
+
+      updatedAt: agora
+
+    };
+
+    const db = await openDatabase();
+
+    await adicionarProjetoAoBanco(db, projeto);
+
+    db.close();
+
+    fecharModalSalvarFluxoProjeto();
+
+    statusText.innerText =
+      'Fluxo salvo no projeto "' + nomeProjeto + '".';
+
+  } catch (error) {
+
+    console.error("Erro ao salvar fluxo como projeto:", error);
+
+    alert(
+      "Não foi possível salvar o projeto: " +
+      (error.message || String(error))
+    );
+
+  }
+
+}
+
+// Restaura o fluxo quando processamento.html foi aberto por projeto.html
+async function restaurarProjetoSalvoSeNecessario() {
+
+  const deveAbrirProjeto =
+    localStorage.getItem("abrirProjetoSalvo") === "true";
+
+  if (!deveAbrirProjeto) {
+
+    return false;
+
+  }
+
+  const idProjeto =
+    Number(localStorage.getItem("projetoAtualId"));
+
+  if (!Number.isInteger(idProjeto) || idProjeto <= 0) {
+
+    localStorage.removeItem("abrirProjetoSalvo");
+
+    localStorage.removeItem("projetoAtualId");
+
+    return false;
+
+  }
+
+  try {
+
+    const db = await openDatabase();
+
+    const projeto =
+      await getProjetoSalvoPorId(db, idProjeto);
+
+    db.close();
+
+    if (!projeto) {
+
+      throw new Error("Projeto não encontrado.");
+
+    }
+
+    const pipelineProjeto =
+      Array.isArray(projeto.pipelineFerramentas)
+        ? projeto.pipelineFerramentas
+        : (
+            Array.isArray(projeto.pipeline)
+              ? projeto.pipeline
+              : []
+          );
+
+    pipelineFerramentas =
+      clonarPipelineParaProjeto(pipelineProjeto);
+
+    const maiorId =
+      pipelineFerramentas.reduce(function(maior, etapa) {
+
+        const idEtapa = Number(etapa && etapa.id);
+
+        return Number.isFinite(idEtapa)
+          ? Math.max(maior, idEtapa)
+          : maior;
+
+      }, 0);
+
+    proximoIdEtapa = maiorId + 1;
+
+    desenharFluxograma();
+
+    atualizarControleSalvarFluxoProjeto();
+
+    localStorage.removeItem("abrirProjetoSalvo");
+
+    localStorage.removeItem("projetoAtualId");
+
+    return true;
+
+  } catch (error) {
+
+    console.error("Erro ao restaurar projeto salvo:", error);
+
+    localStorage.removeItem("abrirProjetoSalvo");
+
+    localStorage.removeItem("projetoAtualId");
+
+    alert(
+      "Não foi possível abrir o projeto salvo: " +
+      (error.message || String(error))
+    );
+
+    return false;
+
+  }
+
+}
+
+// Faz o item "Projetos" do menu desta página abrir projeto.html
+function configurarLinkMenuProjetos() {
+
+  const itensMenu =
+    document.querySelectorAll(".menu-item");
+
+  itensMenu.forEach(function(item) {
+
+    const texto =
+      String(item.textContent || "").trim();
+
+    if (texto === "Projetos") {
+
+      item.addEventListener("click", function() {
+
+        window.location.href = "projeto.html";
+
+      });
+
+    }
+
+  });
+
+}
+
+
 // Função para carregar arquivos
 async function loadFiles() { 
 
@@ -187,8 +764,14 @@ async function loadFiles() {
     const db = await openDatabase();
     const files = await getFiles(db);
 
+    const projetoRestaurado =
+      await restaurarProjetoSalvoSeNecessario();
+
     if (files.length === 0) {
-      statusText.innerText = "Nenhum arquivo encontrado.";
+      statusText.innerText =
+        projetoRestaurado
+          ? "Projeto carregado. Nenhuma imagem encontrada para processar."
+          : "Nenhum arquivo encontrado.";
       return;
     }
 
@@ -216,6 +799,12 @@ async function loadFiles() {
       criarCardImagem(item);
     });
 
+    // Se a página foi aberta a partir de um projeto salvo,
+    // aplica o fluxo restaurado à primeira imagem antes de exibi-la.
+    if (projetoRestaurado && pipelineFerramentas.length > 0) {
+      await processarImagemSelecionada(imagemAtualSelecionada);
+    }
+
     // Abre automaticamente a primeira imagem na tela principal
     await openFile(imagemAtualSelecionada);
 
@@ -224,7 +813,10 @@ async function loadFiles() {
       await atualizarAnaliseDaImagemAtual();
     }
 
-    statusText.innerText = "Arquivos carregados.";
+    statusText.innerText =
+      projetoRestaurado
+        ? "Projeto carregado."
+        : "Arquivos carregados.";
 
   } catch (error) {
 
@@ -2804,6 +3396,9 @@ function desenharFluxograma() {
 
     areaFluxograma.appendChild(bloco);
   });
+
+  // Atualiza somente a visibilidade do botão ligado ao salvamento do fluxo
+  atualizarControleSalvarFluxoProjeto();
 }
 
 // Função para remover uma etapa do pipeline, reprocessar as imagens e atualizar a interface
@@ -5652,3 +6247,12 @@ if (canvasRecorte) {
 window.addEventListener("resize", function() {
   atualizarCanvasRecorte();
 });
+
+
+// =============================================================
+// INICIALIZAÇÃO DA OPERAÇÃO DE PROJETOS
+// =============================================================
+
+configurarInterfaceSalvarFluxoProjeto();
+configurarLinkMenuProjetos();
+atualizarControleSalvarFluxoProjeto();
