@@ -397,12 +397,16 @@ function gerarAnaliseImagemNormal(img, arquivo) {
 
 function gerarAnaliseDicom(image) {
 
-  const pixels = image.getPixelData(); // Pega os pixels reais do DICOM
+  const pixels = image.getPixelData(); // Pega os pixels decodificados do DICOM
 
   if (!pixels || pixels.length === 0) return;
 
-  const tipoImagem = identificarTipoPelosPixels(pixels); // Identifica a classe dos pixels
-  const classeHistograma = identificarClasseImhist(pixels); // Classe usada para definir faixa e bins como no imhist
+  // Para ficar igual ao MATLAB, a classe do histograma deve representar
+  // a classe original do DICOM (como a matriz retornada por dicomread),
+  // e não ser escolhida apenas pelo construtor do TypedArray do navegador.
+  // Pixel Representation: 0 = unsigned, 1 = signed.
+  const classeHistograma = identificarClasseImhistDicom(image, pixels);
+  const tipoImagem = classeHistograma;
 
   atualizarTipoImagemAtual(
     "DICOM - " + tipoImagem,
@@ -587,29 +591,20 @@ function criarHistograma(valores, classeHistograma) {
 
   const numeroBins = configuracao.numeroBins;
 
-  // Em alguns DICOMs o Cornerstone entrega um Int8Array/Int16Array mesmo
-  // quando todos os valores realmente presentes na imagem são não negativos.
-  // Nesse caso, não faz sentido exibir a metade negativa da faixa assinada,
-  // porque isso cria valores no eixo/tooltip que não existem na imagem.
-  let minimoClasse = configuracao.minimoClasse;
-  let maximoClasse = configuracao.maximoClasse;
-
-  if (min >= 0 && minimoClasse < 0) {
-    minimoClasse = 0;
-  }
-
-  // Segurança adicional para nunca deixar a faixa configurada menor que
-  // os valores reais encontrados na imagem.
-  if (max > maximoClasse) {
-    maximoClasse = max;
-  }
+  // IMPORTANTE: o imhist NÃO adapta a faixa ao mínimo/máximo observado.
+  // A faixa é fixa e vem da classe da imagem.
+  // Ex.: uint16 -> [0, 65535] e int16 -> [-32768, 32767].
+  const minimoClasse = configuracao.minimoClasse;
+  const maximoClasse = configuracao.maximoClasse;
 
   const contagens = new Array(numeroBins).fill(0);
   const centros = new Array(numeroBins);
   const bordas = new Array(numeroBins + 1);
 
-  // No imhist, os centros dos bins são igualmente espaçados dentro da faixa
-  // completa da classe. Para uint8, por exemplo, são 0,1,2,...,255.
+  // O código do MATLAB retorna:
+  // x = linspace(range(1), range(2), n).
+  // Portanto estes são exatamente os centros que [COUNTS, X] = imhist(...)
+  // usaria para a classe escolhida.
   const passo =
     numeroBins > 1
       ? (maximoClasse - minimoClasse) / (numeroBins - 1)
@@ -619,15 +614,22 @@ function criarHistograma(valores, classeHistograma) {
     centros[i] = minimoClasse + i * passo;
   }
 
-  // As bordas ficam a meio passo entre dois centros consecutivos.
-  // Ex.: uint8 -> -0.5, 0.5, 1.5, ..., 255.5.
-  bordas[0] = centros[0] - passo / 2;
+  if (configuracao.classe === "logical") {
+    // Para logical, imhist usa exatamente os dois valores 0 e 1.
+    bordas[0] = -0.5;
+    bordas[1] = 0.5;
+    bordas[2] = 1.5;
+  } else {
+    // A documentação do imhist define os bins como intervalos semiabertos
+    // de largura A/(N-1), centrados nos valores de X.
+    bordas[0] = centros[0] - passo / 2;
 
-  for (let i = 1; i < numeroBins; i++) {
-    bordas[i] = (centros[i - 1] + centros[i]) / 2;
+    for (let i = 1; i < numeroBins; i++) {
+      bordas[i] = centros[i] - passo / 2;
+    }
+
+    bordas[numeroBins] = centros[numeroBins - 1] + passo / 2;
   }
-
-  bordas[numeroBins] = centros[numeroBins - 1] + passo / 2;
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
@@ -637,11 +639,15 @@ function criarHistograma(valores, classeHistograma) {
     if (configuracao.classe === "logical") {
       indice = valor === 0 ? 0 : 1;
     } else {
-      indice = Math.round((valor - minimoClasse) / passo);
+      // Bin p do MATLAB:
+      // centro - passo/2 <= valor < centro + passo/2.
+      // Usar floor a partir da primeira borda reproduz a convenção
+      // semiaberta com mais fidelidade do que Math.round().
+      const primeiraBorda = minimoClasse - passo / 2;
+      indice = Math.floor((valor - primeiraBorda) / passo);
     }
 
-    // Mantém valores fora da faixa no primeiro/último bin,
-    // comportamento compatível com imagens de intensidade escaladas.
+    // Valores nos extremos ficam no primeiro/último bin.
     if (indice < 0) indice = 0;
     if (indice >= numeroBins) indice = numeroBins - 1;
 
@@ -1230,7 +1236,7 @@ function mostrarTooltipHistograma(event, canvas) {
   const valorPixel = obterCentroDoBin(indice);
 
   tooltip.innerHTML = `
-    <strong>Valor do pixel:</strong> ${formatarNumero(valorPixel)}<br>
+    <strong>Valor do pixel:</strong> ${formatarNumeroEixoX(valorPixel)}<br>
     <strong>Quantidade:</strong> ${quantidade} pixels
   `;
 
@@ -1293,20 +1299,8 @@ function obterCentroDoBin(indice) {
     centro = (bordasHistogramaAtual[indice] + bordasHistogramaAtual[indice + 1]) / 2;
   }
 
-  // Se a imagem real não possui nenhum pixel negativo, nunca mostra um
-  // valor negativo criado apenas pela faixa teórica de uma classe assinada.
-  if (histSelecionado && Number.isFinite(histSelecionado.min) && histSelecionado.min >= 0 && centro < 0) {
-    centro = 0;
-  }
-
-  // Classes inteiras representam intensidades inteiras de pixel.
-  if (
-    histSelecionado &&
-    ["logical", "uint8", "int8", "uint16", "int16", "uint32", "int32"].includes(histSelecionado.classe)
-  ) {
-    centro = Math.round(centro);
-  }
-
+  // Não altera o centro calculado. O tooltip deve mostrar exatamente o X
+  // que o MATLAB retornaria em [COUNTS, X] = imhist(...).
   return centro;
 
 }
@@ -1417,6 +1411,66 @@ async function atualizarTipoImagemNormal(img, arquivo) {
   );
 
 }
+
+function identificarClasseImhistDicom(image, pixels) {
+
+  let bitsAllocated = null;
+  let pixelRepresentation = null;
+
+  // Caminho principal: metadados que o próprio Cornerstone WADO usa
+  // para construir o imageFrame.
+  try {
+    if (
+      typeof cornerstone !== "undefined" &&
+      cornerstone.metaData &&
+      typeof cornerstone.metaData.get === "function" &&
+      image &&
+      image.imageId
+    ) {
+      const moduloPixel = cornerstone.metaData.get("imagePixelModule", image.imageId);
+
+      if (moduloPixel) {
+        bitsAllocated = Number(moduloPixel.bitsAllocated);
+        pixelRepresentation = Number(moduloPixel.pixelRepresentation);
+      }
+    }
+  } catch (erro) {
+    console.warn("Não foi possível ler imagePixelModule para o histograma:", erro);
+  }
+
+  // Fallback: o imageFrame também mantém esses campos no objeto carregado.
+  if (image && image.imageFrame) {
+    if (!Number.isFinite(bitsAllocated)) {
+      bitsAllocated = Number(image.imageFrame.bitsAllocated);
+    }
+
+    if (!Number.isFinite(pixelRepresentation)) {
+      pixelRepresentation = Number(image.imageFrame.pixelRepresentation);
+    }
+  }
+
+  // DICOM Pixel Representation: 0 = unsigned; 1 = signed.
+  if (Number.isFinite(bitsAllocated) && Number.isFinite(pixelRepresentation)) {
+
+    const assinado = pixelRepresentation === 1;
+
+    if (bitsAllocated <= 8) {
+      return assinado ? "int8" : "uint8";
+    }
+
+    if (bitsAllocated <= 16) {
+      return assinado ? "int16" : "uint16";
+    }
+
+    if (bitsAllocated <= 32) {
+      return assinado ? "int32" : "uint32";
+    }
+  }
+
+  // Último fallback para casos em que os metadados não estejam disponíveis.
+  return identificarClasseImhist(pixels);
+}
+
 
 function identificarClasseImhist(pixels) {
 
