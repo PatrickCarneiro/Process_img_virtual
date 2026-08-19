@@ -16,9 +16,13 @@ let imagensProcessamento = []; // Guarda as imagens de trabalho no fluxograma
 
 let imagemAtualSelecionada = null; // Guarda qual imagem está aberta na tela neste momento.
 
-let pipelineFerramentas = []; // Guarda o pipeline de ferramentas do fluxograma
+let pipelineFerramentas = []; // Guarda o pipeline da imagem atualmente selecionada
 
-let proximoIdEtapa = 1; // Guarda o id da próxima etapa no fluxograma
+let pipelineFluxoCopiado = null; // Guarda temporariamente uma cópia independente do fluxograma copiado
+
+let pipelineProjetoPendente = null; // Guarda temporariamente o fluxo de um projeto até a primeira imagem ser criada
+
+let proximoIdEtapa = 1; // Guarda o id da próxima etapa no fluxograma da imagem atual
 
 const parametrosDiv = document.getElementById("parametros"); // Pega a área de parâmetros
 
@@ -211,6 +215,261 @@ function getFiles(db) {
 function clonarPipelineParaProjeto(pipeline) {
 
   return JSON.parse(JSON.stringify(pipeline || []));
+
+}
+
+
+// =============================================================
+// FUNÇÕES DO FLUXOGRAMA POR IMAGEM
+// =============================================================
+
+// Faz uma cópia independente do pipeline para impedir que duas imagens
+// compartilhem os mesmos objetos de parâmetros.
+function clonarPipelineDaImagem(pipeline) {
+
+  return clonarPipelineParaProjeto(pipeline);
+
+}
+
+// Invalida somente o resultado de uma imagem quando o fluxo dela muda.
+function invalidarProcessamentoDaImagem(item) {
+
+  if (!item) return;
+
+  item.resultado = null;
+  item.processado = false;
+  item.assinaturaPipeline = "";
+  item.cacheEtapas = {};
+
+}
+
+// Recalcula o próximo ID de etapa usando somente o pipeline atual.
+function recalcularProximoIdEtapaPipelineAtual() {
+
+  const maiorId =
+    pipelineFerramentas.reduce(function(maior, etapa) {
+
+      const idEtapa = Number(etapa && etapa.id);
+
+      return Number.isFinite(idEtapa)
+        ? Math.max(maior, idEtapa)
+        : maior;
+
+    }, 0);
+
+  proximoIdEtapa = maiorId + 1;
+
+}
+
+// Salva o pipeline global dentro da imagem atualmente selecionada.
+function sincronizarPipelineAtualNaImagem() {
+
+  if (!imagemAtualSelecionada) return;
+
+  imagemAtualSelecionada.pipelineFerramentas =
+    clonarPipelineDaImagem(pipelineFerramentas);
+
+}
+
+// Carrega para a variável global somente o pipeline da imagem informada.
+function carregarPipelineDaImagem(item) {
+
+  pipelineFerramentas =
+    clonarPipelineDaImagem(
+      item && Array.isArray(item.pipelineFerramentas)
+        ? item.pipelineFerramentas
+        : []
+    );
+
+  recalcularProximoIdEtapaPipelineAtual();
+
+  etapaComparativoSelecionada = "original";
+
+  desenharFluxograma();
+
+  atualizarControleSalvarFluxoProjeto();
+
+}
+
+// Copia o fluxograma da imagem atual sem processar nada.
+function copiarFluxoImagemAtual() {
+
+  if (!imagemAtualSelecionada) {
+
+    alert("Nenhuma imagem está selecionada.");
+
+    return;
+  }
+
+  if (pipelineFerramentas.length === 0) {
+
+    alert("O fluxograma da imagem atual está vazio.");
+
+    return;
+  }
+
+  sincronizarPipelineAtualNaImagem();
+
+  pipelineFluxoCopiado =
+    clonarPipelineDaImagem(pipelineFerramentas);
+
+  statusText.innerText =
+    "Fluxograma copiado da imagem: " +
+    imagemAtualSelecionada.name;
+
+}
+
+// Cola o fluxo copiado na imagem atual ou em todas as imagens,
+// conforme o checkbox "Aplicar fluxo em todas as imagens".
+async function colarFluxoCopiado() {
+
+  if (!pipelineFluxoCopiado) {
+
+    alert("Copie um fluxograma antes de colar.");
+
+    return;
+  }
+
+  if (!imagemAtualSelecionada) {
+
+    alert("Nenhuma imagem está selecionada.");
+
+    return;
+  }
+
+  const aplicarEmTodas =
+    deveAplicarFluxoEmTodasImagens();
+
+  if (aplicarEmTodas) {
+
+    imagensProcessamento.forEach(function(item) {
+
+      item.pipelineFerramentas =
+        clonarPipelineDaImagem(pipelineFluxoCopiado);
+
+      invalidarProcessamentoDaImagem(item);
+
+    });
+
+    carregarPipelineDaImagem(imagemAtualSelecionada);
+
+    await openFile(imagemAtualSelecionada);
+
+    statusText.innerText =
+      "Fluxograma colado em todas as imagens. Clique em Processar fluxo para executar.";
+
+  } else {
+
+    imagemAtualSelecionada.pipelineFerramentas =
+      clonarPipelineDaImagem(pipelineFluxoCopiado);
+
+    invalidarProcessamentoDaImagem(imagemAtualSelecionada);
+
+    carregarPipelineDaImagem(imagemAtualSelecionada);
+
+    await openFile(imagemAtualSelecionada);
+
+    statusText.innerText =
+      "Fluxograma colado na imagem atual. Clique em Processar fluxo para executar.";
+
+  }
+
+  if (
+    analiseCarregada &&
+    typeof atualizarAnaliseDaImagemAtual === "function"
+  ) {
+
+    await atualizarAnaliseDaImagemAtual();
+
+  }
+
+}
+
+// Cria os botões Copiar fluxo e Colar fluxo acima do quadrado do fluxograma.
+function configurarInterfaceCopiarColarFluxo() {
+
+  if (!areaFluxograma) return;
+
+  if (!document.getElementById("estiloCopiarColarFluxo")) {
+
+    const estilo = document.createElement("style");
+
+    estilo.id = "estiloCopiarColarFluxo";
+
+    estilo.textContent = `
+      #controlesCopiarColarFluxo {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .botaoCopiarColarFluxo {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 9px;
+        background: rgba(255,255,255,0.055);
+        color: #ffffff;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: 0.2s ease;
+      }
+
+      .botaoCopiarColarFluxo:hover {
+        background: rgba(192,132,252,0.18);
+        border-color: rgba(192,132,252,0.42);
+      }
+    `;
+
+    document.head.appendChild(estilo);
+
+  }
+
+  let controles =
+    document.getElementById("controlesCopiarColarFluxo");
+
+  if (!controles) {
+
+    controles = document.createElement("div");
+
+    controles.id = "controlesCopiarColarFluxo";
+
+    const botaoCopiar = document.createElement("button");
+
+    botaoCopiar.type = "button";
+    botaoCopiar.id = "botaoCopiarFluxo";
+    botaoCopiar.className = "botaoCopiarColarFluxo";
+    botaoCopiar.innerText = "Copiar fluxo";
+
+    botaoCopiar.addEventListener(
+      "click",
+      copiarFluxoImagemAtual
+    );
+
+    const botaoColar = document.createElement("button");
+
+    botaoColar.type = "button";
+    botaoColar.id = "botaoColarFluxo";
+    botaoColar.className = "botaoCopiarColarFluxo";
+    botaoColar.innerText = "Colar fluxo";
+
+    botaoColar.addEventListener(
+      "click",
+      colarFluxoCopiado
+    );
+
+    controles.appendChild(botaoCopiar);
+    controles.appendChild(botaoColar);
+
+    areaFluxograma.insertAdjacentElement(
+      "beforebegin",
+      controles
+    );
+
+  }
 
 }
 
@@ -547,20 +806,21 @@ function configurarInterfaceSalvarFluxoProjeto() {
 
 }
 
-// Mostra o botão somente depois que o usuário realmente iniciou um fluxo
+// Mantém os controles do fluxo visíveis.
+// Isso permite usar "Aplicar fluxo em todas as imagens" também
+// quando a imagem atual ainda possui fluxograma vazio.
 function atualizarControleSalvarFluxoProjeto() {
 
   if (!containerSalvarFluxoProjeto) return;
 
-  containerSalvarFluxoProjeto.style.display =
-    pipelineFerramentas.length > 0
-      ? "block"
-      : "none";
+  containerSalvarFluxoProjeto.style.display = "block";
 
 }
 
 // Abre a caixa para digitar o nome do projeto
 function abrirModalSalvarFluxoProjeto() {
+
+  sincronizarPipelineAtualNaImagem();
 
   if (pipelineFerramentas.length === 0) {
 
@@ -599,6 +859,8 @@ function fecharModalSalvarFluxoProjeto() {
 
 // Salva o pipeline atual como um novo projeto
 async function salvarFluxoComoProjeto() {
+
+  sincronizarPipelineAtualNaImagem();
 
   if (pipelineFerramentas.length === 0) {
 
@@ -720,25 +982,10 @@ async function restaurarProjetoSalvoSeNecessario() {
               : []
           );
 
-    pipelineFerramentas =
-      clonarPipelineParaProjeto(pipelineProjeto);
-
-    const maiorId =
-      pipelineFerramentas.reduce(function(maior, etapa) {
-
-        const idEtapa = Number(etapa && etapa.id);
-
-        return Number.isFinite(idEtapa)
-          ? Math.max(maior, idEtapa)
-          : maior;
-
-      }, 0);
-
-    proximoIdEtapa = maiorId + 1;
-
-    desenharFluxograma();
-
-    atualizarControleSalvarFluxoProjeto();
+    // O projeto fornece somente o fluxo inicial.
+    // Ele será associado apenas à primeira imagem carregada.
+    pipelineProjetoPendente =
+      clonarPipelineDaImagem(pipelineProjeto);
 
     localStorage.removeItem("abrirProjetoSalvo");
 
@@ -823,12 +1070,30 @@ async function loadFiles() {
         resultado: null,
         processado: false,
         assinaturaPipeline: "",
-        cacheEtapas: {}
+        cacheEtapas: {},
+        pipelineFerramentas: []
       };
     });
 
     // Define automaticamente a primeira imagem como imagem atual
     imagemAtualSelecionada = imagensProcessamento[0];
+
+    // Se veio de um projeto salvo, o fluxo do projeto pertence
+    // inicialmente somente à primeira imagem.
+    if (
+      projetoRestaurado &&
+      Array.isArray(pipelineProjetoPendente)
+    ) {
+
+      imagemAtualSelecionada.pipelineFerramentas =
+        clonarPipelineDaImagem(pipelineProjetoPendente);
+
+      pipelineProjetoPendente = null;
+
+    }
+
+    // Carrega o fluxograma específico da primeira imagem.
+    carregarPipelineDaImagem(imagemAtualSelecionada);
 
     // Desenha as miniaturas já com a primeira marcada como selecionada
     imagensTrabalho.innerHTML = "";
@@ -936,7 +1201,13 @@ function criarCardImagem(item) {
 
   card.onclick = async function() { // Adiciona evento de clique
 
+    // Garante que o fluxo da imagem anterior fique salvo nela.
+    sincronizarPipelineAtualNaImagem();
+
     imagemAtualSelecionada = item;
+
+    // Cada imagem possui o próprio fluxograma.
+    carregarPipelineDaImagem(item);
 
     atualizarCardSelecionado();
 
@@ -3441,8 +3712,11 @@ async function removerEtapaPipeline(idEtapa) {
     return etapa.id !== idEtapa;
   });
 
-  // Qualquer resultado anterior deixa de representar o fluxograma atual.
-  invalidarProcessamentoDeTodasAsImagens();
+  // Salva o novo fluxo dentro da imagem atual.
+  sincronizarPipelineAtualNaImagem();
+
+  // Somente o resultado desta imagem deixa de representar o fluxograma atual.
+  invalidarProcessamentoDaImagem(imagemAtualSelecionada);
 
   // A imagem atual volta a ser exibida sem o resultado antigo.
   if (imagemAtualSelecionada) {
@@ -3518,13 +3792,20 @@ async function processarTodasAsImagensComPipeline() {
     return;
   }
 
+  // Salva o fluxo da imagem que está aberta antes do processamento em lote.
+  sincronizarPipelineAtualNaImagem();
+
+  const imagemSelecionadaAntes =
+    imagemAtualSelecionada;
+
   mostrarBarraProcessamento();
 
   for (let i = 0; i < imagensProcessamento.length; i++) {
 
     const item = imagensProcessamento[i];
 
-    const porcentagemBase = (i / imagensProcessamento.length) * 100;
+    const porcentagemBase =
+      (i / imagensProcessamento.length) * 100;
 
     statusText.innerText =
       "Processando fluxo em todas as imagens: " +
@@ -3534,16 +3815,43 @@ async function processarTodasAsImagensComPipeline() {
       " - " +
       item.name;
 
-    atualizarBarraProcessamento(porcentagemBase);
+    atualizarBarraProcessamento(
+      porcentagemBase
+    );
 
     await esperarAtualizacaoTela();
+
+    // Cada imagem é processada com o fluxo que pertence a ela.
+    pipelineFerramentas =
+      clonarPipelineDaImagem(
+        item.pipelineFerramentas
+      );
+
+    recalcularProximoIdEtapaPipelineAtual();
+
+    // Imagens sem etapas permanecem sem processamento.
+    if (pipelineFerramentas.length === 0) {
+
+      invalidarProcessamentoDaImagem(item);
+
+      continue;
+    }
 
     await processarImagemSelecionada(item);
   }
 
+  // Restaura o fluxo da imagem que continuou selecionada na tela.
+  imagemAtualSelecionada =
+    imagemSelecionadaAntes;
+
+  carregarPipelineDaImagem(
+    imagemAtualSelecionada
+  );
+
   atualizarBarraProcessamento(100);
 
-  statusText.innerText = "Fluxo processado em todas as imagens.";
+  statusText.innerText =
+    "Fluxo processado em todas as imagens que possuem etapas.";
 
   setTimeout(function() {
     barraProcessamentoContainer.style.display = "none";
@@ -3557,19 +3865,49 @@ async function processarTodasAsImagensComPipeline() {
 // no botão "Processar fluxo".
 async function processarFluxoPeloBotao() {
 
-  if (pipelineFerramentas.length === 0) {
-    alert("Adicione pelo menos uma ferramenta ao fluxograma antes de processar.");
-    return;
-  }
-
   if (!imagemAtualSelecionada) {
     alert("Nenhuma imagem está selecionada para processamento.");
     return;
   }
 
+  const aplicarEmTodas =
+    deveAplicarFluxoEmTodasImagens();
+
+  if (aplicarEmTodas) {
+
+    const existeAlgumFluxo =
+      imagensProcessamento.some(function(item) {
+
+        return (
+          item &&
+          Array.isArray(item.pipelineFerramentas) &&
+          item.pipelineFerramentas.length > 0
+        );
+
+      });
+
+    if (!existeAlgumFluxo) {
+
+      alert("Nenhuma imagem possui ferramentas no fluxograma.");
+
+      return;
+    }
+
+  } else if (pipelineFerramentas.length === 0) {
+
+    alert("Adicione pelo menos uma ferramenta ao fluxograma antes de processar.");
+
+    return;
+
+  }
+
   try {
 
-    // Checkbox marcado: aplica o fluxo em todas as imagens carregadas.
+    // Mantém o fluxo global sincronizado com a imagem aberta.
+    sincronizarPipelineAtualNaImagem();
+
+    // Checkbox marcado: processa todas as imagens,
+    // cada uma com o fluxo que estiver salvo nela.
     if (deveAplicarFluxoEmTodasImagens()) {
 
       await processarTodasAsImagensComPipeline();
@@ -3636,8 +3974,11 @@ async function processarFluxoPeloBotao() {
 // Nenhum processamento é executado nesta etapa.
 async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
 
-  // Os resultados anteriores não correspondem mais ao novo fluxo.
-  invalidarProcessamentoDeTodasAsImagens();
+  // Salva o fluxo atualizado somente na imagem atual.
+  sincronizarPipelineAtualNaImagem();
+
+  // O resultado anterior somente desta imagem não corresponde mais ao novo fluxo.
+  invalidarProcessamentoDaImagem(imagemAtualSelecionada);
 
   // Mostra novamente a imagem sem o resultado antigo.
   if (imagemAtualSelecionada) {
@@ -6151,19 +6492,19 @@ async function salvarRecorteComoNovaImagem(arquivoRecortado, dataURL, largura, a
     name: nomeArquivo,
     type: "image",
     file: arquivoRecortado,
-    resultado: {
-      tipo: "image",
-      dataURL: dataURL,
-      largura: largura,
-      altura: altura
-    },
-    processado: pipelineFerramentas.length > 0,
-    assinaturaPipeline: assinaturaAtual,
-    cacheEtapas: {}
+    resultado: null,
+    processado: false,
+    assinaturaPipeline: "",
+    cacheEtapas: {},
+    pipelineFerramentas: []
   };
 
   imagensProcessamento.push(novoItem);
+
+  // A nova imagem começa com fluxograma vazio.
+  sincronizarPipelineAtualNaImagem();
   imagemAtualSelecionada = novoItem;
+  carregarPipelineDaImagem(novoItem);
 
   redesenharCardsImagens();
   await openFile(novoItem);
@@ -6349,5 +6690,6 @@ window.addEventListener("resize", function() {
 // =============================================================
 
 configurarInterfaceSalvarFluxoProjeto();
+configurarInterfaceCopiarColarFluxo();
 configurarLinkMenuProjetos();
 atualizarControleSalvarFluxoProjeto();

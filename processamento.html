@@ -688,6 +688,33 @@
       background: rgba(255,80,80,0.45);
     }
 
+    /* CONTROLES DE CÓPIA DO FLUXO */
+
+    .controles_copiar_fluxo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .botao_copiar_fluxo {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 9px;
+      background: rgba(255,255,255,0.055);
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 12px;
+      transition: 0.2s ease;
+    }
+
+    .botao_copiar_fluxo:hover {
+      background: rgba(192,132,252,0.16);
+      border-color: rgba(192,132,252,0.40);
+    }
+
     /* CONTROLES DE EXECUÇÃO DO FLUXO */
 
     #containerSalvarFluxoProjeto {
@@ -1536,6 +1563,27 @@
       <br>
 
       <!-- Área onde entram as ferramentas aplicadas -->
+      <!-- Copiar e colar fluxograma -->
+      <div class="controles_copiar_fluxo">
+
+        <button
+          type="button"
+          id="botaoCopiarFluxo"
+          class="botao_copiar_fluxo"
+        >
+          Copiar fluxo
+        </button>
+
+        <button
+          type="button"
+          id="botaoColarFluxo"
+          class="botao_copiar_fluxo"
+        >
+          Colar fluxo
+        </button>
+
+      </div>
+
       <div id="areaFluxograma">
 
         <p style="opacity: 0.6;">Aplique uma ferramenta para montar o fluxo.</p>
