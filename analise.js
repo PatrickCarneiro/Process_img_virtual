@@ -717,7 +717,7 @@ function redesenharHistogramaAtual() {
 
 function desenharHistograma(ctx, canvas) {
 
-  const margemEsquerda = 65;
+  const margemEsquerda = 110;
   const margemDireita = 25;
   const margemSuperior = 25;
   const margemInferior = 55;
@@ -794,6 +794,48 @@ function desenharHistograma(ctx, canvas) {
 
 }
 
+// Calcula as marcações do eixo X usando exatamente o centro das barras visíveis.
+// Isso mantém números, grade, tooltip e colunas no mesmo sistema de coordenadas.
+function obterMarcacoesEixoXHistograma(margemEsquerda, larguraGrafico) {
+
+  const quantidadeBinsVisiveis =
+    faixaFimHistograma - faixaInicioHistograma + 1;
+
+  if (quantidadeBinsVisiveis <= 0 || larguraGrafico <= 0) {
+    return [];
+  }
+
+  const larguraBarra = larguraGrafico / quantidadeBinsVisiveis;
+  const marcacoes = [];
+  const deslocamentosUsados = new Set();
+
+  // Mantém no máximo 6 marcações, como no desenho anterior,
+  // porém cada marcação fica centralizada em uma barra real.
+  for (let i = 0; i <= 5; i++) {
+
+    const deslocamento =
+      quantidadeBinsVisiveis === 1
+        ? 0
+        : Math.round(((quantidadeBinsVisiveis - 1) / 5) * i);
+
+    // Evita rótulos repetidos quando existem menos de 6 barras visíveis.
+    if (deslocamentosUsados.has(deslocamento)) {
+      continue;
+    }
+
+    deslocamentosUsados.add(deslocamento);
+
+    marcacoes.push({
+      indice: faixaInicioHistograma + deslocamento,
+      deslocamento: deslocamento,
+      x: margemEsquerda + (deslocamento + 0.5) * larguraBarra
+    });
+  }
+
+  return marcacoes;
+
+}
+
 function desenharGradeHistograma(
   ctx,
   canvas,
@@ -819,9 +861,12 @@ function desenharGradeHistograma(
 
   }
 
-  for (let i = 0; i <= 5; i++) {
+  const marcacoesX =
+    obterMarcacoesEixoXHistograma(margemEsquerda, larguraGrafico);
 
-    const x = margemEsquerda + (larguraGrafico / 5) * i;
+  for (let i = 0; i < marcacoesX.length; i++) {
+
+    const x = marcacoesX[i].x;
 
     ctx.beginPath();
     ctx.moveTo(x, margemSuperior);
@@ -875,27 +920,37 @@ function desenharEixosHistograma(
   ctx.font = "12px Arial";
   ctx.textAlign = "center";
 
-  for (let i = 0; i <= 5; i++) {
+  const marcacoesX =
+    obterMarcacoesEixoXHistograma(margemEsquerda, larguraGrafico);
 
-    const indice = Math.round(
-      faixaInicioHistograma + ((faixaFimHistograma - faixaInicioHistograma) / 5) * i
-    );
+  for (let i = 0; i < marcacoesX.length; i++) {
+
+    const marcacao = marcacoesX[i];
+    const indice = marcacao.indice;
 
     let valorReal = obterCentroDoBin(indice);
 
-    // Na visualização automática, as extremidades do eixo mostram
-    // exatamente o pixel mínimo e o máximo encontrados na imagem.
-    if (i === 0 && faixaInicioHistograma === faixaDisponivelInicioHistograma) {
+    // Na visualização automática, a primeira e a última barra mostram
+    // exatamente o mínimo e o máximo encontrados na imagem.
+    if (
+      i === 0 &&
+      faixaInicioHistograma === faixaDisponivelInicioHistograma
+    ) {
       valorReal = minimoDadosHistogramaAtual;
     }
 
-    if (i === 5 && faixaFimHistograma === faixaDisponivelFimHistograma) {
+    if (
+      i === marcacoesX.length - 1 &&
+      faixaFimHistograma === faixaDisponivelFimHistograma
+    ) {
       valorReal = maximoDadosHistogramaAtual;
     }
 
-    const x = margemEsquerda + (larguraGrafico / 5) * i;
-
-    ctx.fillText(formatarNumeroEixoX(valorReal), x, canvas.height - 32);
+    ctx.fillText(
+      formatarNumeroEixoX(valorReal),
+      marcacao.x,
+      canvas.height - 32
+    );
 
   }
 
@@ -906,7 +961,7 @@ function desenharEixosHistograma(
     const valorY = Math.round((maior / 5) * (5 - i));
     const y = margemSuperior + (alturaGrafico / 5) * i + 4;
 
-    ctx.fillText(valorY, margemEsquerda - 8, y);
+    ctx.fillText(valorY, margemEsquerda - 12, y);
 
   }
 
@@ -921,7 +976,7 @@ function desenharEixosHistograma(
   );
 
   ctx.save();
-  ctx.translate(18, margemSuperior + alturaGrafico / 2);
+  ctx.translate(20, margemSuperior + alturaGrafico / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center";
   ctx.font = "13px Arial";
@@ -1232,7 +1287,7 @@ function mostrarTooltipHistograma(event, canvas) {
 
 function calcularIndicePeloMouse(event, canvas) {
 
-  const margemEsquerda = 65;
+  const margemEsquerda = 110;
   const margemDireita = 25;
 
   const rect = canvas.getBoundingClientRect();
