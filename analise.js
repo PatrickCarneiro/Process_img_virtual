@@ -3,8 +3,8 @@
 let histogramaAtual = []; // Guarda as contagens do histograma que está sendo exibido
 let bordasHistogramaAtual = []; // Guarda as bordas dos bins do histograma atual
 let centrosHistogramaAtual = []; // Guarda as posições X dos bins, como o segundo retorno [COUNTS,X] do imhist
-let faixaDisponivelInicioHistograma = 0; // Primeiro bin ocupado entre o mínimo e o máximo reais da imagem
-let faixaDisponivelFimHistograma = 0; // Último bin ocupado entre o mínimo e o máximo reais da imagem
+let faixaDisponivelInicioHistograma = 0; // Primeira intensidade disponível entre o mínimo e o máximo reais da imagem
+let faixaDisponivelFimHistograma = 0; // Última intensidade disponível entre o mínimo e o máximo reais da imagem
 let minimoDadosHistogramaAtual = 0; // Menor intensidade real do canal atual
 let maximoDadosHistogramaAtual = 0; // Maior intensidade real do canal atual
 
@@ -453,6 +453,7 @@ function criarHistograma(valores, tipoPixel) {
   let max = -Infinity;
   let moda = NaN;
   let maiorFrequenciaExata = 0;
+  let todosInteiros = true;
 
   for (let i = 0; i < valores.length; i++) {
 
@@ -466,8 +467,11 @@ function criarHistograma(valores, tipoPixel) {
     if (valor < min) min = valor;
     if (valor > max) max = valor;
 
-    // A moda continua sendo calculada sobre os valores reais dos pixels,
-    // independentemente do agrupamento dos bins do imhist.
+    if (!Number.isInteger(valor)) {
+      todosInteiros = false;
+    }
+
+    // A moda é calculada com os valores reais dos pixels.
     const chave = valor.toString();
     const frequencia = (frequenciasExatas.get(chave) || 0) + 1;
     frequenciasExatas.set(chave, frequencia);
@@ -496,55 +500,109 @@ function criarHistograma(valores, tipoPixel) {
 
   }
 
-  const configuracao = obterConfiguracaoImhist(tipoPixel, valoresValidos);
-  const n = configuracao.numeroBins;
-  const minimoClasse = configuracao.minimoClasse;
-  const maximoClasse = configuracao.maximoClasse;
+  // =============================================================
+  // DADOS INTEIROS
+  // =============================================================
+  // Cria UMA POSIÇÃO para CADA intensidade entre o mínimo e o máximo.
+  // Intensidades que não aparecem na imagem continuam existindo no array
+  // com contagem 0. Por isso surgem espaços reais entre as colunas ocupadas.
+  // Ex.: pixels 10, 10, 14 e 16 -> posições 10,11,12,13,14,15,16.
+  // =============================================================
+  if (todosInteiros) {
 
-  const contagens = new Array(n).fill(0);
-  const centros = new Array(n);
-  const bordas = new Array(n + 1);
+    const minimoInteiro = Math.floor(min);
+    const maximoInteiro = Math.ceil(max);
+    const numeroBins = maximoInteiro - minimoInteiro + 1;
 
-  // O imhist posiciona os N bins uniformemente na faixa da classe.
-  // uint8: 0..255 com 256 bins; uint16: 0..65535 com 256 bins; etc.
-  const passo = n > 1
-    ? (maximoClasse - minimoClasse) / (n - 1)
-    : 1;
+    // Para imagens médicas uint16/int16 isso chega, no máximo, a 65536
+    // posições e mantém exatamente uma posição por intensidade.
+    const contagens = new Array(numeroBins).fill(0);
+    const centros = new Array(numeroBins);
+    const bordas = new Array(numeroBins + 1);
 
-  for (let i = 0; i < n; i++) {
-    centros[i] = minimoClasse + i * passo;
-  }
-
-  if (n === 1) {
-    bordas[0] = minimoClasse - 0.5;
-    bordas[1] = maximoClasse + 0.5;
-  } else {
-    bordas[0] = centros[0] - passo / 2;
-
-    for (let i = 1; i < n; i++) {
-      bordas[i] = (centros[i - 1] + centros[i]) / 2;
+    for (let i = 0; i < numeroBins; i++) {
+      centros[i] = minimoInteiro + i;
+      bordas[i] = minimoInteiro + i - 0.5;
     }
 
-    bordas[n] = centros[n - 1] + passo / 2;
+    bordas[numeroBins] = maximoInteiro + 0.5;
+
+    for (let i = 0; i < valoresValidos.length; i++) {
+      const indice = valoresValidos[i] - minimoInteiro;
+
+      if (indice >= 0 && indice < contagens.length) {
+        contagens[indice]++;
+      }
+    }
+
+    return {
+      contagens: contagens,
+      bordas: bordas,
+      centros: centros,
+      min: min,
+      max: max,
+      soma: soma,
+      total: valoresValidos.length,
+      moda: moda,
+      tipo: "inteiros_completos",
+      tipoPixel: tipoPixel || "inteiro",
+      numeroBins: numeroBins,
+      minimoClasse: minimoInteiro,
+      maximoClasse: maximoInteiro
+    };
+  }
+
+  // =============================================================
+  // DADOS DECIMAIS
+  // =============================================================
+  // Para valores decimais (por exemplo, Média RGB), mantém 256 bins
+  // uniformemente distribuídos entre o mínimo e o máximo observado.
+  // Todos os bins intermediários são preservados, inclusive os vazios.
+  // =============================================================
+  const numeroBins = 256;
+  const contagens = new Array(numeroBins).fill(0);
+  const centros = new Array(numeroBins);
+  const bordas = new Array(numeroBins + 1);
+
+  if (min === max) {
+    contagens[0] = valoresValidos.length;
+    centros[0] = min;
+    bordas[0] = min - 0.5;
+    bordas[1] = min + 0.5;
+
+    return {
+      contagens: [valoresValidos.length],
+      bordas: [min - 0.5, min + 0.5],
+      centros: [min],
+      min: min,
+      max: max,
+      soma: soma,
+      total: valoresValidos.length,
+      moda: moda,
+      tipo: "decimal_unico",
+      tipoPixel: tipoPixel || "decimal",
+      numeroBins: 1,
+      minimoClasse: min,
+      maximoClasse: max
+    };
+  }
+
+  const larguraBin = (max - min) / numeroBins;
+
+  for (let i = 0; i <= numeroBins; i++) {
+    bordas[i] = min + i * larguraBin;
+  }
+
+  for (let i = 0; i < numeroBins; i++) {
+    centros[i] = (bordas[i] + bordas[i + 1]) / 2;
   }
 
   for (let i = 0; i < valoresValidos.length; i++) {
 
-    const valor = valoresValidos[i];
-    let indice;
+    let indice = Math.floor((valoresValidos[i] - min) / larguraBin);
 
-    if (n === 1 || passo === 0) {
-      indice = 0;
-    } else {
-      // Equivale a associar o valor à localização X de bin mais próxima,
-      // respeitando os intervalos de meia largura descritos pelo imhist.
-      indice = Math.floor(((valor - minimoClasse) / passo) + 0.5);
-    }
-
-    // O imhist trabalha dentro da faixa numérica da classe.
-    // Valores fora dela ficam acumulados no extremo correspondente.
     if (indice < 0) indice = 0;
-    if (indice >= n) indice = n - 1;
+    if (indice >= numeroBins) indice = numeroBins - 1;
 
     contagens[indice]++;
   }
@@ -558,78 +616,14 @@ function criarHistograma(valores, tipoPixel) {
     soma: soma,
     total: valoresValidos.length,
     moda: moda,
-    tipo: "imhist",
-    tipoPixel: configuracao.tipoPixel,
-    numeroBins: n,
-    minimoClasse: minimoClasse,
-    maximoClasse: maximoClasse
+    tipo: "decimais_256_bins",
+    tipoPixel: tipoPixel || "decimal",
+    numeroBins: numeroBins,
+    minimoClasse: min,
+    maximoClasse: max
   };
 }
 
-
-// Define a quantidade de bins e a faixa numérica como o IMHIST do MATLAB.
-function obterConfiguracaoImhist(tipoPixel, valores) {
-
-  const tipo = String(tipoPixel || "").toLowerCase();
-
-  if (tipo === "logical") {
-    return { tipoPixel: "logical", numeroBins: 2, minimoClasse: 0, maximoClasse: 1 };
-  }
-
-  if (tipo === "uint8") {
-    return { tipoPixel: "uint8", numeroBins: 256, minimoClasse: 0, maximoClasse: 255 };
-  }
-
-  if (tipo === "int8") {
-    return { tipoPixel: "int8", numeroBins: 256, minimoClasse: -128, maximoClasse: 127 };
-  }
-
-  if (tipo === "uint16") {
-    return { tipoPixel: "uint16", numeroBins: 256, minimoClasse: 0, maximoClasse: 65535 };
-  }
-
-  if (tipo === "int16") {
-    return { tipoPixel: "int16", numeroBins: 256, minimoClasse: -32768, maximoClasse: 32767 };
-  }
-
-  if (tipo === "uint32") {
-    return { tipoPixel: "uint32", numeroBins: 256, minimoClasse: 0, maximoClasse: 4294967295 };
-  }
-
-  if (tipo === "int32") {
-    return { tipoPixel: "int32", numeroBins: 256, minimoClasse: -2147483648, maximoClasse: 2147483647 };
-  }
-
-  if (tipo === "single" || tipo === "double") {
-    return { tipoPixel: tipo, numeroBins: 256, minimoClasse: 0, maximoClasse: 1 };
-  }
-
-  // Fallback para tipos sem informação explícita.
-  // Mantém 256 bins, mas usa uma classe compatível com os valores observados.
-  let min = Infinity;
-  let max = -Infinity;
-
-  for (let i = 0; i < valores.length; i++) {
-    const valor = Number(valores[i]);
-    if (!Number.isFinite(valor)) continue;
-    if (valor < min) min = valor;
-    if (valor > max) max = valor;
-  }
-
-  if (min >= 0 && max <= 255) {
-    return { tipoPixel: "uint8", numeroBins: 256, minimoClasse: 0, maximoClasse: 255 };
-  }
-
-  if (min >= 0 && max <= 65535) {
-    return { tipoPixel: "uint16", numeroBins: 256, minimoClasse: 0, maximoClasse: 65535 };
-  }
-
-  if (min >= -32768 && max <= 32767) {
-    return { tipoPixel: "int16", numeroBins: 256, minimoClasse: -32768, maximoClasse: 32767 };
-  }
-
-  return { tipoPixel: "double", numeroBins: 256, minimoClasse: 0, maximoClasse: 1 };
-}
 
 function formatarNumeroEixoX(valor) {
 
@@ -772,7 +766,13 @@ function desenharHistograma(ctx, canvas) {
     const x = margemEsquerda + i * larguraBarra;
     const y = margemSuperior + alturaGrafico - altura;
 
-    ctx.fillRect(x, y, Math.max(larguraBarra - 1, 1), altura);
+    // Mantém uma pequena separação visual entre intensidades consecutivas.
+    // Bins com contagem 0 permanecem completamente vazios.
+    const larguraColuna = larguraBarra > 2
+      ? larguraBarra - 1
+      : larguraBarra * 0.82;
+
+    ctx.fillRect(x, y, Math.max(larguraColuna, 0.01), altura);
 
   }
 
