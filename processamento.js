@@ -385,93 +385,50 @@ async function colarFluxoCopiado() {
 
 }
 
-// Cria os botões Copiar fluxo e Colar fluxo acima do quadrado do fluxograma.
+// Conecta os botões Copiar fluxo e Colar fluxo que já existem no HTML.
+// Não cria novos botões para evitar duplicação.
 function configurarInterfaceCopiarColarFluxo() {
 
-  if (!areaFluxograma) return;
+  const botaoCopiarFluxo =
+    document.getElementById("botaoCopiarFluxo");
 
-  if (!document.getElementById("estiloCopiarColarFluxo")) {
+  const botaoColarFluxo =
+    document.getElementById("botaoColarFluxo");
 
-    const estilo = document.createElement("style");
 
-    estilo.id = "estiloCopiarColarFluxo";
+  if (
+    botaoCopiarFluxo &&
+    botaoCopiarFluxo.dataset.listenerCopiarFluxo !== "true"
+  ) {
 
-    estilo.textContent = `
-      #controlesCopiarColarFluxo {
-        width: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-
-      .botaoCopiarColarFluxo {
-        width: 100%;
-        padding: 9px 12px;
-        border: 1px solid rgba(255,255,255,0.10);
-        border-radius: 9px;
-        background: rgba(255,255,255,0.055);
-        color: #ffffff;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 600;
-        transition: 0.2s ease;
-      }
-
-      .botaoCopiarColarFluxo:hover {
-        background: rgba(192,132,252,0.18);
-        border-color: rgba(192,132,252,0.42);
-      }
-    `;
-
-    document.head.appendChild(estilo);
-
-  }
-
-  let controles =
-    document.getElementById("controlesCopiarColarFluxo");
-
-  if (!controles) {
-
-    controles = document.createElement("div");
-
-    controles.id = "controlesCopiarColarFluxo";
-
-    const botaoCopiar = document.createElement("button");
-
-    botaoCopiar.type = "button";
-    botaoCopiar.id = "botaoCopiarFluxo";
-    botaoCopiar.className = "botaoCopiarColarFluxo";
-    botaoCopiar.innerText = "Copiar fluxo";
-
-    botaoCopiar.addEventListener(
+    botaoCopiarFluxo.addEventListener(
       "click",
       copiarFluxoImagemAtual
     );
 
-    const botaoColar = document.createElement("button");
+    botaoCopiarFluxo.dataset.listenerCopiarFluxo =
+      "true";
 
-    botaoColar.type = "button";
-    botaoColar.id = "botaoColarFluxo";
-    botaoColar.className = "botaoCopiarColarFluxo";
-    botaoColar.innerText = "Colar fluxo";
+  }
 
-    botaoColar.addEventListener(
+
+  if (
+    botaoColarFluxo &&
+    botaoColarFluxo.dataset.listenerColarFluxo !== "true"
+  ) {
+
+    botaoColarFluxo.addEventListener(
       "click",
       colarFluxoCopiado
     );
 
-    controles.appendChild(botaoCopiar);
-    controles.appendChild(botaoColar);
-
-    areaFluxograma.insertAdjacentElement(
-      "beforebegin",
-      controles
-    );
+    botaoColarFluxo.dataset.listenerColarFluxo =
+      "true";
 
   }
 
 }
+
 
 // Adiciona um novo projeto à store "projects"
 function adicionarProjetoAoBanco(db, projeto) {
