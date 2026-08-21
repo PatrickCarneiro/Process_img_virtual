@@ -261,11 +261,11 @@ function recalcularAnaliseComFiltroZero() {
   if (dadosOriginaisAnaliseAtual.tipo === "normal") {
 
     histogramasImagemAtual = {
-      cinza: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.cinza, dadosOriginaisAnaliseAtual.tipoPixel),
-      media: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.media, dadosOriginaisAnaliseAtual.tipoPixel),
-      r: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.r, dadosOriginaisAnaliseAtual.tipoPixel),
-      g: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.g, dadosOriginaisAnaliseAtual.tipoPixel),
-      b: criarHistogramaComFiltroZero(dadosOriginaisAnaliseAtual.b, dadosOriginaisAnaliseAtual.tipoPixel)
+      cinza: criarHistogramaImagemNormalComFiltroZero(dadosOriginaisAnaliseAtual.cinza),
+      media: criarHistogramaImagemNormalComFiltroZero(dadosOriginaisAnaliseAtual.media),
+      r: criarHistogramaImagemNormalComFiltroZero(dadosOriginaisAnaliseAtual.r),
+      g: criarHistogramaImagemNormalComFiltroZero(dadosOriginaisAnaliseAtual.g),
+      b: criarHistogramaImagemNormalComFiltroZero(dadosOriginaisAnaliseAtual.b)
     };
 
   }
@@ -327,7 +327,7 @@ function gerarAnaliseImagemNormal(img, arquivo) {
     const g = data[i + 1]; // Canal verde
     const b = data[i + 2]; // Canal azul
 
-    const media = (r + g + b) / 3; // Média RGB
+    const media = Math.round((r + g + b) / 3); // Média RGB arredondada como uint8(round(...)) no MATLAB
 
     valoresR.push(r);
     valoresG.push(g);
@@ -352,11 +352,11 @@ function gerarAnaliseImagemNormal(img, arquivo) {
   };
 
   histogramasImagemAtual = {
-    cinza: criarHistogramaComFiltroZero(valoresMedia, "uint8"),
-    media: criarHistogramaComFiltroZero(valoresMedia, "uint8"),
-    r: criarHistogramaComFiltroZero(valoresR, "uint8"),
-    g: criarHistogramaComFiltroZero(valoresG, "uint8"),
-    b: criarHistogramaComFiltroZero(valoresB, "uint8")
+    cinza: criarHistogramaImagemNormalComFiltroZero(valoresMedia),
+    media: criarHistogramaImagemNormalComFiltroZero(valoresMedia),
+    r: criarHistogramaImagemNormalComFiltroZero(valoresR),
+    g: criarHistogramaImagemNormalComFiltroZero(valoresG),
+    b: criarHistogramaImagemNormalComFiltroZero(valoresB)
   };
 
   const botoesRGB = document.getElementById("botoesCanaisRGB"); // Área dos botões RGB
@@ -437,6 +437,105 @@ function gerarAnaliseDicom(image) {
   selecionarCanalHistograma("cinza");
   atualizarMetricasDoCanalAtual();
   desenharHistogramaAtual();
+
+}
+
+
+// FUNÇÃO PARA CRIAR HISTOGRAMA DE IMAGEM NORMAL (RGB / MÉDIA) NO PADRÃO DO IMHIST UINT8
+
+function criarHistogramaImagemNormalComFiltroZero(valores) {
+
+  if (!ignorarPixelZeroAnalise) {
+    return criarHistogramaImagemNormalUint8(valores);
+  }
+
+  const valoresSemZero = [];
+
+  for (let i = 0; i < valores.length; i++) {
+
+    const valor = Number(valores[i]);
+
+    if (Number.isFinite(valor) && valor !== 0) {
+      valoresSemZero.push(valor);
+    }
+
+  }
+
+  return criarHistogramaImagemNormalUint8(valoresSemZero);
+
+}
+
+
+function criarHistogramaImagemNormalUint8(valores) {
+
+  // Equivalente ao comportamento de imhist para uint8:
+  // 256 posições fixas, correspondentes às intensidades 0,1,2,...,255.
+  const numeroBins = 256;
+  const contagens = new Array(numeroBins).fill(0);
+  const centros = new Array(numeroBins);
+  const bordas = new Array(numeroBins + 1);
+
+  let soma = 0;
+  let min = Infinity;
+  let max = -Infinity;
+  let moda = NaN;
+  let maiorFrequencia = 0;
+  let total = 0;
+
+  for (let i = 0; i < numeroBins; i++) {
+    centros[i] = i;
+    bordas[i] = i - 0.5;
+  }
+
+  bordas[numeroBins] = 255.5;
+
+  for (let i = 0; i < valores.length; i++) {
+
+    let valor = Number(valores[i]);
+
+    if (!Number.isFinite(valor)) continue;
+
+    // A média RGB já chega arredondada. Esta proteção garante o mesmo
+    // domínio uint8 caso a função seja chamada com algum decimal.
+    valor = Math.round(valor);
+
+    if (valor < 0) valor = 0;
+    if (valor > 255) valor = 255;
+
+    contagens[valor]++;
+    soma += valor;
+    total++;
+
+    if (valor < min) min = valor;
+    if (valor > max) max = valor;
+
+    if (contagens[valor] > maiorFrequencia) {
+      maiorFrequencia = contagens[valor];
+      moda = valor;
+    }
+
+  }
+
+  if (total === 0) {
+    min = 0;
+    max = 0;
+  }
+
+  return {
+    contagens: contagens,
+    bordas: bordas,
+    centros: centros,
+    min: min,
+    max: max,
+    soma: soma,
+    total: total,
+    moda: moda,
+    tipo: "uint8_256_bins",
+    tipoPixel: "uint8",
+    numeroBins: numeroBins,
+    minimoClasse: 0,
+    maximoClasse: 255
+  };
 
 }
 
@@ -1623,7 +1722,7 @@ function exportarMapaPixelImagemNormal() {
         } 
         
         else {
-          valorPixel = (r + g + b) / 3; // Matriz da média RGB
+          valorPixel = Math.round((r + g + b) / 3); // Matriz da média RGB arredondada como no MATLAB
         }
 
       } 
