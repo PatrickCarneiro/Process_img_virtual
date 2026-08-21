@@ -38,6 +38,38 @@
       overflow-y: auto; /* Permite rolagem vertical */
     }
 
+    /* BARRA DE ROLAGEM GERAL DA PÁGINA */
+
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(192,132,252,0.55) rgba(255,255,255,0.04);
+    }
+
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 9px;
+    }
+
+    html::-webkit-scrollbar-track,
+    body::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+    }
+
+    html::-webkit-scrollbar-thumb,
+    body::-webkit-scrollbar-thumb {
+      background: rgba(192,132,252,0.50);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    html::-webkit-scrollbar-thumb:hover,
+    body::-webkit-scrollbar-thumb:hover {
+      background: rgba(192,132,252,0.75);
+      background-clip: padding-box;
+    }
+
     /* DESIGN DO MENU LATERAL */
 
     .menulateral {
