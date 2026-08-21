@@ -104,7 +104,7 @@ async function atualizarAnaliseDaImagemAtual() {
 
     }
 
-    gerarAnaliseImagemNormal(imagemNormal);
+    await gerarAnaliseImagemNormal(imagemNormal, item);
 
     return;
   }
@@ -293,41 +293,263 @@ function recalcularAnaliseComFiltroZero() {
 
 // FUNÇÕES PARA GERAR ANÁLISE DA IMAGEM NORMAL
 
-function gerarAnaliseImagemNormal(img, arquivo) {
+async function obterBlobOriginalImagemNormal(img, item) {
 
-  const tempCanvas = document.createElement("canvas"); // Cria um canvas temporário
-  const tempCtx = tempCanvas.getContext("2d"); // Pega o contexto 2D
+  // Tenta usar diretamente o arquivo/blob original guardado pelo processamento.
+  const candidatos = [
+    item,
+    item && item.file,
+    item && item.arquivo,
+    item && item.blob,
+    item && item.originalFile,
+    item && item.arquivoOriginal
+  ];
 
-  tempCanvas.width = img.naturalWidth; // Define largura real da imagem
-  tempCanvas.height = img.naturalHeight; // Define altura real da imagem
+  for (let i = 0; i < candidatos.length; i++) {
+    if (candidatos[i] instanceof Blob) {
+      return candidatos[i];
+    }
+  }
 
-  tempCtx.drawImage(img, 0, 0); // Desenha a imagem no canvas temporário
+  // Se o item não guardar o File diretamente, recupera os bytes pela própria src.
+  // Para blob: e data: isso permite decodificar novamente o arquivo sem usar o <img>
+  // já renderizado/orientado pelo navegador.
+  const src = img ? (img.currentSrc || img.src) : "";
 
-  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height); // Pega os pixels
-  const data = imageData.data; // Array RGBA da imagem
+  if (src) {
+    try {
+      const resposta = await fetch(src);
+      if (resposta.ok) {
+        return await resposta.blob();
+      }
+    } catch (erro) {
+      console.warn("Não foi possível recuperar o blob original da imagem.", erro);
+    }
+  }
 
-  const tipoImagem = identificarTipoPelosPixels(data); // Identifica o tipo no estilo MATLAB
+  return null;
+}
 
-    atualizarTipoImagemAtual(
-      tipoImagem,
-      img.naturalHeight,
-      img.naturalWidth
-    );
 
-  const valoresR = []; // Guarda valores do canal vermelho
-  const valoresG = []; // Guarda valores do canal verde
-  const valoresB = []; // Guarda valores do canal azul
-  const valoresMedia = []; // Guarda média dos três canais
+function identificarMimeImagemNormal(blob, item, img) {
 
-  let imagemRGB = false; // Controla se a imagem é realmente colorida
+  if (blob && blob.type) {
+    const tipo = blob.type.toLowerCase();
+    if (tipo === "image/jpeg" || tipo === "image/png") return tipo;
+  }
+
+  let nome = "";
+
+  if (item && item.name) nome = item.name.toLowerCase();
+  else if (img && img.currentSrc) nome = img.currentSrc.toLowerCase();
+  else if (img && img.src) nome = img.src.toLowerCase();
+
+  if (nome.includes(".png")) return "image/png";
+  if (nome.includes(".jpg") || nome.includes(".jpeg")) return "image/jpeg";
+
+  return "";
+}
+
+
+async function decodificarPixelsImagemNormal(blob, item, img) {
+
+  if (!blob) return null;
+
+  const mime = identificarMimeImagemNormal(blob, item, img);
+
+  // Caminho preferido: WebCodecs ImageDecoder.
+  // Evita drawImage()/getImageData() para a leitura principal dos pixels.
+  if (
+    mime &&
+    typeof ImageDecoder !== "undefined" &&
+    typeof ImageDecoder.isTypeSupported === "function"
+  ) {
+
+    try {
+
+      const suportado = await ImageDecoder.isTypeSupported(mime);
+
+      if (suportado) {
+
+        const bufferArquivo = await blob.arrayBuffer();
+
+        const decoder = new ImageDecoder({
+          data: bufferArquivo,
+          type: mime,
+          premultiplyAlpha: "none",
+          colorSpaceConversion: "none"
+        });
+
+        const resultado = await decoder.decode({ frameIndex: 0 });
+        const frame = resultado.image;
+
+        const largura = frame.displayWidth || frame.codedWidth;
+        const altura = frame.displayHeight || frame.codedHeight;
+
+        const opcoesCopia = {
+          format: "RGBA",
+          colorSpace: "srgb"
+        };
+
+        const tamanho = frame.allocationSize(opcoesCopia);
+        const rgba = new Uint8Array(tamanho);
+
+        await frame.copyTo(rgba, opcoesCopia);
+
+        frame.close();
+        decoder.close();
+
+        return {
+          data: rgba,
+          largura: largura,
+          altura: altura,
+          origem: "ImageDecoder"
+        };
+      }
+
+    } catch (erro) {
+      console.warn("ImageDecoder não pôde ser usado. Usando fallback.", erro);
+    }
+  }
+
+  // Segundo caminho: decodifica o Blob diretamente como ImageBitmap,
+  // desativando conversão automática de cor quando o navegador permite.
+  if (typeof createImageBitmap === "function") {
+
+    let bitmap = null;
+
+    try {
+
+      try {
+        bitmap = await createImageBitmap(blob, {
+          imageOrientation: "none",
+          premultiplyAlpha: "none",
+          colorSpaceConversion: "none"
+        });
+      } catch (erroOpcoes) {
+        bitmap = await createImageBitmap(blob);
+      }
+
+      const largura = bitmap.width;
+      const altura = bitmap.height;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = largura;
+      canvas.height = altura;
+
+      let ctx;
+
+      try {
+        ctx = canvas.getContext("2d", {
+          willReadFrequently: true,
+          colorSpace: "srgb"
+        });
+      } catch (erroContexto) {
+        ctx = canvas.getContext("2d");
+      }
+
+      if (ctx) {
+        ctx.clearRect(0, 0, largura, altura);
+        ctx.drawImage(bitmap, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, largura, altura);
+        const rgba = new Uint8ClampedArray(imageData.data);
+
+        bitmap.close();
+
+        return {
+          data: rgba,
+          largura: largura,
+          altura: altura,
+          origem: "ImageBitmap"
+        };
+      }
+
+      bitmap.close();
+
+    } catch (erro) {
+      if (bitmap && typeof bitmap.close === "function") bitmap.close();
+      console.warn("ImageBitmap não pôde ser usado. Usando <img> como fallback.", erro);
+    }
+  }
+
+  return null;
+}
+
+
+async function gerarAnaliseImagemNormal(img, arquivo) {
+
+  let data = null;
+  let largura = img.naturalWidth;
+  let altura = img.naturalHeight;
+
+  // Recupera o arquivo/blob que originou a imagem atual.
+  const blobOriginal = await obterBlobOriginalImagemNormal(img, arquivo);
+
+  // Tenta obter os pixels diretamente do arquivo decodificado, sem depender
+  // primeiro do elemento <img> já renderizado na página.
+  const pixelsDecodificados = await decodificarPixelsImagemNormal(
+    blobOriginal,
+    arquivo,
+    img
+  );
+
+  if (pixelsDecodificados) {
+    data = pixelsDecodificados.data;
+    largura = pixelsDecodificados.largura;
+    altura = pixelsDecodificados.altura;
+  }
+
+  // Fallback final para navegadores sem ImageDecoder/createImageBitmap.
+  if (!data) {
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = largura;
+    tempCanvas.height = altura;
+
+    let tempCtx;
+
+    try {
+      tempCtx = tempCanvas.getContext("2d", {
+        willReadFrequently: true,
+        colorSpace: "srgb"
+      });
+    } catch (erro) {
+      tempCtx = tempCanvas.getContext("2d");
+    }
+
+    if (!tempCtx) return;
+
+    tempCtx.clearRect(0, 0, largura, altura);
+    tempCtx.drawImage(img, 0, 0, largura, altura);
+
+    data = tempCtx.getImageData(0, 0, largura, altura).data;
+  }
+
+  const tipoImagem = identificarTipoPelosPixels(data);
+
+  atualizarTipoImagemAtual(
+    tipoImagem,
+    altura,
+    largura
+  );
+
+  const valoresR = [];
+  const valoresG = [];
+  const valoresB = [];
+  const valoresMedia = [];
+
+  let imagemRGB = false;
 
   for (let i = 0; i < data.length; i += 4) {
 
-    const r = data[i]; // Canal vermelho
-    const g = data[i + 1]; // Canal verde
-    const b = data[i + 2]; // Canal azul
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
 
-    const media = Math.round((r + g + b) / 3); // Média RGB arredondada como uint8(round(...)) no MATLAB
+    // Equivalente ao MATLAB:
+    // uint8(round((double(R) + double(G) + double(B)) / 3))
+    const media = Math.round((r + g + b) / 3);
 
     valoresR.push(r);
     valoresG.push(g);
@@ -335,14 +557,13 @@ function gerarAnaliseImagemNormal(img, arquivo) {
     valoresMedia.push(media);
 
     if (r !== g || g !== b) {
-      imagemRGB = true; // Se algum canal for diferente, considera RGB
+      imagemRGB = true;
     }
-
   }
 
   dadosOriginaisAnaliseAtual = {
     tipo: "normal",
-    tipoPixel: "uint8", // Canvas do navegador fornece canais em 8 bits; a média RGB usa a mesma escala 0..255
+    tipoPixel: "uint8",
     imagemRGB: imagemRGB,
     cinza: valoresMedia,
     media: valoresMedia,
@@ -351,6 +572,7 @@ function gerarAnaliseImagemNormal(img, arquivo) {
     b: valoresB
   };
 
+  // Mesmo domínio do imhist(uint8): 256 intensidades, de 0 a 255.
   histogramasImagemAtual = {
     cinza: criarHistogramaImagemNormalComFiltroZero(valoresMedia),
     media: criarHistogramaImagemNormalComFiltroZero(valoresMedia),
@@ -359,29 +581,27 @@ function gerarAnaliseImagemNormal(img, arquivo) {
     b: criarHistogramaImagemNormalComFiltroZero(valoresB)
   };
 
-  const botoesRGB = document.getElementById("botoesCanaisRGB"); // Área dos botões RGB
+  const botoesRGB = document.getElementById("botoesCanaisRGB");
 
   if (imagemRGB) {
 
     if (botoesRGB) {
-      botoesRGB.style.display = "flex"; // Mostra os botões se for RGB
+      botoesRGB.style.display = "flex";
     }
 
-    selecionarCanalHistograma("media"); // Começa pela média RGB
+    selecionarCanalHistograma("media");
 
   } else {
 
     if (botoesRGB) {
-      botoesRGB.style.display = "none"; // Esconde botões se for tons de cinza
+      botoesRGB.style.display = "none";
     }
 
     selecionarCanalHistograma("cinza");
-
   }
 
-  atualizarMetricasDoCanalAtual(); // Atualiza máximo, mínimo e média
-  desenharHistogramaAtual(); // Desenha o histograma
-
+  atualizarMetricasDoCanalAtual();
+  desenharHistogramaAtual();
 }
 
 
