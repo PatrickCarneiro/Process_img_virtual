@@ -1741,6 +1741,100 @@
       overflow: visible;
       white-space: normal;
     }
+
+    /* =========================================================
+       SALVAR IMAGEM / SALVAR TODAS AS IMAGENS
+       ========================================================= */
+
+    .linha_status_exportacao {
+      width: 100%;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 12px;
+
+      flex-shrink: 0;
+    }
+
+    .linha_status_exportacao #status {
+      width: auto;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .botao_salvar_imagem {
+      flex-shrink: 0;
+
+      min-width: 142px;
+      height: 38px;
+
+      margin-right: 12px;
+
+      padding: 8px 14px;
+
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      gap: 7px;
+
+      border-radius: 9px;
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      background:
+        rgba(192,132,252,0.20);
+
+      color: #ffffff;
+
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+
+      cursor: pointer;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+    }
+
+    .botao_salvar_imagem:hover {
+      background:
+        rgba(192,132,252,0.35);
+
+      border-color:
+        rgba(192,132,252,0.65);
+    }
+
+    .botao_salvar_imagem:active {
+      transform:
+        translateY(1px);
+    }
+
+    .icone_salvar_imagem {
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    @media (max-width: 900px) {
+
+      .linha_status_exportacao {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .botao_salvar_imagem {
+        align-self: flex-end;
+        margin-right: 12px;
+        margin-bottom: 8px;
+      }
+
+    }
     #barraProcessamentoContainer {
       display: inline-flex;
       align-items: center;
@@ -2626,9 +2720,31 @@
         X: --- | Y: --- | Pixel: ---
       </div>
 
-      <!-- TEXTO DE STATUS -->
+      <!-- TEXTO DE STATUS + EXPORTAÇÃO DE IMAGENS -->
 
-      <p id="status">Carregando arquivos...</p>
+      <div class="linha_status_exportacao">
+
+        <p id="status">Carregando arquivos...</p>
+
+        <button
+          type="button"
+          class="botao_salvar_imagem"
+          id="botaoAbrirSalvarImagens"
+          title="Salvar imagem atual ou todas as imagens"
+        >
+          <span
+            class="icone_salvar_imagem"
+            aria-hidden="true"
+          >
+            💾
+          </span>
+
+          <span>
+            Salvar imagem
+          </span>
+        </button>
+
+      </div>
 
     </div>
 
@@ -2734,6 +2850,60 @@
     <div class="painel imagens_trabalho" id="imagensTrabalho"></div>
 
   </div>
+
+  <!-- MODAL: SALVAR IMAGEM ATUAL OU TODAS AS IMAGENS -->
+  <div
+    class="modal_confirmacao_salvar_fluxograma"
+    id="modalSalvarImagens"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tituloModalSalvarImagens"
+  >
+
+    <div class="caixa_confirmacao_salvar_fluxograma">
+
+      <h3 id="tituloModalSalvarImagens">
+        Salvar imagens
+      </h3>
+
+      <p>
+        Escolha se deseja salvar somente a imagem atual
+        ou todas as imagens carregadas.
+        Em seguida, será possível escolher a pasta de destino.
+      </p>
+
+      <div class="acoes_confirmacao_salvar_fluxograma">
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma secundario"
+          id="botaoCancelarSalvarImagens"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma"
+          id="botaoSalvarImagemAtual"
+        >
+          Salvar imagem
+        </button>
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma"
+          id="botaoSalvarTodasImagens"
+        >
+          Salvar todas
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
 
   <!-- MODAL: CONFIRMA A APLICAÇÃO DO MESMO FLUXO EM TODAS AS IMAGENS -->
   <div

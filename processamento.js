@@ -11123,6 +11123,1451 @@ window.addEventListener("resize", function() {
 });
 
 
+// =============================================================
+// SALVAR IMAGEM / SALVAR TODAS AS IMAGENS
+// =============================================================
+//
+// Esta seção cuida somente da exportação das imagens para uma
+// pasta escolhida pelo usuário.
+//
+// Regras:
+// - "Salvar imagem" exporta somente a imagem selecionada.
+// - "Salvar todas" exporta todas as imagens carregadas.
+// - Se a imagem possui resultado processado, exporta esse resultado.
+// - Se ainda não foi processada, exporta o arquivo original.
+// - Resultados processados são exportados em PNG.
+// - DICOM processado é convertido para PNG mantendo a resolução
+//   espacial real da matriz DICOM.
+// - Nenhum processamento é executado automaticamente durante a
+//   exportação.
+// =============================================================
+
+
+// -------------------------------------------------------------
+// ELEMENTOS DO HTML DA EXPORTAÇÃO
+// -------------------------------------------------------------
+
+const botaoAbrirSalvarImagens =
+  document.getElementById(
+    "botaoAbrirSalvarImagens"
+  );
+
+const modalSalvarImagens =
+  document.getElementById(
+    "modalSalvarImagens"
+  );
+
+const botaoCancelarSalvarImagens =
+  document.getElementById(
+    "botaoCancelarSalvarImagens"
+  );
+
+const botaoSalvarImagemAtual =
+  document.getElementById(
+    "botaoSalvarImagemAtual"
+  );
+
+const botaoSalvarTodasImagens =
+  document.getElementById(
+    "botaoSalvarTodasImagens"
+  );
+
+
+// -------------------------------------------------------------
+// ABRIR / FECHAR O MODAL
+// -------------------------------------------------------------
+
+function abrirModalSalvarImagens() {
+
+  if (
+    !Array.isArray(imagensProcessamento) ||
+    imagensProcessamento.length === 0
+  ) {
+
+    alert(
+      "Nenhuma imagem está disponível para salvar."
+    );
+
+    return;
+  }
+
+
+  if (!modalSalvarImagens) {
+
+    console.error(
+      "Modal de salvar imagens não encontrado."
+    );
+
+    return;
+  }
+
+
+  modalSalvarImagens.classList.add(
+    "ativo"
+  );
+
+}
+
+
+function fecharModalSalvarImagens() {
+
+  if (!modalSalvarImagens) {
+    return;
+  }
+
+
+  modalSalvarImagens.classList.remove(
+    "ativo"
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// NOMES DOS ARQUIVOS EXPORTADOS
+// -------------------------------------------------------------
+
+function limparNomeArquivoExportacao(
+  nome
+) {
+
+  const nomeSeguro =
+    String(
+      nome ||
+      "imagem"
+    )
+      .replace(
+        /[<>:"/\\|?*\u0000-\u001F]/g,
+        "_"
+      )
+      .trim();
+
+
+  return nomeSeguro ||
+    "imagem";
+
+}
+
+
+function separarNomeExtensaoExportacao(
+  nomeArquivo
+) {
+
+  const nomeSeguro =
+    limparNomeArquivoExportacao(
+      nomeArquivo
+    );
+
+
+  const indicePonto =
+    nomeSeguro.lastIndexOf(
+      "."
+    );
+
+
+  if (
+    indicePonto <= 0 ||
+    indicePonto ===
+      nomeSeguro.length - 1
+  ) {
+
+    return {
+      base:
+        nomeSeguro,
+
+      extensao:
+        ""
+    };
+
+  }
+
+
+  return {
+    base:
+      nomeSeguro.slice(
+        0,
+        indicePonto
+      ),
+
+    extensao:
+      nomeSeguro.slice(
+        indicePonto
+      )
+  };
+
+}
+
+
+// O resultado processado do sistema é uma imagem raster.
+// Por isso ele é exportado em PNG.
+// Arquivos que ainda não possuem resultado são preservados
+// exatamente no formato original.
+function obterNomeArquivoExportacao(
+  item
+) {
+
+  const nomeOriginal =
+    item &&
+    item.name
+      ? item.name
+      : "imagem";
+
+
+  const partes =
+    separarNomeExtensaoExportacao(
+      nomeOriginal
+    );
+
+
+  if (
+    item &&
+    item.resultado
+  ) {
+
+    return (
+      partes.base +
+      ".png"
+    );
+
+  }
+
+
+  return limparNomeArquivoExportacao(
+    nomeOriginal
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// CONVERSÃO DE DATA URL / CANVAS PARA BLOB
+// -------------------------------------------------------------
+
+async function converterDataURLParaBlobExportacao(
+  dataURL
+) {
+
+  const resposta =
+    await fetch(
+      dataURL
+    );
+
+
+  if (!resposta.ok) {
+
+    throw new Error(
+      "Não foi possível preparar a imagem processada para exportação."
+    );
+
+  }
+
+
+  return resposta.blob();
+
+}
+
+
+function converterCanvasParaBlobExportacao(
+  canvas
+) {
+
+  return new Promise(
+    function(
+      resolve,
+      reject
+    ) {
+
+      canvas.toBlob(
+        function(blob) {
+
+          if (!blob) {
+
+            reject(
+              new Error(
+                "Não foi possível converter a imagem para PNG."
+              )
+            );
+
+            return;
+          }
+
+
+          resolve(
+            blob
+          );
+
+        },
+        "image/png"
+      );
+
+    }
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// DICOM PROCESSADO -> PNG EM RESOLUÇÃO REAL
+// -------------------------------------------------------------
+
+function obterNumeroDicomExportacao(
+  valor,
+  padrao
+) {
+
+  if (
+    Array.isArray(valor) ||
+    ArrayBuffer.isView(valor)
+  ) {
+
+    if (valor.length > 0) {
+
+      const numero =
+        Number(
+          valor[0]
+        );
+
+
+      if (
+        Number.isFinite(numero)
+      ) {
+
+        return numero;
+
+      }
+
+    }
+
+
+    return padrao;
+
+  }
+
+
+  const numero =
+    Number(
+      valor
+    );
+
+
+  return Number.isFinite(numero)
+    ? numero
+    : padrao;
+
+}
+
+
+function limitarByteExportacao(
+  valor
+) {
+
+  return Math.max(
+    0,
+    Math.min(
+      255,
+      Math.round(
+        valor
+      )
+    )
+  );
+
+}
+
+
+// Gera um Canvas usando width/height e getPixelData() do próprio
+// objeto DICOM. Assim, o tamanho da visualização na tela não altera
+// a resolução do arquivo exportado.
+function gerarCanvasDicomParaExportacao(
+  imagemDicom
+) {
+
+  if (
+    !imagemDicom ||
+    typeof imagemDicom.getPixelData !==
+      "function"
+  ) {
+
+    throw new Error(
+      "O DICOM não possui uma matriz de pixels válida para exportação."
+    );
+
+  }
+
+
+  const largura =
+    Number(
+      imagemDicom.width
+    );
+
+  const altura =
+    Number(
+      imagemDicom.height
+    );
+
+
+  if (
+    !Number.isInteger(largura) ||
+    largura <= 0 ||
+    !Number.isInteger(altura) ||
+    altura <= 0
+  ) {
+
+    throw new Error(
+      "Não foi possível identificar as dimensões reais do DICOM."
+    );
+
+  }
+
+
+  const pixels =
+    imagemDicom.getPixelData();
+
+
+  if (
+    !pixels ||
+    pixels.length === 0
+  ) {
+
+    throw new Error(
+      "O DICOM não possui pixels para exportação."
+    );
+
+  }
+
+
+  const quantidadePixels =
+    largura *
+    altura;
+
+
+  const amostrasPorPixel =
+    pixels.length /
+    quantidadePixels;
+
+
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  canvas.width =
+    largura;
+
+  canvas.height =
+    altura;
+
+
+  const contexto =
+    canvas.getContext(
+      "2d",
+      {
+        willReadFrequently:
+          true
+      }
+    );
+
+
+  if (!contexto) {
+
+    throw new Error(
+      "Não foi possível criar o Canvas para exportar o DICOM."
+    );
+
+  }
+
+
+  const imagemSaida =
+    contexto.createImageData(
+      largura,
+      altura
+    );
+
+
+  const dadosSaida =
+    imagemSaida.data;
+
+
+  // -----------------------------------------------------------
+  // DICOM COLORIDO
+  // -----------------------------------------------------------
+
+  if (
+    Number.isInteger(
+      amostrasPorPixel
+    ) &&
+    amostrasPorPixel >= 3
+  ) {
+
+    for (
+      let i = 0;
+      i < quantidadePixels;
+      i++
+    ) {
+
+      const origem =
+        i *
+        amostrasPorPixel;
+
+
+      const destino =
+        i *
+        4;
+
+
+      dadosSaida[
+        destino
+      ] =
+        limitarByteExportacao(
+          Number(
+            pixels[
+              origem
+            ]
+          )
+        );
+
+
+      dadosSaida[
+        destino + 1
+      ] =
+        limitarByteExportacao(
+          Number(
+            pixels[
+              origem + 1
+            ]
+          )
+        );
+
+
+      dadosSaida[
+        destino + 2
+      ] =
+        limitarByteExportacao(
+          Number(
+            pixels[
+              origem + 2
+            ]
+          )
+        );
+
+
+      dadosSaida[
+        destino + 3
+      ] =
+        255;
+
+    }
+
+
+    contexto.putImageData(
+      imagemSaida,
+      0,
+      0
+    );
+
+
+    return canvas;
+
+  }
+
+
+  // -----------------------------------------------------------
+  // DICOM MONOCROMÁTICO
+  // -----------------------------------------------------------
+
+  const slope =
+    obterNumeroDicomExportacao(
+      imagemDicom.slope,
+      1
+    );
+
+
+  const intercept =
+    obterNumeroDicomExportacao(
+      imagemDicom.intercept,
+      0
+    );
+
+
+  const centroJanela =
+    obterNumeroDicomExportacao(
+      imagemDicom.windowCenter,
+      NaN
+    );
+
+
+  const larguraJanela =
+    obterNumeroDicomExportacao(
+      imagemDicom.windowWidth,
+      NaN
+    );
+
+
+  const inverter =
+    Boolean(
+      imagemDicom.invert
+    );
+
+
+  let minimoModalidade =
+    Infinity;
+
+  let maximoModalidade =
+    -Infinity;
+
+
+  // Se o DICOM não possuir Window/Level válido,
+  // calcula a faixa a partir dos próprios pixels.
+  if (
+    !Number.isFinite(
+      centroJanela
+    ) ||
+    !Number.isFinite(
+      larguraJanela
+    ) ||
+    larguraJanela <= 0
+  ) {
+
+    for (
+      let i = 0;
+      i < quantidadePixels;
+      i++
+    ) {
+
+      const modalidade =
+        Number(
+          pixels[i]
+        ) *
+        slope +
+        intercept;
+
+
+      if (
+        modalidade <
+        minimoModalidade
+      ) {
+
+        minimoModalidade =
+          modalidade;
+
+      }
+
+
+      if (
+        modalidade >
+        maximoModalidade
+      ) {
+
+        maximoModalidade =
+          modalidade;
+
+      }
+
+    }
+
+  }
+
+
+  const minimoJanela =
+    Number.isFinite(
+      centroJanela
+    ) &&
+    Number.isFinite(
+      larguraJanela
+    ) &&
+    larguraJanela > 0
+      ? centroJanela -
+        larguraJanela /
+        2
+      : minimoModalidade;
+
+
+  const maximoJanela =
+    Number.isFinite(
+      centroJanela
+    ) &&
+    Number.isFinite(
+      larguraJanela
+    ) &&
+    larguraJanela > 0
+      ? centroJanela +
+        larguraJanela /
+        2
+      : maximoModalidade;
+
+
+  const amplitudeJanela =
+    Math.max(
+      1e-12,
+      maximoJanela -
+      minimoJanela
+    );
+
+
+  for (
+    let i = 0;
+    i < quantidadePixels;
+    i++
+  ) {
+
+    const modalidade =
+      Number(
+        pixels[i]
+      ) *
+      slope +
+      intercept;
+
+
+    let normalizado =
+      (
+        modalidade -
+        minimoJanela
+      ) /
+      amplitudeJanela;
+
+
+    normalizado =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          normalizado
+        )
+      );
+
+
+    if (inverter) {
+
+      normalizado =
+        1 -
+        normalizado;
+
+    }
+
+
+    const byte =
+      limitarByteExportacao(
+        normalizado *
+        255
+      );
+
+
+    const destino =
+      i *
+      4;
+
+
+    dadosSaida[
+      destino
+    ] =
+      byte;
+
+    dadosSaida[
+      destino + 1
+    ] =
+      byte;
+
+    dadosSaida[
+      destino + 2
+    ] =
+      byte;
+
+    dadosSaida[
+      destino + 3
+    ] =
+      255;
+
+  }
+
+
+  contexto.putImageData(
+    imagemSaida,
+    0,
+    0
+  );
+
+
+  return canvas;
+
+}
+
+
+// -------------------------------------------------------------
+// PREPARA O CONTEÚDO QUE SERÁ GRAVADO
+// -------------------------------------------------------------
+
+async function prepararArquivoParaExportacao(
+  item
+) {
+
+  if (!item) {
+
+    throw new Error(
+      "Imagem inválida para exportação."
+    );
+
+  }
+
+
+  // -----------------------------------------------------------
+  // RESULTADO DE IMAGEM NORMAL / RESULTADO RASTER
+  // -----------------------------------------------------------
+
+  if (
+    item.resultado &&
+    item.resultado.tipo ===
+      "image" &&
+    item.resultado.dataURL
+  ) {
+
+    const blob =
+      await converterDataURLParaBlobExportacao(
+        item.resultado.dataURL
+      );
+
+
+    return {
+      blob:
+        blob,
+
+      nome:
+        obterNomeArquivoExportacao(
+          item
+        )
+    };
+
+  }
+
+
+  // -----------------------------------------------------------
+  // RESULTADO DICOM PROCESSADO
+  // -----------------------------------------------------------
+
+  if (
+    item.resultado &&
+    item.resultado.tipo ===
+      "dicom" &&
+    item.resultado.imagem
+  ) {
+
+    const canvas =
+      gerarCanvasDicomParaExportacao(
+        item.resultado.imagem
+      );
+
+
+    const blob =
+      await converterCanvasParaBlobExportacao(
+        canvas
+      );
+
+
+    return {
+      blob:
+        blob,
+
+      nome:
+        obterNomeArquivoExportacao(
+          item
+        )
+    };
+
+  }
+
+
+  // -----------------------------------------------------------
+  // SEM RESULTADO: PRESERVA O ARQUIVO ORIGINAL
+  // -----------------------------------------------------------
+
+  if (
+    item.file instanceof Blob
+  ) {
+
+    return {
+      blob:
+        item.file,
+
+      nome:
+        limparNomeArquivoExportacao(
+          item.name ||
+          item.file.name ||
+          "imagem"
+        )
+    };
+
+  }
+
+
+  // Alguns registros do IndexedDB podem armazenar o conteúdo
+  // em um formato convertível para Blob.
+  if (item.file) {
+
+    return {
+      blob:
+        new Blob(
+          [
+            item.file
+          ]
+        ),
+
+      nome:
+        limparNomeArquivoExportacao(
+          item.name ||
+          "imagem"
+        )
+    };
+
+  }
+
+
+  throw new Error(
+    "O arquivo da imagem não está disponível para exportação."
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// SELEÇÃO DA PASTA
+// -------------------------------------------------------------
+
+async function escolherPastaExportacaoImagens() {
+
+  if (
+    typeof window.showDirectoryPicker !==
+      "function"
+  ) {
+
+    throw new Error(
+      "Este navegador não permite selecionar diretamente uma pasta. Use uma versão atual do Chrome ou Edge."
+    );
+
+  }
+
+
+  return window.showDirectoryPicker(
+    {
+      mode:
+        "readwrite"
+    }
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// EVITA SOBRESCREVER ARQUIVOS EXISTENTES NA PASTA
+// -------------------------------------------------------------
+
+async function arquivoJaExisteNaPastaExportacao(
+  pasta,
+  nomeArquivo
+) {
+
+  try {
+
+    await pasta.getFileHandle(
+      nomeArquivo,
+      {
+        create:
+          false
+      }
+    );
+
+
+    return true;
+
+  } catch (error) {
+
+    if (
+      error &&
+      error.name ===
+        "NotFoundError"
+    ) {
+
+      return false;
+
+    }
+
+
+    throw error;
+
+  }
+
+}
+
+
+async function obterNomeDisponivelExportacao(
+  pasta,
+  nomeArquivo,
+  nomesReservados
+) {
+
+  const nomeSeguro =
+    limparNomeArquivoExportacao(
+      nomeArquivo
+    );
+
+
+  const partes =
+    separarNomeExtensaoExportacao(
+      nomeSeguro
+    );
+
+
+  let tentativa =
+    nomeSeguro;
+
+  let contador =
+    1;
+
+
+  while (
+    nomesReservados.has(
+      tentativa.toLowerCase()
+    ) ||
+    await arquivoJaExisteNaPastaExportacao(
+      pasta,
+      tentativa
+    )
+  ) {
+
+    tentativa =
+      partes.base +
+      " (" +
+      contador +
+      ")" +
+      partes.extensao;
+
+
+    contador++;
+
+  }
+
+
+  nomesReservados.add(
+    tentativa.toLowerCase()
+  );
+
+
+  return tentativa;
+
+}
+
+
+// -------------------------------------------------------------
+// GRAVAÇÃO EM DISCO
+// -------------------------------------------------------------
+
+async function gravarBlobNaPastaExportacao(
+  pasta,
+  nomeArquivo,
+  blob
+) {
+
+  const arquivoHandle =
+    await pasta.getFileHandle(
+      nomeArquivo,
+      {
+        create:
+          true
+      }
+    );
+
+
+  const gravador =
+    await arquivoHandle.createWritable();
+
+
+  try {
+
+    await gravador.write(
+      blob
+    );
+
+
+    await gravador.close();
+
+  } catch (error) {
+
+    try {
+
+      await gravador.abort();
+
+    } catch (_) {
+      // Nenhuma ação adicional.
+    }
+
+
+    throw error;
+
+  }
+
+}
+
+
+// -------------------------------------------------------------
+// EXPORTA UMA OU MAIS IMAGENS
+// -------------------------------------------------------------
+
+async function exportarItensParaPasta(
+  itens,
+  mensagemConclusao
+) {
+
+  if (
+    !Array.isArray(itens) ||
+    itens.length === 0
+  ) {
+
+    alert(
+      "Nenhuma imagem está disponível para salvar."
+    );
+
+    return;
+
+  }
+
+
+  let pasta;
+
+
+  try {
+
+    statusText.innerText =
+      "Escolha a pasta onde as imagens serão salvas...";
+
+
+    pasta =
+      await escolherPastaExportacaoImagens();
+
+  } catch (error) {
+
+    // Fechar o seletor de pastas não é um erro da operação.
+    if (
+      error &&
+      error.name ===
+        "AbortError"
+    ) {
+
+      statusText.innerText =
+        "Salvamento cancelado.";
+
+      return;
+
+    }
+
+
+    console.error(
+      "Erro ao selecionar pasta:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "Não foi possível selecionar a pasta."
+    );
+
+
+    statusText.innerText =
+      "Não foi possível selecionar a pasta.";
+
+    return;
+
+  }
+
+
+  const nomesReservados =
+    new Set();
+
+
+  let quantidadeSalva =
+    0;
+
+
+  try {
+
+    for (
+      let i = 0;
+      i < itens.length;
+      i++
+    ) {
+
+      const item =
+        itens[i];
+
+
+      statusText.innerText =
+        itens.length === 1
+          ? "Salvando imagem: " +
+            item.name
+          : "Salvando " +
+            (i + 1) +
+            " de " +
+            itens.length +
+            ": " +
+            item.name;
+
+
+      // Não executa o fluxograma aqui.
+      // Apenas exporta o resultado já existente ou o original.
+      const arquivo =
+        await prepararArquivoParaExportacao(
+          item
+        );
+
+
+      const nomeDisponivel =
+        await obterNomeDisponivelExportacao(
+          pasta,
+          arquivo.nome,
+          nomesReservados
+        );
+
+
+      await gravarBlobNaPastaExportacao(
+        pasta,
+        nomeDisponivel,
+        arquivo.blob
+      );
+
+
+      quantidadeSalva++;
+
+    }
+
+
+    statusText.innerText =
+      mensagemConclusao ||
+      (
+        quantidadeSalva === 1
+          ? "Imagem salva com sucesso."
+          : quantidadeSalva +
+            " imagens salvas com sucesso."
+      );
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao salvar imagens:",
+      error
+    );
+
+
+    alert(
+      "Não foi possível salvar todas as imagens. " +
+      (
+        error.message ||
+        String(error)
+      )
+    );
+
+
+    statusText.innerText =
+      quantidadeSalva > 0
+        ? quantidadeSalva +
+          " imagem(ns) salva(s) antes do erro."
+        : "Erro ao salvar imagens.";
+
+  }
+
+}
+
+
+// -------------------------------------------------------------
+// SALVAR SOMENTE A IMAGEM ATUAL
+// -------------------------------------------------------------
+
+async function salvarImagemAtualNaPasta() {
+
+  if (!imagemAtualSelecionada) {
+
+    alert(
+      "Nenhuma imagem está selecionada."
+    );
+
+    return;
+
+  }
+
+
+  fecharModalSalvarImagens();
+
+
+  await exportarItensParaPasta(
+    [
+      imagemAtualSelecionada
+    ],
+    "Imagem salva com sucesso."
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// SALVAR TODAS AS IMAGENS
+// -------------------------------------------------------------
+
+async function salvarTodasImagensNaPasta() {
+
+  if (
+    !Array.isArray(imagensProcessamento) ||
+    imagensProcessamento.length === 0
+  ) {
+
+    alert(
+      "Nenhuma imagem está disponível para salvar."
+    );
+
+    return;
+
+  }
+
+
+  fecharModalSalvarImagens();
+
+
+  await exportarItensParaPasta(
+    imagensProcessamento.slice(),
+    imagensProcessamento.length +
+      " imagens salvas com sucesso."
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// EVENTOS DA INTERFACE DE EXPORTAÇÃO
+// -------------------------------------------------------------
+
+function configurarExportacaoImagens() {
+
+  if (
+    botaoAbrirSalvarImagens &&
+    botaoAbrirSalvarImagens.dataset.listenerExportacao !==
+      "true"
+  ) {
+
+    botaoAbrirSalvarImagens.addEventListener(
+      "click",
+      abrirModalSalvarImagens
+    );
+
+
+    botaoAbrirSalvarImagens.dataset.listenerExportacao =
+      "true";
+
+  }
+
+
+  if (
+    botaoCancelarSalvarImagens &&
+    botaoCancelarSalvarImagens.dataset.listenerExportacao !==
+      "true"
+  ) {
+
+    botaoCancelarSalvarImagens.addEventListener(
+      "click",
+      fecharModalSalvarImagens
+    );
+
+
+    botaoCancelarSalvarImagens.dataset.listenerExportacao =
+      "true";
+
+  }
+
+
+  if (
+    botaoSalvarImagemAtual &&
+    botaoSalvarImagemAtual.dataset.listenerExportacao !==
+      "true"
+  ) {
+
+    botaoSalvarImagemAtual.addEventListener(
+      "click",
+      salvarImagemAtualNaPasta
+    );
+
+
+    botaoSalvarImagemAtual.dataset.listenerExportacao =
+      "true";
+
+  }
+
+
+  if (
+    botaoSalvarTodasImagens &&
+    botaoSalvarTodasImagens.dataset.listenerExportacao !==
+      "true"
+  ) {
+
+    botaoSalvarTodasImagens.addEventListener(
+      "click",
+      salvarTodasImagensNaPasta
+    );
+
+
+    botaoSalvarTodasImagens.dataset.listenerExportacao =
+      "true";
+
+  }
+
+
+  if (
+    modalSalvarImagens &&
+    modalSalvarImagens.dataset.listenerExportacao !==
+      "true"
+  ) {
+
+    modalSalvarImagens.addEventListener(
+      "click",
+      function(event) {
+
+        if (
+          event.target ===
+          modalSalvarImagens
+        ) {
+
+          fecharModalSalvarImagens();
+
+        }
+
+      }
+    );
+
+
+    modalSalvarImagens.dataset.listenerExportacao =
+      "true";
+
+  }
+
+}
+
+
+// Escape fecha somente o novo modal de exportação quando ele estiver aberto.
+document.addEventListener(
+  "keydown",
+  function(event) {
+
+    if (
+      event.key ===
+        "Escape" &&
+      modalSalvarImagens &&
+      modalSalvarImagens.classList.contains(
+        "ativo"
+      )
+    ) {
+
+      fecharModalSalvarImagens();
+
+    }
+
+  }
+);
+
+
 // Guarda a sessão imediatamente antes de sair desta página.
 window.addEventListener(
   "pagehide",
@@ -11146,5 +12591,6 @@ configurarModalAplicarFluxoTodasImagens();
 configurarSalvamentoAutomaticoTodasImagens();
 configurarRedimensionamentoMiniaturas();
 configurarAplicacaoBrilhoContrasteFluxograma();
+configurarExportacaoImagens();
 atualizarControleSalvarFluxoProjeto();
 atualizarIndicadorSalvamentoAutomatico("desativado");
