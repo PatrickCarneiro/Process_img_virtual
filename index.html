@@ -25,14 +25,22 @@
       box-sizing: border-box; /* Inclui padding e borda no tamanho total do elemento */
     }
 
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden; /* Remove a barra de rolagem da página inteira */
+    }
+
     /* DESIGN GERAL DO CORPO DA PÁGINA */
 
     body {
       font-family: 'Poppins', sans-serif; /* Fonte principal */
       background: linear-gradient(135deg, #0b1d3a, #050c1a); /* Fundo em degradê azul escuro */
       color: white; /* Cor padrão dos textos */
-      min-height: 100vh; /* Ocupa no mínimo a altura inteira da tela */
+      width: 100%;
+      height: 100vh; /* Mantém toda a tela dentro da altura do monitor */
       display: flex; /* Deixa menu lateral e conteúdo principal lado a lado */
+      overflow: hidden; /* A página não possui mais rolagem global */
     }
 
 
@@ -40,9 +48,12 @@
 
     .menulateral {
       width: 250px; /* Largura do menu */
+      height: 100vh; /* Mantém o menu preso à altura da tela */
+      flex-shrink: 0;
       background: rgba(10, 20, 40, 0.9); /* Fundo escuro com transparência */
       padding: 20px; /* Espaçamento interno */
       border-right: 1px solid rgba(255,255,255,0.05); /* Linha separando o menu da área principal */
+      overflow: hidden; /* A lateral permanece estática */
     }
 
 
@@ -79,16 +90,24 @@
 
     .main {
       flex: 1; /* Ocupa todo o espaço restante depois do menu */
-      padding: 40px; /* Espaçamento interno */
-      overflow-y: auto; /* Permite rolagem vertical caso tenha muito conteúdo */
+      min-width: 0;
+      min-height: 0;
+      height: 100vh;
+      padding: clamp(22px, 4vh, 40px); /* Mantém o conteúdo adaptável à altura do monitor */
+      overflow: hidden; /* Remove a rolagem vertical desta região */
+      display: flex;
+      flex-direction: column;
     }
     .main h1 {
-      font-size: 52px; /* Tamanho do título principal */
-      margin-bottom: 10px; /* Espaço abaixo do título */
+      font-size: clamp(34px, 3.5vw, 52px); /* Mantém o título responsivo */
+      line-height: 1.08;
+      margin-bottom: 8px; /* Espaço abaixo do título */
+      flex-shrink: 0;
     }
-    .main p {
-      opacity: 0.7; /* Deixa os parágrafos mais discretos */
-      margin-bottom: 30px; /* Espaço abaixo dos parágrafos */
+    .main > p {
+      opacity: 0.7; /* Deixa o parágrafo principal mais discreto */
+      margin-bottom: clamp(14px, 2.2vh, 24px);
+      flex-shrink: 0;
     }
 
     /* DESIGN DA CAIXA DE UPLOAD */
@@ -96,10 +115,15 @@
     .upload-box {
       border: 2px dashed rgba(255,255,255,0.2); /* Borda tracejada */
       border-radius: 20px; /* Cantos arredondados */
-      padding: 50px; /* Espaçamento interno */
+      padding: clamp(18px, 3vh, 30px); /* Caixa um pouco menor para caber melhor na tela */
       text-align: center; /* Centraliza os textos */
       background: rgba(255,255,255,0.02); /* Fundo levemente transparente */
       transition: 0.3s; /* Suaviza a mudança visual */
+      flex-shrink: 0;
+    }
+
+    .upload-box p {
+      margin-bottom: 12px;
     }
     .upload-box:hover {
       border-color: #c084fc; /* Borda roxa ao passar o mouse */
@@ -128,27 +152,69 @@
     #status {
       font-size: 14px; /* Texto menor */
       opacity: 0.7; /* Texto mais discreto */
-      margin-top: 15px; /* Espaço acima do status */
+      margin-top: 12px; /* Espaço acima do status */
+      margin-bottom: 0;
     }
 
     /* DESIGN DO TÍTULO DAS IMAGENS RECENTES */
 
     .recent-titul {
-      margin-top: 35px; /* Espaço acima do título */
-      margin-bottom: 15px; /* Espaço abaixo do título */
+      margin-top: clamp(14px, 2.2vh, 24px); /* Espaço acima do título */
+      margin-bottom: 10px; /* Espaço abaixo do título */
+      flex-shrink: 0;
     }
 
     /* DESIGN DA GRADE DE MINIATURAS */
 
     .grid_recente {
-      display: grid; /* Ativa layout em grade */
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Colunas responsivas */
+      min-width: 0;
+      min-height: 0;
+      flex: 1;
+
+      display: flex; /* Organiza as miniaturas em uma única faixa horizontal */
+      flex-wrap: nowrap;
+      align-items: flex-start;
       gap: 15px; /* Espaço entre as miniaturas */
+
+      overflow-x: auto; /* Rolagem horizontal quando houver muitas imagens */
+      overflow-y: hidden;
+      padding: 4px 2px 10px 2px;
+      overscroll-behavior-x: contain;
+
+      scrollbar-width: thin; /* Firefox */
+      scrollbar-color: rgba(192,132,252,0.65) rgba(255,255,255,0.04);
+    }
+
+    /* Barra horizontal das miniaturas - Chrome, Edge e Safari */
+    .grid_recente::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .grid_recente::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+    }
+
+    .grid_recente::-webkit-scrollbar-thumb {
+      background: linear-gradient(90deg, rgba(192,132,252,0.72), rgba(126,87,194,0.62));
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    .grid_recente::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(90deg, rgba(216,180,254,0.88), rgba(192,132,252,0.78));
+      background-clip: padding-box;
     }
 
     /* DESIGN DA MINIATURA */
 
     .miniaturas {
+      width: 150px;
+      min-width: 150px;
+      max-width: 150px;
+      flex: 0 0 150px;
+
       background: rgba(255,255,255,0.05); /* Fundo da miniatura */
       border: 1px solid rgba(255,255,255,0.08); /* Borda discreta */
       border-radius: 15px; /* Cantos arredondados */
@@ -202,6 +268,20 @@
       background: rgba(192,132,252,0.22); /* Fundo roxo claro */
     }
 
+    /* ÁREA DO BOTÃO PROCESSAR SELECIONADAS */
+
+    .acoes_processamento {
+      margin-top: 12px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .acoes_processamento .botoes {
+      margin-top: 0;
+    }
+
     /* RESPONSIVIDADE */
 
     @media (max-width: 800px) {
@@ -210,11 +290,15 @@
       }
       .menulateral {
         width: 100%; /* Menu ocupa toda a largura da tela */
+        height: auto;
+        flex-shrink: 0;
       }
       .main h1 {
         font-size: 34px; /* Diminui o título em telas pequenas */
       }
       .main {
+        height: auto;
+        flex: 1;
         padding: 25px; /* Reduz o espaçamento interno */
       }
     }
@@ -290,7 +374,7 @@
 
     <!-- BOTÃO PARA PROCESSAR IMAGENS SELECIONADAS -->
 
-    <div style="margin-top: 20px;">
+    <div class="acoes_processamento">
       <button class="botoes" onclick="processSelected()">
         Processar selecionadas
       </button>
