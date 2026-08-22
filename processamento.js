@@ -9692,9 +9692,12 @@ function atualizarCanvasRecorte() {
   }
 }
 
-// Retorna as dimensões da mesma imagem-fonte que o recorte atual usa.
-// Para imagem comum são os pixels naturais da imagem.
-// Para DICOM são os pixels do Canvas renderizado usado pelo recorte existente.
+// Retorna as dimensões REAIS da imagem-fonte usadas somente
+// pela ROI retangular por tamanho.
+//
+// Imagem comum: usa naturalWidth/naturalHeight.
+// DICOM: usa width/height da matriz DICOM, e NÃO o Canvas visual
+// redimensionado pelo Cornerstone.
 function obterDimensoesFonteRoiTamanho() {
 
   if (
@@ -9711,8 +9714,30 @@ function obterDimensoesFonteRoiTamanho() {
 
   if (
     visualizadorDicom &&
-    visualizadorDicom.style.display === "block"
+    visualizadorDicom.style.display === "block" &&
+    typeof imagemDicomAtual !== "undefined" &&
+    imagemDicomAtual
   ) {
+
+    const larguraDicom =
+      Number(imagemDicomAtual.width);
+
+    const alturaDicom =
+      Number(imagemDicomAtual.height);
+
+    if (
+      Number.isInteger(larguraDicom) &&
+      larguraDicom > 0 &&
+      Number.isInteger(alturaDicom) &&
+      alturaDicom > 0
+    ) {
+      return {
+        largura: larguraDicom,
+        altura: alturaDicom
+      };
+    }
+
+    // Fallback somente caso o objeto DICOM não informe width/height.
     const canvasDicom =
       visualizadorDicom.querySelector("canvas");
 
@@ -10162,8 +10187,21 @@ async function confirmarSalvarRecorte(acao) {
   }
 
   try {
-    const canvasFonte = await gerarCanvasFonteParaRecorte();
-    const canvasRecortado = criarCanvasRecortadoPendente(canvasFonte, dadosRecortePendente);
+
+    // Somente a ROI retangular por tamanho precisa trabalhar
+    // obrigatoriamente na resolução real da matriz DICOM.
+    // Os recortes retangular e livre continuam usando exatamente
+    // o mesmo caminho que já utilizavam.
+    const canvasFonte =
+      dadosRecortePendente.tipo === "roi_tamanho"
+        ? await gerarCanvasFonteParaRoiTamanho()
+        : await gerarCanvasFonteParaRecorte();
+
+    const canvasRecortado =
+      criarCanvasRecortadoPendente(
+        canvasFonte,
+        dadosRecortePendente
+      );
 
     if (!canvasRecortado) {
       throw new Error("Não foi possível gerar o recorte.");
@@ -10188,6 +10226,381 @@ async function confirmarSalvarRecorte(acao) {
     alert("Erro ao salvar recorte: " + (error.message || String(error)));
   }
 }
+
+// =============================================================
+// FONTE EM RESOLUÇÃO REAL PARA A ROI RETANGULAR POR TAMANHO
+// =============================================================
+
+// Retorna o primeiro número válido de uma propriedade DICOM
+// que eventualmente possa vir como array.
+function obterNumeroDicomRoiTamanho(
+  valor,
+  padrao
+) {
+
+  if (
+    Array.isArray(valor) ||
+    ArrayBuffer.isView(valor)
+  ) {
+
+    if (valor.length > 0) {
+
+      const numero =
+        Number(valor[0]);
+
+      if (Number.isFinite(numero)) {
+        return numero;
+      }
+    }
+
+    return padrao;
+  }
+
+  const numero =
+    Number(valor);
+
+  return Number.isFinite(numero)
+    ? numero
+    : padrao;
+}
+
+
+// Limita um valor ao intervalo 0..255 para montar o PNG final.
+function limitarByteRoiTamanho(
+  valor
+) {
+
+  return Math.max(
+    0,
+    Math.min(
+      255,
+      Math.round(valor)
+    )
+  );
+}
+
+
+// Cria um Canvas com o tamanho REAL do DICOM usando sua matriz
+// de pixels. Esta função é usada exclusivamente pela ROI por tamanho.
+function gerarCanvasDicomResolucaoRealRoiTamanho() {
+
+  if (
+    typeof imagemDicomAtual === "undefined" ||
+    !imagemDicomAtual ||
+    typeof imagemDicomAtual.getPixelData !== "function"
+  ) {
+    throw new Error(
+      "O DICOM atual não possui uma matriz de pixels válida para a ROI."
+    );
+  }
+
+  const largura =
+    Number(imagemDicomAtual.width);
+
+  const altura =
+    Number(imagemDicomAtual.height);
+
+  if (
+    !Number.isInteger(largura) ||
+    largura <= 0 ||
+    !Number.isInteger(altura) ||
+    altura <= 0
+  ) {
+    throw new Error(
+      "Não foi possível identificar as dimensões reais do DICOM."
+    );
+  }
+
+  const pixels =
+    imagemDicomAtual.getPixelData();
+
+  if (
+    !pixels ||
+    pixels.length === 0
+  ) {
+    throw new Error(
+      "O DICOM atual não possui pixels para gerar a ROI."
+    );
+  }
+
+  const quantidadePixels =
+    largura * altura;
+
+  const amostrasPorPixel =
+    pixels.length / quantidadePixels;
+
+  const canvas =
+    document.createElement("canvas");
+
+  canvas.width = largura;
+  canvas.height = altura;
+
+  const contexto =
+    canvas.getContext(
+      "2d",
+      { willReadFrequently: true }
+    );
+
+  if (!contexto) {
+    throw new Error(
+      "Não foi possível criar o Canvas em resolução real para o DICOM."
+    );
+  }
+
+  const saida =
+    contexto.createImageData(
+      largura,
+      altura
+    );
+
+  const dadosSaida =
+    saida.data;
+
+
+  // DICOM colorido RGB/RGBA: preserva os canais diretamente.
+  if (
+    Number.isInteger(amostrasPorPixel) &&
+    amostrasPorPixel >= 3
+  ) {
+
+    for (
+      let i = 0;
+      i < quantidadePixels;
+      i++
+    ) {
+
+      const origem =
+        i * amostrasPorPixel;
+
+      const destino =
+        i * 4;
+
+      dadosSaida[destino] =
+        limitarByteRoiTamanho(
+          Number(pixels[origem])
+        );
+
+      dadosSaida[destino + 1] =
+        limitarByteRoiTamanho(
+          Number(pixels[origem + 1])
+        );
+
+      dadosSaida[destino + 2] =
+        limitarByteRoiTamanho(
+          Number(pixels[origem + 2])
+        );
+
+      dadosSaida[destino + 3] =
+        255;
+    }
+
+    contexto.putImageData(
+      saida,
+      0,
+      0
+    );
+
+    return canvas;
+  }
+
+
+  // DICOM monocromático:
+  // converte os pixels reais para a mesma faixa visual utilizada
+  // pelo viewport atual, mantendo a resolução espacial original.
+  let viewportAtual = null;
+
+  try {
+
+    if (
+      typeof cornerstone !== "undefined" &&
+      visualizadorDicom
+    ) {
+      viewportAtual =
+        cornerstone.getViewport(
+          visualizadorDicom
+        );
+    }
+
+  } catch (_) {
+    viewportAtual = null;
+  }
+
+  const slope =
+    obterNumeroDicomRoiTamanho(
+      imagemDicomAtual.slope,
+      1
+    );
+
+  const intercept =
+    obterNumeroDicomRoiTamanho(
+      imagemDicomAtual.intercept,
+      0
+    );
+
+  const centroJanela =
+    obterNumeroDicomRoiTamanho(
+      viewportAtual &&
+      viewportAtual.voi
+        ? viewportAtual.voi.windowCenter
+        : imagemDicomAtual.windowCenter,
+      NaN
+    );
+
+  const larguraJanela =
+    obterNumeroDicomRoiTamanho(
+      viewportAtual &&
+      viewportAtual.voi
+        ? viewportAtual.voi.windowWidth
+        : imagemDicomAtual.windowWidth,
+      NaN
+    );
+
+  const inverter =
+    Boolean(
+      viewportAtual &&
+      typeof viewportAtual.invert === "boolean"
+        ? viewportAtual.invert
+        : imagemDicomAtual.invert
+    );
+
+
+  // Caso não exista Window/Level válido, usa a faixa real
+  // da matriz DICOM em unidades de modalidade.
+  let minimoModalidade =
+    Infinity;
+
+  let maximoModalidade =
+    -Infinity;
+
+  if (
+    !Number.isFinite(centroJanela) ||
+    !Number.isFinite(larguraJanela) ||
+    larguraJanela <= 0
+  ) {
+
+    for (
+      let i = 0;
+      i < quantidadePixels;
+      i++
+    ) {
+
+      const modalidade =
+        Number(pixels[i]) *
+        slope +
+        intercept;
+
+      if (modalidade < minimoModalidade) {
+        minimoModalidade = modalidade;
+      }
+
+      if (modalidade > maximoModalidade) {
+        maximoModalidade = modalidade;
+      }
+    }
+  }
+
+
+  const minimoJanela =
+    Number.isFinite(centroJanela) &&
+    Number.isFinite(larguraJanela) &&
+    larguraJanela > 0
+      ? centroJanela - larguraJanela / 2
+      : minimoModalidade;
+
+  const maximoJanela =
+    Number.isFinite(centroJanela) &&
+    Number.isFinite(larguraJanela) &&
+    larguraJanela > 0
+      ? centroJanela + larguraJanela / 2
+      : maximoModalidade;
+
+  const amplitudeJanela =
+    Math.max(
+      1e-12,
+      maximoJanela -
+      minimoJanela
+    );
+
+
+  for (
+    let i = 0;
+    i < quantidadePixels;
+    i++
+  ) {
+
+    const modalidade =
+      Number(pixels[i]) *
+      slope +
+      intercept;
+
+    let normalizado =
+      (
+        modalidade -
+        minimoJanela
+      ) /
+      amplitudeJanela;
+
+    normalizado =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          normalizado
+        )
+      );
+
+    if (inverter) {
+      normalizado =
+        1 - normalizado;
+    }
+
+    const byte =
+      limitarByteRoiTamanho(
+        normalizado * 255
+      );
+
+    const destino =
+      i * 4;
+
+    dadosSaida[destino] = byte;
+    dadosSaida[destino + 1] = byte;
+    dadosSaida[destino + 2] = byte;
+    dadosSaida[destino + 3] = 255;
+  }
+
+  contexto.putImageData(
+    saida,
+    0,
+    0
+  );
+
+  return canvas;
+}
+
+
+// Usa a fonte normal para imagens comuns e a matriz real para DICOM.
+// Esta função é chamada somente quando o tipo do recorte é roi_tamanho.
+async function gerarCanvasFonteParaRoiTamanho() {
+
+  if (
+    imagemNormal &&
+    imagemNormal.style.display === "block"
+  ) {
+    return gerarCanvasFonteParaRecorte();
+  }
+
+  if (
+    visualizadorDicom &&
+    visualizadorDicom.style.display === "block"
+  ) {
+    return gerarCanvasDicomResolucaoRealRoiTamanho();
+  }
+
+  throw new Error(
+    "Nenhuma imagem visível para gerar a ROI por tamanho."
+  );
+}
+
 
 async function gerarCanvasFonteParaRecorte() {
 
