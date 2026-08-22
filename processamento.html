@@ -130,7 +130,11 @@
       height: 100vh; /* Impede o conteúdo principal de aumentar a altura da página */
       display: grid; /* Organiza ferramentas, imagem e fluxograma */
       grid-template-columns: 260px minmax(0, 1fr) 320px;
-      grid-template-rows: minmax(0, 1fr) clamp(230px, 28vh, 270px);
+
+      /* A altura inferior poderá ser alterada pelo redimensionador */
+      --altura-miniaturas: clamp(230px, 28vh, 270px);
+      grid-template-rows: minmax(0, 1fr) var(--altura-miniaturas);
+
       gap: 15px;
       padding: 15px;
       overflow: hidden;
@@ -1255,6 +1259,91 @@
         rgba(255,255,255,0.10);
     }
 
+    /* =========================================================
+       REDIMENSIONADOR DA REGIÃO DAS MINIATURAS
+       ========================================================= */
+
+    .redimensionador_miniaturas {
+      grid-column: 2 / 3;
+      grid-row: 2;
+
+      align-self: start;
+
+      width: calc(100% - 24px);
+      height: 14px;
+
+      margin:
+        -7px 12px 0 12px;
+
+      position: relative;
+      z-index: 40;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      cursor: ns-resize;
+      touch-action: none;
+
+      border-radius: 999px;
+
+      background:
+        transparent;
+    }
+
+    .redimensionador_miniaturas::before {
+      content: "";
+
+      width: 72px;
+      height: 4px;
+
+      border-radius: 999px;
+
+      background:
+        rgba(192,132,252,0.52);
+
+      box-shadow:
+        0 0 8px rgba(192,132,252,0.18);
+
+      transition:
+        width 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
+    }
+
+    .redimensionador_miniaturas:hover::before,
+    .redimensionador_miniaturas.arrastando::before {
+      width: 96px;
+
+      background:
+        rgba(216,180,254,0.88);
+
+      box-shadow:
+        0 0 12px rgba(192,132,252,0.42);
+    }
+
+    .redimensionador_miniaturas::after {
+      content: "⋮⋮";
+
+      position: absolute;
+
+      color:
+        rgba(255,255,255,0.58);
+
+      font-size: 12px;
+      line-height: 1;
+
+      transform:
+        rotate(90deg);
+
+      pointer-events: none;
+    }
+
+    body.redimensionando_miniaturas {
+      cursor: ns-resize;
+      user-select: none;
+    }
+
     /* DESIGN DA ÁREA DE IMAGENS EMBAIXO */
 
     .imagens_trabalho {
@@ -2225,9 +2314,65 @@
 
     <!-- ÁREA INFERIOR COM IMAGENS -->
 
+    <!--
+      Divisória preparada para o processamento.js permitir
+      aumentar ou diminuir a altura da região das miniaturas.
+    -->
+    <div
+      class="redimensionador_miniaturas"
+      id="redimensionadorMiniaturas"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Redimensionar área das miniaturas"
+      title="Arraste para aumentar ou diminuir a área das miniaturas"
+      data-altura-minima="120"
+      data-altura-maxima="460"
+    ></div>
+
     <div class="painel imagens_trabalho" id="imagensTrabalho"></div>
 
   </div>
+
+  <!-- MODAL: CONFIRMA A APLICAÇÃO DO MESMO FLUXO EM TODAS AS IMAGENS -->
+  <div
+    class="modal_confirmacao_salvar_fluxograma"
+    id="modalConfirmarAplicarFluxoTodasImagens"
+  >
+
+    <div class="caixa_confirmacao_salvar_fluxograma">
+
+      <h3>
+        Aplicar fluxo em todas as imagens
+      </h3>
+
+      <p>
+        Deseja aplicar o mesmo fluxo em todas as imagens?
+      </p>
+
+      <div class="acoes_confirmacao_salvar_fluxograma">
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma secundario"
+          id="botaoNaoAplicarFluxoTodasImagens"
+        >
+          Não
+        </button>
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma"
+          id="botaoSimAplicarFluxoTodasImagens"
+        >
+          Sim
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
 
   <!-- MODAL: PERGUNTA SE O FLUXOGRAMA DEVE SER SALVO -->
   <div

@@ -106,6 +106,13 @@ let projetoSalvamentoAutomaticoNome = "";
 // Controle do novo modal estilizado "Deseja salvar esse fluxograma?"
 let resolverPerguntaSalvarFluxograma = null;
 
+// Controle do modal "Deseja aplicar o mesmo fluxo em todas as imagens?"
+let resolverConfirmacaoAplicarFluxoTodasImagens = null;
+
+// Guarda a altura escolhida pelo usuário para a região das miniaturas.
+const CHAVE_ALTURA_MINIATURAS_PROCESSAMENTO =
+  "alturaMiniaturasProcessamento";
+
 // Quando a página é aberta pela aba Projetos, o vínculo fica pendente
 // até a primeira imagem ser criada dentro de imagensProcessamento.
 let projetoSalvamentoAutomaticoPendente = null;
@@ -1843,9 +1850,313 @@ async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
 }
 
 
-// Se o checkbox "Aplicar fluxo em todas as imagens" for marcado
-// depois que a imagem atual já possui autosave, o vínculo é
-// imediatamente propagado para todas as imagens.
+// =============================================================
+// APLICAR O MESMO FLUXO EM TODAS AS IMAGENS
+// =============================================================
+
+// Configura o modal estilizado que já existe no processamento.html.
+function configurarModalAplicarFluxoTodasImagens() {
+
+  const modal =
+    document.getElementById(
+      "modalConfirmarAplicarFluxoTodasImagens"
+    );
+
+  const botaoNao =
+    document.getElementById(
+      "botaoNaoAplicarFluxoTodasImagens"
+    );
+
+  const botaoSim =
+    document.getElementById(
+      "botaoSimAplicarFluxoTodasImagens"
+    );
+
+
+  if (
+    botaoNao &&
+    botaoNao.dataset.listenerAplicarTodas !==
+      "true"
+  ) {
+
+    botaoNao.addEventListener(
+      "click",
+      function() {
+
+        responderConfirmacaoAplicarFluxoTodasImagens(
+          false
+        );
+
+      }
+    );
+
+    botaoNao.dataset.listenerAplicarTodas =
+      "true";
+
+  }
+
+
+  if (
+    botaoSim &&
+    botaoSim.dataset.listenerAplicarTodas !==
+      "true"
+  ) {
+
+    botaoSim.addEventListener(
+      "click",
+      function() {
+
+        responderConfirmacaoAplicarFluxoTodasImagens(
+          true
+        );
+
+      }
+    );
+
+    botaoSim.dataset.listenerAplicarTodas =
+      "true";
+
+  }
+
+
+  if (
+    modal &&
+    modal.dataset.listenerAplicarTodas !==
+      "true"
+  ) {
+
+    modal.addEventListener(
+      "click",
+      function(event) {
+
+        if (
+          event.target === modal
+        ) {
+
+          responderConfirmacaoAplicarFluxoTodasImagens(
+            false
+          );
+
+        }
+
+      }
+    );
+
+    modal.dataset.listenerAplicarTodas =
+      "true";
+
+  }
+
+}
+
+
+// Abre o modal e devolve true somente quando o usuário clicar em Sim.
+function abrirModalAplicarFluxoTodasImagens() {
+
+  configurarModalAplicarFluxoTodasImagens();
+
+
+  const modal =
+    document.getElementById(
+      "modalConfirmarAplicarFluxoTodasImagens"
+    );
+
+
+  if (!modal) {
+
+    return Promise.resolve(
+      false
+    );
+
+  }
+
+
+  modal.classList.add(
+    "ativo"
+  );
+
+
+  return new Promise(
+    function(resolve) {
+
+      resolverConfirmacaoAplicarFluxoTodasImagens =
+        resolve;
+
+    }
+  );
+
+}
+
+
+// Fecha o modal e devolve a escolha para quem o abriu.
+function responderConfirmacaoAplicarFluxoTodasImagens(
+  aplicar
+) {
+
+  const modal =
+    document.getElementById(
+      "modalConfirmarAplicarFluxoTodasImagens"
+    );
+
+
+  if (modal) {
+
+    modal.classList.remove(
+      "ativo"
+    );
+
+  }
+
+
+  const resolver =
+    resolverConfirmacaoAplicarFluxoTodasImagens;
+
+
+  resolverConfirmacaoAplicarFluxoTodasImagens =
+    null;
+
+
+  if (resolver) {
+
+    resolver(
+      Boolean(aplicar)
+    );
+
+  }
+
+}
+
+
+// Copia o pipeline atual para todas as imagens sem processá-las.
+// Isso mantém a regra existente de que a execução só ocorre
+// quando o usuário clicar em "Processar fluxo".
+function replicarFluxoAtualParaTodasImagens() {
+
+  if (
+    !imagemAtualSelecionada ||
+    !Array.isArray(imagensProcessamento) ||
+    imagensProcessamento.length === 0
+  ) {
+
+    return false;
+
+  }
+
+
+  sincronizarPipelineAtualNaImagem();
+
+
+  if (
+    !Array.isArray(pipelineFerramentas) ||
+    pipelineFerramentas.length === 0
+  ) {
+
+    return false;
+
+  }
+
+
+  const fluxoBase =
+    clonarPipelineDaImagem(
+      pipelineFerramentas
+    );
+
+
+  imagensProcessamento.forEach(
+    function(item) {
+
+      if (!item) {
+
+        return;
+
+      }
+
+
+      item.pipelineFerramentas =
+        clonarPipelineDaImagem(
+          fluxoBase
+        );
+
+
+      // A imagem atual continua com o mesmo fluxo que já possuía.
+      // Nas demais, qualquer resultado anterior deixa de representar
+      // o novo fluxo que acabou de ser copiado.
+      if (
+        item !== imagemAtualSelecionada
+      ) {
+
+        invalidarProcessamentoDaImagem(
+          item
+        );
+
+      }
+
+    }
+  );
+
+
+  salvarUltimaSessaoProcessamento();
+
+
+  return true;
+
+}
+
+
+// Depois que o usuário confirma a opção, o mesmo fluxo passa
+// a pertencer a todas as imagens da área de processamento.
+async function confirmarAplicacaoFluxoEmTodasImagens() {
+
+  const fluxoCopiado =
+    replicarFluxoAtualParaTodasImagens();
+
+
+  if (!fluxoCopiado) {
+
+    return false;
+
+  }
+
+
+  garantirEstadoSalvamentoAutomaticoImagem(
+    imagemAtualSelecionada
+  );
+
+
+  // Se a imagem atual já estava vinculada a um projeto,
+  // o mesmo vínculo de autosave passa para todas as imagens.
+  if (
+    imagemAtualSelecionada
+      .salvamentoAutomaticoAtivo &&
+    imagemAtualSelecionada
+      .projetoSalvamentoAutomaticoId
+  ) {
+
+    propagarSalvamentoAutomaticoAtualParaTodasImagens();
+
+    await salvarFluxogramaAutomaticamenteSeAtivo(
+      imagemAtualSelecionada
+    );
+
+  }
+
+
+  desenharFluxograma();
+
+  salvarUltimaSessaoProcessamento();
+
+
+  statusText.innerText =
+    "O mesmo fluxograma foi aplicado em todas as imagens. Clique em Processar fluxo para executar.";
+
+
+  return true;
+
+}
+
+
+// O checkbox agora pede confirmação antes de copiar o fluxo.
+// Se o usuário responder Não, ele volta a ficar desmarcado.
 function configurarSalvamentoAutomaticoTodasImagens() {
 
   const check =
@@ -1867,26 +2178,81 @@ function configurarSalvamentoAutomaticoTodasImagens() {
 
   check.addEventListener(
     "change",
-    function() {
+    async function() {
 
-      if (
-        check.checked &&
-        imagemAtualSelecionada
-      ) {
+      // Desmarcar não altera os fluxos que já foram copiados.
+      // Apenas desativa o modo de aplicar em todas dali em diante.
+      if (!check.checked) {
 
-        garantirEstadoSalvamentoAutomaticoImagem(
-          imagemAtualSelecionada
+        salvarUltimaSessaoProcessamento();
+
+        return;
+
+      }
+
+
+      if (!imagemAtualSelecionada) {
+
+        check.checked =
+          false;
+
+        alert(
+          "Nenhuma imagem está selecionada."
         );
 
+        salvarUltimaSessaoProcessamento();
 
-        if (
-          imagemAtualSelecionada
-            .salvamentoAutomaticoAtivo
-        ) {
+        return;
 
-          propagarSalvamentoAutomaticoAtualParaTodasImagens();
+      }
 
-        }
+
+      sincronizarPipelineAtualNaImagem();
+
+
+      if (
+        !Array.isArray(pipelineFerramentas) ||
+        pipelineFerramentas.length === 0
+      ) {
+
+        check.checked =
+          false;
+
+        alert(
+          "Adicione pelo menos uma ferramenta ao fluxograma antes de aplicar o fluxo em todas as imagens."
+        );
+
+        salvarUltimaSessaoProcessamento();
+
+        return;
+
+      }
+
+
+      const confirmou =
+        await abrirModalAplicarFluxoTodasImagens();
+
+
+      if (!confirmou) {
+
+        check.checked =
+          false;
+
+        salvarUltimaSessaoProcessamento();
+
+        return;
+
+      }
+
+
+      const aplicado =
+        await confirmarAplicacaoFluxoEmTodasImagens();
+
+
+      if (!aplicado) {
+
+        check.checked =
+          false;
 
       }
 
@@ -5248,6 +5614,14 @@ async function removerEtapaPipeline(idEtapa) {
   // Salva o novo fluxo dentro da imagem atual.
   sincronizarPipelineAtualNaImagem();
 
+  // Se a opção de todas estiver ativa, a remoção também é
+  // refletida nas demais imagens para manter o mesmo fluxograma.
+  if (deveAplicarFluxoEmTodasImagens()) {
+
+    replicarFluxoAtualParaTodasImagens();
+
+  }
+
   // Somente o resultado desta imagem deixa de representar o fluxograma atual.
   invalidarProcessamentoDaImagem(imagemAtualSelecionada);
 
@@ -5511,8 +5885,16 @@ async function processarFluxoPeloBotao() {
 // Nenhum processamento é executado nesta etapa.
 async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
 
-  // Salva o fluxo atualizado somente na imagem atual.
+  // Salva o fluxo atualizado na imagem atual.
   sincronizarPipelineAtualNaImagem();
+
+  // Se o usuário já confirmou "Aplicar fluxo em todas as imagens",
+  // qualquer nova etapa mantém o mesmo fluxograma nas demais imagens.
+  if (deveAplicarFluxoEmTodasImagens()) {
+
+    replicarFluxoAtualParaTodasImagens();
+
+  }
 
   // O resultado anterior somente desta imagem não corresponde mais ao novo fluxo.
   invalidarProcessamentoDaImagem(imagemAtualSelecionada);
@@ -6816,6 +7198,364 @@ function deveAplicarFluxoEmTodasImagens() {
   if (!check) return false;
 
   return check.checked;
+
+}
+
+
+// =============================================================
+// REDIMENSIONAMENTO DA ÁREA DAS MINIATURAS
+// =============================================================
+
+// Limita a altura das miniaturas sem deixar a área principal
+// de visualização desaparecer da tela.
+function limitarAlturaMiniaturas(
+  alturaDesejada
+) {
+
+  const redimensionador =
+    document.getElementById(
+      "redimensionadorMiniaturas"
+    );
+
+  const principal =
+    document.querySelector(
+      ".principal"
+    );
+
+
+  const minimaConfigurada =
+    redimensionador
+      ? Number(
+          redimensionador.dataset.alturaMinima
+        )
+      : 120;
+
+  const maximaConfigurada =
+    redimensionador
+      ? Number(
+          redimensionador.dataset.alturaMaxima
+        )
+      : 460;
+
+
+  const alturaMinima =
+    Number.isFinite(minimaConfigurada)
+      ? minimaConfigurada
+      : 120;
+
+
+  let alturaMaxima =
+    Number.isFinite(maximaConfigurada)
+      ? maximaConfigurada
+      : 460;
+
+
+  if (principal) {
+
+    const alturaDisponivel =
+      principal.getBoundingClientRect().height;
+
+    // Reserva espaço suficiente para a imagem principal e o cabeçalho.
+    const maximaPelaTela =
+      Math.max(
+        alturaMinima,
+        alturaDisponivel - 260
+      );
+
+    alturaMaxima =
+      Math.min(
+        alturaMaxima,
+        maximaPelaTela
+      );
+
+  }
+
+
+  const alturaNumerica =
+    Number(
+      alturaDesejada
+    );
+
+
+  const alturaValida =
+    Number.isFinite(alturaNumerica)
+      ? alturaNumerica
+      : alturaMinima;
+
+
+  return Math.max(
+    alturaMinima,
+    Math.min(
+      alturaValida,
+      alturaMaxima
+    )
+  );
+
+}
+
+
+// Aplica a altura escolhida na variável CSS preparada no HTML.
+function aplicarAlturaMiniaturas(
+  altura,
+  salvarPreferencia
+) {
+
+  const principal =
+    document.querySelector(
+      ".principal"
+    );
+
+
+  if (!principal) {
+
+    return null;
+
+  }
+
+
+  const alturaFinal =
+    limitarAlturaMiniaturas(
+      altura
+    );
+
+
+  principal.style.setProperty(
+    "--altura-miniaturas",
+    alturaFinal + "px"
+  );
+
+
+  if (salvarPreferencia) {
+
+    localStorage.setItem(
+      CHAVE_ALTURA_MINIATURAS_PROCESSAMENTO,
+      String(alturaFinal)
+    );
+
+  }
+
+
+  return alturaFinal;
+
+}
+
+
+// Conecta o arraste vertical da barra localizada acima das miniaturas.
+function configurarRedimensionamentoMiniaturas() {
+
+  const redimensionador =
+    document.getElementById(
+      "redimensionadorMiniaturas"
+    );
+
+  const imagens =
+    document.getElementById(
+      "imagensTrabalho"
+    );
+
+
+  if (
+    !redimensionador ||
+    !imagens ||
+    redimensionador.dataset.listenerRedimensionamento ===
+      "true"
+  ) {
+
+    return;
+
+  }
+
+
+  const alturaSalva =
+    Number(
+      localStorage.getItem(
+        CHAVE_ALTURA_MINIATURAS_PROCESSAMENTO
+      )
+    );
+
+
+  if (
+    Number.isFinite(alturaSalva) &&
+    alturaSalva > 0
+  ) {
+
+    aplicarAlturaMiniaturas(
+      alturaSalva,
+      false
+    );
+
+  }
+
+
+  let arrastando =
+    false;
+
+  let yInicial =
+    0;
+
+  let alturaInicial =
+    0;
+
+
+  function finalizarArraste(event) {
+
+    if (!arrastando) {
+
+      return;
+
+    }
+
+
+    arrastando =
+      false;
+
+
+    redimensionador.classList.remove(
+      "arrastando"
+    );
+
+    document.body.classList.remove(
+      "redimensionando_miniaturas"
+    );
+
+
+    if (
+      event &&
+      redimensionador.hasPointerCapture &&
+      redimensionador.hasPointerCapture(
+        event.pointerId
+      )
+    ) {
+
+      redimensionador.releasePointerCapture(
+        event.pointerId
+      );
+
+    }
+
+
+    const alturaAtual =
+      imagens.getBoundingClientRect().height;
+
+
+    aplicarAlturaMiniaturas(
+      alturaAtual,
+      true
+    );
+
+  }
+
+
+  redimensionador.addEventListener(
+    "pointerdown",
+    function(event) {
+
+      if (
+        event.button !== undefined &&
+        event.button !== 0
+      ) {
+
+        return;
+
+      }
+
+
+      event.preventDefault();
+
+
+      arrastando =
+        true;
+
+      yInicial =
+        event.clientY;
+
+      alturaInicial =
+        imagens.getBoundingClientRect().height;
+
+
+      redimensionador.classList.add(
+        "arrastando"
+      );
+
+      document.body.classList.add(
+        "redimensionando_miniaturas"
+      );
+
+
+      if (
+        redimensionador.setPointerCapture
+      ) {
+
+        redimensionador.setPointerCapture(
+          event.pointerId
+        );
+
+      }
+
+    }
+  );
+
+
+  redimensionador.addEventListener(
+    "pointermove",
+    function(event) {
+
+      if (!arrastando) {
+
+        return;
+
+      }
+
+
+      event.preventDefault();
+
+
+      // Arrastar para cima aumenta a área das miniaturas.
+      // Arrastar para baixo diminui a área e libera espaço para a imagem.
+      const deslocamento =
+        yInicial - event.clientY;
+
+
+      aplicarAlturaMiniaturas(
+        alturaInicial + deslocamento,
+        false
+      );
+
+    }
+  );
+
+
+  redimensionador.addEventListener(
+    "pointerup",
+    finalizarArraste
+  );
+
+
+  redimensionador.addEventListener(
+    "pointercancel",
+    finalizarArraste
+  );
+
+
+  window.addEventListener(
+    "resize",
+    function() {
+
+      const alturaAtual =
+        imagens.getBoundingClientRect().height;
+
+
+      aplicarAlturaMiniaturas(
+        alturaAtual,
+        false
+      );
+
+    }
+  );
+
+
+  redimensionador.dataset.listenerRedimensionamento =
+    "true";
 
 }
 
@@ -8245,6 +8985,8 @@ configurarInterfaceSalvarFluxoProjeto();
 configurarInterfaceCopiarColarFluxo();
 configurarLinkMenuProjetos();
 configurarModalPerguntaSalvarFluxograma();
+configurarModalAplicarFluxoTodasImagens();
 configurarSalvamentoAutomaticoTodasImagens();
+configurarRedimensionamentoMiniaturas();
 atualizarControleSalvarFluxoProjeto();
 atualizarIndicadorSalvamentoAutomatico("desativado");
