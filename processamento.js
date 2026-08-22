@@ -103,6 +103,16 @@ let ativarSalvamentoAutomaticoAoSalvar = false;
 let projetoSalvamentoAutomaticoId = null;
 let projetoSalvamentoAutomaticoNome = "";
 
+// ÚLTIMA SESSÃO DE PROCESSAMENTO
+// Guarda somente o estado necessário para retornar à sessão aberta:
+// imagens já existentes no IndexedDB, fluxogramas, imagem selecionada
+// e vínculo do salvamento automático.
+const CHAVE_ULTIMA_SESSAO_PROCESSAMENTO =
+  "ultimaSessaoProcessamento";
+
+const CHAVE_ULTIMA_SESSAO_DISPONIVEL =
+  "ultimaSessaoProcessamentoDisponivel";
+
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
 cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
@@ -214,6 +224,370 @@ function getFiles(db) {
 } 
 
 // =============================================================
+// ÚLTIMA SESSÃO DE PROCESSAMENTO
+// =============================================================
+
+// Salva somente os dados leves da sessão.
+// Os arquivos continuam armazenados normalmente no IndexedDB.
+function salvarUltimaSessaoProcessamento() {
+
+  if (
+    !Array.isArray(imagensProcessamento) ||
+    imagensProcessamento.length === 0
+  ) {
+
+    return false;
+
+  }
+
+
+  try {
+
+    const checkAplicarTodas =
+      document.getElementById(
+        "checkAplicarTodasImagens"
+      );
+
+
+    const sessao = {
+
+      versao: 1,
+
+      atualizadaEm:
+        Date.now(),
+
+      imagemSelecionadaId:
+        imagemAtualSelecionada
+          ? imagemAtualSelecionada.id
+          : null,
+
+      aplicarFluxoEmTodas:
+        checkAplicarTodas
+          ? Boolean(checkAplicarTodas.checked)
+          : false,
+
+      imagens:
+        imagensProcessamento.map(
+          function(item) {
+
+            return {
+
+              id:
+                item.id,
+
+              name:
+                item.name,
+
+              type:
+                item.type,
+
+              pipelineFerramentas:
+                clonarPipelineDaImagem(
+                  Array.isArray(item.pipelineFerramentas)
+                    ? item.pipelineFerramentas
+                    : []
+                )
+
+            };
+
+          }
+        ),
+
+      salvamentoAutomatico: {
+
+        ativo:
+          Boolean(
+            salvamentoAutomaticoAtivo
+          ),
+
+        perguntado:
+          Boolean(
+            salvamentoAutomaticoPerguntado
+          ),
+
+        projetoId:
+          projetoSalvamentoAutomaticoId,
+
+        projetoNome:
+          projetoSalvamentoAutomaticoNome || ""
+
+      }
+
+    };
+
+
+    localStorage.setItem(
+      CHAVE_ULTIMA_SESSAO_PROCESSAMENTO,
+      JSON.stringify(sessao)
+    );
+
+
+    localStorage.setItem(
+      CHAVE_ULTIMA_SESSAO_DISPONIVEL,
+      "true"
+    );
+
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao salvar a última sessão de processamento:",
+      error
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+// Remove somente a indicação de sessão disponível.
+// Não apaga arquivos nem projetos.
+function limparUltimaSessaoProcessamento() {
+
+  localStorage.removeItem(
+    CHAVE_ULTIMA_SESSAO_PROCESSAMENTO
+  );
+
+
+  localStorage.removeItem(
+    CHAVE_ULTIMA_SESSAO_DISPONIVEL
+  );
+
+}
+
+
+// Verifica se os arquivos que estão atualmente no IndexedDB
+// são exatamente os mesmos arquivos guardados na última sessão.
+function sessaoCompativelComArquivosAtuais(
+  sessao
+) {
+
+  if (
+    !sessao ||
+    !Array.isArray(sessao.imagens) ||
+    sessao.imagens.length !== imagensProcessamento.length
+  ) {
+
+    return false;
+
+  }
+
+
+  return imagensProcessamento.every(
+    function(itemAtual) {
+
+      return sessao.imagens.some(
+        function(itemSessao) {
+
+          return (
+            Number(itemSessao.id) ===
+              Number(itemAtual.id) &&
+
+            String(itemSessao.name || "") ===
+              String(itemAtual.name || "") &&
+
+            String(itemSessao.type || "") ===
+              String(itemAtual.type || "")
+          );
+
+        }
+      );
+
+    }
+  );
+
+}
+
+
+// Restaura os fluxogramas e a seleção da última sessão.
+// O resultado processado não é executado automaticamente;
+// o botão "Processar fluxo" continua sendo o único responsável
+// por executar o pipeline.
+function restaurarUltimaSessaoProcessamento() {
+
+  const textoSessao =
+    localStorage.getItem(
+      CHAVE_ULTIMA_SESSAO_PROCESSAMENTO
+    );
+
+
+  if (!textoSessao) {
+
+    return false;
+
+  }
+
+
+  try {
+
+    const sessao =
+      JSON.parse(
+        textoSessao
+      );
+
+
+    if (
+      !sessaoCompativelComArquivosAtuais(
+        sessao
+      )
+    ) {
+
+      return false;
+
+    }
+
+
+    imagensProcessamento.forEach(
+      function(itemAtual) {
+
+        const itemSessao =
+          sessao.imagens.find(
+            function(itemSalvo) {
+
+              return (
+                Number(itemSalvo.id) ===
+                Number(itemAtual.id)
+              );
+
+            }
+          );
+
+
+        itemAtual.pipelineFerramentas =
+          clonarPipelineDaImagem(
+            itemSessao &&
+            Array.isArray(
+              itemSessao.pipelineFerramentas
+            )
+              ? itemSessao.pipelineFerramentas
+              : []
+          );
+
+      }
+    );
+
+
+    const idSelecionado =
+      Number(
+        sessao.imagemSelecionadaId
+      );
+
+
+    const imagemSalva =
+      imagensProcessamento.find(
+        function(item) {
+
+          return (
+            Number(item.id) ===
+            idSelecionado
+          );
+
+        }
+      );
+
+
+    imagemAtualSelecionada =
+      imagemSalva ||
+      imagensProcessamento[0];
+
+
+    const checkAplicarTodas =
+      document.getElementById(
+        "checkAplicarTodasImagens"
+      );
+
+
+    if (checkAplicarTodas) {
+
+      checkAplicarTodas.checked =
+        Boolean(
+          sessao.aplicarFluxoEmTodas
+        );
+
+    }
+
+
+    const autosave =
+      sessao.salvamentoAutomatico || {};
+
+
+    salvamentoAutomaticoPerguntado =
+      Boolean(
+        autosave.perguntado
+      );
+
+
+    const projetoId =
+      Number(
+        autosave.projetoId
+      );
+
+
+    if (
+      autosave.ativo &&
+      Number.isInteger(projetoId) &&
+      projetoId > 0
+    ) {
+
+      projetoSalvamentoAutomaticoId =
+        projetoId;
+
+      projetoSalvamentoAutomaticoNome =
+        autosave.projetoNome
+          ? String(autosave.projetoNome)
+          : "";
+
+      salvamentoAutomaticoAtivo =
+        true;
+
+      salvamentoAutomaticoPerguntado =
+        true;
+
+      atualizarIndicadorSalvamentoAutomatico(
+        "ativo"
+      );
+
+    } else {
+
+      salvamentoAutomaticoAtivo =
+        false;
+
+      projetoSalvamentoAutomaticoId =
+        null;
+
+      projetoSalvamentoAutomaticoNome =
+        "";
+
+      atualizarIndicadorSalvamentoAutomatico(
+        "desativado"
+      );
+
+    }
+
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao restaurar a última sessão de processamento:",
+      error
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+// =============================================================
 // FUNÇÕES DE PROJETOS
 // Estas funções cuidam somente de salvar e restaurar o fluxograma.
 // =============================================================
@@ -275,6 +649,9 @@ function sincronizarPipelineAtualNaImagem() {
 
   imagemAtualSelecionada.pipelineFerramentas =
     clonarPipelineDaImagem(pipelineFerramentas);
+
+  // Mantém a última sessão atualizada sem executar processamento.
+  salvarUltimaSessaoProcessamento();
 
 }
 
@@ -393,6 +770,10 @@ async function colarFluxoCopiado() {
   // Se houver um projeto vinculado, o fluxo colado
   // substitui automaticamente o fluxo salvo nele.
   await salvarFluxogramaAutomaticamenteSeAtivo();
+
+  // Mesmo sem projeto vinculado, a última sessão guarda
+  // o fluxo que acabou de ser colado.
+  salvarUltimaSessaoProcessamento();
 
 }
 
@@ -663,6 +1044,15 @@ function ativarSalvamentoAutomaticoProjeto(
     "ativo"
   );
 
+  if (
+    Array.isArray(imagensProcessamento) &&
+    imagensProcessamento.length > 0
+  ) {
+
+    salvarUltimaSessaoProcessamento();
+
+  }
+
 }
 
 
@@ -682,6 +1072,15 @@ function desativarSalvamentoAutomaticoProjeto() {
   atualizarIndicadorSalvamentoAutomatico(
     "desativado"
   );
+
+  if (
+    Array.isArray(imagensProcessamento) &&
+    imagensProcessamento.length > 0
+  ) {
+
+    salvarUltimaSessaoProcessamento();
+
+  }
 
 }
 
@@ -840,6 +1239,8 @@ async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
     atualizarIndicadorSalvamentoAutomatico(
       "desativado"
     );
+
+    salvarUltimaSessaoProcessamento();
 
     return;
 
@@ -1421,10 +1822,14 @@ async function loadFiles() {
       await restaurarProjetoSalvoSeNecessario();
 
     if (files.length === 0) {
+
+      limparUltimaSessaoProcessamento();
+
       statusText.innerText =
         projetoRestaurado
           ? "Projeto carregado. Nenhuma imagem encontrada para processar."
           : "Nenhum arquivo encontrado.";
+
       return;
     }
 
@@ -1446,12 +1851,28 @@ async function loadFiles() {
     // Define automaticamente a primeira imagem como imagem atual
     imagemAtualSelecionada = imagensProcessamento[0];
 
+    let sessaoAnteriorRestaurada =
+      false;
+
+    // Se a página NÃO veio da aba Projetos, tenta retomar
+    // exatamente a última sessão compatível com estes arquivos.
+    if (!projetoRestaurado) {
+
+      sessaoAnteriorRestaurada =
+        restaurarUltimaSessaoProcessamento();
+
+    }
+
     // Se veio de um projeto salvo, o fluxo do projeto pertence
-    // inicialmente somente à primeira imagem.
+    // inicialmente somente à primeira imagem e tem prioridade
+    // sobre qualquer sessão anterior.
     if (
       projetoRestaurado &&
       Array.isArray(pipelineProjetoPendente)
     ) {
+
+      imagemAtualSelecionada =
+        imagensProcessamento[0];
 
       imagemAtualSelecionada.pipelineFerramentas =
         clonarPipelineDaImagem(pipelineProjetoPendente);
@@ -1460,7 +1881,7 @@ async function loadFiles() {
 
     }
 
-    // Carrega o fluxograma específico da primeira imagem.
+    // Carrega o fluxograma específico da imagem que deve aparecer.
     carregarPipelineDaImagem(imagemAtualSelecionada);
 
     // Desenha as miniaturas já com a primeira marcada como selecionada
@@ -1484,7 +1905,15 @@ async function loadFiles() {
     statusText.innerText =
       projetoRestaurado
         ? "Projeto carregado. Clique em Processar fluxo para executar o fluxograma."
-        : "Arquivos carregados.";
+        : (
+            sessaoAnteriorRestaurada
+              ? "Última sessão de processamento restaurada."
+              : "Arquivos carregados."
+          );
+
+    // A partir daqui existe uma sessão válida que poderá
+    // ser retomada pelo futuro botão "Processamento".
+    salvarUltimaSessaoProcessamento();
 
   } catch (error) {
 
@@ -1629,6 +2058,9 @@ function criarCardImagem(item) {
 
     // Cada imagem possui o próprio fluxograma.
     carregarPipelineDaImagem(item);
+
+    // Guarda também qual imagem ficou selecionada nesta sessão.
+    salvarUltimaSessaoProcessamento();
 
     atualizarCardSelecionado();
 
@@ -7112,6 +7544,17 @@ if (canvasRecorte) {
 window.addEventListener("resize", function() {
   atualizarCanvasRecorte();
 });
+
+
+// Guarda a sessão imediatamente antes de sair desta página.
+window.addEventListener(
+  "pagehide",
+  function() {
+
+    salvarUltimaSessaoProcessamento();
+
+  }
+);
 
 
 // =============================================================

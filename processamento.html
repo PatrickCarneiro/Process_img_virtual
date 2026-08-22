@@ -115,6 +115,12 @@
       background: rgba(192,132,252,0.25);
     }
 
+    /* Página atualmente aberta no menu lateral */
+    .menu-item.active {
+      background: rgba(192,132,252,0.25);
+      color: #c084fc;
+    }
+
     /* LAYOUT PRINCIPAL */
 
     .principal {
@@ -1394,8 +1400,12 @@
       <span class="texto-menu">Início</span>
     </div>
 
-    <!-- Botão de projetos -->
-    <div class="menu-item" onclick="window.location.href='projeto.html'">
+      <!-- Página atual: última sessão de processamento -->
+      <div class="menu-item active" onclick="window.location.href='processamento.html'">
+        <span class="texto-menu">Processamento</span>
+      </div>
+
+      <div class="menu-item" onclick="window.location.href='projeto.html'">
       <span class="texto-menu">Projetos</span>
     </div>
 
