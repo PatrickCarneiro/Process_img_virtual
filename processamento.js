@@ -103,6 +103,13 @@ let ativarSalvamentoAutomaticoAoSalvar = false;
 let projetoSalvamentoAutomaticoId = null;
 let projetoSalvamentoAutomaticoNome = "";
 
+// Controle do novo modal estilizado "Deseja salvar esse fluxograma?"
+let resolverPerguntaSalvarFluxograma = null;
+
+// Quando a página é aberta pela aba Projetos, o vínculo fica pendente
+// até a primeira imagem ser criada dentro de imagensProcessamento.
+let projetoSalvamentoAutomaticoPendente = null;
+
 // ÚLTIMA SESSÃO DE PROCESSAMENTO
 // Guarda somente o estado necessário para retornar à sessão aberta:
 // imagens já existentes no IndexedDB, fluxogramas, imagem selecionada
@@ -286,13 +293,35 @@ function salvarUltimaSessaoProcessamento() {
                   Array.isArray(item.pipelineFerramentas)
                     ? item.pipelineFerramentas
                     : []
-                )
+                ),
+
+              salvamentoAutomatico: {
+
+                ativo:
+                  Boolean(
+                    item.salvamentoAutomaticoAtivo
+                  ),
+
+                perguntado:
+                  Boolean(
+                    item.salvamentoAutomaticoPerguntado
+                  ),
+
+                projetoId:
+                  item.projetoSalvamentoAutomaticoId || null,
+
+                projetoNome:
+                  item.projetoSalvamentoAutomaticoNome || ""
+
+              }
 
             };
 
           }
         ),
 
+      // Mantido para compatibilidade com sessões criadas
+      // pela versão imediatamente anterior.
       salvamentoAutomatico: {
 
         ativo:
@@ -468,6 +497,57 @@ function restaurarUltimaSessaoProcessamento() {
               : []
           );
 
+
+        const autosaveImagem =
+          itemSessao &&
+          itemSessao.salvamentoAutomatico
+            ? itemSessao.salvamentoAutomatico
+            : null;
+
+
+        // Sessões antigas possuíam apenas um estado global.
+        // O fallback é aplicado somente à imagem que estava selecionada.
+        const usarAutosaveAntigo =
+          !autosaveImagem &&
+          Number(sessao.imagemSelecionadaId) ===
+            Number(itemAtual.id) &&
+          sessao.salvamentoAutomatico;
+
+
+        const estadoAutosave =
+          autosaveImagem ||
+          usarAutosaveAntigo ||
+          {};
+
+
+        itemAtual.salvamentoAutomaticoAtivo =
+          Boolean(
+            estadoAutosave.ativo
+          );
+
+        itemAtual.salvamentoAutomaticoPerguntado =
+          Boolean(
+            estadoAutosave.perguntado
+          );
+
+        const idProjetoImagem =
+          Number(
+            estadoAutosave.projetoId
+          );
+
+        itemAtual.projetoSalvamentoAutomaticoId =
+          Number.isInteger(idProjetoImagem) &&
+          idProjetoImagem > 0
+            ? idProjetoImagem
+            : null;
+
+        itemAtual.projetoSalvamentoAutomaticoNome =
+          estadoAutosave.projetoNome
+            ? String(
+                estadoAutosave.projetoNome
+              )
+            : "";
+
       }
     );
 
@@ -512,62 +592,11 @@ function restaurarUltimaSessaoProcessamento() {
     }
 
 
-    const autosave =
-      sessao.salvamentoAutomatico || {};
-
-
-    salvamentoAutomaticoPerguntado =
-      Boolean(
-        autosave.perguntado
-      );
-
-
-    const projetoId =
-      Number(
-        autosave.projetoId
-      );
-
-
-    if (
-      autosave.ativo &&
-      Number.isInteger(projetoId) &&
-      projetoId > 0
-    ) {
-
-      projetoSalvamentoAutomaticoId =
-        projetoId;
-
-      projetoSalvamentoAutomaticoNome =
-        autosave.projetoNome
-          ? String(autosave.projetoNome)
-          : "";
-
-      salvamentoAutomaticoAtivo =
-        true;
-
-      salvamentoAutomaticoPerguntado =
-        true;
-
-      atualizarIndicadorSalvamentoAutomatico(
-        "ativo"
-      );
-
-    } else {
-
-      salvamentoAutomaticoAtivo =
-        false;
-
-      projetoSalvamentoAutomaticoId =
-        null;
-
-      projetoSalvamentoAutomaticoNome =
-        "";
-
-      atualizarIndicadorSalvamentoAutomatico(
-        "desativado"
-      );
-
-    }
+    // O indicador e as variáveis globais passam a refletir
+    // exclusivamente a imagem que está atualmente selecionada.
+    carregarSalvamentoAutomaticoDaImagem(
+      imagemAtualSelecionada
+    );
 
 
     return true;
@@ -672,6 +701,11 @@ function carregarPipelineDaImagem(item) {
   desenharFluxograma();
 
   atualizarControleSalvarFluxoProjeto();
+
+  // A chavinha acompanha somente a imagem atualmente aberta.
+  carregarSalvamentoAutomaticoDaImagem(
+    item
+  );
 
 }
 
@@ -1006,14 +1040,139 @@ function atualizarIndicadorSalvamentoAutomatico(estado) {
 }
 
 
-// Ativa o salvamento automático vinculando o fluxo a um único projeto.
-function ativarSalvamentoAutomaticoProjeto(
+// Garante que cada imagem possua seu próprio estado de autosave.
+function garantirEstadoSalvamentoAutomaticoImagem(item) {
+
+  if (!item) {
+
+    return;
+
+  }
+
+
+  if (
+    typeof item.salvamentoAutomaticoAtivo !==
+    "boolean"
+  ) {
+
+    item.salvamentoAutomaticoAtivo =
+      false;
+
+  }
+
+
+  if (
+    typeof item.salvamentoAutomaticoPerguntado !==
+    "boolean"
+  ) {
+
+    item.salvamentoAutomaticoPerguntado =
+      false;
+
+  }
+
+
+  const idProjeto =
+    Number(
+      item.projetoSalvamentoAutomaticoId
+    );
+
+
+  item.projetoSalvamentoAutomaticoId =
+    Number.isInteger(idProjeto) &&
+    idProjeto > 0
+      ? idProjeto
+      : null;
+
+
+  item.projetoSalvamentoAutomaticoNome =
+    item.projetoSalvamentoAutomaticoNome
+      ? String(
+          item.projetoSalvamentoAutomaticoNome
+        )
+      : "";
+
+}
+
+
+// Atualiza as variáveis globais e a chavinha usando SOMENTE
+// o estado da imagem que está sendo exibida.
+function carregarSalvamentoAutomaticoDaImagem(
+  item
+) {
+
+  if (!item) {
+
+    salvamentoAutomaticoAtivo =
+      false;
+
+    salvamentoAutomaticoPerguntado =
+      false;
+
+    projetoSalvamentoAutomaticoId =
+      null;
+
+    projetoSalvamentoAutomaticoNome =
+      "";
+
+    atualizarIndicadorSalvamentoAutomatico(
+      "desativado"
+    );
+
+    return;
+
+  }
+
+
+  garantirEstadoSalvamentoAutomaticoImagem(
+    item
+  );
+
+
+  salvamentoAutomaticoAtivo =
+    Boolean(
+      item.salvamentoAutomaticoAtivo
+    );
+
+  salvamentoAutomaticoPerguntado =
+    Boolean(
+      item.salvamentoAutomaticoPerguntado
+    );
+
+  projetoSalvamentoAutomaticoId =
+    item.projetoSalvamentoAutomaticoId;
+
+  projetoSalvamentoAutomaticoNome =
+    item.projetoSalvamentoAutomaticoNome;
+
+
+  atualizarIndicadorSalvamentoAutomatico(
+    salvamentoAutomaticoAtivo
+      ? "ativo"
+      : "desativado"
+  );
+
+}
+
+
+// Liga uma imagem a um projeto sem afetar as demais.
+function definirSalvamentoAutomaticoImagem(
+  item,
   idProjeto,
   nomeProjeto
 ) {
 
+  if (!item) {
+
+    return false;
+
+  }
+
+
   const idNumerico =
-    Number(idProjeto);
+    Number(
+      idProjeto
+    );
 
 
   if (
@@ -1021,76 +1180,51 @@ function ativarSalvamentoAutomaticoProjeto(
     idNumerico <= 0
   ) {
 
-    return;
+    return false;
 
   }
 
 
-  projetoSalvamentoAutomaticoId =
+  item.salvamentoAutomaticoAtivo =
+    true;
+
+  item.salvamentoAutomaticoPerguntado =
+    true;
+
+  item.projetoSalvamentoAutomaticoId =
     idNumerico;
 
-  projetoSalvamentoAutomaticoNome =
+  item.projetoSalvamentoAutomaticoNome =
     nomeProjeto
       ? String(nomeProjeto)
       : "";
 
-  salvamentoAutomaticoAtivo =
-    true;
 
-  salvamentoAutomaticoPerguntado =
-    true;
-
-  atualizarIndicadorSalvamentoAutomatico(
-    "ativo"
-  );
-
-  if (
-    Array.isArray(imagensProcessamento) &&
-    imagensProcessamento.length > 0
-  ) {
-
-    salvarUltimaSessaoProcessamento();
-
-  }
+  return true;
 
 }
 
 
-// Desativa somente o vínculo automático.
-// O projeto já salvo permanece normalmente na aba Projetos.
-function desativarSalvamentoAutomaticoProjeto() {
+// Quando "Aplicar fluxo em todas as imagens" estiver marcado,
+// o mesmo vínculo de autosave da imagem atual é disponibilizado
+// para todas as imagens da área de processamento.
+function propagarSalvamentoAutomaticoAtualParaTodasImagens() {
 
-  salvamentoAutomaticoAtivo =
-    false;
+  if (!imagemAtualSelecionada) {
 
-  projetoSalvamentoAutomaticoId =
-    null;
-
-  projetoSalvamentoAutomaticoNome =
-    "";
-
-  atualizarIndicadorSalvamentoAutomatico(
-    "desativado"
-  );
-
-  if (
-    Array.isArray(imagensProcessamento) &&
-    imagensProcessamento.length > 0
-  ) {
-
-    salvarUltimaSessaoProcessamento();
+    return false;
 
   }
 
-}
 
+  garantirEstadoSalvamentoAutomaticoImagem(
+    imagemAtualSelecionada
+  );
 
-// Salva o pipeline atual dentro do MESMO projeto vinculado.
-async function salvarFluxogramaAutomaticamenteSeAtivo() {
 
   if (
-    !salvamentoAutomaticoAtivo ||
-    !projetoSalvamentoAutomaticoId
+    !imagemAtualSelecionada.salvamentoAutomaticoAtivo ||
+    !imagemAtualSelecionada.projetoSalvamentoAutomaticoId
   ) {
 
     return false;
@@ -1098,11 +1232,215 @@ async function salvarFluxogramaAutomaticamenteSeAtivo() {
   }
 
 
-  sincronizarPipelineAtualNaImagem();
+  imagensProcessamento.forEach(
+    function(item) {
 
-  atualizarIndicadorSalvamentoAutomatico(
-    "salvando"
+      definirSalvamentoAutomaticoImagem(
+        item,
+        imagemAtualSelecionada
+          .projetoSalvamentoAutomaticoId,
+        imagemAtualSelecionada
+          .projetoSalvamentoAutomaticoNome
+      );
+
+    }
   );
+
+
+  carregarSalvamentoAutomaticoDaImagem(
+    imagemAtualSelecionada
+  );
+
+
+  salvarUltimaSessaoProcessamento();
+
+
+  return true;
+
+}
+
+
+// Ativa o autosave na imagem atual.
+// Se o checkbox de todas estiver marcado, ativa nas demais também.
+function ativarSalvamentoAutomaticoProjeto(
+  idProjeto,
+  nomeProjeto,
+  itemAlvo,
+  aplicarEmTodas
+) {
+
+  const item =
+    itemAlvo ||
+    imagemAtualSelecionada;
+
+
+  if (
+    !definirSalvamentoAutomaticoImagem(
+      item,
+      idProjeto,
+      nomeProjeto
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  const devePropagar =
+    typeof aplicarEmTodas ===
+    "boolean"
+      ? aplicarEmTodas
+      : deveAplicarFluxoEmTodasImagens();
+
+
+  if (devePropagar) {
+
+    imagensProcessamento.forEach(
+      function(outroItem) {
+
+        definirSalvamentoAutomaticoImagem(
+          outroItem,
+          idProjeto,
+          nomeProjeto
+        );
+
+      }
+    );
+
+  }
+
+
+  if (
+    imagemAtualSelecionada
+  ) {
+
+    carregarSalvamentoAutomaticoDaImagem(
+      imagemAtualSelecionada
+    );
+
+  }
+
+
+  salvarUltimaSessaoProcessamento();
+
+}
+
+
+// Desativa somente o autosave da imagem informada.
+// As demais imagens continuam com seus próprios vínculos.
+function desativarSalvamentoAutomaticoProjeto(
+  itemAlvo
+) {
+
+  const item =
+    itemAlvo ||
+    imagemAtualSelecionada;
+
+
+  if (item) {
+
+    garantirEstadoSalvamentoAutomaticoImagem(
+      item
+    );
+
+    item.salvamentoAutomaticoAtivo =
+      false;
+
+    item.projetoSalvamentoAutomaticoId =
+      null;
+
+    item.projetoSalvamentoAutomaticoNome =
+      "";
+
+  }
+
+
+  if (
+    item === imagemAtualSelecionada ||
+    !item
+  ) {
+
+    carregarSalvamentoAutomaticoDaImagem(
+      imagemAtualSelecionada
+    );
+
+  }
+
+
+  salvarUltimaSessaoProcessamento();
+
+}
+
+
+// Salva o pipeline da imagem informada dentro do projeto
+// vinculado especificamente a ela.
+async function salvarFluxogramaAutomaticamenteSeAtivo(
+  itemAlvo
+) {
+
+  const item =
+    itemAlvo ||
+    imagemAtualSelecionada;
+
+
+  if (!item) {
+
+    return false;
+
+  }
+
+
+  garantirEstadoSalvamentoAutomaticoImagem(
+    item
+  );
+
+
+  if (
+    !item.salvamentoAutomaticoAtivo ||
+    !item.projetoSalvamentoAutomaticoId
+  ) {
+
+    return false;
+
+  }
+
+
+  // Se a imagem atual está com a opção de todas marcada,
+  // o autosave passa a ficar disponível para todas as imagens.
+  if (
+    item === imagemAtualSelecionada &&
+    deveAplicarFluxoEmTodasImagens()
+  ) {
+
+    propagarSalvamentoAutomaticoAtualParaTodasImagens();
+
+  }
+
+
+  if (
+    item === imagemAtualSelecionada
+  ) {
+
+    sincronizarPipelineAtualNaImagem();
+
+    atualizarIndicadorSalvamentoAutomatico(
+      "salvando"
+    );
+
+  }
+
+
+  const pipelineDoItem =
+    item === imagemAtualSelecionada
+      ? pipelineFerramentas
+      : (
+          Array.isArray(
+            item.pipelineFerramentas
+          )
+            ? item.pipelineFerramentas
+            : []
+        );
 
 
   let db = null;
@@ -1117,7 +1455,7 @@ async function salvarFluxogramaAutomaticamenteSeAtivo() {
     const projetoExistente =
       await getProjetoSalvoPorId(
         db,
-        projetoSalvamentoAutomaticoId
+        item.projetoSalvamentoAutomaticoId
       );
 
 
@@ -1135,15 +1473,15 @@ async function salvarFluxogramaAutomaticamenteSeAtivo() {
       ...projetoExistente,
 
       id:
-        projetoSalvamentoAutomaticoId,
+        item.projetoSalvamentoAutomaticoId,
 
       pipelineFerramentas:
         clonarPipelineParaProjeto(
-          pipelineFerramentas
+          pipelineDoItem
         ),
 
       quantidadeEtapas:
-        pipelineFerramentas.length,
+        pipelineDoItem.length,
 
       updatedAt:
         Date.now()
@@ -1162,14 +1500,43 @@ async function salvarFluxogramaAutomaticamenteSeAtivo() {
     db = null;
 
 
-    projetoSalvamentoAutomaticoNome =
-      projetoAtualizado.nome ||
-      projetoSalvamentoAutomaticoNome;
+    // Atualiza o nome em todas as imagens que compartilham
+    // exatamente este mesmo projeto.
+    imagensProcessamento.forEach(
+      function(outroItem) {
 
+        if (
+          Number(
+            outroItem.projetoSalvamentoAutomaticoId
+          ) ===
+          Number(
+            projetoAtualizado.id
+          )
+        ) {
 
-    atualizarIndicadorSalvamentoAutomatico(
-      "ativo"
+          outroItem.projetoSalvamentoAutomaticoNome =
+            projetoAtualizado.nome ||
+            outroItem.projetoSalvamentoAutomaticoNome ||
+            "";
+
+        }
+
+      }
     );
+
+
+    if (
+      item === imagemAtualSelecionada
+    ) {
+
+      carregarSalvamentoAutomaticoDaImagem(
+        item
+      );
+
+    }
+
+
+    salvarUltimaSessaoProcessamento();
 
 
     return true;
@@ -1194,7 +1561,9 @@ async function salvarFluxogramaAutomaticamenteSeAtivo() {
     );
 
 
-    desativarSalvamentoAutomaticoProjeto();
+    desativarSalvamentoAutomaticoProjeto(
+      item
+    );
 
 
     return false;
@@ -1204,34 +1573,251 @@ async function salvarFluxogramaAutomaticamenteSeAtivo() {
 }
 
 
-// Na primeira ferramenta aplicada, pergunta uma única vez
-// se o usuário deseja transformar o fluxo em projeto com autosave.
+// Configura somente o modal novo que já existe no processamento.html.
+function configurarModalPerguntaSalvarFluxograma() {
+
+  const modal =
+    document.getElementById(
+      "modalPerguntaSalvarFluxograma"
+    );
+
+  const botaoNao =
+    document.getElementById(
+      "botaoNaoSalvarFluxogramaAutomatico"
+    );
+
+  const botaoSim =
+    document.getElementById(
+      "botaoSimSalvarFluxogramaAutomatico"
+    );
+
+
+  if (
+    botaoNao &&
+    botaoNao.dataset.listenerAutosave !==
+      "true"
+  ) {
+
+    botaoNao.addEventListener(
+      "click",
+      function() {
+
+        responderPerguntaSalvarFluxograma(
+          false
+        );
+
+      }
+    );
+
+    botaoNao.dataset.listenerAutosave =
+      "true";
+
+  }
+
+
+  if (
+    botaoSim &&
+    botaoSim.dataset.listenerAutosave !==
+      "true"
+  ) {
+
+    botaoSim.addEventListener(
+      "click",
+      function() {
+
+        responderPerguntaSalvarFluxograma(
+          true
+        );
+
+      }
+    );
+
+    botaoSim.dataset.listenerAutosave =
+      "true";
+
+  }
+
+
+  if (
+    modal &&
+    modal.dataset.listenerAutosave !==
+      "true"
+  ) {
+
+    modal.addEventListener(
+      "click",
+      function(event) {
+
+        if (
+          event.target ===
+          modal
+        ) {
+
+          responderPerguntaSalvarFluxograma(
+            false
+          );
+
+        }
+
+      }
+    );
+
+    modal.dataset.listenerAutosave =
+      "true";
+
+  }
+
+}
+
+
+// Abre o modal no mesmo padrão visual do modal de nome.
+function abrirModalPerguntaSalvarFluxograma() {
+
+  configurarModalPerguntaSalvarFluxograma();
+
+
+  const modal =
+    document.getElementById(
+      "modalPerguntaSalvarFluxograma"
+    );
+
+
+  if (!modal) {
+
+    return Promise.resolve(
+      false
+    );
+
+  }
+
+
+  modal.classList.add(
+    "ativo"
+  );
+
+
+  return new Promise(
+    function(resolve) {
+
+      resolverPerguntaSalvarFluxograma =
+        resolve;
+
+    }
+  );
+
+}
+
+
+// Fecha o modal e retorna a escolha para a função que abriu.
+function responderPerguntaSalvarFluxograma(
+  desejaSalvar
+) {
+
+  const modal =
+    document.getElementById(
+      "modalPerguntaSalvarFluxograma"
+    );
+
+
+  if (modal) {
+
+    modal.classList.remove(
+      "ativo"
+    );
+
+  }
+
+
+  const resolver =
+    resolverPerguntaSalvarFluxograma;
+
+
+  resolverPerguntaSalvarFluxograma =
+    null;
+
+
+  if (resolver) {
+
+    resolver(
+      Boolean(
+        desejaSalvar
+      )
+    );
+
+  }
+
+}
+
+
+// Na primeira ferramenta aplicada EM CADA IMAGEM,
+// pergunta se o fluxo daquela imagem deve ser salvo.
 async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
 
-  if (salvamentoAutomaticoAtivo) {
-
-    await salvarFluxogramaAutomaticamenteSeAtivo();
+  if (!imagemAtualSelecionada) {
 
     return;
 
   }
 
 
-  if (salvamentoAutomaticoPerguntado) {
+  garantirEstadoSalvamentoAutomaticoImagem(
+    imagemAtualSelecionada
+  );
+
+
+  if (
+    imagemAtualSelecionada
+      .salvamentoAutomaticoAtivo
+  ) {
+
+    if (
+      deveAplicarFluxoEmTodasImagens()
+    ) {
+
+      propagarSalvamentoAutomaticoAtualParaTodasImagens();
+
+    }
+
+
+    await salvarFluxogramaAutomaticamenteSeAtivo(
+      imagemAtualSelecionada
+    );
+
 
     return;
 
   }
 
 
-  salvamentoAutomaticoPerguntado =
-    true;
+  if (
+    imagemAtualSelecionada
+      .salvamentoAutomaticoPerguntado
+  ) {
+
+    carregarSalvamentoAutomaticoDaImagem(
+      imagemAtualSelecionada
+    );
+
+    return;
+
+  }
+
+
+  imagemAtualSelecionada
+    .salvamentoAutomaticoPerguntado =
+      true;
+
+
+  carregarSalvamentoAutomaticoDaImagem(
+    imagemAtualSelecionada
+  );
+
+
+  salvarUltimaSessaoProcessamento();
 
 
   const desejaSalvar =
-    window.confirm(
-      "Deseja salvar esse fluxograma?"
-    );
+    await abrirModalPerguntaSalvarFluxograma();
 
 
   if (!desejaSalvar) {
@@ -1247,9 +1833,8 @@ async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
   }
 
 
-  // O modal já existente será usado apenas para pedir o nome.
-  // Depois de salvar, o projeto recém-criado passa a receber
-  // automaticamente todas as alterações seguintes do fluxograma.
+  // Usa o modal já existente para digitar o nome do fluxo.
+  // Qualquer salvamento manual também ativa o autosave.
   ativarSalvamentoAutomaticoAoSalvar =
     true;
 
@@ -1257,6 +1842,68 @@ async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
 
 }
 
+
+// Se o checkbox "Aplicar fluxo em todas as imagens" for marcado
+// depois que a imagem atual já possui autosave, o vínculo é
+// imediatamente propagado para todas as imagens.
+function configurarSalvamentoAutomaticoTodasImagens() {
+
+  const check =
+    document.getElementById(
+      "checkAplicarTodasImagens"
+    );
+
+
+  if (
+    !check ||
+    check.dataset.listenerAutosave ===
+      "true"
+  ) {
+
+    return;
+
+  }
+
+
+  check.addEventListener(
+    "change",
+    function() {
+
+      if (
+        check.checked &&
+        imagemAtualSelecionada
+      ) {
+
+        garantirEstadoSalvamentoAutomaticoImagem(
+          imagemAtualSelecionada
+        );
+
+
+        if (
+          imagemAtualSelecionada
+            .salvamentoAutomaticoAtivo
+        ) {
+
+          propagarSalvamentoAutomaticoAtualParaTodasImagens();
+
+        }
+
+      }
+
+
+      salvarUltimaSessaoProcessamento();
+
+    }
+  );
+
+
+  check.dataset.listenerAutosave =
+    "true";
+
+}
+
+
+// Cria somente a interface necessária para salvar o fluxo.
 // Cria somente a interface necessária para salvar o fluxo.
 // O botão é colocado logo abaixo da área do fluxograma.
 function configurarInterfaceSalvarFluxoProjeto() {
@@ -1595,9 +2242,6 @@ function fecharModalSalvarFluxoProjeto() {
 // Salva o pipeline atual como um novo projeto
 async function salvarFluxoComoProjeto() {
 
-  const deveAtivarSalvamentoAutomatico =
-    ativarSalvamentoAutomaticoAoSalvar;
-
   sincronizarPipelineAtualNaImagem();
 
   if (pipelineFerramentas.length === 0) {
@@ -1660,26 +2304,34 @@ async function salvarFluxoComoProjeto() {
     fecharModalSalvarFluxoProjeto();
 
 
-    if (deveAtivarSalvamentoAutomatico) {
+    // Qualquer salvamento pelo botão "Salvar fluxo"
+    // passa a ativar o autosave da imagem atual.
+    // Se "Aplicar fluxo em todas as imagens" estiver marcado,
+    // o vínculo é disponibilizado para todas as imagens.
+    const aplicarAutosaveEmTodas =
+      deveAplicarFluxoEmTodasImagens();
 
-      ativarSalvamentoAutomaticoProjeto(
-        idProjetoSalvo,
-        nomeProjeto
-      );
 
-      statusText.innerText =
-        'Fluxo salvo no projeto "' +
-        nomeProjeto +
-        '". Salvamento automático ativado.';
+    ativarSalvamentoAutomaticoProjeto(
+      idProjetoSalvo,
+      nomeProjeto,
+      imagemAtualSelecionada,
+      aplicarAutosaveEmTodas
+    );
 
-    } else {
 
-      statusText.innerText =
-        'Fluxo salvo no projeto "' +
-        nomeProjeto +
-        '".';
-
-    }
+    statusText.innerText =
+      aplicarAutosaveEmTodas
+        ? (
+            'Fluxo salvo no projeto "' +
+            nomeProjeto +
+            '". Salvamento automático ativado em todas as imagens.'
+          )
+        : (
+            'Fluxo salvo no projeto "' +
+            nomeProjeto +
+            '". Salvamento automático ativado nesta imagem.'
+          );
 
   } catch (error) {
 
@@ -1748,13 +2400,18 @@ async function restaurarProjetoSalvoSeNecessario() {
     pipelineProjetoPendente =
       clonarPipelineDaImagem(pipelineProjeto);
 
-    // Como o processamento foi aberto pela aba Projetos,
-    // este fluxo já pertence a um projeto existente.
-    // As próximas alterações passam a atualizar esse mesmo projeto.
-    ativarSalvamentoAutomaticoProjeto(
-      projeto.id,
-      projeto.nome
-    );
+    // Como as imagens ainda serão criadas logo depois,
+    // guarda temporariamente o vínculo do projeto.
+    // Ele será aplicado SOMENTE à primeira imagem carregada.
+    projetoSalvamentoAutomaticoPendente = {
+
+      id:
+        projeto.id,
+
+      nome:
+        projeto.nome || ""
+
+    };
 
     localStorage.removeItem("abrirProjetoSalvo");
 
@@ -1844,7 +2501,13 @@ async function loadFiles() {
         processado: false,
         assinaturaPipeline: "",
         cacheEtapas: {},
-        pipelineFerramentas: []
+        pipelineFerramentas: [],
+
+        // Salvamento automático localizado por imagem.
+        salvamentoAutomaticoAtivo: false,
+        salvamentoAutomaticoPerguntado: false,
+        projetoSalvamentoAutomaticoId: null,
+        projetoSalvamentoAutomaticoNome: ""
       };
     });
 
@@ -1878,6 +2541,23 @@ async function loadFiles() {
         clonarPipelineDaImagem(pipelineProjetoPendente);
 
       pipelineProjetoPendente = null;
+
+
+      if (
+        projetoSalvamentoAutomaticoPendente
+      ) {
+
+        ativarSalvamentoAutomaticoProjeto(
+          projetoSalvamentoAutomaticoPendente.id,
+          projetoSalvamentoAutomaticoPendente.nome,
+          imagemAtualSelecionada,
+          false
+        );
+
+        projetoSalvamentoAutomaticoPendente =
+          null;
+
+      }
 
     }
 
@@ -7564,5 +8244,7 @@ window.addEventListener(
 configurarInterfaceSalvarFluxoProjeto();
 configurarInterfaceCopiarColarFluxo();
 configurarLinkMenuProjetos();
+configurarModalPerguntaSalvarFluxograma();
+configurarSalvamentoAutomaticoTodasImagens();
 atualizarControleSalvarFluxoProjeto();
 atualizarIndicadorSalvamentoAutomatico("desativado");

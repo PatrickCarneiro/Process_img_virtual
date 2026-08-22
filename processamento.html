@@ -130,7 +130,7 @@
       height: 100vh; /* Impede o conteúdo principal de aumentar a altura da página */
       display: grid; /* Organiza ferramentas, imagem e fluxograma */
       grid-template-columns: 260px minmax(0, 1fr) 320px;
-      grid-template-rows: minmax(0, 1fr) clamp(155px, 23vh, 205px);
+      grid-template-rows: minmax(0, 1fr) clamp(230px, 28vh, 270px);
       gap: 15px;
       padding: 15px;
       overflow: hidden;
@@ -1150,6 +1150,111 @@
       cursor: pointer;
     }
 
+    /* =========================================================
+       MODAL DE CONFIRMAÇÃO DO SALVAMENTO AUTOMÁTICO DO FLUXO
+       ========================================================= */
+
+    .modal_confirmacao_salvar_fluxograma {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 6100;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      background: rgba(2,7,18,0.76);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal_confirmacao_salvar_fluxograma.ativo {
+      display: flex;
+    }
+
+    .caixa_confirmacao_salvar_fluxograma {
+      width: min(430px, 100%);
+      padding: 22px;
+
+      border-radius: 18px;
+
+      background: #0b162c;
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.45);
+    }
+
+    .caixa_confirmacao_salvar_fluxograma h3 {
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .caixa_confirmacao_salvar_fluxograma p {
+      margin-bottom: 14px;
+
+      color:
+        rgba(255,255,255,0.70);
+
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .acoes_confirmacao_salvar_fluxograma {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+
+      margin-top: 16px;
+    }
+
+    .botao_confirmacao_salvar_fluxograma {
+      padding: 10px 14px;
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      border-radius: 9px;
+
+      background:
+        rgba(192,132,252,0.20);
+
+      color: #ffffff;
+
+      cursor: pointer;
+
+      font-family: inherit;
+      font-size: 13px;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+    }
+
+    .botao_confirmacao_salvar_fluxograma:hover {
+      background:
+        rgba(192,132,252,0.35);
+
+      border-color:
+        rgba(192,132,252,0.65);
+    }
+
+    .botao_confirmacao_salvar_fluxograma.secundario {
+      background:
+        rgba(255,255,255,0.055);
+
+      border-color:
+        rgba(255,255,255,0.12);
+    }
+
+    .botao_confirmacao_salvar_fluxograma.secundario:hover {
+      background:
+        rgba(255,255,255,0.10);
+    }
+
     /* DESIGN DA ÁREA DE IMAGENS EMBAIXO */
 
     .imagens_trabalho {
@@ -1741,7 +1846,8 @@
             id="chaveSalvamentoAutomatico"
             role="switch"
             aria-checked="false"
-            aria-label="Salvamento automático"
+            aria-label="Salvamento automático da imagem atual"
+            title="Salvamento automático da imagem atual"
           >
             <span class="bolinha_salvamento_automatico"></span>
           </div>
@@ -2122,6 +2228,47 @@
     <div class="painel imagens_trabalho" id="imagensTrabalho"></div>
 
   </div>
+
+  <!-- MODAL: PERGUNTA SE O FLUXOGRAMA DEVE SER SALVO -->
+  <div
+    class="modal_confirmacao_salvar_fluxograma"
+    id="modalPerguntaSalvarFluxograma"
+  >
+
+    <div class="caixa_confirmacao_salvar_fluxograma">
+
+      <h3>
+        Salvar fluxograma
+      </h3>
+
+      <p>
+        Deseja salvar esse fluxograma?
+      </p>
+
+      <div class="acoes_confirmacao_salvar_fluxograma">
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma secundario"
+          id="botaoNaoSalvarFluxogramaAutomatico"
+        >
+          Não
+        </button>
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma"
+          id="botaoSimSalvarFluxogramaAutomatico"
+        >
+          Sim
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
 
   <!-- MODAL DE CONFIRMAÇÃO DO RECORTE -->
 
