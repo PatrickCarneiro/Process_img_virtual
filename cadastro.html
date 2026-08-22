@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Cadastro</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <style>
+
+    /* Reset */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      color: white;
+
+      background:
+        linear-gradient(
+          135deg,
+          #0b1d3a 0%,
+          #071429 45%,
+          #050c1a 100%
+        );
+
+      overflow-x: hidden;
+    }
+
+    button,
+    input {
+      font-family:
+        'Poppins',
+        sans-serif;
+    }
+
+    button {
+      border: none;
+    }
+
+
+    /* Fundo */
+
+    .fundo_cadastro {
+      position: fixed;
+
+      inset: 0;
+
+      overflow: hidden;
+
+      pointer-events: none;
+
+      z-index: 0;
+    }
+
+    .luz_fundo {
+      position: absolute;
+
+      border-radius: 50%;
+
+      filter: blur(12px);
+
+      opacity: 0.75;
+    }
+
+    .luz_fundo.um {
+      width: 560px;
+      height: 560px;
+
+      left: -210px;
+      top: -220px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.19),
+          rgba(192,132,252,0.05) 52%,
+          transparent 73%
+        );
+    }
+
+    .luz_fundo.dois {
+      width: 660px;
+      height: 660px;
+
+      right: -270px;
+      bottom: -330px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.18),
+          rgba(126,87,194,0.05) 50%,
+          transparent 74%
+        );
+    }
+
+    .grade_fundo {
+      position: absolute;
+
+      inset: 0;
+
+      opacity: 0.12;
+
+      background-image:
+        linear-gradient(
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        );
+
+      background-size:
+        48px 48px;
+
+      mask-image:
+        linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.8),
+          transparent
+        );
+    }
+
+
+    /* Página */
+
+    .pagina_cadastro {
+      position: relative;
+
+      z-index: 1;
+
+      width: 100%;
+
+      min-height: 100vh;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 32px;
+    }
+
+    .container_cadastro {
+      width: min(
+        1120px,
+        100%
+      );
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(310px, 0.78fr)
+        minmax(0, 1.22fr);
+
+      background:
+        rgba(8,18,37,0.82);
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 30px;
+
+      overflow: hidden;
+
+      box-shadow:
+        0 30px 90px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.025);
+
+      backdrop-filter:
+        blur(16px);
+    }
+
+
+    /* Apresentação */
+
+    .area_apresentacao {
+      position: relative;
+
+      padding:
+        52px 48px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      justify-content: space-between;
+
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.11),
+          rgba(10,20,40,0.20) 44%,
+          rgba(10,20,40,0.08)
+        );
+    }
+
+    .area_apresentacao::before {
+      content: "";
+
+      position: absolute;
+
+      width: 460px;
+      height: 460px;
+
+      right: -240px;
+      top: -210px;
+
+      border-radius: 50%;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.20),
+          transparent 68%
+        );
+    }
+
+    .area_apresentacao::after {
+      content: "";
+
+      position: absolute;
+
+      width: 330px;
+      height: 330px;
+
+      left: -170px;
+      bottom: -170px;
+
+      border-radius: 50%;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.14),
+          transparent 70%
+        );
+    }
+
+    .marca {
+      position: relative;
+
+      z-index: 1;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 13px;
+    }
+
+    .simbolo_marca {
+      width: 44px;
+      height: 44px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 13px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.28),
+          rgba(126,87,194,0.14)
+        );
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      box-shadow:
+        0 10px 28px rgba(0,0,0,0.20),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .simbolo_marca svg {
+      width: 23px;
+      height: 23px;
+    }
+
+    .nome_marca {
+      display: flex;
+
+      flex-direction: column;
+
+      line-height: 1.15;
+    }
+
+    .nome_marca strong {
+      font-size: 16px;
+
+      font-weight: 600;
+    }
+
+    .nome_marca span {
+      margin-top: 4px;
+
+      font-size: 10px;
+
+      letter-spacing: 1.5px;
+
+      text-transform: uppercase;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+    .texto_apresentacao {
+      position: relative;
+
+      z-index: 1;
+
+      margin:
+        55px 0;
+    }
+
+    .etiqueta {
+      width: fit-content;
+
+      margin-bottom: 18px;
+
+      padding:
+        7px 12px;
+
+      border-radius: 999px;
+
+      font-size: 11px;
+
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.10);
+
+      border:
+        1px solid rgba(192,132,252,0.26);
+    }
+
+    .texto_apresentacao h1 {
+      max-width: 430px;
+
+      font-size:
+        clamp(
+          36px,
+          4vw,
+          52px
+        );
+
+      font-weight: 600;
+
+      line-height: 1.08;
+
+      letter-spacing: -1.5px;
+    }
+
+    .texto_apresentacao h1 span {
+      color:
+        #c084fc;
+    }
+
+    .texto_apresentacao p {
+      max-width: 420px;
+
+      margin-top: 20px;
+
+      font-size: 13px;
+
+      line-height: 1.8;
+
+      font-weight: 300;
+
+      color:
+        rgba(255,255,255,0.58);
+    }
+
+    .beneficios {
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 11px;
+
+      margin-top: 28px;
+    }
+
+    .beneficio {
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      font-size: 11px;
+
+      color:
+        rgba(255,255,255,0.67);
+    }
+
+    .icone_check {
+      width: 20px;
+      height: 20px;
+
+      flex-shrink: 0;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 7px;
+
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.09);
+
+      border:
+        1px solid rgba(192,132,252,0.20);
+    }
+
+    .icone_check svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .rodape_apresentacao {
+      position: relative;
+
+      z-index: 1;
+
+      font-size: 10px;
+
+      color:
+        rgba(255,255,255,0.30);
+    }
+
+
+    /* Formulário */
+
+    .area_formulario {
+      min-width: 0;
+
+      padding:
+        42px 48px;
+
+      background:
+        rgba(5,13,28,0.55);
+
+      border-left:
+        1px solid rgba(255,255,255,0.06);
+    }
+
+    .formulario_cadastro {
+      width: 100%;
+
+      max-width: 620px;
+
+      margin: 0 auto;
+    }
+
+    .cabecalho_formulario {
+      margin-bottom: 26px;
+    }
+
+    .cabecalho_formulario h2 {
+      font-size: 27px;
+
+      font-weight: 600;
+
+      letter-spacing: -0.5px;
+    }
+
+    .cabecalho_formulario p {
+      margin-top: 6px;
+
+      font-size: 11px;
+
+      line-height: 1.6;
+
+      color:
+        rgba(255,255,255,0.45);
+    }
+
+
+    /* Foto */
+
+    .area_foto_perfil {
+      display: flex;
+
+      align-items: center;
+
+      gap: 18px;
+
+      margin-bottom: 25px;
+
+      padding:
+        15px;
+
+      border:
+        1px solid rgba(255,255,255,0.07);
+
+      border-radius: 15px;
+
+      background:
+        rgba(255,255,255,0.025);
+    }
+
+    .foto_perfil_preview {
+      position: relative;
+
+      width: 76px;
+      height: 76px;
+
+      flex-shrink: 0;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      overflow: hidden;
+
+      border-radius: 50%;
+
+      color:
+        rgba(255,255,255,0.38);
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.14),
+          rgba(255,255,255,0.035)
+        );
+
+      border:
+        2px solid rgba(192,132,252,0.28);
+
+      box-shadow:
+        0 10px 25px rgba(0,0,0,0.18);
+    }
+
+    .foto_perfil_preview img {
+      width: 100%;
+      height: 100%;
+
+      display: none;
+
+      object-fit: cover;
+    }
+
+    .foto_perfil_preview.com_foto img {
+      display: block;
+    }
+
+    .foto_perfil_preview.com_foto svg {
+      display: none;
+    }
+
+    .foto_perfil_preview svg {
+      width: 30px;
+      height: 30px;
+    }
+
+    .controles_foto {
+      min-width: 0;
+
+      flex: 1;
+    }
+
+    .controles_foto strong {
+      display: block;
+
+      margin-bottom: 4px;
+
+      font-size: 12px;
+
+      font-weight: 500;
+    }
+
+    .controles_foto p {
+      margin-bottom: 10px;
+
+      font-size: 9px;
+
+      line-height: 1.5;
+
+      color:
+        rgba(255,255,255,0.38);
+    }
+
+    .botoes_foto {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 8px;
+    }
+
+    .botao_foto {
+      min-height: 32px;
+
+      padding:
+        0 12px;
+
+      border-radius: 9px;
+
+      font-size: 10px;
+
+      cursor: pointer;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+    }
+
+    .botao_selecionar_foto {
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.08);
+
+      border:
+        1px solid rgba(192,132,252,0.24);
+    }
+
+    .botao_selecionar_foto:hover {
+      color:
+        white;
+
+      background:
+        rgba(192,132,252,0.15);
+
+      border-color:
+        rgba(192,132,252,0.44);
+    }
+
+    .botao_remover_foto {
+      display: none;
+
+      color:
+        rgba(255,255,255,0.55);
+
+      background:
+        rgba(255,255,255,0.035);
+
+      border:
+        1px solid rgba(255,255,255,0.08);
+    }
+
+    .botao_remover_foto:hover {
+      color:
+        #fecaca;
+
+      border-color:
+        rgba(239,68,68,0.25);
+
+      background:
+        rgba(239,68,68,0.07);
+    }
+
+    #fotoCadastro {
+      display: none;
+    }
+
+
+    /* Grid */
+
+    .grid_campos {
+      display: grid;
+
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+      gap:
+        15px 16px;
+    }
+
+    .grupo_campo {
+      min-width: 0;
+    }
+
+    .grupo_campo.campo_largo {
+      grid-column:
+        1 / -1;
+    }
+
+    .grupo_campo label {
+      display: flex;
+
+      align-items: center;
+
+      gap: 5px;
+
+      margin-bottom: 7px;
+
+      font-size: 10px;
+
+      font-weight: 500;
+
+      color:
+        rgba(255,255,255,0.68);
+    }
+
+    .opcional {
+      font-size: 8px;
+
+      font-weight: 400;
+
+      color:
+        rgba(255,255,255,0.30);
+    }
+
+    .campo_cadastro {
+      position: relative;
+
+      width: 100%;
+    }
+
+    .campo_cadastro input {
+      width: 100%;
+
+      height: 47px;
+
+      padding:
+        0 14px 0 42px;
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 12px;
+
+      outline: none;
+
+      font-size: 11px;
+
+      color: white;
+
+      background:
+        rgba(255,255,255,0.043);
+
+      transition:
+        border-color 0.20s ease,
+        background 0.20s ease,
+        box-shadow 0.20s ease;
+    }
+
+    .campo_cadastro input:hover {
+      border-color:
+        rgba(192,132,252,0.25);
+    }
+
+    .campo_cadastro input:focus {
+      border-color:
+        rgba(192,132,252,0.64);
+
+      background:
+        rgba(192,132,252,0.055);
+
+      box-shadow:
+        0 0 0 3px rgba(192,132,252,0.07);
+    }
+
+    .campo_cadastro input::placeholder {
+      color:
+        rgba(255,255,255,0.24);
+    }
+
+    .campo_cadastro input[type="date"] {
+      color-scheme: dark;
+    }
+
+    .icone_campo {
+      position: absolute;
+
+      left: 14px;
+      top: 50%;
+
+      width: 17px;
+      height: 17px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      color:
+        rgba(255,255,255,0.40);
+
+      pointer-events: none;
+    }
+
+    .icone_campo svg {
+      width: 16px;
+      height: 16px;
+    }
+
+
+    /* Senha */
+
+    .campo_senha input {
+      padding-right: 45px;
+    }
+
+    .botao_mostrar_senha {
+      position: absolute;
+
+      right: 8px;
+      top: 50%;
+
+      width: 32px;
+      height: 32px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 8px;
+
+      color:
+        rgba(255,255,255,0.40);
+
+      background:
+        transparent;
+
+      cursor: pointer;
+
+      transition:
+        color 0.2s ease,
+        background 0.2s ease;
+    }
+
+    .botao_mostrar_senha:hover {
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.09);
+    }
+
+    .botao_mostrar_senha svg {
+      width: 16px;
+      height: 16px;
+    }
+
+
+    /* Senha auxiliar */
+
+    .informacao_senha {
+      margin-top: 5px;
+
+      font-size: 8px;
+
+      color:
+        rgba(255,255,255,0.31);
+    }
+
+
+    /* Botão cadastro */
+
+    .botao_criar_conta {
+      width: 100%;
+
+      height: 50px;
+
+      margin-top: 24px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      gap: 9px;
+
+      border-radius: 13px;
+
+      color: white;
+
+      font-size: 11px;
+
+      font-weight: 600;
+
+      background:
+        linear-gradient(
+          135deg,
+          #a855f7,
+          #8b5cf6
+        );
+
+      cursor: pointer;
+
+      box-shadow:
+        0 12px 28px rgba(139,92,246,0.23);
+
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
+    }
+
+    .botao_criar_conta:hover {
+      transform:
+        translateY(-1px);
+
+      filter:
+        brightness(1.08);
+
+      box-shadow:
+        0 15px 34px rgba(139,92,246,0.30);
+    }
+
+    .botao_criar_conta:disabled {
+      opacity: 0.6;
+
+      cursor: wait;
+
+      transform: none;
+
+      filter: none;
+    }
+
+    .botao_criar_conta svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .carregando_cadastro {
+      width: 17px;
+      height: 17px;
+
+      display: none;
+
+      border:
+        2px solid rgba(255,255,255,0.32);
+
+      border-top-color:
+        white;
+
+      border-radius: 50%;
+
+      animation:
+        girar 0.7s linear infinite;
+    }
+
+    .botao_criar_conta.carregando
+    .carregando_cadastro {
+      display: block;
+    }
+
+    .botao_criar_conta.carregando
+    .icone_criar {
+      display: none;
+    }
+
+    @keyframes girar {
+
+      to {
+        transform:
+          rotate(360deg);
+      }
+
+    }
+
+
+    /* Mensagem */
+
+    .mensagem_cadastro {
+      display: none;
+
+      width: 100%;
+
+      margin-top: 14px;
+
+      padding:
+        11px 13px;
+
+      border-radius: 10px;
+
+      font-size: 10px;
+
+      line-height: 1.55;
+
+      text-align: center;
+    }
+
+    .mensagem_cadastro.ativo {
+      display: block;
+    }
+
+    .mensagem_cadastro.erro {
+      color:
+        #fecaca;
+
+      background:
+        rgba(239,68,68,0.08);
+
+      border:
+        1px solid rgba(239,68,68,0.20);
+    }
+
+    .mensagem_cadastro.sucesso {
+      color:
+        #bbf7d0;
+
+      background:
+        rgba(34,197,94,0.08);
+
+      border:
+        1px solid rgba(34,197,94,0.20);
+    }
+
+    .mensagem_cadastro.informacao {
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.08);
+
+      border:
+        1px solid rgba(192,132,252,0.20);
+    }
+
+
+    /* Voltar */
+
+    .area_login {
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      gap: 5px;
+
+      margin-top: 18px;
+
+      font-size: 10px;
+
+      color:
+        rgba(255,255,255,0.42);
+    }
+
+    .area_login a {
+      color:
+        #cfa1ff;
+
+      font-weight: 500;
+
+      text-decoration: none;
+
+      transition:
+        color 0.2s ease;
+    }
+
+    .area_login a:hover {
+      color:
+        #ead7ff;
+    }
+
+
+    /* Responsividade */
+
+    @media (
+      max-width: 920px
+    ) {
+
+      .pagina_cadastro {
+        padding:
+          20px;
+      }
+
+      .container_cadastro {
+        max-width: 650px;
+
+        grid-template-columns:
+          1fr;
+      }
+
+      .area_apresentacao {
+        padding:
+          32px 34px;
+      }
+
+      .texto_apresentacao {
+        margin:
+          36px 0 10px;
+      }
+
+      .texto_apresentacao h1 {
+        max-width: 500px;
+
+        font-size: 35px;
+      }
+
+      .beneficios,
+      .rodape_apresentacao {
+        display: none;
+      }
+
+      .area_formulario {
+        padding:
+          38px 34px 42px;
+
+        border-left:
+          none;
+
+        border-top:
+          1px solid rgba(255,255,255,0.06);
+      }
+
+    }
+
+
+    @media (
+      max-width: 600px
+    ) {
+
+      .pagina_cadastro {
+        padding:
+          10px;
+      }
+
+      .container_cadastro {
+        border-radius: 22px;
+      }
+
+      .area_apresentacao {
+        padding:
+          26px 22px;
+      }
+
+      .texto_apresentacao {
+        margin:
+          28px 0 2px;
+      }
+
+      .texto_apresentacao h1 {
+        font-size: 29px;
+      }
+
+      .texto_apresentacao p {
+        font-size: 11px;
+      }
+
+      .area_formulario {
+        padding:
+          32px 22px 36px;
+      }
+
+      .grid_campos {
+        grid-template-columns:
+          1fr;
+      }
+
+      .grupo_campo.campo_largo {
+        grid-column:
+          auto;
+      }
+
+      .area_foto_perfil {
+        align-items:
+          flex-start;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+  <div class="fundo_cadastro">
+
+    <div class="luz_fundo um"></div>
+
+    <div class="luz_fundo dois"></div>
+
+    <div class="grade_fundo"></div>
+
+  </div>
+
+
+  <main class="pagina_cadastro">
+
+    <section class="container_cadastro">
+
+
+      <div class="area_apresentacao">
+
+        <div class="marca">
+
+          <div class="simbolo_marca">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+
+              <path
+                d="M4 17V7"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M8 14V10"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M12 18V6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M16 15V9"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M20 17V7"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+            </svg>
+
+          </div>
+
+
+          <div class="nome_marca">
+
+            <strong>
+              Processamento de Imagens
+            </strong>
+
+            <span>
+              Plataforma de análise
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="texto_apresentacao">
+
+          <div class="etiqueta">
+            Crie seu espaço
+          </div>
+
+          <h1>
+
+            Seus projetos,
+
+            <span>
+              sempre com você.
+            </span>
+
+          </h1>
+
+          <p>
+
+            Crie sua conta para salvar seus fluxogramas,
+            organizar seus projetos e continuar seus
+            processamentos sempre que acessar a plataforma.
+
+          </p>
+
+
+          <div class="beneficios">
+
+            <div class="beneficio">
+
+              <div class="icone_check">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+
+                  <path
+                    d="M5 12.5L9.2 16.5L19 7"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+
+                </svg>
+
+              </div>
+
+              Fluxogramas vinculados à sua conta
+
+            </div>
+
+
+            <div class="beneficio">
+
+              <div class="icone_check">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+
+                  <path
+                    d="M5 12.5L9.2 16.5L19 7"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+
+                </svg>
+
+              </div>
+
+              Perfil personalizado
+
+            </div>
+
+
+            <div class="beneficio">
+
+              <div class="icone_check">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+
+                  <path
+                    d="M5 12.5L9.2 16.5L19 7"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+
+                </svg>
+
+              </div>
+
+              Acesso aos seus projetos em diferentes sessões
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="rodape_apresentacao">
+          Ambiente de processamento e gerenciamento de imagens
+        </div>
+
+      </div>
+
+
+      <div class="area_formulario">
+
+        <form
+          class="formulario_cadastro"
+          id="formularioCadastro"
+          autocomplete="on"
+        >
+
+
+          <div class="cabecalho_formulario">
+
+            <h2>
+              Criar conta
+            </h2>
+
+            <p>
+              Preencha seus dados para começar a utilizar a plataforma.
+            </p>
+
+          </div>
+
+
+          <div class="area_foto_perfil">
+
+            <div
+              class="foto_perfil_preview"
+              id="fotoPerfilPreview"
+            >
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+
+                <circle
+                  cx="12"
+                  cy="8"
+                  r="4"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                />
+
+                <path
+                  d="M4.5 20C5.2 15.9 8 14 12 14C16 14 18.8 15.9 19.5 20"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+
+              </svg>
+
+              <img
+                id="imagemPreviewFoto"
+                alt="Pré-visualização da foto de perfil"
+              >
+
+            </div>
+
+
+            <div class="controles_foto">
+
+              <strong>
+                Foto de perfil
+              </strong>
+
+              <p>
+                Opcional. JPG, PNG ou WEBP com até 5 MB.
+              </p>
+
+              <div class="botoes_foto">
+
+                <button
+                  type="button"
+                  class="botao_foto botao_selecionar_foto"
+                  id="botaoSelecionarFoto"
+                >
+                  Escolher foto
+                </button>
+
+                <button
+                  type="button"
+                  class="botao_foto botao_remover_foto"
+                  id="botaoRemoverFoto"
+                >
+                  Remover
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <input
+              type="file"
+              id="fotoCadastro"
+              accept="image/jpeg,image/png,image/webp"
+            >
+
+          </div>
+
+
+          <div class="grid_campos">
+
+
+            <div class="grupo_campo">
+
+              <label for="nomeUsuarioCadastro">
+                Usuário
+              </label>
+
+              <div class="campo_cadastro">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <circle
+                      cx="12"
+                      cy="8"
+                      r="3.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M5 20C5.6 16.2 8.2 14.5 12 14.5C15.8 14.5 18.4 16.2 19 20"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="text"
+                  id="nomeUsuarioCadastro"
+                  name="nome_usuario"
+                  placeholder="Escolha seu usuário"
+                  autocomplete="username"
+                  maxlength="40"
+                  required
+                >
+
+              </div>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="dataNascimentoCadastro">
+                Data de nascimento
+              </label>
+
+              <div class="campo_cadastro">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <rect
+                      x="3.5"
+                      y="5.5"
+                      width="17"
+                      height="15"
+                      rx="2.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M7 3.5V7"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+
+                    <path
+                      d="M17 3.5V7"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+
+                    <path
+                      d="M3.5 10H20.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="date"
+                  id="dataNascimentoCadastro"
+                  name="data_nascimento"
+                  autocomplete="bday"
+                  required
+                >
+
+              </div>
+
+            </div>
+
+
+            <div class="grupo_campo campo_largo">
+
+              <label for="emailCadastro">
+                E-mail
+              </label>
+
+              <div class="campo_cadastro">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <path
+                      d="M4 6.5L12 12.5L20 6.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+
+                    <rect
+                      x="3.5"
+                      y="5"
+                      width="17"
+                      height="14"
+                      rx="3"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="email"
+                  id="emailCadastro"
+                  name="email"
+                  placeholder="Digite seu e-mail"
+                  autocomplete="email"
+                  required
+                >
+
+              </div>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="senhaCadastro">
+                Senha
+              </label>
+
+              <div class="campo_cadastro campo_senha">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <rect
+                      x="5"
+                      y="10"
+                      width="14"
+                      height="10"
+                      rx="2.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M8 10V7.5C8 5.29 9.79 3.5 12 3.5C14.21 3.5 16 5.29 16 7.5V10"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="password"
+                  id="senhaCadastro"
+                  name="senha"
+                  placeholder="Crie uma senha"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                >
+
+                <button
+                  type="button"
+                  class="botao_mostrar_senha"
+                  id="botaoMostrarSenhaCadastro"
+                  aria-label="Mostrar senha"
+                  title="Mostrar senha"
+                >
+
+                  <svg
+                    id="iconeMostrarSenhaCadastro"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <path
+                      d="M2.5 12C4.6 8.3 7.8 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C19.4 15.7 16.2 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12Z"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="2.7"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                  </svg>
+
+                </button>
+
+              </div>
+
+              <div class="informacao_senha">
+                Utilize no mínimo 6 caracteres.
+              </div>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="confirmarSenhaCadastro">
+                Confirmar senha
+              </label>
+
+              <div class="campo_cadastro campo_senha">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <rect
+                      x="5"
+                      y="10"
+                      width="14"
+                      height="10"
+                      rx="2.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M8 10V7.5C8 5.29 9.79 3.5 12 3.5C14.21 3.5 16 5.29 16 7.5V10"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="password"
+                  id="confirmarSenhaCadastro"
+                  name="confirmar_senha"
+                  placeholder="Digite a senha novamente"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                >
+
+                <button
+                  type="button"
+                  class="botao_mostrar_senha"
+                  id="botaoMostrarConfirmarSenha"
+                  aria-label="Mostrar senha"
+                  title="Mostrar senha"
+                >
+
+                  <svg
+                    id="iconeMostrarConfirmarSenha"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <path
+                      d="M2.5 12C4.6 8.3 7.8 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C19.4 15.7 16.2 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12Z"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="2.7"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                  </svg>
+
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="universidadeEmpresaCadastro">
+
+                Universidade ou empresa
+
+                <span class="opcional">
+                  opcional
+                </span>
+
+              </label>
+
+              <div class="campo_cadastro">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <path
+                      d="M4 20V7L12 3L20 7V20"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+
+                    <path
+                      d="M8 20V15H16V20"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M8 9H8.01"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+
+                    <path
+                      d="M12 9H12.01"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+
+                    <path
+                      d="M16 9H16.01"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="text"
+                  id="universidadeEmpresaCadastro"
+                  name="universidade_empresa"
+                  placeholder="Ex.: UFU ou Empresa"
+                  maxlength="120"
+                >
+
+              </div>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="profissaoCadastro">
+
+                Profissão
+
+                <span class="opcional">
+                  opcional
+                </span>
+
+              </label>
+
+              <div class="campo_cadastro">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <rect
+                      x="3.5"
+                      y="7"
+                      width="17"
+                      height="12"
+                      rx="2.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M9 7V5.5C9 4.67 9.67 4 10.5 4H13.5C14.33 4 15 4.67 15 5.5V7"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M3.5 12H20.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="text"
+                  id="profissaoCadastro"
+                  name="profissao"
+                  placeholder="Ex.: Engenheiro Biomédico"
+                  maxlength="100"
+                >
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <button
+            type="submit"
+            class="botao_criar_conta"
+            id="botaoCriarConta"
+          >
+
+            <span
+              class="carregando_cadastro"
+              id="carregandoCadastro"
+            ></span>
+
+            <svg
+              class="icone_criar"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+
+              <path
+                d="M12 5V19"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M5 12H19"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+            </svg>
+
+            <span id="textoBotaoCriarConta">
+              Criar conta
+            </span>
+
+          </button>
+
+
+          <div
+            class="mensagem_cadastro"
+            id="mensagemCadastro"
+            role="status"
+            aria-live="polite"
+          ></div>
+
+
+          <div class="area_login">
+
+            Já possui uma conta?
+
+            <a href="login.html">
+              Entrar
+            </a>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <script src="supabase.js"></script>
+
+  <script src="cadastro.js"></script>
+
+</body>
+
+</html>

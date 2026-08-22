@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Login</title>
+
+
+  <!-- =========================================================
+       FONTE
+       ========================================================= -->
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+
+  <style>
+
+    /* =========================================================
+       RESET GERAL
+       ========================================================= */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+    }
+
+
+    body {
+      min-height: 100vh;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      color: white;
+
+      background:
+        linear-gradient(
+          135deg,
+          #0b1d3a 0%,
+          #071429 45%,
+          #050c1a 100%
+        );
+
+      overflow-x: hidden;
+    }
+
+
+    button,
+    input {
+      font-family:
+        'Poppins',
+        sans-serif;
+    }
+
+
+    button {
+      border: none;
+    }
+
+
+    /* =========================================================
+       FUNDO DECORATIVO
+       ========================================================= */
+
+    .fundo_login {
+      position: fixed;
+
+      inset: 0;
+
+      overflow: hidden;
+
+      pointer-events: none;
+
+      z-index: 0;
+    }
+
+
+    .luz_fundo {
+      position: absolute;
+
+      border-radius: 50%;
+
+      filter: blur(10px);
+
+      opacity: 0.75;
+    }
+
+
+    .luz_fundo.um {
+      width: 520px;
+      height: 520px;
+
+      left: -180px;
+      top: -190px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.19) 0%,
+          rgba(192,132,252,0.06) 48%,
+          transparent 72%
+        );
+    }
+
+
+    .luz_fundo.dois {
+      width: 620px;
+      height: 620px;
+
+      right: -240px;
+      bottom: -300px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.18) 0%,
+          rgba(126,87,194,0.05) 50%,
+          transparent 74%
+        );
+    }
+
+
+    .grade_fundo {
+      position: absolute;
+
+      inset: 0;
+
+      opacity: 0.12;
+
+      background-image:
+        linear-gradient(
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        );
+
+      background-size:
+        48px 48px;
+
+      mask-image:
+        linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.8),
+          transparent
+        );
+    }
+
+
+    /* =========================================================
+       CONTAINER PRINCIPAL
+       ========================================================= */
+
+    .pagina_login {
+      position: relative;
+
+      z-index: 1;
+
+      width: 100%;
+
+      min-height: 100vh;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 32px;
+    }
+
+
+    /* =========================================================
+       CARD PRINCIPAL
+       ========================================================= */
+
+    .container_login {
+      width: min(
+        1060px,
+        100%
+      );
+
+      min-height: 650px;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(0, 1.08fr)
+        minmax(390px, 0.92fr);
+
+      background:
+        rgba(8,18,37,0.80);
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 30px;
+
+      overflow: hidden;
+
+      box-shadow:
+        0 30px 90px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.025);
+
+      backdrop-filter:
+        blur(16px);
+    }
+
+
+    /* =========================================================
+       ÁREA ESQUERDA
+       ========================================================= */
+
+    .area_apresentacao {
+      position: relative;
+
+      min-width: 0;
+
+      padding:
+        58px 62px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      justify-content: space-between;
+
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.10),
+          rgba(10,20,40,0.20) 42%,
+          rgba(10,20,40,0.08)
+        );
+    }
+
+
+    .area_apresentacao::before {
+      content: "";
+
+      position: absolute;
+
+      width: 500px;
+      height: 500px;
+
+      border-radius: 50%;
+
+      right: -250px;
+      top: -220px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.20),
+          transparent 68%
+        );
+    }
+
+
+    .area_apresentacao::after {
+      content: "";
+
+      position: absolute;
+
+      width: 320px;
+      height: 320px;
+
+      border-radius: 50%;
+
+      left: -160px;
+      bottom: -160px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.14),
+          transparent 70%
+        );
+    }
+
+
+    /* =========================================================
+       MARCA
+       ========================================================= */
+
+    .marca {
+      position: relative;
+
+      z-index: 1;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 13px;
+    }
+
+
+    .simbolo_marca {
+      width: 44px;
+      height: 44px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 13px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.28),
+          rgba(126,87,194,0.14)
+        );
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      box-shadow:
+        0 10px 28px rgba(0,0,0,0.20),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+
+    .simbolo_marca svg {
+      width: 23px;
+      height: 23px;
+    }
+
+
+    .nome_marca {
+      display: flex;
+
+      flex-direction: column;
+
+      line-height: 1.15;
+    }
+
+
+    .nome_marca strong {
+      font-size: 16px;
+
+      font-weight: 600;
+
+      letter-spacing: 0.1px;
+    }
+
+
+    .nome_marca span {
+      margin-top: 4px;
+
+      font-size: 10px;
+
+      letter-spacing: 1.5px;
+
+      text-transform: uppercase;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+
+    /* =========================================================
+       TEXTO DA APRESENTAÇÃO
+       ========================================================= */
+
+    .apresentacao_centro {
+      position: relative;
+
+      z-index: 1;
+
+      max-width: 520px;
+
+      margin:
+        50px 0;
+    }
+
+
+    .etiqueta_apresentacao {
+      width: fit-content;
+
+      margin-bottom: 18px;
+
+      padding:
+        7px 12px;
+
+      border-radius: 999px;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      letter-spacing: 0.4px;
+
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.10);
+
+      border:
+        1px solid rgba(192,132,252,0.26);
+    }
+
+
+    .apresentacao_centro h1 {
+      max-width: 520px;
+
+      font-size:
+        clamp(
+          37px,
+          4vw,
+          57px
+        );
+
+      font-weight: 600;
+
+      line-height: 1.08;
+
+      letter-spacing: -1.8px;
+    }
+
+
+    .apresentacao_centro h1 span {
+      color:
+        #c084fc;
+    }
+
+
+    .apresentacao_centro p {
+      max-width: 490px;
+
+      margin-top: 22px;
+
+      font-size: 14px;
+
+      font-weight: 300;
+
+      line-height: 1.8;
+
+      color:
+        rgba(255,255,255,0.60);
+    }
+
+
+    /* =========================================================
+       RECURSOS VISUAIS
+       ========================================================= */
+
+    .recursos_login {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 10px;
+
+      margin-top: 28px;
+    }
+
+
+    .recurso_login {
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding:
+        8px 11px;
+
+      border-radius: 10px;
+
+      background:
+        rgba(255,255,255,0.035);
+
+      border:
+        1px solid rgba(255,255,255,0.06);
+
+      font-size: 11px;
+
+      color:
+        rgba(255,255,255,0.68);
+    }
+
+
+    .ponto_recurso {
+      width: 6px;
+      height: 6px;
+
+      flex-shrink: 0;
+
+      border-radius: 50%;
+
+      background:
+        #c084fc;
+
+      box-shadow:
+        0 0 9px rgba(192,132,252,0.65);
+    }
+
+
+    /* =========================================================
+       RODAPÉ ESQUERDO
+       ========================================================= */
+
+    .rodape_apresentacao {
+      position: relative;
+
+      z-index: 1;
+
+      font-size: 10px;
+
+      color:
+        rgba(255,255,255,0.30);
+    }
+
+
+    /* =========================================================
+       ÁREA DIREITA / LOGIN
+       ========================================================= */
+
+    .area_formulario {
+      position: relative;
+
+      min-width: 0;
+
+      padding:
+        58px 50px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      background:
+        rgba(5,13,28,0.56);
+
+      border-left:
+        1px solid rgba(255,255,255,0.06);
+    }
+
+
+    .formulario_login {
+      width: 100%;
+
+      max-width: 380px;
+    }
+
+
+    /* =========================================================
+       CABEÇALHO DO FORMULÁRIO
+       ========================================================= */
+
+    .cabecalho_formulario {
+      margin-bottom: 34px;
+    }
+
+
+    .cabecalho_formulario h2 {
+      font-size: 29px;
+
+      font-weight: 600;
+
+      letter-spacing: -0.6px;
+    }
+
+
+    .cabecalho_formulario p {
+      margin-top: 8px;
+
+      font-size: 12px;
+
+      line-height: 1.6;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+
+    /* =========================================================
+       CAMPOS
+       ========================================================= */
+
+    .grupo_campo {
+      margin-bottom: 18px;
+    }
+
+
+    .grupo_campo label {
+      display: block;
+
+      margin-bottom: 8px;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      color:
+        rgba(255,255,255,0.70);
+    }
+
+
+    .campo_login {
+      position: relative;
+
+      width: 100%;
+    }
+
+
+    .campo_login input {
+      width: 100%;
+
+      height: 51px;
+
+      padding:
+        0 15px 0 45px;
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 13px;
+
+      outline: none;
+
+      font-size: 12px;
+
+      color: white;
+
+      background:
+        rgba(255,255,255,0.045);
+
+      transition:
+        border-color 0.20s ease,
+        background 0.20s ease,
+        box-shadow 0.20s ease;
+    }
+
+
+    .campo_login input:hover {
+      border-color:
+        rgba(192,132,252,0.26);
+    }
+
+
+    .campo_login input:focus {
+      border-color:
+        rgba(192,132,252,0.65);
+
+      background:
+        rgba(192,132,252,0.055);
+
+      box-shadow:
+        0 0 0 3px rgba(192,132,252,0.075);
+    }
+
+
+    .campo_login input::placeholder {
+      color:
+        rgba(255,255,255,0.25);
+    }
+
+
+    .icone_campo {
+      position: absolute;
+
+      left: 15px;
+      top: 50%;
+
+      width: 18px;
+      height: 18px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      color:
+        rgba(255,255,255,0.42);
+
+      pointer-events: none;
+    }
+
+
+    .icone_campo svg {
+      width: 17px;
+      height: 17px;
+    }
+
+
+    /* =========================================================
+       BOTÃO MOSTRAR SENHA
+       ========================================================= */
+
+    .campo_senha input {
+      padding-right: 48px;
+    }
+
+
+    .botao_mostrar_senha {
+      position: absolute;
+
+      right: 9px;
+      top: 50%;
+
+      width: 34px;
+      height: 34px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 8px;
+
+      color:
+        rgba(255,255,255,0.42);
+
+      background:
+        transparent;
+
+      cursor: pointer;
+
+      transition:
+        color 0.2s ease,
+        background 0.2s ease;
+    }
+
+
+    .botao_mostrar_senha:hover {
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.09);
+    }
+
+
+    .botao_mostrar_senha svg {
+      width: 17px;
+      height: 17px;
+    }
+
+
+    /* =========================================================
+       ESQUECEU SENHA
+       ========================================================= */
+
+    .linha_auxiliar {
+      display: flex;
+
+      align-items: center;
+      justify-content: flex-end;
+
+      margin:
+        -3px 0 24px;
+    }
+
+
+    .link_esqueci_senha {
+      border: none;
+
+      padding: 0;
+
+      background:
+        transparent;
+
+      color:
+        #cfa1ff;
+
+      font-size: 11px;
+
+      cursor: pointer;
+
+      text-decoration: none;
+
+      transition:
+        color 0.2s ease;
+    }
+
+
+    .link_esqueci_senha:hover {
+      color:
+        #e2c4ff;
+    }
+
+
+    /* =========================================================
+       BOTÃO ENTRAR
+       ========================================================= */
+
+    .botao_entrar {
+      position: relative;
+
+      width: 100%;
+
+      height: 52px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      gap: 9px;
+
+      border-radius: 13px;
+
+      color:
+        #ffffff;
+
+      font-size: 12px;
+
+      font-weight: 600;
+
+      background:
+        linear-gradient(
+          135deg,
+          #a855f7,
+          #8b5cf6
+        );
+
+      cursor: pointer;
+
+      box-shadow:
+        0 12px 28px rgba(139,92,246,0.23);
+
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
+    }
+
+
+    .botao_entrar:hover {
+      transform:
+        translateY(-1px);
+
+      filter:
+        brightness(1.08);
+
+      box-shadow:
+        0 15px 34px rgba(139,92,246,0.30);
+    }
+
+
+    .botao_entrar:active {
+      transform:
+        translateY(0);
+    }
+
+
+    .botao_entrar:disabled {
+      opacity: 0.60;
+
+      cursor: wait;
+
+      transform: none;
+
+      filter: none;
+    }
+
+
+    .botao_entrar svg {
+      width: 16px;
+      height: 16px;
+    }
+
+
+    /* =========================================================
+       CARREGAMENTO
+       ========================================================= */
+
+    .carregando_login {
+      width: 17px;
+      height: 17px;
+
+      display: none;
+
+      border:
+        2px solid rgba(255,255,255,0.32);
+
+      border-top-color:
+        white;
+
+      border-radius: 50%;
+
+      animation:
+        girar_login 0.7s linear infinite;
+    }
+
+
+    .botao_entrar.carregando .carregando_login {
+      display: block;
+    }
+
+
+    .botao_entrar.carregando .icone_entrar {
+      display: none;
+    }
+
+
+    @keyframes girar_login {
+
+      to {
+        transform:
+          rotate(360deg);
+      }
+
+    }
+
+
+    /* =========================================================
+       MENSAGEM DE STATUS
+       ========================================================= */
+
+    .mensagem_login {
+      display: none;
+
+      width: 100%;
+
+      margin-top: 15px;
+
+      padding:
+        11px 13px;
+
+      border-radius: 10px;
+
+      font-size: 11px;
+
+      line-height: 1.55;
+
+      text-align: center;
+    }
+
+
+    .mensagem_login.ativo {
+      display: block;
+    }
+
+
+    .mensagem_login.erro {
+      color:
+        #fecaca;
+
+      background:
+        rgba(239,68,68,0.08);
+
+      border:
+        1px solid rgba(239,68,68,0.20);
+    }
+
+
+    .mensagem_login.sucesso {
+      color:
+        #bbf7d0;
+
+      background:
+        rgba(34,197,94,0.08);
+
+      border:
+        1px solid rgba(34,197,94,0.20);
+    }
+
+
+    .mensagem_login.informacao {
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.08);
+
+      border:
+        1px solid rgba(192,132,252,0.20);
+    }
+
+
+    /* =========================================================
+       DIVISOR
+       ========================================================= */
+
+    .divisor_login {
+      display: flex;
+
+      align-items: center;
+
+      gap: 12px;
+
+      margin:
+        27px 0 23px;
+    }
+
+
+    .divisor_login::before,
+    .divisor_login::after {
+      content: "";
+
+      flex: 1;
+
+      height: 1px;
+
+      background:
+        rgba(255,255,255,0.07);
+    }
+
+
+    .divisor_login span {
+      font-size: 10px;
+
+      color:
+        rgba(255,255,255,0.30);
+    }
+
+
+    /* =========================================================
+       CADASTRO
+       ========================================================= */
+
+    .area_cadastro {
+      text-align: center;
+    }
+
+
+    .area_cadastro p {
+      font-size: 11px;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+
+    .botao_cadastro {
+      width: 100%;
+
+      height: 48px;
+
+      margin-top: 11px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border:
+        1px solid rgba(192,132,252,0.28);
+
+      border-radius: 12px;
+
+      color:
+        #d8b4fe;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      text-decoration: none;
+
+      background:
+        rgba(192,132,252,0.055);
+
+      cursor: pointer;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+    }
+
+
+    .botao_cadastro:hover {
+      color:
+        white;
+
+      background:
+        rgba(192,132,252,0.12);
+
+      border-color:
+        rgba(192,132,252,0.48);
+    }
+
+
+    /* =========================================================
+       RESPONSIVIDADE
+       ========================================================= */
+
+    @media (
+      max-width: 900px
+    ) {
+
+      .pagina_login {
+        padding:
+          22px;
+      }
+
+
+      .container_login {
+        max-width: 520px;
+
+        min-height: auto;
+
+        grid-template-columns:
+          1fr;
+      }
+
+
+      .area_apresentacao {
+        padding:
+          36px 36px 38px;
+      }
+
+
+      .apresentacao_centro {
+        margin:
+          38px 0 20px;
+      }
+
+
+      .apresentacao_centro h1 {
+        font-size: 37px;
+      }
+
+
+      .apresentacao_centro p {
+        font-size: 12px;
+      }
+
+
+      .recursos_login,
+      .rodape_apresentacao {
+        display: none;
+      }
+
+
+      .area_formulario {
+        padding:
+          42px 36px 46px;
+
+        border-left:
+          none;
+
+        border-top:
+          1px solid rgba(255,255,255,0.06);
+      }
+
+    }
+
+
+    @media (
+      max-width: 520px
+    ) {
+
+      .pagina_login {
+        padding:
+          12px;
+      }
+
+
+      .container_login {
+        border-radius: 22px;
+      }
+
+
+      .area_apresentacao {
+        padding:
+          28px 24px 30px;
+      }
+
+
+      .apresentacao_centro {
+        margin:
+          30px 0 0;
+      }
+
+
+      .apresentacao_centro h1 {
+        font-size: 31px;
+
+        letter-spacing: -1px;
+      }
+
+
+      .apresentacao_centro p {
+        margin-top: 15px;
+      }
+
+
+      .area_formulario {
+        padding:
+          35px 24px 38px;
+      }
+
+
+      .cabecalho_formulario h2 {
+        font-size: 25px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+  <!-- =========================================================
+       FUNDO
+       ========================================================= -->
+
+  <div class="fundo_login">
+
+    <div class="luz_fundo um"></div>
+
+    <div class="luz_fundo dois"></div>
+
+    <div class="grade_fundo"></div>
+
+  </div>
+
+
+  <!-- =========================================================
+       PÁGINA
+       ========================================================= -->
+
+  <main class="pagina_login">
+
+
+    <section class="container_login">
+
+
+      <!-- =====================================================
+           APRESENTAÇÃO
+           ===================================================== -->
+
+      <div class="area_apresentacao">
+
+
+        <!-- MARCA -->
+
+        <div class="marca">
+
+          <div class="simbolo_marca">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+
+              <path
+                d="M4 17V7"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M8 14V10"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M12 18V6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M16 15V9"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M20 17V7"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+            </svg>
+
+          </div>
+
+
+          <div class="nome_marca">
+
+            <strong>
+              Processamento de Imagens
+            </strong>
+
+            <span>
+              Plataforma de análise
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <!-- TEXTO CENTRAL -->
+
+        <div class="apresentacao_centro">
+
+          <div class="etiqueta_apresentacao">
+            Processamento e análise de imagens
+          </div>
+
+
+          <h1>
+
+            Transforme imagens em
+
+            <span>
+              resultados.
+            </span>
+
+          </h1>
+
+
+          <p>
+
+            Organize seus projetos, construa fluxogramas de
+            processamento e analise suas imagens em um ambiente
+            único e integrado.
+
+          </p>
+
+
+          <div class="recursos_login">
+
+
+            <div class="recurso_login">
+
+              <span class="ponto_recurso"></span>
+
+              Projetos personalizados
+
+            </div>
+
+
+            <div class="recurso_login">
+
+              <span class="ponto_recurso"></span>
+
+              Fluxogramas salvos
+
+            </div>
+
+
+            <div class="recurso_login">
+
+              <span class="ponto_recurso"></span>
+
+              Análise de imagens
+
+            </div>
+
+
+          </div>
+
+        </div>
+
+
+        <!-- RODAPÉ -->
+
+        <div class="rodape_apresentacao">
+
+          Ambiente de processamento e gerenciamento de imagens
+
+        </div>
+
+
+      </div>
+
+
+      <!-- =====================================================
+           FORMULÁRIO DE LOGIN
+           ===================================================== -->
+
+      <div class="area_formulario">
+
+
+        <form
+          class="formulario_login"
+          id="formularioLogin"
+          autocomplete="on"
+        >
+
+
+          <!-- CABEÇALHO -->
+
+          <div class="cabecalho_formulario">
+
+            <h2>
+              Bem-vindo
+            </h2>
+
+            <p>
+              Entre na sua conta para acessar seus projetos e continuar seu trabalho.
+            </p>
+
+          </div>
+
+
+          <!-- E-MAIL -->
+
+          <div class="grupo_campo">
+
+            <label for="emailLogin">
+              E-mail
+            </label>
+
+
+            <div class="campo_login">
+
+
+              <span class="icone_campo">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+
+                  <path
+                    d="M4 6.5L12 12.5L20 6.5"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+
+                  <rect
+                    x="3.5"
+                    y="5"
+                    width="17"
+                    height="14"
+                    rx="3"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                </svg>
+
+              </span>
+
+
+              <input
+                type="email"
+                id="emailLogin"
+                name="email"
+                placeholder="Digite seu e-mail"
+                autocomplete="email"
+                required
+              >
+
+
+            </div>
+
+          </div>
+
+
+          <!-- SENHA -->
+
+          <div class="grupo_campo">
+
+            <label for="senhaLogin">
+              Senha
+            </label>
+
+
+            <div class="campo_login campo_senha">
+
+
+              <span class="icone_campo">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+
+                  <rect
+                    x="5"
+                    y="10"
+                    width="14"
+                    height="10"
+                    rx="2.5"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                  <path
+                    d="M8 10V7.5C8 5.29 9.79 3.5 12 3.5C14.21 3.5 16 5.29 16 7.5V10"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                  />
+
+                </svg>
+
+              </span>
+
+
+              <input
+                type="password"
+                id="senhaLogin"
+                name="senha"
+                placeholder="Digite sua senha"
+                autocomplete="current-password"
+                required
+              >
+
+
+              <button
+                type="button"
+                class="botao_mostrar_senha"
+                id="botaoMostrarSenha"
+                aria-label="Mostrar senha"
+                title="Mostrar senha"
+              >
+
+                <svg
+                  id="iconeMostrarSenha"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+
+                  <path
+                    d="M2.5 12C4.6 8.3 7.8 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C19.4 15.7 16.2 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12Z"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="2.7"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                </svg>
+
+              </button>
+
+
+            </div>
+
+          </div>
+
+
+          <!-- ESQUECEU SENHA -->
+
+          <div class="linha_auxiliar">
+
+            <a
+              href="recuperar-senha.html"
+              class="link_esqueci_senha"
+              id="linkEsqueciSenha"
+            >
+              Esqueceu sua senha?
+            </a>
+
+          </div>
+
+
+          <!-- BOTÃO ENTRAR -->
+
+          <button
+            type="submit"
+            class="botao_entrar"
+            id="botaoEntrar"
+          >
+
+
+            <span
+              class="carregando_login"
+              id="carregandoLogin"
+            ></span>
+
+
+            <svg
+              class="icone_entrar"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+
+              <path
+                d="M5 12H19"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M14 7L19 12L14 17"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+
+            </svg>
+
+
+            <span id="textoBotaoEntrar">
+              Entrar
+            </span>
+
+
+          </button>
+
+
+          <!-- MENSAGEM -->
+
+          <div
+            class="mensagem_login"
+            id="mensagemLogin"
+            role="status"
+            aria-live="polite"
+          ></div>
+
+
+          <!-- DIVISOR -->
+
+          <div class="divisor_login">
+
+            <span>
+              ou
+            </span>
+
+          </div>
+
+
+          <!-- CADASTRO -->
+
+          <div class="area_cadastro">
+
+            <p>
+              Ainda não possui uma conta?
+            </p>
+
+
+            <a
+              href="cadastro.html"
+              class="botao_cadastro"
+              id="botaoCadastro"
+            >
+              Criar uma conta
+            </a>
+
+          </div>
+
+
+        </form>
+
+
+      </div>
+
+
+    </section>
+
+
+  </main>
+
+
+  <!-- =========================================================
+       SUPABASE
+       ========================================================= -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+
+  <!-- =========================================================
+       CONFIGURAÇÃO DO SUPABASE
+       ========================================================= -->
+
+  <script
+    src="supabase.js"
+  ></script>
+
+
+  <!-- =========================================================
+       LÓGICA DO LOGIN
+       ========================================================= -->
+
+  <script
+    src="login.js"
+  ></script>
+
+
+</body>
+
+</html>

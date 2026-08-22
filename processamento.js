@@ -556,15 +556,16 @@ function restaurarUltimaSessaoProcessamento() {
           );
 
         const idProjetoImagem =
-          Number(
-            estadoAutosave.projetoId
-          );
+          estadoAutosave.projetoId === null ||
+          estadoAutosave.projetoId === undefined
+            ? ""
+            : String(
+                estadoAutosave.projetoId
+              ).trim();
 
         itemAtual.projetoSalvamentoAutomaticoId =
-          Number.isInteger(idProjetoImagem) &&
-          idProjetoImagem > 0
-            ? idProjetoImagem
-            : null;
+          idProjetoImagem ||
+          null;
 
         itemAtual.projetoSalvamentoAutomaticoNome =
           estadoAutosave.projetoNome
@@ -881,84 +882,201 @@ function configurarInterfaceCopiarColarFluxo() {
 }
 
 
-// Adiciona um novo projeto à store "projects"
-function adicionarProjetoAoBanco(db, projeto) {
+// Converte o formato retornado pelo Supabase para o formato
+// que o restante do processamento.js já utiliza internamente.
+function normalizarProjetoSupabaseParaProcessamento(projeto) {
 
-  return new Promise((resolve, reject) => {
+  if (!projeto) {
 
-    const transaction = db.transaction("projects", "readwrite");
+    return null;
 
-    const store = transaction.objectStore("projects");
+  }
 
-    const request = store.add(projeto);
 
-    request.onsuccess = function() {
+  const pipeline =
+    Array.isArray(projeto.fluxograma)
+      ? projeto.fluxograma
+      : (
+          Array.isArray(projeto.pipelineFerramentas)
+            ? projeto.pipelineFerramentas
+            : (
+                Array.isArray(projeto.pipeline)
+                  ? projeto.pipeline
+                  : []
+              )
+        );
 
-      resolve(request.result);
 
-    };
+  return {
 
-    request.onerror = function() {
+    ...projeto,
 
-      reject(request.error);
+    pipelineFerramentas:
+      clonarPipelineParaProjeto(pipeline),
 
-    };
+    quantidadeEtapas:
+      pipeline.length,
 
-  });
+    createdAt:
+      projeto.criado_em ||
+      projeto.createdAt ||
+      null,
 
-}
+    updatedAt:
+      projeto.atualizado_em ||
+      projeto.updatedAt ||
+      projeto.criado_em ||
+      projeto.createdAt ||
+      null
 
-// Atualiza um projeto já existente sem criar outro card na aba Projetos
-function atualizarProjetoNoBanco(db, projeto) {
-
-  return new Promise((resolve, reject) => {
-
-    const transaction = db.transaction("projects", "readwrite");
-
-    const store = transaction.objectStore("projects");
-
-    const request = store.put(projeto);
-
-    request.onsuccess = function() {
-
-      resolve(request.result);
-
-    };
-
-    request.onerror = function() {
-
-      reject(request.error);
-
-    };
-
-  });
+  };
 
 }
 
-// Busca um projeto salvo pelo ID
-function getProjetoSalvoPorId(db, idProjeto) {
 
-  return new Promise((resolve, reject) => {
+// Salva um novo projeto no Supabase.
+// O parâmetro db é mantido apenas para preservar as chamadas
+// já existentes neste arquivo sem alterar outras partes do sistema.
+async function adicionarProjetoAoBanco(db, projeto) {
 
-    const transaction = db.transaction("projects", "readonly");
+  if (
+    !window.SupabaseAplicacao ||
+    typeof window.SupabaseAplicacao.criarProjeto !== "function"
+  ) {
 
-    const store = transaction.objectStore("projects");
+    throw new Error(
+      "A integração com o Supabase não está disponível."
+    );
 
-    const request = store.get(idProjeto);
+  }
 
-    request.onsuccess = function() {
 
-      resolve(request.result);
+  const pipeline =
+    projeto &&
+    Array.isArray(projeto.pipelineFerramentas)
+      ? projeto.pipelineFerramentas
+      : [];
 
-    };
 
-    request.onerror = function() {
+  const projetoSalvo =
+    await window.SupabaseAplicacao.criarProjeto(
+      projeto && projeto.nome
+        ? projeto.nome
+        : "Projeto sem nome",
+      clonarPipelineParaProjeto(pipeline)
+    );
 
-      reject(request.error);
 
-    };
+  if (
+    !projetoSalvo ||
+    !projetoSalvo.id
+  ) {
 
-  });
+    throw new Error(
+      "O Supabase não retornou o ID do projeto salvo."
+    );
+
+  }
+
+
+  return String(projetoSalvo.id);
+
+}
+
+
+// Atualiza um projeto já existente no Supabase.
+async function atualizarProjetoNoBanco(db, projeto) {
+
+  if (
+    !window.SupabaseAplicacao ||
+    typeof window.SupabaseAplicacao.atualizarProjeto !== "function"
+  ) {
+
+    throw new Error(
+      "A integração com o Supabase não está disponível."
+    );
+
+  }
+
+
+  if (
+    !projeto ||
+    !projeto.id
+  ) {
+
+    throw new Error(
+      "ID do projeto não informado."
+    );
+
+  }
+
+
+  const pipeline =
+    Array.isArray(projeto.pipelineFerramentas)
+      ? projeto.pipelineFerramentas
+      : [];
+
+
+  const projetoAtualizado =
+    await window.SupabaseAplicacao.atualizarProjeto(
+      String(projeto.id),
+      {
+        nome:
+          projeto.nome ||
+          "Projeto sem nome",
+
+        fluxograma:
+          clonarPipelineParaProjeto(pipeline)
+      }
+    );
+
+
+  return projetoAtualizado &&
+    projetoAtualizado.id
+      ? String(projetoAtualizado.id)
+      : String(projeto.id);
+
+}
+
+
+// Busca um projeto salvo pelo ID no Supabase.
+async function getProjetoSalvoPorId(db, idProjeto) {
+
+  const id =
+    idProjeto === null ||
+    idProjeto === undefined
+      ? ""
+      : String(idProjeto).trim();
+
+
+  if (!id) {
+
+    return null;
+
+  }
+
+
+  if (
+    !window.SupabaseAplicacao ||
+    typeof window.SupabaseAplicacao.buscarProjetoPorId !== "function"
+  ) {
+
+    throw new Error(
+      "A integração com o Supabase não está disponível."
+    );
+
+  }
+
+
+  const projeto =
+    await window.SupabaseAplicacao.buscarProjetoPorId(
+      id
+    );
+
+
+  return normalizarProjetoSupabaseParaProcessamento(
+    projeto
+  );
 
 }
 
@@ -1098,16 +1216,17 @@ function garantirEstadoSalvamentoAutomaticoImagem(item) {
 
 
   const idProjeto =
-    Number(
-      item.projetoSalvamentoAutomaticoId
-    );
+    item.projetoSalvamentoAutomaticoId === null ||
+    item.projetoSalvamentoAutomaticoId === undefined
+      ? ""
+      : String(
+          item.projetoSalvamentoAutomaticoId
+        ).trim();
 
 
   item.projetoSalvamentoAutomaticoId =
-    Number.isInteger(idProjeto) &&
-    idProjeto > 0
-      ? idProjeto
-      : null;
+    idProjeto ||
+    null;
 
 
   item.projetoSalvamentoAutomaticoNome =
@@ -1194,16 +1313,16 @@ function definirSalvamentoAutomaticoImagem(
   }
 
 
-  const idNumerico =
-    Number(
-      idProjeto
-    );
+  const id =
+    idProjeto === null ||
+    idProjeto === undefined
+      ? ""
+      : String(
+          idProjeto
+        ).trim();
 
 
-  if (
-    !Number.isInteger(idNumerico) ||
-    idNumerico <= 0
-  ) {
+  if (!id) {
 
     return false;
 
@@ -1217,7 +1336,7 @@ function definirSalvamentoAutomaticoImagem(
     true;
 
   item.projetoSalvamentoAutomaticoId =
-    idNumerico;
+    id;
 
   item.projetoSalvamentoAutomaticoNome =
     nomeProjeto
@@ -1531,11 +1650,13 @@ async function salvarFluxogramaAutomaticamenteSeAtivo(
       function(outroItem) {
 
         if (
-          Number(
-            outroItem.projetoSalvamentoAutomaticoId
+          String(
+            outroItem.projetoSalvamentoAutomaticoId ||
+            ""
           ) ===
-          Number(
-            projetoAtualizado.id
+          String(
+            projetoAtualizado.id ||
+            ""
           )
         ) {
 
@@ -2743,9 +2864,12 @@ async function restaurarProjetoSalvoSeNecessario() {
   }
 
   const idProjeto =
-    Number(localStorage.getItem("projetoAtualId"));
+    String(
+      localStorage.getItem("projetoAtualId") ||
+      ""
+    ).trim();
 
-  if (!Number.isInteger(idProjeto) || idProjeto <= 0) {
+  if (!idProjeto) {
 
     localStorage.removeItem("abrirProjetoSalvo");
 

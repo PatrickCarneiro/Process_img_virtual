@@ -9,6 +9,9 @@
 // =============================================================
 // CONFIGURAÇÃO DO BANCO DE DADOS
 // =============================================================
+// O IndexedDB continua sendo usado somente para as imagens
+// selecionadas para processamento e para a lista de recentes.
+// Os projetos/fluxogramas agora são carregados do Supabase.
 
 const DB_NAME = "MedicalImagesDB";
 const DB_VERSION = 7;
@@ -41,7 +44,7 @@ const botaoConfirmarExclusaoProjeto = document.getElementById("botaoConfirmarExc
 let projetoAguardandoImagens = null;
 
 // Projeto que está aguardando confirmação no modal de exclusão.
-// Ele só é removido do IndexedDB após o usuário clicar em "Excluir".
+// Ele só é removido do Supabase após o usuário clicar em "Excluir".
 let projetoAguardandoExclusao = null;
 
 // Lista completa dos projetos carregados do banco.
@@ -203,100 +206,71 @@ function openDatabase() {
 // =============================================================
 
 
-// Busca todos os projetos
-function getProjetos(db) {
+// Converte o formato do Supabase para o formato já usado pela página.
+function normalizarProjetoSupabase(projeto) {
 
-  return new Promise((resolve, reject) => {
+  if (!projeto) {
+    return null;
+  }
 
-    const transaction =
-      db.transaction(
-        "projects",
-        "readonly"
-      );
+  const fluxograma =
+    Array.isArray(projeto.fluxograma)
+      ? projeto.fluxograma
+      : [];
 
-
-    const store =
-      transaction.objectStore(
-        "projects"
-      );
-
-
-    const request =
-      store.getAll();
-
-
-    request.onsuccess =
-      function() {
-
-        resolve(
-          request.result
-        );
-
-      };
-
-
-    request.onerror =
-      function() {
-
-        reject(
-          request.error
-        );
-
-      };
-
-  });
-
+  return {
+    ...projeto,
+    pipelineFerramentas: fluxograma,
+    quantidadeEtapas: fluxograma.length,
+    createdAt: projeto.criado_em || null,
+    updatedAt: projeto.atualizado_em || projeto.criado_em || null
+  };
 }
 
 
-// Busca um projeto pelo ID
-function getProjetoPorId(
-  db,
-  idProjeto
-) {
+// Busca somente os projetos do usuário autenticado.
+async function getProjetos() {
 
-  return new Promise((resolve, reject) => {
+  if (
+    !window.SupabaseAplicacao ||
+    typeof window.SupabaseAplicacao.listarProjetos !== "function"
+  ) {
 
-    const transaction =
-      db.transaction(
-        "projects",
-        "readonly"
-      );
+    throw new Error(
+      "A integração com o Supabase não foi carregada."
+    );
+  }
 
+  const projetos =
+    await window.SupabaseAplicacao.listarProjetos();
 
-    const store =
-      transaction.objectStore(
-        "projects"
-      );
-
-
-    const request =
-      store.get(
-        idProjeto
-      );
+  return (projetos || [])
+    .map(normalizarProjetoSupabase)
+    .filter(Boolean);
+}
 
 
-    request.onsuccess =
-      function() {
+// Busca um projeto do usuário autenticado pelo ID.
+async function getProjetoPorId(idProjeto) {
 
-        resolve(
-          request.result
-        );
+  if (
+    !window.SupabaseAplicacao ||
+    typeof window.SupabaseAplicacao.buscarProjetoPorId !== "function"
+  ) {
 
-      };
+    throw new Error(
+      "A integração com o Supabase não foi carregada."
+    );
+  }
 
+  const projeto =
+    await window.SupabaseAplicacao.buscarProjetoPorId(
+      idProjeto
+    );
 
-    request.onerror =
-      function() {
-
-        reject(
-          request.error
-        );
-
-      };
-
-  });
-
+  return normalizarProjetoSupabase(
+    projeto
+  );
 }
 
 
@@ -399,52 +373,22 @@ function clearStore(
 }
 
 
-// Exclui um projeto
-function excluirProjetoBanco(
-  db,
-  idProjeto
-) {
+// Exclui um projeto do Supabase.
+async function excluirProjetoBanco(idProjeto) {
 
-  return new Promise((resolve, reject) => {
+  if (
+    !window.SupabaseAplicacao ||
+    typeof window.SupabaseAplicacao.excluirProjeto !== "function"
+  ) {
 
-    const transaction =
-      db.transaction(
-        "projects",
-        "readwrite"
-      );
+    throw new Error(
+      "A integração com o Supabase não foi carregada."
+    );
+  }
 
-
-    const store =
-      transaction.objectStore(
-        "projects"
-      );
-
-
-    const request =
-      store.delete(
-        idProjeto
-      );
-
-
-    request.onsuccess =
-      function() {
-
-        resolve();
-
-      };
-
-
-    request.onerror =
-      function() {
-
-        reject(
-          request.error
-        );
-
-      };
-
-  });
-
+  await window.SupabaseAplicacao.excluirProjeto(
+    idProjeto
+  );
 }
 
 
@@ -788,18 +732,10 @@ async function abrirProjeto(
 
   try {
 
-    const db =
-      await openDatabase();
-
-
     const projeto =
       await getProjetoPorId(
-        db,
         idProjeto
       );
-
-
-    db.close();
 
 
     if (!projeto) {
@@ -1156,23 +1092,15 @@ async function confirmarExclusaoProjeto() {
   };
 
 
-  // Fecha o modal antes de iniciar a operação no IndexedDB.
+  // Fecha o modal antes de iniciar a exclusão no Supabase.
   cancelarExclusaoProjeto();
 
 
   try {
 
-    const db =
-      await openDatabase();
-
-
     await excluirProjetoBanco(
-      db,
       projetoParaExcluir.id
     );
-
-
-    db.close();
 
 
     await carregarProjetos();
@@ -1888,17 +1816,8 @@ async function carregarProjetos() {
       "Carregando projetos...";
 
 
-    const db =
-      await openDatabase();
-
-
     const projetos =
-      await getProjetos(
-        db
-      );
-
-
-    db.close();
+      await getProjetos();
 
 
     listaProjetos.innerHTML =

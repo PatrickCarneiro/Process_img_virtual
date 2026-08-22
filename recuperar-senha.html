@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Recuperar senha</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <style>
+
+    /* Reset */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      color: white;
+
+      background:
+        linear-gradient(
+          135deg,
+          #0b1d3a 0%,
+          #071429 45%,
+          #050c1a 100%
+        );
+
+      overflow-x: hidden;
+    }
+
+    button,
+    input {
+      font-family:
+        'Poppins',
+        sans-serif;
+    }
+
+    button {
+      border: none;
+    }
+
+
+    /* Fundo */
+
+    .fundo_recuperacao {
+      position: fixed;
+
+      inset: 0;
+
+      overflow: hidden;
+
+      pointer-events: none;
+
+      z-index: 0;
+    }
+
+    .luz_fundo {
+      position: absolute;
+
+      border-radius: 50%;
+
+      filter: blur(12px);
+
+      opacity: 0.75;
+    }
+
+    .luz_fundo.um {
+      width: 540px;
+      height: 540px;
+
+      left: -200px;
+      top: -210px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.19),
+          rgba(192,132,252,0.05) 50%,
+          transparent 73%
+        );
+    }
+
+    .luz_fundo.dois {
+      width: 650px;
+      height: 650px;
+
+      right: -270px;
+      bottom: -330px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.18),
+          rgba(126,87,194,0.05) 50%,
+          transparent 74%
+        );
+    }
+
+    .grade_fundo {
+      position: absolute;
+
+      inset: 0;
+
+      opacity: 0.12;
+
+      background-image:
+        linear-gradient(
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        );
+
+      background-size:
+        48px 48px;
+
+      mask-image:
+        linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.8),
+          transparent
+        );
+    }
+
+
+    /* Página */
+
+    .pagina_recuperacao {
+      position: relative;
+
+      z-index: 1;
+
+      width: 100%;
+
+      min-height: 100vh;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 32px;
+    }
+
+    .container_recuperacao {
+      width: min(
+        980px,
+        100%
+      );
+
+      min-height: 600px;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(0, 1fr)
+        minmax(380px, 0.82fr);
+
+      background:
+        rgba(8,18,37,0.82);
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 30px;
+
+      overflow: hidden;
+
+      box-shadow:
+        0 30px 90px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.025);
+
+      backdrop-filter:
+        blur(16px);
+    }
+
+
+    /* Apresentação */
+
+    .area_apresentacao {
+      position: relative;
+
+      padding:
+        56px 54px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      justify-content: space-between;
+
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.11),
+          rgba(10,20,40,0.20) 44%,
+          rgba(10,20,40,0.08)
+        );
+    }
+
+    .area_apresentacao::before {
+      content: "";
+
+      position: absolute;
+
+      width: 470px;
+      height: 470px;
+
+      right: -240px;
+      top: -220px;
+
+      border-radius: 50%;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.20),
+          transparent 68%
+        );
+    }
+
+    .area_apresentacao::after {
+      content: "";
+
+      position: absolute;
+
+      width: 330px;
+      height: 330px;
+
+      left: -170px;
+      bottom: -170px;
+
+      border-radius: 50%;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.14),
+          transparent 70%
+        );
+    }
+
+
+    /* Marca */
+
+    .marca {
+      position: relative;
+
+      z-index: 1;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 13px;
+    }
+
+    .simbolo_marca {
+      width: 44px;
+      height: 44px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 13px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.28),
+          rgba(126,87,194,0.14)
+        );
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      box-shadow:
+        0 10px 28px rgba(0,0,0,0.20),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .simbolo_marca svg {
+      width: 23px;
+      height: 23px;
+    }
+
+    .nome_marca {
+      display: flex;
+
+      flex-direction: column;
+
+      line-height: 1.15;
+    }
+
+    .nome_marca strong {
+      font-size: 16px;
+
+      font-weight: 600;
+    }
+
+    .nome_marca span {
+      margin-top: 4px;
+
+      font-size: 10px;
+
+      letter-spacing: 1.5px;
+
+      text-transform: uppercase;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+
+    /* Texto */
+
+    .texto_apresentacao {
+      position: relative;
+
+      z-index: 1;
+
+      margin:
+        55px 0;
+    }
+
+    .etiqueta {
+      width: fit-content;
+
+      margin-bottom: 18px;
+
+      padding:
+        7px 12px;
+
+      border-radius: 999px;
+
+      font-size: 11px;
+
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.10);
+
+      border:
+        1px solid rgba(192,132,252,0.26);
+    }
+
+    .texto_apresentacao h1 {
+      max-width: 440px;
+
+      font-size:
+        clamp(
+          36px,
+          4vw,
+          51px
+        );
+
+      font-weight: 600;
+
+      line-height: 1.08;
+
+      letter-spacing: -1.5px;
+    }
+
+    .texto_apresentacao h1 span {
+      color:
+        #c084fc;
+    }
+
+    .texto_apresentacao p {
+      max-width: 430px;
+
+      margin-top: 20px;
+
+      font-size: 13px;
+
+      line-height: 1.8;
+
+      font-weight: 300;
+
+      color:
+        rgba(255,255,255,0.58);
+    }
+
+
+    /* Passos */
+
+    .passos_recuperacao {
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 11px;
+
+      margin-top: 29px;
+    }
+
+    .passo_recuperacao {
+      display: flex;
+
+      align-items: center;
+
+      gap: 11px;
+
+      font-size: 11px;
+
+      color:
+        rgba(255,255,255,0.65);
+    }
+
+    .numero_passo {
+      width: 23px;
+      height: 23px;
+
+      flex-shrink: 0;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 8px;
+
+      font-size: 9px;
+
+      font-weight: 600;
+
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.09);
+
+      border:
+        1px solid rgba(192,132,252,0.20);
+    }
+
+    .rodape_apresentacao {
+      position: relative;
+
+      z-index: 1;
+
+      font-size: 10px;
+
+      color:
+        rgba(255,255,255,0.30);
+    }
+
+
+    /* Formulário */
+
+    .area_formulario {
+      min-width: 0;
+
+      padding:
+        56px 48px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      background:
+        rgba(5,13,28,0.55);
+
+      border-left:
+        1px solid rgba(255,255,255,0.06);
+    }
+
+    .conteudo_formulario {
+      width: 100%;
+
+      max-width: 380px;
+    }
+
+    .formulario_recuperacao,
+    .formulario_nova_senha {
+      width: 100%;
+    }
+
+    .formulario_nova_senha {
+      display: none;
+    }
+
+    .formulario_nova_senha.ativo {
+      display: block;
+    }
+
+    .formulario_recuperacao.oculto {
+      display: none;
+    }
+
+
+    /* Ícone */
+
+    .icone_recuperacao {
+      width: 56px;
+      height: 56px;
+
+      margin-bottom: 22px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 17px;
+
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.09);
+
+      border:
+        1px solid rgba(192,132,252,0.24);
+
+      box-shadow:
+        0 12px 28px rgba(0,0,0,0.16);
+    }
+
+    .icone_recuperacao svg {
+      width: 27px;
+      height: 27px;
+    }
+
+
+    /* Cabeçalho */
+
+    .cabecalho_formulario {
+      margin-bottom: 29px;
+    }
+
+    .cabecalho_formulario h2 {
+      font-size: 27px;
+
+      font-weight: 600;
+
+      letter-spacing: -0.5px;
+    }
+
+    .cabecalho_formulario p {
+      margin-top: 8px;
+
+      font-size: 11px;
+
+      line-height: 1.7;
+
+      color:
+        rgba(255,255,255,0.45);
+    }
+
+
+    /* Campos */
+
+    .grupo_campo {
+      margin-bottom: 18px;
+    }
+
+    .grupo_campo label {
+      display: block;
+
+      margin-bottom: 8px;
+
+      font-size: 10px;
+
+      font-weight: 500;
+
+      color:
+        rgba(255,255,255,0.68);
+    }
+
+    .campo_recuperacao {
+      position: relative;
+
+      width: 100%;
+    }
+
+    .campo_recuperacao input {
+      width: 100%;
+
+      height: 50px;
+
+      padding:
+        0 14px 0 44px;
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 13px;
+
+      outline: none;
+
+      font-size: 11px;
+
+      color: white;
+
+      background:
+        rgba(255,255,255,0.043);
+
+      transition:
+        border-color 0.20s ease,
+        background 0.20s ease,
+        box-shadow 0.20s ease;
+    }
+
+    .campo_recuperacao input:hover {
+      border-color:
+        rgba(192,132,252,0.25);
+    }
+
+    .campo_recuperacao input:focus {
+      border-color:
+        rgba(192,132,252,0.64);
+
+      background:
+        rgba(192,132,252,0.055);
+
+      box-shadow:
+        0 0 0 3px rgba(192,132,252,0.07);
+    }
+
+    .campo_recuperacao input::placeholder {
+      color:
+        rgba(255,255,255,0.24);
+    }
+
+    .campo_recuperacao.campo_senha input {
+      padding-right: 47px;
+    }
+
+    .icone_campo {
+      position: absolute;
+
+      left: 15px;
+      top: 50%;
+
+      width: 17px;
+      height: 17px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      color:
+        rgba(255,255,255,0.40);
+
+      pointer-events: none;
+    }
+
+    .icone_campo svg {
+      width: 17px;
+      height: 17px;
+    }
+
+
+    /* Mostrar senha */
+
+    .botao_mostrar_senha {
+      position: absolute;
+
+      right: 8px;
+      top: 50%;
+
+      width: 33px;
+      height: 33px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 8px;
+
+      color:
+        rgba(255,255,255,0.40);
+
+      background:
+        transparent;
+
+      cursor: pointer;
+
+      transition:
+        color 0.2s ease,
+        background 0.2s ease;
+    }
+
+    .botao_mostrar_senha:hover {
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.09);
+    }
+
+    .botao_mostrar_senha svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .informacao_senha {
+      margin-top: 6px;
+
+      font-size: 8px;
+
+      color:
+        rgba(255,255,255,0.31);
+    }
+
+
+    /* Botões */
+
+    .botao_principal {
+      width: 100%;
+
+      height: 51px;
+
+      margin-top: 4px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      gap: 9px;
+
+      border-radius: 13px;
+
+      color: white;
+
+      font-size: 11px;
+
+      font-weight: 600;
+
+      background:
+        linear-gradient(
+          135deg,
+          #a855f7,
+          #8b5cf6
+        );
+
+      cursor: pointer;
+
+      box-shadow:
+        0 12px 28px rgba(139,92,246,0.23);
+
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
+    }
+
+    .botao_principal:hover {
+      transform:
+        translateY(-1px);
+
+      filter:
+        brightness(1.08);
+
+      box-shadow:
+        0 15px 34px rgba(139,92,246,0.30);
+    }
+
+    .botao_principal:disabled {
+      opacity: 0.60;
+
+      cursor: wait;
+
+      transform: none;
+
+      filter: none;
+    }
+
+    .botao_principal svg {
+      width: 16px;
+      height: 16px;
+    }
+
+
+    /* Carregamento */
+
+    .carregando {
+      width: 17px;
+      height: 17px;
+
+      display: none;
+
+      border:
+        2px solid rgba(255,255,255,0.32);
+
+      border-top-color:
+        white;
+
+      border-radius: 50%;
+
+      animation:
+        girar 0.7s linear infinite;
+    }
+
+    .botao_principal.carregando_ativo
+    .carregando {
+      display: block;
+    }
+
+    .botao_principal.carregando_ativo
+    .icone_botao {
+      display: none;
+    }
+
+    @keyframes girar {
+
+      to {
+        transform:
+          rotate(360deg);
+      }
+
+    }
+
+
+    /* Mensagem */
+
+    .mensagem_recuperacao {
+      display: none;
+
+      width: 100%;
+
+      margin-top: 15px;
+
+      padding:
+        11px 13px;
+
+      border-radius: 10px;
+
+      font-size: 10px;
+
+      line-height: 1.6;
+
+      text-align: center;
+    }
+
+    .mensagem_recuperacao.ativo {
+      display: block;
+    }
+
+    .mensagem_recuperacao.erro {
+      color:
+        #fecaca;
+
+      background:
+        rgba(239,68,68,0.08);
+
+      border:
+        1px solid rgba(239,68,68,0.20);
+    }
+
+    .mensagem_recuperacao.sucesso {
+      color:
+        #bbf7d0;
+
+      background:
+        rgba(34,197,94,0.08);
+
+      border:
+        1px solid rgba(34,197,94,0.20);
+    }
+
+    .mensagem_recuperacao.informacao {
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.08);
+
+      border:
+        1px solid rgba(192,132,252,0.20);
+    }
+
+
+    /* Aviso */
+
+    .aviso_email {
+      margin-top: 22px;
+
+      padding:
+        12px 13px;
+
+      display: flex;
+
+      align-items: flex-start;
+
+      gap: 9px;
+
+      border-radius: 11px;
+
+      background:
+        rgba(255,255,255,0.025);
+
+      border:
+        1px solid rgba(255,255,255,0.06);
+    }
+
+    .aviso_email svg {
+      width: 15px;
+      height: 15px;
+
+      margin-top: 1px;
+
+      flex-shrink: 0;
+
+      color:
+        rgba(192,132,252,0.70);
+    }
+
+    .aviso_email p {
+      font-size: 9px;
+
+      line-height: 1.6;
+
+      color:
+        rgba(255,255,255,0.36);
+    }
+
+
+    /* Voltar */
+
+    .area_voltar {
+      margin-top: 21px;
+
+      display: flex;
+
+      justify-content: center;
+    }
+
+    .botao_voltar {
+      display: inline-flex;
+
+      align-items: center;
+
+      gap: 7px;
+
+      color:
+        rgba(255,255,255,0.50);
+
+      font-size: 10px;
+
+      text-decoration: none;
+
+      transition:
+        color 0.2s ease;
+    }
+
+    .botao_voltar:hover {
+      color:
+        #d8b4fe;
+    }
+
+    .botao_voltar svg {
+      width: 14px;
+      height: 14px;
+    }
+
+
+    /* Tela de verificação */
+
+    .estado_verificando {
+      display: none;
+
+      width: 100%;
+
+      text-align: center;
+    }
+
+    .estado_verificando.ativo {
+      display: block;
+    }
+
+    .carregando_grande {
+      width: 36px;
+      height: 36px;
+
+      margin:
+        0 auto 18px;
+
+      border:
+        3px solid rgba(255,255,255,0.12);
+
+      border-top-color:
+        #c084fc;
+
+      border-radius: 50%;
+
+      animation:
+        girar 0.8s linear infinite;
+    }
+
+    .estado_verificando p {
+      font-size: 11px;
+
+      color:
+        rgba(255,255,255,0.45);
+    }
+
+
+    /* Responsividade */
+
+    @media (
+      max-width: 850px
+    ) {
+
+      .pagina_recuperacao {
+        padding:
+          20px;
+      }
+
+      .container_recuperacao {
+        max-width: 540px;
+
+        min-height: auto;
+
+        grid-template-columns:
+          1fr;
+      }
+
+      .area_apresentacao {
+        padding:
+          34px;
+      }
+
+      .texto_apresentacao {
+        margin:
+          36px 0 10px;
+      }
+
+      .texto_apresentacao h1 {
+        font-size:
+          35px;
+      }
+
+      .passos_recuperacao,
+      .rodape_apresentacao {
+        display: none;
+      }
+
+      .area_formulario {
+        padding:
+          42px 34px;
+
+        border-left:
+          none;
+
+        border-top:
+          1px solid rgba(255,255,255,0.06);
+      }
+
+    }
+
+
+    @media (
+      max-width: 500px
+    ) {
+
+      .pagina_recuperacao {
+        padding:
+          10px;
+      }
+
+      .container_recuperacao {
+        border-radius:
+          22px;
+      }
+
+      .area_apresentacao {
+        padding:
+          27px 23px;
+      }
+
+      .texto_apresentacao {
+        margin:
+          28px 0 0;
+      }
+
+      .texto_apresentacao h1 {
+        font-size:
+          29px;
+      }
+
+      .texto_apresentacao p {
+        font-size:
+          11px;
+      }
+
+      .area_formulario {
+        padding:
+          35px 23px 38px;
+      }
+
+      .cabecalho_formulario h2 {
+        font-size:
+          24px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+  <div class="fundo_recuperacao">
+
+    <div class="luz_fundo um"></div>
+
+    <div class="luz_fundo dois"></div>
+
+    <div class="grade_fundo"></div>
+
+  </div>
+
+
+  <main class="pagina_recuperacao">
+
+    <section class="container_recuperacao">
+
+
+      <div class="area_apresentacao">
+
+        <div class="marca">
+
+          <div class="simbolo_marca">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+
+              <path
+                d="M4 17V7"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M8 14V10"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M12 18V6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M16 15V9"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M20 17V7"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+            </svg>
+
+          </div>
+
+
+          <div class="nome_marca">
+
+            <strong>
+              Processamento de Imagens
+            </strong>
+
+            <span>
+              Plataforma de análise
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="texto_apresentacao">
+
+          <div
+            class="etiqueta"
+            id="etiquetaRecuperacao"
+          >
+            Recuperação de acesso
+          </div>
+
+          <h1 id="tituloApresentacao">
+
+            Recupere sua
+
+            <span>
+              senha.
+            </span>
+
+          </h1>
+
+          <p id="textoApresentacao">
+
+            Informe o e-mail utilizado no cadastro.
+            Enviaremos um link para que você possa
+            definir uma nova senha com segurança.
+
+          </p>
+
+
+          <div
+            class="passos_recuperacao"
+            id="passosRecuperacao"
+          >
+
+            <div class="passo_recuperacao">
+
+              <div class="numero_passo">
+                1
+              </div>
+
+              Informe seu e-mail cadastrado
+
+            </div>
+
+            <div class="passo_recuperacao">
+
+              <div class="numero_passo">
+                2
+              </div>
+
+              Acesse o link enviado ao seu e-mail
+
+            </div>
+
+            <div class="passo_recuperacao">
+
+              <div class="numero_passo">
+                3
+              </div>
+
+              Crie uma nova senha
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="rodape_apresentacao">
+          Ambiente de processamento e gerenciamento de imagens
+        </div>
+
+      </div>
+
+
+      <div class="area_formulario">
+
+        <div class="conteudo_formulario">
+
+
+          <div
+            class="estado_verificando"
+            id="estadoVerificando"
+          >
+
+            <div class="carregando_grande"></div>
+
+            <p>
+              Verificando link de recuperação...
+            </p>
+
+          </div>
+
+
+          <form
+            class="formulario_recuperacao"
+            id="formularioRecuperacaoSenha"
+            autocomplete="on"
+          >
+
+            <div class="icone_recuperacao">
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+
+                <rect
+                  x="5"
+                  y="10"
+                  width="14"
+                  height="10"
+                  rx="2.5"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                />
+
+                <path
+                  d="M8 10V7.5C8 5.29 9.79 3.5 12 3.5C14.21 3.5 16 5.29 16 7.5V10"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+
+              </svg>
+
+            </div>
+
+
+            <div class="cabecalho_formulario">
+
+              <h2>
+                Esqueceu sua senha?
+              </h2>
+
+              <p>
+
+                Digite seu e-mail abaixo para receber
+                as instruções de recuperação.
+
+              </p>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="emailRecuperacao">
+                E-mail
+              </label>
+
+              <div class="campo_recuperacao">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <path
+                      d="M4 6.5L12 12.5L20 6.5"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+
+                    <rect
+                      x="3.5"
+                      y="5"
+                      width="17"
+                      height="14"
+                      rx="3"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="email"
+                  id="emailRecuperacao"
+                  name="email"
+                  placeholder="Digite seu e-mail"
+                  autocomplete="email"
+                  required
+                >
+
+              </div>
+
+            </div>
+
+
+            <button
+              type="submit"
+              class="botao_principal"
+              id="botaoEnviarRecuperacao"
+            >
+
+              <span
+                class="carregando"
+                id="carregandoRecuperacao"
+              ></span>
+
+              <svg
+                class="icone_botao"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+
+                <path
+                  d="M4 6.5L12 12.5L20 6.5"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+
+                <rect
+                  x="3.5"
+                  y="5"
+                  width="17"
+                  height="14"
+                  rx="3"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                />
+
+              </svg>
+
+              <span id="textoBotaoEnviarRecuperacao">
+                Enviar link de recuperação
+              </span>
+
+            </button>
+
+
+            <div
+              class="aviso_email"
+              id="avisoEmail"
+            >
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                />
+
+                <path
+                  d="M12 10V16"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+
+                <circle
+                  cx="12"
+                  cy="7"
+                  r="0.8"
+                  fill="currentColor"
+                />
+
+              </svg>
+
+              <p>
+
+                Verifique também a pasta de spam ou lixo eletrônico
+                caso a mensagem não apareça na sua caixa de entrada.
+
+              </p>
+
+            </div>
+
+
+            <div class="area_voltar">
+
+              <a
+                href="login.html"
+                class="botao_voltar"
+              >
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+
+                  <path
+                    d="M19 12H5"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                  />
+
+                  <path
+                    d="M10 7L5 12L10 17"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+
+                </svg>
+
+                Voltar para o login
+
+              </a>
+
+            </div>
+
+          </form>
+
+
+          <form
+            class="formulario_nova_senha"
+            id="formularioNovaSenha"
+            autocomplete="off"
+          >
+
+            <div class="icone_recuperacao">
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+
+                <path
+                  d="M7 10V7.5C7 4.74 9.24 2.5 12 2.5C14.76 2.5 17 4.74 17 7.5V10"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+
+                <rect
+                  x="4.5"
+                  y="10"
+                  width="15"
+                  height="11"
+                  rx="3"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                />
+
+                <path
+                  d="M12 14V17"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                />
+
+              </svg>
+
+            </div>
+
+
+            <div class="cabecalho_formulario">
+
+              <h2>
+                Criar nova senha
+              </h2>
+
+              <p>
+
+                Defina uma nova senha para recuperar
+                o acesso à sua conta.
+
+              </p>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="novaSenha">
+                Nova senha
+              </label>
+
+              <div class="campo_recuperacao campo_senha">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <rect
+                      x="5"
+                      y="10"
+                      width="14"
+                      height="10"
+                      rx="2.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M8 10V7.5C8 5.29 9.79 3.5 12 3.5C14.21 3.5 16 5.29 16 7.5V10"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="password"
+                  id="novaSenha"
+                  name="nova_senha"
+                  placeholder="Digite sua nova senha"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                >
+
+                <button
+                  type="button"
+                  class="botao_mostrar_senha"
+                  id="botaoMostrarNovaSenha"
+                  aria-label="Mostrar senha"
+                  title="Mostrar senha"
+                >
+
+                  <svg
+                    id="iconeMostrarNovaSenha"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <path
+                      d="M2.5 12C4.6 8.3 7.8 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C19.4 15.7 16.2 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12Z"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="2.7"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+
+                  </svg>
+
+                </button>
+
+              </div>
+
+              <div class="informacao_senha">
+                Utilize no mínimo 6 caracteres.
+              </div>
+
+            </div>
+
+
+            <div class="grupo_campo">
+
+              <label for="confirmarNovaSenha">
+                Confirmar nova senha
+              </label>
+
+              <div class="campo_recuperacao campo_senha">
+
+                <span class="icone_campo">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <rect
+                      x="5"
+                      y="10"
+                      width="14"
+                      height="10"
+                      rx="2.5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+
+                    <path
+                      d="M8 10V7.5C8 5.29 9.79 3.5 12 3.5C14.21 3.5 16 5.29 16 7.5V10"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+
+                  </svg>
+
+                </span>
+
+                <input
+                  type="password"
+                  id="confirmarNovaSenha"
+                  name="confirmar_nova_senha"
+                  placeholder="Digite novamente"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                >
+
+                <button
+                  type="button"
+                  class="botao_mostrar_senha"
+                  id="botaoMostrarConfirmarNovaSenha"
+                  aria-label="Mostrar senha"
+                  title="Mostrar senha"
+                >
+
+                  <svg
+                    id="iconeMostrarConfirmarNovaSenha"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+
+                    <path
+                      d="M2.5 12C4.6 8.3 7.8 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C19.4 15.7 16.2 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12Z"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="2.7"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+
+                  </svg>
+
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <button
+              type="submit"
+              class="botao_principal"
+              id="botaoAlterarSenha"
+            >
+
+              <span
+                class="carregando"
+                id="carregandoNovaSenha"
+              ></span>
+
+              <svg
+                class="icone_botao"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+
+                <path
+                  d="M5 12.5L9.2 16.5L19 7"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+
+              </svg>
+
+              <span id="textoBotaoAlterarSenha">
+                Alterar senha
+              </span>
+
+            </button>
+
+
+            <div class="area_voltar">
+
+              <a
+                href="login.html"
+                class="botao_voltar"
+              >
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+
+                  <path
+                    d="M19 12H5"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                  />
+
+                  <path
+                    d="M10 7L5 12L10 17"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+
+                </svg>
+
+                Voltar para o login
+
+              </a>
+
+            </div>
+
+          </form>
+
+
+          <div
+            class="mensagem_recuperacao"
+            id="mensagemRecuperacao"
+            role="status"
+            aria-live="polite"
+          ></div>
+
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <script src="supabase.js"></script>
+
+  <script src="recuperar-senha.js"></script>
+
+</body>
+
+</html>
