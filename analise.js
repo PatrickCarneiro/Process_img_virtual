@@ -54,20 +54,27 @@ async function abrirAnaliseSobDemanda() {
 
   if (!aba || !icone) return;
 
-  aba.classList.toggle("aberta");
+  const vaiAbrir = !aba.classList.contains("aberta");
 
-  if (aba.classList.contains("aberta")) {
+  aba.classList.toggle("aberta", vaiAbrir);
+
+  if (vaiAbrir) {
 
     icone.innerText = "▼ Fechar análises";
 
+    // Impede que a página atrás do painel se mova enquanto a análise está aberta
     document.body.style.overflow = "hidden";
 
-    // Só calcula quando abrir a aba
+    // Só calcula quando abrir a análise
     await atualizarAnaliseDaImagemAtual();
 
-    setTimeout(function() {
-      desenharHistogramaAtual();
-    }, 100);
+    // Espera o novo card responsivo ocupar o tamanho final antes de medir o canvas.
+    // Dois frames garantem que o navegador aplique o layout antes do redesenho.
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        desenharHistogramaAtual();
+      });
+    });
 
   } else {
 
@@ -2072,6 +2079,27 @@ function baixarCSV(conteudo, nomeArquivo) {
 
   URL.revokeObjectURL(url); // Libera memória
 }
+
+// REDESENHA O HISTOGRAMA QUANDO O TAMANHO DA TELA MUDAR
+// Mantém o gráfico ajustado ao novo card responsivo sem alterar os cálculos da análise.
+let frameRedimensionamentoAnalise = null;
+
+window.addEventListener("resize", function() {
+
+  const aba = document.getElementById("abaAnalises");
+
+  if (!aba || !aba.classList.contains("aberta")) return;
+
+  if (frameRedimensionamentoAnalise !== null) {
+    cancelAnimationFrame(frameRedimensionamentoAnalise);
+  }
+
+  frameRedimensionamentoAnalise = requestAnimationFrame(function() {
+    frameRedimensionamentoAnalise = null;
+    desenharHistogramaAtual();
+  });
+
+});
 
 window.addEventListener("DOMContentLoaded", async function() {
 

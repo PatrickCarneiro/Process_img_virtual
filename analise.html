@@ -1,65 +1,242 @@
 <style>
 
-  /* ABA FECHADA DE ANÁLISES */
+  /* =========================================================
+     CARD RESPONSIVO DE ANÁLISES
+     Fechado: fica encaixado no painel de ferramentas.
+     Aberto: mostra a análise em um painel amplo sobre a página.
+     ========================================================= */
+
+  /* CARD FECHADO DE ANÁLISES */
 
   .aba_analises {
-    position: fixed; /* Fixa a aba na tela */
-    left: 250px; /* Começa depois do menu lateral */
-    right: 15px; /* Mantém espaço na direita */
-    bottom: 0; /* Fica presa na parte inferior */
-    height: 55px; /* Altura quando a aba está fechada */
-    background: rgba(10,20,40,0.98);
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+
+    width: 100%;
+    height: auto;
+    min-height: clamp(110px, 16vh, 165px);
+
+    background:
+      linear-gradient(145deg, rgba(192,132,252,0.14), rgba(10,20,40,0.96) 58%),
+      rgba(10,20,40,0.98);
+
     color: white;
-    border: 1px solid rgba(192,132,252,0.35);
-    border-radius: 20px 20px 0 0; /* Arredonda apenas a parte de cima */
-    transition: height 0.3s ease, left 0.3s ease, right 0.3s ease, border-radius 0.3s ease;
-    overflow: hidden; /* Esconde o conteúdo interno quando fechada */
-    z-index: 100; /* Mantém a aba acima dos outros elementos */
+
+    border: 1px solid rgba(192,132,252,0.34);
+    border-radius: 18px;
+
+    overflow: hidden;
+
+    z-index: 1;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.035),
+      0 10px 28px rgba(0,0,0,0.16);
+
+    transition:
+      border-color 0.22s ease,
+      box-shadow 0.22s ease,
+      transform 0.22s ease,
+      background 0.22s ease;
   }
 
-  /* ABA ABERTA DE ANÁLISES */
+  .aba_analises:not(.aberta):hover {
+    transform: translateY(-2px);
+    border-color: rgba(192,132,252,0.58);
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.045),
+      0 14px 34px rgba(0,0,0,0.24),
+      0 0 0 1px rgba(192,132,252,0.05);
+  }
+
+  /* PAINEL ABERTO DE ANÁLISES */
 
   .aba_analises.aberta {
-    left: 0; /* Ocupa desde a esquerda da tela */
-    right: 0; /* Ocupa até a direita da tela */
-    bottom: 0;
-    width: 100vw; /* Ocupa toda a largura */
-    height: 100vh; /* Ocupa toda a altura */
-    border-radius: 0; /* Remove arredondamento em tela cheia */
+    position: fixed;
+
+    left: 18px;
+    right: 18px;
+    top: 18px;
+    bottom: 18px;
+
+    width: auto;
+    height: auto;
+    min-height: 0;
+
+    background:
+      linear-gradient(145deg, rgba(21,39,70,0.98), rgba(7,18,38,0.995));
+
+    border: 1px solid rgba(192,132,252,0.48);
+    border-radius: 24px;
+
+    overflow: hidden;
+
+    z-index: 7000;
+
+    transform: none;
+
+    box-shadow:
+      0 0 0 100vmax rgba(2,7,18,0.76),
+      0 28px 80px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.04);
   }
 
-  /* CABEÇALHO DA ABA DE ANÁLISES */
+  /* CABEÇALHO DO CARD */
 
   .cabecalho_analises {
-    height: 55px; /* Mesma altura da aba fechada */
-    padding: 15px 20px;
-    cursor: pointer; /* Indica que pode clicar */
-    background: rgba(192,132,252,0.15);
+    min-height: clamp(110px, 16vh, 165px);
+
+    padding: 16px 18px;
+
+    cursor: pointer;
+
     display: flex;
-    justify-content: space-between; /* Deixa título à esquerda e ícone à direita */
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
+
+    gap: 9px;
+
+    text-align: center;
+
+    background:
+      radial-gradient(
+        circle at 50% 15%,
+        rgba(192,132,252,0.16),
+        transparent 48%
+      );
+
+    transition:
+      background 0.22s ease,
+      min-height 0.22s ease;
+  }
+
+  .cabecalho_analises::before {
+    content: "▥";
+
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 13px;
+
+    color: #e7d6ff;
+
+    font-size: 25px;
+    line-height: 1;
+
+    background: rgba(192,132,252,0.13);
+    border: 1px solid rgba(192,132,252,0.38);
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 8px 18px rgba(0,0,0,0.16);
+  }
+
+  .cabecalho_analises strong {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  #iconeAnalises {
+    font-size: 12px;
+    color: rgba(255,255,255,0.72);
+
+    padding: 6px 10px;
+
+    border-radius: 999px;
+
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .aba_analises:not(.aberta) .cabecalho_analises:hover {
+    background:
+      radial-gradient(
+        circle at 50% 15%,
+        rgba(192,132,252,0.24),
+        transparent 52%
+      );
+  }
+
+  /* CABEÇALHO QUANDO A ANÁLISE ESTÁ ABERTA */
+
+  .aba_analises.aberta .cabecalho_analises {
+    min-height: 58px;
+    height: 58px;
+
+    padding: 0 20px;
+
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+
+    text-align: left;
+
+    background: rgba(192,132,252,0.10);
+
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .aba_analises.aberta .cabecalho_analises::before {
+    display: none;
+  }
+
+  .aba_analises.aberta .cabecalho_analises strong {
+    font-size: 17px;
+  }
+
+  .aba_analises.aberta #iconeAnalises {
+    color: white;
+
+    background: rgba(192,132,252,0.16);
+    border-color: rgba(192,132,252,0.28);
   }
 
   /* CONTEÚDO INTERNO DAS ANÁLISES */
 
   .conteudo_analises {
-    padding: 20px;
-    display: grid; /* Organiza histograma e métricas em colunas */
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); /* Gráfico maior + métricas à direita */
-    gap: 20px;
+    display: none;
   }
+
   .aba_analises.aberta .conteudo_analises {
-    height: calc(100vh - 55px); /* Altura total menos o cabeçalho */
-    overflow: auto; /* Permite rolagem dentro da aba */
+    height: calc(100% - 58px);
+
+    padding: 16px 18px 18px;
+
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(235px, 320px);
+
+    gap: 16px;
+
+    overflow: hidden;
   }
 
   /* ÁREA DO GRÁFICO DE ANÁLISE */
 
   .area_grafico_analise {
-    display: flex;
-    flex-direction: column; /* Organiza elementos um abaixo do outro */
-    gap: 12px;
-    position: relative; /* Permite posicionar elementos internos */
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+
+    display: grid;
+
+    grid-template-rows:
+      auto
+      minmax(160px, 1fr)
+      auto
+      auto
+      auto;
+
+    gap: 10px;
+
+    position: relative;
   }
 
   /* HISTOGRAMA */
@@ -69,19 +246,29 @@
     font-size: 18px;
     font-weight: bold;
     color: white;
-    margin-top: 4px;
+    margin-top: 2px;
   }
+
   .subtitulo_histograma {
     text-align: center;
     font-size: 13px;
     opacity: 0.75;
     margin-top: -6px;
   }
+
   #histograma {
-    width: 100%; /* Ocupa toda a largura disponível */
-    height: 65vh; /* Altura proporcional à tela */
+    width: 100%;
+    height: 100%;
+    min-height: 160px;
+
     background: black;
-    border-radius: 12px;
+
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.015),
+      0 12px 28px rgba(0,0,0,0.18);
   }
 
   /* CONTROLE DA FAIXA DO HISTOGRAMA */
@@ -90,20 +277,25 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 12px;
+
     padding: 12px;
   }
 
   /* BARRA DA FAIXA DO HISTOGRAMA */
 
   .barra_faixa_histograma {
-    position: relative; /* Referência para alças e faixa selecionada */
+    position: relative;
     width: 100%;
     height: 18px;
+
     background: rgba(255,255,255,0.12);
+
     border-radius: 20px;
+
     cursor: pointer;
   }
 
@@ -111,9 +303,13 @@
 
   .faixa_selecionada_histograma {
     position: absolute;
+
     height: 100%;
+
     background: rgba(192,132,252,0.45);
+
     border-radius: 20px;
+
     left: 0%;
     width: 100%;
   }
@@ -122,23 +318,34 @@
 
   .alca_faixa {
     position: absolute;
+
     top: 50%;
+
     width: 16px;
     height: 30px;
+
     background: #c084fc;
+
     border: 2px solid white;
     border-radius: 8px;
-    transform: translate(-50%, -50%); /* Centraliza a alça na barra */
-    cursor: ew-resize; /* Indica movimento horizontal */
+
+    transform: translate(-50%, -50%);
+
+    cursor: ew-resize;
+
     z-index: 2;
+
     box-shadow: 0 0 10px rgba(192,132,252,0.55);
   }
+
   .alca_faixa.esquerda {
-    left: 0%; /* Posição inicial da alça esquerda */
+    left: 0%;
   }
+
   .alca_faixa.direita {
-    left: 100%; /* Posição inicial da alça direita */
+    left: 100%;
   }
+
   .faixa_histograma {
     text-align: center;
     font-size: 13px;
@@ -148,24 +355,33 @@
   /* BOTÕES DOS CANAIS RGB */
 
   .botoes_canais_rgb {
-    display: none; /* Só aparece quando a imagem é RGB */
+    display: none;
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
   }
+
   .botao_canal {
     padding: 8px 18px;
+
     border: 1px solid rgba(255,255,255,0.18);
     border-radius: 10px;
+
     background: rgba(255,255,255,0.06);
+
     color: white;
+
     cursor: pointer;
+
     font-family: Arial, sans-serif;
+
     transition: 0.3s;
   }
+
   .botao_canal:hover {
     background: rgba(192,132,252,0.25);
   }
+
   .botao_canal.ativo {
     background: rgba(192,132,252,0.45);
     box-shadow: 0 0 10px rgba(192,132,252,0.35);
@@ -184,17 +400,25 @@
 
   .botao_analise {
     padding: 10px 22px;
+
     border: 1px solid rgba(192,132,252,0.45);
     border-radius: 12px;
+
     background: rgba(255,255,255,0.06);
+
     color: white;
+
     cursor: pointer;
+
     font-family: Arial, sans-serif;
+
     transition: 0.3s;
   }
+
   .botao_analise:hover {
     background: rgba(192,132,252,0.25);
   }
+
   .botao_analise.ativo {
     background: rgba(192,132,252,0.45);
     box-shadow: 0 0 10px rgba(192,132,252,0.35);
@@ -203,42 +427,174 @@
   /* TOOLTIP DO HISTOGRAMA */
 
   .tooltip_histograma {
-    position: fixed; /* Permite acompanhar a posição do mouse */
-    display: none; /* Começa escondida */
+    position: fixed;
+
+    display: none;
+
     background: rgba(10,20,40,0.98);
+
     color: white;
+
     border: 1px solid rgba(192,132,252,0.55);
     border-radius: 10px;
+
     padding: 8px 10px;
+
     font-size: 12px;
-    pointer-events: none; /* Não interfere no mouse */
+
+    pointer-events: none;
+
     z-index: 9999;
+
     box-shadow: 0 0 12px rgba(0,0,0,0.45);
+  }
+
+  /* ÁREA DAS MÉTRICAS */
+
+  .aba_analises.aberta .conteudo_analises > div:last-child {
+    min-width: 0;
+    min-height: 0;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    gap: 8px;
   }
 
   /* CARDS DE MÉTRICAS */
 
   .metrica {
-    background: rgba(255,255,255,0.06);
-    padding: 10px;
-    border-radius: 10px;
-    margin-bottom: 8px;
     width: 100%;
     max-width: 100%;
-    overflow: hidden; /* Evita texto sair da caixa */
+
+    margin-bottom: 0;
+
+    padding: 10px;
+
+    background: rgba(255,255,255,0.055);
+
+    border: 1px solid rgba(255,255,255,0.055);
+    border-radius: 10px;
+
+    overflow: hidden;
+
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
   }
 
   /* NOME DO ARQUIVO ATUAL */
 
   #arquivoAtual {
     display: block;
+
     width: 100%;
+
     margin-top: 6px;
-    word-break: break-word; /* Quebra nomes grandes */
-    overflow-wrap: anywhere; /* Permite quebrar em qualquer ponto */
+
+    word-break: break-word;
+    overflow-wrap: anywhere;
     white-space: normal;
+
     color: #c084fc;
+
     font-size: 13px;
+  }
+
+  /* AJUSTES PARA MONITORES COM MENOR ALTURA */
+
+  @media (max-height: 760px) {
+
+    .aba_analises {
+      min-height: clamp(96px, 14vh, 125px);
+    }
+
+    .cabecalho_analises {
+      min-height: clamp(96px, 14vh, 125px);
+      gap: 6px;
+      padding: 12px 14px;
+    }
+
+    .cabecalho_analises::before {
+      width: 36px;
+      height: 36px;
+      font-size: 21px;
+      border-radius: 11px;
+    }
+
+    .aba_analises.aberta {
+      left: 10px;
+      right: 10px;
+      top: 10px;
+      bottom: 10px;
+    }
+
+    .aba_analises.aberta .cabecalho_analises {
+      min-height: 50px;
+      height: 50px;
+    }
+
+    .aba_analises.aberta .conteudo_analises {
+      height: calc(100% - 50px);
+      padding: 10px 12px 12px;
+      gap: 12px;
+    }
+
+    .area_grafico_analise {
+      grid-template-rows:
+        auto
+        minmax(125px, 1fr)
+        auto
+        auto
+        auto;
+
+      gap: 7px;
+    }
+
+    #histograma {
+      min-height: 125px;
+    }
+
+    .titulo_histograma {
+      font-size: 15px;
+    }
+
+    .controle_faixa_histograma {
+      padding: 9px;
+      gap: 6px;
+    }
+
+    .botao_canal,
+    .botao_analise {
+      padding: 7px 13px;
+      font-size: 12px;
+    }
+
+    .metrica {
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+  }
+
+  /* AJUSTES PARA TELAS MAIS ESTREITAS */
+
+  @media (max-width: 900px) {
+
+    .aba_analises.aberta {
+      left: 8px;
+      right: 8px;
+      top: 8px;
+      bottom: 8px;
+    }
+
+    .aba_analises.aberta .conteudo_analises {
+      grid-template-columns: minmax(0, 1fr) minmax(200px, 245px);
+      gap: 10px;
+    }
+
+    .metrica {
+      font-size: 12px;
+      padding: 8px;
+    }
   }
 
 </style>

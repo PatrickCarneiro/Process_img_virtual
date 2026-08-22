@@ -132,7 +132,6 @@
       grid-template-rows: auto auto;
       gap: 15px;
       padding: 15px;
-      padding-bottom: 90px; /* Espaço para a aba de análises */
     }
 
     /* DESIGN DOS PAINÉIS */
@@ -972,6 +971,13 @@
       margin-top: 2px;
     }
 
+    /* ÁREA DA ANÁLISE DENTRO DO PAINEL DE FERRAMENTAS */
+
+    #areaAnalise {
+      width: 100%;
+      margin-top: 14px;
+    }
+
     /* DESIGN DO COMPARATIVO ORIGINAL E PROCESSADA */
 
     .area_imagem_original {
@@ -1330,6 +1336,9 @@
           Sem contabilizar pixels 0
         </label>
       </div>
+
+      <!-- ÁREA DA ANÁLISE -->
+      <div id="areaAnalise"></div>
 
     </div>
 
@@ -1739,10 +1748,6 @@
     </div>
 
   </div>
-
-  <!-- ÁREA DA ABA DE ANÁLISE -->
-
-  <div id="areaAnalise"></div>
 
   <!-- BIBLIOTECA OPENCV -->
 
