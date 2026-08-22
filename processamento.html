@@ -690,6 +690,10 @@
       flex-direction: column;
       align-items: center;
       gap: 8px;
+
+      /* Referência somente para o painel da nova ROI por tamanho. */
+      position: relative;
+      z-index: 55;
     }
 
     .opcoes_recorte {
@@ -709,6 +713,150 @@
       background: rgba(255,255,255,0.055);
       border-color: rgba(192,132,252,0.38);
       font-size: 17px;
+    }
+
+    /* =========================================================
+       ROI QUADRADA DEFINIDA PELO TAMANHO
+       ========================================================= */
+
+    .configuracao_roi_tamanho {
+      display: none;
+
+      position: absolute;
+      left: 50px;
+      top: 0;
+
+      width: 255px;
+
+      padding: 12px;
+
+      border-radius: 12px;
+
+      background:
+        rgba(8,16,32,0.98);
+
+      border:
+        1px solid rgba(192,132,252,0.38);
+
+      box-shadow:
+        0 16px 36px rgba(0,0,0,0.38);
+
+      z-index: 90;
+    }
+
+    .configuracao_roi_tamanho.ativo {
+      display: block;
+    }
+
+    .titulo_roi_tamanho {
+      margin-bottom: 5px;
+
+      color: #ffffff;
+
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .descricao_roi_tamanho {
+      margin-bottom: 10px;
+
+      color:
+        rgba(255,255,255,0.62);
+
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .linha_tamanho_roi {
+      display: flex;
+      align-items: center;
+
+      gap: 7px;
+
+      margin-bottom: 9px;
+    }
+
+    .campo_tamanho_roi {
+      width: 92px;
+      height: 34px;
+
+      padding: 0 9px;
+
+      border-radius: 8px;
+
+      border:
+        1px solid rgba(255,255,255,0.12);
+
+      outline: none;
+
+      background:
+        rgba(255,255,255,0.055);
+
+      color: #ffffff;
+
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    .campo_tamanho_roi:focus {
+      border-color:
+        rgba(192,132,252,0.62);
+
+      box-shadow:
+        0 0 0 2px rgba(192,132,252,0.10);
+    }
+
+    .unidade_tamanho_roi {
+      color:
+        rgba(255,255,255,0.70);
+
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .botao_criar_roi_tamanho {
+      width: 100%;
+      min-height: 34px;
+
+      padding: 8px 12px;
+
+      border-radius: 8px;
+
+      border:
+        1px solid rgba(192,132,252,0.48);
+
+      background:
+        rgba(192,132,252,0.20);
+
+      color: #ffffff;
+
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+
+      cursor: pointer;
+
+      transition:
+        background 0.18s ease,
+        border-color 0.18s ease;
+    }
+
+    .botao_criar_roi_tamanho:hover {
+      background:
+        rgba(192,132,252,0.36);
+
+      border-color:
+        rgba(216,180,254,0.70);
+    }
+
+    .ajuda_roi_tamanho {
+      margin-top: 8px;
+
+      color:
+        rgba(255,255,255,0.52);
+
+      font-size: 10px;
+      line-height: 1.35;
     }
 
     .area_imagem_processada {
@@ -803,11 +951,17 @@
     .controles_brilho_contraste {
       position: relative;
 
-      width: 42px;
+      width: 46px;
 
       display: flex;
       flex-direction: column;
       align-items: center;
+
+      /*
+        Separa visualmente Brilho e Contraste das ferramentas
+        circulares que ficam acima.
+      */
+      margin-top: 22px;
 
       gap: 7px;
     }
@@ -818,16 +972,20 @@
       align-items: center;
       justify-content: center;
 
-      gap: 8px;
+      gap: 10px;
     }
 
     .botao_ajuste_imagem {
-      width: 42px;
-      height: 42px;
+      width: 46px;
+      height: 46px;
 
       padding: 0;
 
-      border-radius: 50%;
+      /*
+        Brilho e Contraste são ferramentas de aplicação,
+        por isso ficam em quadrados arredondados em vez de bolinhas.
+      */
+      border-radius: 10px;
 
       border:
         1px solid rgba(192,132,252,0.55);
@@ -923,7 +1081,7 @@
     }
 
     #painelContraste {
-      top: 50px;
+      top: 56px;
     }
 
     .painel_ajuste_imagem.ativo {
@@ -2131,6 +2289,64 @@
               >
                 ✎
               </button>
+
+              <!-- ROI quadrada com tamanho definido em pixels -->
+              <button
+                class="botao_modo_recorte"
+                id="botaoRecorteRoiTamanho"
+                onclick="ativarRecorteRoiTamanho()"
+                title="ROI quadrada por tamanho"
+              >
+                □
+              </button>
+
+            </div>
+
+            <!-- Configuração da nova ROI quadrada -->
+            <div
+              class="configuracao_roi_tamanho"
+              id="configuracaoRoiTamanho"
+            >
+
+              <div class="titulo_roi_tamanho">
+                ROI quadrada
+              </div>
+
+              <div class="descricao_roi_tamanho">
+                Informe o tamanho da ROI em pixels.
+              </div>
+
+              <div class="linha_tamanho_roi">
+
+                <input
+                  type="number"
+                  class="campo_tamanho_roi"
+                  id="tamanhoRoiQuadrada"
+                  min="1"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="224"
+                  aria-label="Tamanho da ROI quadrada em pixels"
+                >
+
+                <span class="unidade_tamanho_roi">
+                  px × px
+                </span>
+
+              </div>
+
+              <button
+                type="button"
+                class="botao_criar_roi_tamanho"
+                id="botaoCriarRoiTamanho"
+                onclick="criarRoiQuadradaPorTamanho()"
+              >
+                Criar ROI
+              </button>
+
+              <div class="ajuda_roi_tamanho">
+                Após criar, posicione a ROI sobre a região que deseja recortar.
+              </div>
 
             </div>
 
