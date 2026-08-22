@@ -22,12 +22,20 @@ const listaProjetos = document.getElementById("listaProjetos");
 const estadoVazioProjetos = document.getElementById("estadoVazioProjetos");
 const statusProjetos = document.getElementById("statusProjetos");
 
+// Controles de pesquisa e ordenação
+const campoPesquisaProjetos = document.getElementById("campoPesquisaProjetos");
+const ordenacaoProjetos = document.getElementById("ordenacaoProjetos");
+
 
 // =============================================================
 // CONTROLE DO PROJETO QUE ESTÁ AGUARDANDO SELEÇÃO DE IMAGENS
 // =============================================================
 
 let projetoAguardandoImagens = null;
+
+// Lista completa dos projetos carregados do banco.
+// A pesquisa e a ordenação trabalham sobre esta cópia em memória.
+let projetosCarregados = [];
 
 
 // =============================================================
@@ -1398,6 +1406,319 @@ function mostrarListaProjetos() {
 
 
 // =============================================================
+// PESQUISA E ORDENAÇÃO DOS PROJETOS
+// =============================================================
+
+// Normaliza o texto para permitir uma pesquisa mais consistente,
+// ignorando diferenças entre maiúsculas/minúsculas e acentos.
+function normalizarTextoProjeto(texto) {
+
+  return String(
+    texto || ""
+  )
+  .toLocaleLowerCase("pt-BR")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "");
+
+}
+
+
+// Filtra os projetos pelo nome digitado.
+function filtrarProjetosPorNome(
+  projetos,
+  termo
+) {
+
+  const termoNormalizado =
+    normalizarTextoProjeto(
+      termo
+    );
+
+
+  if (!termoNormalizado) {
+
+    return [
+      ...projetos
+    ];
+
+  }
+
+
+  return projetos.filter(
+    function(projeto) {
+
+      const nomeNormalizado =
+        normalizarTextoProjeto(
+          projeto.nome ||
+          "Projeto sem nome"
+        );
+
+
+      return nomeNormalizado.includes(
+        termoNormalizado
+      );
+
+    }
+  );
+
+}
+
+
+// Ordena uma cópia da lista conforme a opção escolhida.
+function ordenarListaProjetos(
+  projetos,
+  criterio
+) {
+
+  const listaOrdenada =
+    [
+      ...projetos
+    ];
+
+
+  listaOrdenada.sort(
+    function(a, b) {
+
+      // -------------------------------------------------------
+      // MAIS ANTIGOS
+      // -------------------------------------------------------
+
+      if (criterio === "antigos") {
+
+        const dataA =
+          a.updatedAt ||
+          a.createdAt ||
+          0;
+
+
+        const dataB =
+          b.updatedAt ||
+          b.createdAt ||
+          0;
+
+
+        return dataA - dataB;
+
+      }
+
+
+      // -------------------------------------------------------
+      // NOME A -> Z
+      // -------------------------------------------------------
+
+      if (criterio === "az") {
+
+        const nomeA =
+          a.nome ||
+          "Projeto sem nome";
+
+
+        const nomeB =
+          b.nome ||
+          "Projeto sem nome";
+
+
+        return String(nomeA).localeCompare(
+          String(nomeB),
+          "pt-BR",
+          {
+            sensitivity: "base"
+          }
+        );
+
+      }
+
+
+      // -------------------------------------------------------
+      // NOME Z -> A
+      // -------------------------------------------------------
+
+      if (criterio === "za") {
+
+        const nomeA =
+          a.nome ||
+          "Projeto sem nome";
+
+
+        const nomeB =
+          b.nome ||
+          "Projeto sem nome";
+
+
+        return String(nomeB).localeCompare(
+          String(nomeA),
+          "pt-BR",
+          {
+            sensitivity: "base"
+          }
+        );
+
+      }
+
+
+      // -------------------------------------------------------
+      // PADRÃO: MAIS RECENTES
+      // -------------------------------------------------------
+
+      const dataA =
+        a.updatedAt ||
+        a.createdAt ||
+        0;
+
+
+      const dataB =
+        b.updatedAt ||
+        b.createdAt ||
+        0;
+
+
+      return dataB - dataA;
+
+    }
+  );
+
+
+  return listaOrdenada;
+
+}
+
+
+// Atualiza os cards exibidos usando, ao mesmo tempo,
+// o texto pesquisado e a forma de ordenação selecionada.
+function atualizarExibicaoProjetos() {
+
+  // Se não existem projetos salvos no banco,
+  // mantém o comportamento original da página.
+  if (
+    !projetosCarregados ||
+    projetosCarregados.length === 0
+  ) {
+
+    mostrarEstadoVazio();
+
+
+    statusProjetos.innerText =
+      "";
+
+
+    return;
+
+  }
+
+
+  const termoPesquisa =
+    campoPesquisaProjetos
+      ? campoPesquisaProjetos.value
+      : "";
+
+
+  const criterioOrdenacao =
+    ordenacaoProjetos
+      ? ordenacaoProjetos.value
+      : "recentes";
+
+
+  const projetosFiltrados =
+    filtrarProjetosPorNome(
+      projetosCarregados,
+      termoPesquisa
+    );
+
+
+  const projetosOrdenados =
+    ordenarListaProjetos(
+      projetosFiltrados,
+      criterioOrdenacao
+    );
+
+
+  listaProjetos.innerHTML =
+    "";
+
+
+  // ---------------------------------------------------------
+  // NENHUM RESULTADO PARA A PESQUISA
+  // ---------------------------------------------------------
+
+  if (
+    projetosOrdenados.length === 0
+  ) {
+
+    estadoVazioProjetos.style.display =
+      "none";
+
+
+    listaProjetos.style.display =
+      "grid";
+
+
+    statusProjetos.innerText =
+      "Nenhum projeto encontrado.";
+
+
+    return;
+
+  }
+
+
+  // ---------------------------------------------------------
+  // MOSTRA OS PROJETOS FILTRADOS E ORDENADOS
+  // ---------------------------------------------------------
+
+  mostrarListaProjetos();
+
+
+  projetosOrdenados.forEach(
+    function(projeto) {
+
+      criarCardProjeto(
+        projeto
+      );
+
+    }
+  );
+
+
+  const quantidadeTotal =
+    projetosCarregados.length;
+
+
+  const quantidadeExibida =
+    projetosOrdenados.length;
+
+
+  const possuiPesquisa =
+    normalizarTextoProjeto(
+      termoPesquisa
+    ).length > 0;
+
+
+  // Sem pesquisa, preserva o texto original da página.
+  if (!possuiPesquisa) {
+
+    statusProjetos.innerText =
+      quantidadeTotal === 1
+        ? "1 projeto salvo."
+        : quantidadeTotal +
+          " projetos salvos.";
+
+
+    return;
+
+  }
+
+
+  // Durante a pesquisa, informa quantos resultados foram encontrados.
+  statusProjetos.innerText =
+    quantidadeExibida === 1
+      ? "1 projeto encontrado."
+      : quantidadeExibida +
+        " projetos encontrados.";
+
+}
+
+
+// =============================================================
 // CARREGAR PROJETOS
 // =============================================================
 
@@ -1426,13 +1747,19 @@ async function carregarProjetos() {
       "";
 
 
+    // Guarda a lista completa para pesquisa e ordenação.
+    projetosCarregados =
+      Array.isArray(projetos)
+        ? projetos
+        : [];
+
+
     // ---------------------------------------------------------
     // NÃO EXISTE PROJETO
     // ---------------------------------------------------------
 
     if (
-      !projetos ||
-      projetos.length === 0
+      projetosCarregados.length === 0
     ) {
 
       mostrarEstadoVazio();
@@ -1448,57 +1775,10 @@ async function carregarProjetos() {
 
 
     // ---------------------------------------------------------
-    // ORDENA DO MAIS RECENTE PARA O MAIS ANTIGO
+    // APLICA PESQUISA E ORDENAÇÃO
     // ---------------------------------------------------------
 
-    projetos.sort(
-      function(a, b) {
-
-        const dataA =
-          a.updatedAt ||
-          a.createdAt ||
-          0;
-
-
-        const dataB =
-          b.updatedAt ||
-          b.createdAt ||
-          0;
-
-
-        return dataB - dataA;
-
-      }
-    );
-
-
-    // ---------------------------------------------------------
-    // MOSTRA OS PROJETOS
-    // ---------------------------------------------------------
-
-    mostrarListaProjetos();
-
-
-    projetos.forEach(
-      function(projeto) {
-
-        criarCardProjeto(
-          projeto
-        );
-
-      }
-    );
-
-
-    const quantidade =
-      projetos.length;
-
-
-    statusProjetos.innerText =
-      quantidade === 1
-        ? "1 projeto salvo."
-        : quantidade +
-          " projetos salvos.";
+    atualizarExibicaoProjetos();
 
 
   } catch (error) {
@@ -1516,6 +1796,40 @@ async function carregarProjetos() {
       "Erro ao carregar os projetos.";
 
   }
+
+}
+
+
+// =============================================================
+// EVENTOS DA PESQUISA E ORDENAÇÃO
+// =============================================================
+
+// Pesquisa em tempo real enquanto o usuário digita.
+if (campoPesquisaProjetos) {
+
+  campoPesquisaProjetos.addEventListener(
+    "input",
+    function() {
+
+      atualizarExibicaoProjetos();
+
+    }
+  );
+
+}
+
+
+// Atualiza a ordem assim que o usuário trocar a opção.
+if (ordenacaoProjetos) {
+
+  ordenacaoProjetos.addEventListener(
+    "change",
+    function() {
+
+      atualizarExibicaoProjetos();
+
+    }
+  );
 
 }
 

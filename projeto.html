@@ -140,6 +140,144 @@
 
 
     /* =========================================================
+       CONTROLES DE PESQUISA E ORDENAÇÃO
+       ========================================================= */
+
+    .controles_projetos {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      flex-shrink: 0;
+    }
+
+    .campo_pesquisa_projetos {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+    }
+
+    .campo_pesquisa_projetos input {
+      width: 100%;
+      height: 42px;
+      padding: 0 14px 0 40px;
+
+      border:
+        1px solid rgba(255,255,255,0.10);
+
+      border-radius: 12px;
+
+      background:
+        rgba(255,255,255,0.05);
+
+      color: white;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      font-size: 13px;
+
+      outline: none;
+
+      transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .campo_pesquisa_projetos input::placeholder {
+      color: rgba(255,255,255,0.45);
+    }
+
+    .campo_pesquisa_projetos input:focus {
+      border-color:
+        rgba(192,132,252,0.65);
+
+      background:
+        rgba(192,132,252,0.08);
+
+      box-shadow:
+        0 0 0 3px rgba(192,132,252,0.08);
+    }
+
+    .icone_pesquisa_projetos {
+      position: absolute;
+
+      left: 14px;
+      top: 50%;
+
+      transform:
+        translateY(-50%);
+
+      pointer-events: none;
+
+      color:
+        rgba(255,255,255,0.55);
+
+      font-size: 15px;
+    }
+
+    .ordenacao_projetos {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .ordenacao_projetos label {
+      font-size: 12px;
+      opacity: 0.65;
+      white-space: nowrap;
+    }
+
+    .ordenacao_projetos select {
+      height: 42px;
+      min-width: 170px;
+
+      padding: 0 34px 0 12px;
+
+      border:
+        1px solid rgba(255,255,255,0.10);
+
+      border-radius: 12px;
+
+      background:
+        rgba(255,255,255,0.05);
+
+      color: white;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      font-size: 12px;
+
+      cursor: pointer;
+      outline: none;
+
+      transition:
+        border-color 0.2s ease,
+        background 0.2s ease;
+    }
+
+    .ordenacao_projetos select:hover,
+    .ordenacao_projetos select:focus {
+      border-color:
+        rgba(192,132,252,0.65);
+
+      background:
+        rgba(192,132,252,0.08);
+    }
+
+    .ordenacao_projetos select option {
+      background: #0b1d3a;
+      color: white;
+    }
+
+
+    /* =========================================================
        ÁREA DOS PROJETOS
        ========================================================= */
 
@@ -527,6 +665,20 @@
         font-size: 36px;
       }
 
+      .controles_projetos {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .ordenacao_projetos {
+        width: 100%;
+      }
+
+      .ordenacao_projetos select {
+        flex: 1;
+        min-width: 0;
+      }
+
     }
 
 
@@ -610,6 +762,60 @@
       <p>
         Acesse os fluxos de processamento que você salvou.
       </p>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         PESQUISA E ORDENAÇÃO DOS PROJETOS
+         ===================================================== -->
+
+    <div class="controles_projetos">
+
+      <!-- Campo para pesquisar projeto pelo nome -->
+      <div class="campo_pesquisa_projetos">
+
+        <span class="icone_pesquisa_projetos">⌕</span>
+
+        <input
+          type="text"
+          id="campoPesquisaProjetos"
+          placeholder="Pesquisar projeto pelo nome..."
+          autocomplete="off"
+        >
+
+      </div>
+
+
+      <!-- Seletor de ordenação -->
+      <div class="ordenacao_projetos">
+
+        <label for="ordenacaoProjetos">
+          Ordenar por:
+        </label>
+
+        <select id="ordenacaoProjetos">
+
+          <option value="recentes">
+            Mais recentes
+          </option>
+
+          <option value="antigos">
+            Mais antigos
+          </option>
+
+          <option value="az">
+            Nome: A → Z
+          </option>
+
+          <option value="za">
+            Nome: Z → A
+          </option>
+
+        </select>
+
+      </div>
 
     </div>
 
