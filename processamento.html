@@ -716,7 +716,7 @@
     }
 
     /* =========================================================
-       ROI QUADRADA DEFINIDA PELO TAMANHO
+       ROI RETANGULAR DEFINIDA PELO TAMANHO
        ========================================================= */
 
     .configuracao_roi_tamanho {
@@ -767,13 +767,28 @@
       line-height: 1.4;
     }
 
-    .linha_tamanho_roi {
+    .grupo_dimensoes_roi {
       display: flex;
+      flex-direction: column;
+
+      gap: 8px;
+
+      margin-bottom: 10px;
+    }
+
+    .linha_tamanho_roi {
+      display: grid;
+      grid-template-columns: 58px 92px auto;
       align-items: center;
 
       gap: 7px;
+    }
 
-      margin-bottom: 9px;
+    .rotulo_dimensao_roi {
+      color:
+        rgba(255,255,255,0.76);
+
+      font-size: 11px;
     }
 
     .campo_tamanho_roi {
@@ -2290,48 +2305,85 @@
                 ✎
               </button>
 
-              <!-- ROI quadrada com tamanho definido em pixels -->
+              <!-- ROI retangular com largura e altura definidas em pixels -->
               <button
                 class="botao_modo_recorte"
                 id="botaoRecorteRoiTamanho"
                 onclick="ativarRecorteRoiTamanho()"
-                title="ROI quadrada por tamanho"
+                title="ROI retangular por tamanho"
               >
                 □
               </button>
 
             </div>
 
-            <!-- Configuração da nova ROI quadrada -->
+            <!-- Configuração da nova ROI retangular -->
             <div
               class="configuracao_roi_tamanho"
               id="configuracaoRoiTamanho"
             >
 
               <div class="titulo_roi_tamanho">
-                ROI quadrada
+                ROI retangular
               </div>
 
               <div class="descricao_roi_tamanho">
-                Informe o tamanho da ROI em pixels.
+                Informe a largura e a altura da ROI em pixels.
               </div>
 
-              <div class="linha_tamanho_roi">
+              <div class="grupo_dimensoes_roi">
 
-                <input
-                  type="number"
-                  class="campo_tamanho_roi"
-                  id="tamanhoRoiQuadrada"
-                  min="1"
-                  step="1"
-                  inputmode="numeric"
-                  placeholder="224"
-                  aria-label="Tamanho da ROI quadrada em pixels"
-                >
+                <div class="linha_tamanho_roi">
 
-                <span class="unidade_tamanho_roi">
-                  px × px
-                </span>
+                  <label
+                    class="rotulo_dimensao_roi"
+                    for="larguraRoiRetangular"
+                  >
+                    Largura
+                  </label>
+
+                  <input
+                    type="number"
+                    class="campo_tamanho_roi"
+                    id="larguraRoiRetangular"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                    placeholder="224"
+                    aria-label="Largura da ROI retangular em pixels"
+                  >
+
+                  <span class="unidade_tamanho_roi">
+                    px
+                  </span>
+
+                </div>
+
+                <div class="linha_tamanho_roi">
+
+                  <label
+                    class="rotulo_dimensao_roi"
+                    for="alturaRoiRetangular"
+                  >
+                    Altura
+                  </label>
+
+                  <input
+                    type="number"
+                    class="campo_tamanho_roi"
+                    id="alturaRoiRetangular"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                    placeholder="128"
+                    aria-label="Altura da ROI retangular em pixels"
+                  >
+
+                  <span class="unidade_tamanho_roi">
+                    px
+                  </span>
+
+                </div>
 
               </div>
 
@@ -2339,13 +2391,13 @@
                 type="button"
                 class="botao_criar_roi_tamanho"
                 id="botaoCriarRoiTamanho"
-                onclick="criarRoiQuadradaPorTamanho()"
+                onclick="criarRoiRetangularPorTamanho()"
               >
                 Criar ROI
               </button>
 
               <div class="ajuda_roi_tamanho">
-                Após criar, posicione a ROI sobre a região que deseja recortar.
+                Após criar, posicione a ROI retangular sobre a região que deseja recortar.
               </div>
 
             </div>

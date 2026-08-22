@@ -81,10 +81,11 @@ const opcoesRecorte = document.getElementById("opcoesRecorte");
 const botaoRecorteRetangular = document.getElementById("botaoRecorteRetangular");
 const botaoRecorteLivre = document.getElementById("botaoRecorteLivre");
 
-// Nova opção: ROI quadrada com tamanho definido em pixels.
+// Nova opção: ROI retangular com largura e altura definidas em pixels.
 const botaoRecorteRoiTamanho = document.getElementById("botaoRecorteRoiTamanho");
 const configuracaoRoiTamanho = document.getElementById("configuracaoRoiTamanho");
-const tamanhoRoiQuadrada = document.getElementById("tamanhoRoiQuadrada");
+const larguraRoiRetangular = document.getElementById("larguraRoiRetangular");
+const alturaRoiRetangular = document.getElementById("alturaRoiRetangular");
 const botaoCriarRoiTamanho = document.getElementById("botaoCriarRoiTamanho");
 
 const canvasRecorte = document.getElementById("canvasRecorte");
@@ -99,9 +100,9 @@ let caminhoRecorteLivreAtual = [];
 let dadosRecortePendente = null;
 
 // A ROI por tamanho é armazenada em coordenadas da imagem-fonte,
-// e não em coordenadas da tela. Assim, por exemplo, 224 significa
-// uma saída final de 224 x 224 pixels independentemente do zoom visual.
-let roiQuadradaTamanhoAtual = null;
+// e não em coordenadas da tela. Largura e altura são mantidas
+// em pixels reais da imagem, independentemente do zoom visual.
+let roiRetangularTamanhoAtual = null;
 let arrastandoRoiTamanho = false;
 let deslocamentoArrasteRoiTamanho = {
   x: 0,
@@ -9504,7 +9505,7 @@ function ativarRecorteLivre() {
   prepararModoRecorte("livre");
 }
 
-// Abre somente o novo modo de ROI quadrada por tamanho.
+// Abre somente o novo modo de ROI retangular por tamanho.
 function ativarRecorteRoiTamanho() {
 
   if (!imagemAtualSelecionada) {
@@ -9550,7 +9551,7 @@ function prepararModoRecorte(modo) {
   caminhoRecorteLivreAtual = [];
   dadosRecortePendente = null;
 
-  roiQuadradaTamanhoAtual = null;
+  roiRetangularTamanhoAtual = null;
   arrastandoRoiTamanho = false;
   deslocamentoArrasteRoiTamanho = { x: 0, y: 0 };
 
@@ -9580,7 +9581,7 @@ function prepararModoRecorte(modo) {
   } else if (modo === "livre") {
     statusText.innerText = "Recorte livre ativo: pressione e desenhe sobre a imagem.";
   } else {
-    statusText.innerText = "ROI por tamanho ativa: informe o lado em pixels e clique em Criar ROI.";
+    statusText.innerText = "ROI por tamanho ativa: informe a largura e a altura em pixels e clique em Criar ROI.";
   }
 }
 
@@ -9592,7 +9593,7 @@ function cancelarOperacaoRecorte(fecharFerramenta) {
   caminhoRecorteLivreAtual = [];
   dadosRecortePendente = null;
 
-  roiQuadradaTamanhoAtual = null;
+  roiRetangularTamanhoAtual = null;
   arrastandoRoiTamanho = false;
   deslocamentoArrasteRoiTamanho = { x: 0, y: 0 };
 
@@ -9744,7 +9745,7 @@ function limitarNumeroRoiTamanho(valor, minimo, maximo) {
 function obterRetanguloTelaRoiTamanho() {
 
   if (
-    !roiQuadradaTamanhoAtual ||
+    !roiRetangularTamanhoAtual ||
     !canvasRecorte ||
     canvasRecorte.width <= 0 ||
     canvasRecorte.height <= 0
@@ -9769,16 +9770,16 @@ function obterRetanguloTelaRoiTamanho() {
 
   return {
     x:
-      roiQuadradaTamanhoAtual.xFonte *
+      roiRetangularTamanhoAtual.xFonte *
       escalaTelaX,
     y:
-      roiQuadradaTamanhoAtual.yFonte *
+      roiRetangularTamanhoAtual.yFonte *
       escalaTelaY,
     largura:
-      roiQuadradaTamanhoAtual.tamanhoFonte *
+      roiRetangularTamanhoAtual.larguraFonte *
       escalaTelaX,
     altura:
-      roiQuadradaTamanhoAtual.tamanhoFonte *
+      roiRetangularTamanhoAtual.alturaFonte *
       escalaTelaY
   };
 }
@@ -9791,7 +9792,7 @@ function atualizarPosicaoRoiTamanhoPelaTela(
   deslocamentoTela
 ) {
 
-  if (!roiQuadradaTamanhoAtual) {
+  if (!roiRetangularTamanhoAtual) {
     return;
   }
 
@@ -9849,13 +9850,13 @@ function atualizarPosicaoRoiTamanhoPelaTela(
 
   const maximoXFonte =
     dimensoes.largura -
-    roiQuadradaTamanhoAtual.tamanhoFonte;
+    roiRetangularTamanhoAtual.larguraFonte;
 
   const maximoYFonte =
     dimensoes.altura -
-    roiQuadradaTamanhoAtual.tamanhoFonte;
+    roiRetangularTamanhoAtual.alturaFonte;
 
-  roiQuadradaTamanhoAtual.xFonte =
+  roiRetangularTamanhoAtual.xFonte =
     Math.round(
       limitarNumeroRoiTamanho(
         xTela * escalaFonteX,
@@ -9864,7 +9865,7 @@ function atualizarPosicaoRoiTamanhoPelaTela(
       )
     );
 
-  roiQuadradaTamanhoAtual.yFonte =
+  roiRetangularTamanhoAtual.yFonte =
     Math.round(
       limitarNumeroRoiTamanho(
         yTela * escalaFonteY,
@@ -9875,9 +9876,9 @@ function atualizarPosicaoRoiTamanhoPelaTela(
 }
 
 
-// Primeiro clique: cria a ROI centralizada.
+// Primeiro clique: cria a ROI retangular centralizada.
 // Depois de posicioná-la, o mesmo botão passa a ser "Confirmar ROI".
-function criarRoiQuadradaPorTamanho() {
+function criarRoiRetangularPorTamanho() {
 
   if (!imagemAtualSelecionada) {
     alert("Nenhuma imagem carregada para recortar.");
@@ -9888,19 +9889,33 @@ function criarRoiQuadradaPorTamanho() {
     prepararModoRecorte("roi_tamanho");
   }
 
-  if (!tamanhoRoiQuadrada) {
-    alert("O campo de tamanho da ROI não foi encontrado.");
+  if (
+    !larguraRoiRetangular ||
+    !alturaRoiRetangular
+  ) {
+    alert("Os campos de largura e altura da ROI não foram encontrados.");
     return;
   }
 
-  const valorDigitado =
-    Number(tamanhoRoiQuadrada.value);
+  const larguraDigitada =
+    Number(larguraRoiRetangular.value);
+
+  const alturaDigitada =
+    Number(alturaRoiRetangular.value);
 
   if (
-    !Number.isInteger(valorDigitado) ||
-    valorDigitado <= 0
+    !Number.isInteger(larguraDigitada) ||
+    larguraDigitada <= 0
   ) {
-    alert("Informe um tamanho inteiro maior que zero para a ROI.");
+    alert("Informe uma largura inteira maior que zero para a ROI.");
+    return;
+  }
+
+  if (
+    !Number.isInteger(alturaDigitada) ||
+    alturaDigitada <= 0
+  ) {
+    alert("Informe uma altura inteira maior que zero para a ROI.");
     return;
   }
 
@@ -9912,36 +9927,43 @@ function criarRoiQuadradaPorTamanho() {
     return;
   }
 
-  const limiteTamanho =
-    Math.min(
-      dimensoes.largura,
-      dimensoes.altura
-    );
-
-  if (valorDigitado > limiteTamanho) {
+  if (larguraDigitada > dimensoes.largura) {
     alert(
-      "A ROI não pode ser maior que a imagem. O maior lado quadrado disponível é " +
-      limiteTamanho +
-      " px."
+      "A largura da ROI não pode ser maior que a largura da imagem (" +
+      dimensoes.largura +
+      " px)."
     );
     return;
   }
 
-  // Se já existe uma ROI com exatamente o tamanho informado,
+  if (alturaDigitada > dimensoes.altura) {
+    alert(
+      "A altura da ROI não pode ser maior que a altura da imagem (" +
+      dimensoes.altura +
+      " px)."
+    );
+    return;
+  }
+
+  // Se já existe uma ROI com exatamente as dimensões informadas,
   // este clique funciona como confirmação da posição escolhida.
   if (
-    roiQuadradaTamanhoAtual &&
-    roiQuadradaTamanhoAtual.tamanhoFonte ===
-      valorDigitado
+    roiRetangularTamanhoAtual &&
+    roiRetangularTamanhoAtual.larguraFonte ===
+      larguraDigitada &&
+    roiRetangularTamanhoAtual.alturaFonte ===
+      alturaDigitada
   ) {
     dadosRecortePendente = {
       tipo: "roi_tamanho",
       xFonte:
-        roiQuadradaTamanhoAtual.xFonte,
+        roiRetangularTamanhoAtual.xFonte,
       yFonte:
-        roiQuadradaTamanhoAtual.yFonte,
-      tamanhoFonte:
-        roiQuadradaTamanhoAtual.tamanhoFonte
+        roiRetangularTamanhoAtual.yFonte,
+      larguraFonte:
+        roiRetangularTamanhoAtual.larguraFonte,
+      alturaFonte:
+        roiRetangularTamanhoAtual.alturaFonte
     };
 
     redesenharSelecaoRecorte();
@@ -9949,16 +9971,19 @@ function criarRoiQuadradaPorTamanho() {
     return;
   }
 
-  roiQuadradaTamanhoAtual = {
-    tamanhoFonte: valorDigitado,
+  roiRetangularTamanhoAtual = {
+    larguraFonte:
+      larguraDigitada,
+    alturaFonte:
+      alturaDigitada,
     xFonte:
       Math.round(
-        (dimensoes.largura - valorDigitado) /
+        (dimensoes.largura - larguraDigitada) /
         2
       ),
     yFonte:
       Math.round(
-        (dimensoes.altura - valorDigitado) /
+        (dimensoes.altura - alturaDigitada) /
         2
       )
   };
@@ -9976,11 +10001,12 @@ function criarRoiQuadradaPorTamanho() {
 
   statusText.innerText =
     "ROI " +
-    valorDigitado +
+    larguraDigitada +
     " × " +
-    valorDigitado +
+    alturaDigitada +
     " px criada. Arraste para posicionar e clique em Confirmar ROI.";
 }
+
 
 
 function redesenharSelecaoRecorte() {
@@ -10003,7 +10029,7 @@ function redesenharSelecaoRecorte() {
 
   if (
     modoRecorteAtivo === "roi_tamanho" &&
-    roiQuadradaTamanhoAtual
+    roiRetangularTamanhoAtual
   ) {
     const r =
       obterRetanguloTelaRoiTamanho();
@@ -10032,9 +10058,9 @@ function redesenharSelecaoRecorte() {
       contextoCanvasRecorte.lineWidth = 3;
 
       const texto =
-        roiQuadradaTamanhoAtual.tamanhoFonte +
+        roiRetangularTamanhoAtual.larguraFonte +
         " × " +
-        roiQuadradaTamanhoAtual.tamanhoFonte +
+        roiRetangularTamanhoAtual.alturaFonte +
         " px";
 
       const textoX = r.x + 6;
@@ -10209,17 +10235,25 @@ function criarCanvasRecortadoPendente(canvasFonte, selecao) {
   // da imagem-fonte; portanto não depende do tamanho visual da tela.
   if (selecao.tipo === "roi_tamanho") {
 
-    const tamanho =
+    const largura =
       Math.max(
         1,
         Math.round(
-          Number(selecao.tamanhoFonte)
+          Number(selecao.larguraFonte)
+        )
+      );
+
+    const altura =
+      Math.max(
+        1,
+        Math.round(
+          Number(selecao.alturaFonte)
         )
       );
 
     if (
-      tamanho > canvasFonte.width ||
-      tamanho > canvasFonte.height
+      largura > canvasFonte.width ||
+      altura > canvasFonte.height
     ) {
       return null;
     }
@@ -10229,7 +10263,7 @@ function criarCanvasRecortadoPendente(canvasFonte, selecao) {
         limitarNumeroRoiTamanho(
           Number(selecao.xFonte) || 0,
           0,
-          canvasFonte.width - tamanho
+          canvasFonte.width - largura
         )
       );
 
@@ -10238,15 +10272,15 @@ function criarCanvasRecortadoPendente(canvasFonte, selecao) {
         limitarNumeroRoiTamanho(
           Number(selecao.yFonte) || 0,
           0,
-          canvasFonte.height - tamanho
+          canvasFonte.height - altura
         )
       );
 
     const canvasSaida =
       document.createElement("canvas");
 
-    canvasSaida.width = tamanho;
-    canvasSaida.height = tamanho;
+    canvasSaida.width = largura;
+    canvasSaida.height = altura;
 
     const contexto =
       canvasSaida.getContext("2d");
@@ -10255,12 +10289,12 @@ function criarCanvasRecortadoPendente(canvasFonte, selecao) {
       canvasFonte,
       sx,
       sy,
-      tamanho,
-      tamanho,
+      largura,
+      altura,
       0,
       0,
-      tamanho,
-      tamanho
+      largura,
+      altura
     );
 
     return canvasSaida;
@@ -10488,13 +10522,13 @@ if (canvasRecorte) {
 
     const posicao = obterPosicaoNoCanvasRecorte(event);
 
-    // Na ROI de tamanho fixo, o mouse apenas move o quadrado;
+    // Na ROI de tamanho fixo, o mouse apenas move o retângulo;
     // não existe redimensionamento manual.
     if (
       modoRecorteAtivo === "roi_tamanho"
     ) {
 
-      if (!roiQuadradaTamanhoAtual) {
+      if (!roiRetangularTamanhoAtual) {
         statusText.innerText =
           "Informe o tamanho e clique em Criar ROI antes de posicioná-la.";
         return;
@@ -10567,7 +10601,7 @@ if (canvasRecorte) {
     if (
       modoRecorteAtivo === "roi_tamanho" &&
       arrastandoRoiTamanho &&
-      roiQuadradaTamanhoAtual
+      roiRetangularTamanhoAtual
     ) {
       atualizarPosicaoRoiTamanhoPelaTela(
         posicao,
@@ -10604,12 +10638,12 @@ if (canvasRecorte) {
       arrastandoRoiTamanho = false;
       redesenharSelecaoRecorte();
 
-      if (roiQuadradaTamanhoAtual) {
+      if (roiRetangularTamanhoAtual) {
         statusText.innerText =
           "ROI posicionada em X=" +
-          roiQuadradaTamanhoAtual.xFonte +
+          roiRetangularTamanhoAtual.xFonte +
           ", Y=" +
-          roiQuadradaTamanhoAtual.yFonte +
+          roiRetangularTamanhoAtual.yFonte +
           ". Clique em Confirmar ROI para continuar.";
       }
 
