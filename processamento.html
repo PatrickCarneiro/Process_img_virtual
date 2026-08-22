@@ -59,7 +59,8 @@
     }
 
     .menulateral.fechado {
-      width: 70px; /* Largura quando fechado */
+      width: 64px; /* Largura compacta quando fechado */
+      padding: 12px;
     }
 
     /* DESIGN DO LOGO DO MENU */
@@ -76,15 +77,30 @@
 
     /* DESIGN DO MENU */
 
-    .botao-menu {
-      width: 100%;
-      padding: 10px;
+    .botao-menu,
+    .botao-ferramentas {
+      width: 40px;
+      height: 36px;
+      padding: 0;
       border: none;
       border-radius: 10px;
       background: rgba(192,132,252,0.25);
       color: white;
       cursor: pointer;
-      margin-bottom: 20px;
+      margin: 0 auto 16px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: background 0.25s ease, transform 0.25s ease;
+    }
+
+    .botao-menu:hover,
+    .botao-ferramentas:hover {
+      background: rgba(192,132,252,0.42);
+      transform: scale(1.04);
     }
     .menu-item {
       padding: 12px;
@@ -110,6 +126,12 @@
       gap: 15px;
       padding: 15px;
       overflow: hidden;
+      transition: grid-template-columns 0.3s ease;
+    }
+
+    /* Quando Ferramentas é recolhida, a área central ocupa o espaço liberado */
+    .principal.ferramentas-fechadas {
+      grid-template-columns: 64px minmax(0, 1fr) 320px;
     }
 
     /* Mantém Ferramentas e Fluxograma estáticos nas laterais */
@@ -145,6 +167,26 @@
     .principal > .painel:first-child::-webkit-scrollbar-thumb:hover {
       background: linear-gradient(180deg, rgba(216,180,254,0.88), rgba(192,132,252,0.78));
       background-clip: padding-box;
+    }
+
+    /* PAINEL DE FERRAMENTAS RECOLHÍVEL */
+
+    .painel_ferramentas {
+      transition: padding 0.3s ease;
+    }
+
+    .painel_ferramentas.fechado {
+      padding: 12px;
+      overflow: hidden !important;
+    }
+
+    /* Quando fechado, mantém visível somente o botão de abrir/fechar */
+    .painel_ferramentas.fechado > :not(.botao-ferramentas) {
+      display: none !important;
+    }
+
+    .painel_ferramentas.fechado .botao-ferramentas {
+      margin-bottom: 0;
     }
 
     .area_visualizacao + .painel {
@@ -1152,7 +1194,17 @@
 
     <!-- PAINEL DE FERRAMENTAS -->
 
-    <div class="painel">
+    <div class="painel painel_ferramentas" id="painelFerramentas">
+
+      <!-- Botão que abre ou fecha o painel de ferramentas -->
+      <button
+        class="botao-ferramentas"
+        id="botaoPainelFerramentas"
+        onclick="togglePainelFerramentas()"
+        title="Abrir ou fechar ferramentas"
+      >
+        ☰
+      </button>
 
       <h3>Ferramentas</h3>
 
@@ -1849,6 +1901,29 @@
     </div>
 
   </div>
+
+  <!-- CONTROLE DO PAINEL DE FERRAMENTAS -->
+
+  <script>
+    function togglePainelFerramentas() {
+
+      const painelFerramentas = document.getElementById("painelFerramentas");
+      const principal = document.querySelector(".principal");
+
+      if (!painelFerramentas || !principal) return;
+
+      painelFerramentas.classList.toggle("fechado");
+
+      const fechado = painelFerramentas.classList.contains("fechado");
+
+      principal.classList.toggle("ferramentas-fechadas", fechado);
+
+      /* Atualiza componentes que dependem da largura disponível após a animação */
+      setTimeout(function() {
+        window.dispatchEvent(new Event("resize"));
+      }, 320);
+    }
+  </script>
 
   <!-- BIBLIOTECA OPENCV -->
 

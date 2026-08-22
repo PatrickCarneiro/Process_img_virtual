@@ -1090,8 +1090,40 @@ async function loadFiles() {
 
 // Função para abrir/fechar o menu lateral 
 function toggleMenu() { 
-  document.getElementById("menulateral").classList.toggle("fechado"); // Adiciona ou remove a classe fechado
+
+  const menuLateral = document.getElementById("menulateral");
+
+  if (!menuLateral) return;
+
+  menuLateral.classList.toggle("fechado"); // Adiciona ou remove a classe fechado
+
+  // Aguarda a animação do menu terminar e atualiza componentes que dependem do espaço disponível
+  setTimeout(function() {
+    window.dispatchEvent(new Event("resize"));
+  }, 320);
+
 } 
+
+// Função para abrir/fechar o painel de ferramentas
+function togglePainelFerramentas() {
+
+  const painelFerramentas = document.getElementById("painelFerramentas");
+  const principal = document.querySelector(".principal");
+
+  if (!painelFerramentas || !principal) return;
+
+  painelFerramentas.classList.toggle("fechado");
+
+  const fechado = painelFerramentas.classList.contains("fechado");
+
+  principal.classList.toggle("ferramentas-fechadas", fechado);
+
+  // Aguarda a animação do painel terminar e atualiza componentes que dependem do espaço disponível
+  setTimeout(function() {
+    window.dispatchEvent(new Event("resize"));
+  }, 320);
+
+}
 
 // Função para abrir/fechar categoria de ferramentas
 function toggleCategoria(id) { 
