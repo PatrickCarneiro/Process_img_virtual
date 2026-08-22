@@ -2050,3 +2050,852 @@ function calcularFaixaArrayBrilhoContraste(
     maximo
   };
 }
+
+
+// =========================================================
+// INTEGRAÇÃO COM O FLUXOGRAMA
+// =========================================================
+/*
+ * Esta parte não altera o ajuste em tempo real acima.
+ * Ela somente faz os novos botões "Aplicar" confirmarem os
+ * parâmetros atuais de Brilho/Contraste e garante que a execução
+ * do fluxograma use exatamente a mesma matemática desta ferramenta.
+ */
+
+
+function obterConfiguracaoBrilhoParaFluxograma() {
+  const modo =
+    estadoBrilhoContraste.modoBrilho === "faixa"
+      ? "faixa"
+      : "todos";
+
+  const configuracao = {
+    modo,
+    valor:
+      limitarValorBrilhoContraste(
+        Number(
+          estadoBrilhoContraste.posicaoBrilho
+        ) || 0,
+        -1,
+        1
+      ),
+    minimo: null,
+    maximo: null,
+    ignorarZero:
+      obterIgnorarZeroBrilhoContraste()
+  };
+
+  if (modo === "faixa") {
+    const faixa =
+      interpretarFaixaDigitadaBrilhoContraste(
+        "brilhoIntensidadeMinima",
+        "brilhoIntensidadeMaxima"
+      );
+
+    if (!faixa.valido) {
+      return {
+        valido: false,
+        mensagem:
+          faixa.incompleto
+            ? "Informe os valores mínimo e máximo da faixa de pixels para o Brilho."
+            : "A faixa de pixels informada para o Brilho é inválida."
+      };
+    }
+
+    configuracao.minimo = faixa.minimo;
+    configuracao.maximo = faixa.maximo;
+  }
+
+  return {
+    valido: true,
+    configuracao
+  };
+}
+
+
+function obterConfiguracaoContrasteParaFluxograma() {
+  const modo =
+    estadoBrilhoContraste.modoContraste === "faixa"
+      ? "faixa"
+      : "todos";
+
+  const configuracao = {
+    modo,
+    valor:
+      limitarValorBrilhoContraste(
+        Number(
+          estadoBrilhoContraste.fatorContraste
+        ) || 1,
+        0.5,
+        2
+      ),
+    minimo: null,
+    maximo: null,
+    ignorarZero:
+      obterIgnorarZeroBrilhoContraste()
+  };
+
+  if (modo === "faixa") {
+    const faixa =
+      interpretarFaixaDigitadaBrilhoContraste(
+        "contrasteIntensidadeMinima",
+        "contrasteIntensidadeMaxima"
+      );
+
+    if (!faixa.valido) {
+      return {
+        valido: false,
+        mensagem:
+          faixa.incompleto
+            ? "Informe os valores mínimo e máximo da faixa de pixels para o Contraste."
+            : "A faixa de pixels informada para o Contraste é inválida."
+      };
+    }
+
+    configuracao.minimo = faixa.minimo;
+    configuracao.maximo = faixa.maximo;
+  }
+
+  return {
+    valido: true,
+    configuracao
+  };
+}
+
+
+// Substitui somente a integração criada no processamento.js.
+// A função continua sendo chamada pelo botão Aplicar do Brilho.
+async function aplicarBrilhoAoFluxograma() {
+  if (
+    typeof imagensProcessamento === "undefined" ||
+    !Array.isArray(imagensProcessamento) ||
+    imagensProcessamento.length === 0 ||
+    typeof imagemAtualSelecionada === "undefined" ||
+    !imagemAtualSelecionada
+  ) {
+    alert(
+      "Nenhuma imagem carregada para processar."
+    );
+    return;
+  }
+
+  const resultado =
+    obterConfiguracaoBrilhoParaFluxograma();
+
+  if (!resultado.valido) {
+    alert(resultado.mensagem);
+    return;
+  }
+
+  const etapa = {
+    id: proximoIdEtapa++,
+    nome: "Brilho",
+    parametros: {
+      configuracao:
+        resultado.configuracao
+    }
+  };
+
+  pipelineFerramentas.push(etapa);
+
+  await aplicarPipelineAposAdicionarEtapa(
+    "Brilho adicionado ao fluxo da imagem selecionada.",
+    "Brilho adicionado ao fluxo de todas as imagens."
+  );
+}
+
+
+// Substitui somente a integração criada no processamento.js.
+// A função continua sendo chamada pelo botão Aplicar do Contraste.
+async function aplicarContrasteAoFluxograma() {
+  if (
+    typeof imagensProcessamento === "undefined" ||
+    !Array.isArray(imagensProcessamento) ||
+    imagensProcessamento.length === 0 ||
+    typeof imagemAtualSelecionada === "undefined" ||
+    !imagemAtualSelecionada
+  ) {
+    alert(
+      "Nenhuma imagem carregada para processar."
+    );
+    return;
+  }
+
+  const resultado =
+    obterConfiguracaoContrasteParaFluxograma();
+
+  if (!resultado.valido) {
+    alert(resultado.mensagem);
+    return;
+  }
+
+  const etapa = {
+    id: proximoIdEtapa++,
+    nome: "Contraste",
+    parametros: {
+      configuracao:
+        resultado.configuracao
+    }
+  };
+
+  pipelineFerramentas.push(etapa);
+
+  await aplicarPipelineAposAdicionarEtapa(
+    "Contraste adicionado ao fluxo da imagem selecionada.",
+    "Contraste adicionado ao fluxo de todas as imagens."
+  );
+}
+
+
+function calcularFaixaCanvasParaFluxograma(
+  imageData
+) {
+  return calcularFaixaImagemComumBrilhoContraste(
+    imageData
+  );
+}
+
+
+function obterAmplitudeBrilhoConfiguracaoFluxo(
+  configuracao,
+  minimoBase,
+  maximoBase,
+  amplitudeSeguranca
+) {
+  let amplitude;
+
+  if (
+    configuracao &&
+    configuracao.modo === "faixa"
+  ) {
+    amplitude =
+      Number(configuracao.maximo) -
+      Number(configuracao.minimo);
+  } else {
+    amplitude =
+      Number(maximoBase) -
+      Number(minimoBase);
+  }
+
+  if (
+    !Number.isFinite(amplitude) ||
+    amplitude <= 0
+  ) {
+    return amplitudeSeguranca;
+  }
+
+  return amplitude;
+}
+
+
+// Executa a etapa Brilho no fluxo usando a MESMA regra do preview:
+// delta = posição * 0.5 * amplitude.
+async function aplicarBrilhoFluxoEmCanvas(
+  canvasEntrada,
+  configuracao,
+  callbackProgresso
+) {
+  const canvasSaida =
+    document.createElement("canvas");
+
+  canvasSaida.width = canvasEntrada.width;
+  canvasSaida.height = canvasEntrada.height;
+
+  const contextoEntrada =
+    canvasEntrada.getContext(
+      "2d",
+      { willReadFrequently: true }
+    );
+
+  const contextoSaida =
+    canvasSaida.getContext("2d");
+
+  if (!contextoEntrada || !contextoSaida) {
+    throw new Error(
+      "Não foi possível criar o Canvas para aplicar Brilho no fluxo."
+    );
+  }
+
+  const entrada =
+    contextoEntrada.getImageData(
+      0,
+      0,
+      canvasEntrada.width,
+      canvasEntrada.height
+    );
+
+  const saida =
+    contextoSaida.createImageData(
+      entrada.width,
+      entrada.height
+    );
+
+  const faixaBase =
+    calcularFaixaCanvasParaFluxograma(
+      entrada
+    );
+
+  const amplitude =
+    obterAmplitudeBrilhoConfiguracaoFluxo(
+      configuracao,
+      faixaBase.minimo,
+      faixaBase.maximo,
+      255
+    );
+
+  const posicao =
+    limitarValorBrilhoContraste(
+      Number(configuracao.valor) || 0,
+      -1,
+      1
+    );
+
+  const delta =
+    posicao *
+    0.5 *
+    amplitude;
+
+  const ignorarZero =
+    Boolean(
+      configuracao.ignorarZero
+    );
+
+  for (
+    let i = 0;
+    i < entrada.data.length;
+    i += 4
+  ) {
+    const rOriginal = entrada.data[i];
+    const gOriginal = entrada.data[i + 1];
+    const bOriginal = entrada.data[i + 2];
+    const alfa = entrada.data[i + 3];
+
+    const pixelEhZero =
+      rOriginal === 0 &&
+      gOriginal === 0 &&
+      bOriginal === 0;
+
+    if (
+      ignorarZero &&
+      pixelEhZero
+    ) {
+      saida.data[i] = 0;
+      saida.data[i + 1] = 0;
+      saida.data[i + 2] = 0;
+      saida.data[i + 3] = alfa;
+      continue;
+    }
+
+    const intensidadeOriginal =
+      intensidadeRgbBrilhoContraste(
+        rOriginal,
+        gOriginal,
+        bOriginal
+      );
+
+    const aplicar =
+      pixelPertenceFaixaBrilhoContraste(
+        intensidadeOriginal,
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
+      );
+
+    const r =
+      aplicar
+        ? rOriginal + delta
+        : rOriginal;
+
+    const g =
+      aplicar
+        ? gOriginal + delta
+        : gOriginal;
+
+    const b =
+      aplicar
+        ? bOriginal + delta
+        : bOriginal;
+
+    saida.data[i] =
+      Math.round(
+        limitarValorBrilhoContraste(
+          r,
+          0,
+          255
+        )
+      );
+
+    saida.data[i + 1] =
+      Math.round(
+        limitarValorBrilhoContraste(
+          g,
+          0,
+          255
+        )
+      );
+
+    saida.data[i + 2] =
+      Math.round(
+        limitarValorBrilhoContraste(
+          b,
+          0,
+          255
+        )
+      );
+
+    saida.data[i + 3] = alfa;
+  }
+
+  contextoSaida.putImageData(
+    saida,
+    0,
+    0
+  );
+
+  if (callbackProgresso) {
+    callbackProgresso(100);
+  }
+
+  return canvasSaida;
+}
+
+
+// Executa Contraste no fluxo usando a mesma multiplicação direta
+// mostrada no ajuste em tempo real: pixelSaida = pixelEntrada * fator.
+async function aplicarContrasteFluxoEmCanvas(
+  canvasEntrada,
+  configuracao,
+  callbackProgresso
+) {
+  const canvasSaida =
+    document.createElement("canvas");
+
+  canvasSaida.width = canvasEntrada.width;
+  canvasSaida.height = canvasEntrada.height;
+
+  const contextoEntrada =
+    canvasEntrada.getContext(
+      "2d",
+      { willReadFrequently: true }
+    );
+
+  const contextoSaida =
+    canvasSaida.getContext("2d");
+
+  if (!contextoEntrada || !contextoSaida) {
+    throw new Error(
+      "Não foi possível criar o Canvas para aplicar Contraste no fluxo."
+    );
+  }
+
+  const entrada =
+    contextoEntrada.getImageData(
+      0,
+      0,
+      canvasEntrada.width,
+      canvasEntrada.height
+    );
+
+  const saida =
+    contextoSaida.createImageData(
+      entrada.width,
+      entrada.height
+    );
+
+  const fator =
+    limitarValorBrilhoContraste(
+      Number(configuracao.valor) || 1,
+      0.5,
+      2
+    );
+
+  const ignorarZero =
+    Boolean(
+      configuracao.ignorarZero
+    );
+
+  for (
+    let i = 0;
+    i < entrada.data.length;
+    i += 4
+  ) {
+    const rOriginal = entrada.data[i];
+    const gOriginal = entrada.data[i + 1];
+    const bOriginal = entrada.data[i + 2];
+    const alfa = entrada.data[i + 3];
+
+    const pixelEhZero =
+      rOriginal === 0 &&
+      gOriginal === 0 &&
+      bOriginal === 0;
+
+    if (
+      ignorarZero &&
+      pixelEhZero
+    ) {
+      saida.data[i] = 0;
+      saida.data[i + 1] = 0;
+      saida.data[i + 2] = 0;
+      saida.data[i + 3] = alfa;
+      continue;
+    }
+
+    const intensidadeOriginal =
+      intensidadeRgbBrilhoContraste(
+        rOriginal,
+        gOriginal,
+        bOriginal
+      );
+
+    const aplicar =
+      pixelPertenceFaixaBrilhoContraste(
+        intensidadeOriginal,
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
+      );
+
+    const r =
+      aplicar
+        ? rOriginal * fator
+        : rOriginal;
+
+    const g =
+      aplicar
+        ? gOriginal * fator
+        : gOriginal;
+
+    const b =
+      aplicar
+        ? bOriginal * fator
+        : bOriginal;
+
+    saida.data[i] =
+      Math.round(
+        limitarValorBrilhoContraste(
+          r,
+          0,
+          255
+        )
+      );
+
+    saida.data[i + 1] =
+      Math.round(
+        limitarValorBrilhoContraste(
+          g,
+          0,
+          255
+        )
+      );
+
+    saida.data[i + 2] =
+      Math.round(
+        limitarValorBrilhoContraste(
+          b,
+          0,
+          255
+        )
+      );
+
+    saida.data[i + 3] = alfa;
+  }
+
+  contextoSaida.putImageData(
+    saida,
+    0,
+    0
+  );
+
+  if (callbackProgresso) {
+    callbackProgresso(100);
+  }
+
+  return canvasSaida;
+}
+
+
+function obterFaixaRealDicomFluxograma(
+  pixels
+) {
+  return calcularFaixaArrayBrilhoContraste(
+    pixels
+  );
+}
+
+
+// Brilho DICOM no fluxo: usa a mesma soma do preview e satura
+// na faixa REAL da imagem de entrada da etapa.
+async function aplicarBrilhoFluxoEmDicom(
+  imagemEntrada,
+  configuracao,
+  callbackProgresso
+) {
+  if (
+    !imagemEntrada ||
+    typeof imagemEntrada.getPixelData !== "function"
+  ) {
+    throw new Error(
+      "Imagem DICOM inválida para aplicar Brilho no fluxo."
+    );
+  }
+
+  const pixelsEntrada =
+    imagemEntrada.getPixelData();
+
+  const pixelsSaida =
+    criarArrayPixelsBrilhoContraste(
+      pixelsEntrada,
+      pixelsEntrada.length
+    );
+
+  const infoTipo =
+    obterInformacoesTipoDicomBrilhoContraste(
+      pixelsEntrada
+    );
+
+  const faixaBase =
+    obterFaixaRealDicomFluxograma(
+      pixelsEntrada
+    );
+
+  let minimoReal = Number(faixaBase.minimo);
+  let maximoReal = Number(faixaBase.maximo);
+
+  if (!Number.isFinite(minimoReal)) {
+    minimoReal =
+      Number.isFinite(infoTipo.minimo)
+        ? Number(infoTipo.minimo)
+        : 0;
+  }
+
+  if (!Number.isFinite(maximoReal)) {
+    maximoReal =
+      Number.isFinite(infoTipo.maximo)
+        ? Number(infoTipo.maximo)
+        : minimoReal + 1;
+  }
+
+  const amplitudeSeguranca =
+    Number.isFinite(infoTipo.minimo) &&
+    Number.isFinite(infoTipo.maximo)
+      ? infoTipo.maximo - infoTipo.minimo
+      : 1;
+
+  const amplitude =
+    obterAmplitudeBrilhoConfiguracaoFluxo(
+      configuracao,
+      minimoReal,
+      maximoReal,
+      amplitudeSeguranca
+    );
+
+  const posicao =
+    limitarValorBrilhoContraste(
+      Number(configuracao.valor) || 0,
+      -1,
+      1
+    );
+
+  const delta =
+    posicao *
+    0.5 *
+    amplitude;
+
+  const ignorarZero =
+    Boolean(
+      configuracao.ignorarZero
+    );
+
+  for (
+    let i = 0;
+    i < pixelsEntrada.length;
+    i++
+  ) {
+    const original =
+      Number(pixelsEntrada[i]);
+
+    if (
+      ignorarZero &&
+      original === 0
+    ) {
+      pixelsSaida[i] =
+        converterValorParaTipoDicomBrilhoContraste(
+          original,
+          {
+            minimo: minimoReal,
+            maximo: maximoReal,
+            inteiro: infoTipo.inteiro
+          }
+        );
+      continue;
+    }
+
+    const aplicar =
+      pixelPertenceFaixaBrilhoContraste(
+        original,
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
+      );
+
+    const valor =
+      aplicar
+        ? original + delta
+        : original;
+
+    pixelsSaida[i] =
+      converterValorParaTipoDicomBrilhoContraste(
+        limitarValorBrilhoContraste(
+          valor,
+          minimoReal,
+          maximoReal
+        ),
+        {
+          minimo: minimoReal,
+          maximo: maximoReal,
+          inteiro: infoTipo.inteiro
+        }
+      );
+  }
+
+  if (callbackProgresso) {
+    callbackProgresso(100);
+  }
+
+  return criarImagemDicomBrilhoContraste(
+    pixelsSaida,
+    imagemEntrada,
+    minimoReal,
+    maximoReal
+  );
+}
+
+
+// Contraste DICOM no fluxo: multiplicação direta e saturação
+// na faixa REAL da imagem de entrada da etapa.
+async function aplicarContrasteFluxoEmDicom(
+  imagemEntrada,
+  configuracao,
+  callbackProgresso
+) {
+  if (
+    !imagemEntrada ||
+    typeof imagemEntrada.getPixelData !== "function"
+  ) {
+    throw new Error(
+      "Imagem DICOM inválida para aplicar Contraste no fluxo."
+    );
+  }
+
+  const pixelsEntrada =
+    imagemEntrada.getPixelData();
+
+  const pixelsSaida =
+    criarArrayPixelsBrilhoContraste(
+      pixelsEntrada,
+      pixelsEntrada.length
+    );
+
+  const infoTipo =
+    obterInformacoesTipoDicomBrilhoContraste(
+      pixelsEntrada
+    );
+
+  const faixaBase =
+    obterFaixaRealDicomFluxograma(
+      pixelsEntrada
+    );
+
+  let minimoReal = Number(faixaBase.minimo);
+  let maximoReal = Number(faixaBase.maximo);
+
+  if (!Number.isFinite(minimoReal)) {
+    minimoReal =
+      Number.isFinite(infoTipo.minimo)
+        ? Number(infoTipo.minimo)
+        : 0;
+  }
+
+  if (!Number.isFinite(maximoReal)) {
+    maximoReal =
+      Number.isFinite(infoTipo.maximo)
+        ? Number(infoTipo.maximo)
+        : minimoReal + 1;
+  }
+
+  const fator =
+    limitarValorBrilhoContraste(
+      Number(configuracao.valor) || 1,
+      0.5,
+      2
+    );
+
+  const ignorarZero =
+    Boolean(
+      configuracao.ignorarZero
+    );
+
+  for (
+    let i = 0;
+    i < pixelsEntrada.length;
+    i++
+  ) {
+    const original =
+      Number(pixelsEntrada[i]);
+
+    if (
+      ignorarZero &&
+      original === 0
+    ) {
+      pixelsSaida[i] =
+        converterValorParaTipoDicomBrilhoContraste(
+          original,
+          {
+            minimo: minimoReal,
+            maximo: maximoReal,
+            inteiro: infoTipo.inteiro
+          }
+        );
+      continue;
+    }
+
+    const aplicar =
+      pixelPertenceFaixaBrilhoContraste(
+        original,
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
+      );
+
+    const valor =
+      aplicar
+        ? original * fator
+        : original;
+
+    pixelsSaida[i] =
+      converterValorParaTipoDicomBrilhoContraste(
+        limitarValorBrilhoContraste(
+          valor,
+          minimoReal,
+          maximoReal
+        ),
+        {
+          minimo: minimoReal,
+          maximo: maximoReal,
+          inteiro: infoTipo.inteiro
+        }
+      );
+  }
+
+  if (callbackProgresso) {
+    callbackProgresso(100);
+  }
+
+  return criarImagemDicomBrilhoContraste(
+    pixelsSaida,
+    imagemEntrada,
+    minimoReal,
+    maximoReal
+  );
+}
+

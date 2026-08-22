@@ -625,6 +625,11 @@
       justify-content: flex-start;
       align-self: start;
       padding-top: 4px;
+
+      /* Referência somente para os painéis flutuantes de
+         Brilho e Contraste. */
+      position: relative;
+      z-index: 45;
     }
     .botao_pixel,
     .botao_zoom,
@@ -791,59 +796,134 @@
 
     /* DESIGN DOS CONTROLES DE BRILHO E CONTRASTE */
 
+    /*
+      Brilho e Contraste agora ficam na barra lateral da imagem,
+      logo abaixo da ferramenta de recorte.
+    */
     .controles_brilho_contraste {
-      width: 100%;
+      position: relative;
+
+      width: 42px;
+
       display: flex;
       flex-direction: column;
       align-items: center;
+
       gap: 7px;
     }
 
     .botoes_brilho_contraste {
       display: flex;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
-      gap: 7px;
+
+      gap: 8px;
     }
 
     .botao_ajuste_imagem {
-      height: 34px;
-      padding: 0 12px;
-      border-radius: 9px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.055);
-      color: rgba(255,255,255,0.88);
+      width: 42px;
+      height: 42px;
+
+      padding: 0;
+
+      border-radius: 50%;
+
+      border:
+        1px solid rgba(192,132,252,0.55);
+
+      background:
+        rgba(192,132,252,0.18);
+
+      color:
+        rgba(255,255,255,0.92);
+
       cursor: pointer;
-      transition: 0.18s ease;
+
+      transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+
       font-size: 12px;
     }
 
     .botao_ajuste_imagem .icone_ajuste {
-      font-size: 15px;
+      font-size: 20px;
       line-height: 1;
     }
 
+    /*
+      Na barra aparece somente o símbolo.
+      O nome continua disponível no title.
+    */
+    .botao_ajuste_imagem span:not(.icone_ajuste) {
+      display: none;
+    }
+
     .botao_ajuste_imagem:hover {
-      background: rgba(192,132,252,0.12);
-      border-color: rgba(192,132,252,0.35);
+      background:
+        rgba(192,132,252,0.35);
+
+      border-color:
+        rgba(192,132,252,0.65);
+
+      transform:
+        scale(1.05);
     }
 
     .botao_ajuste_imagem.ativo {
-      background: rgba(192,132,252,0.18);
-      border-color: rgba(192,132,252,0.50);
+      background:
+        rgba(192,132,252,0.55);
+
+      border-color:
+        rgba(216,180,254,0.75);
+
       color: #ffffff;
+
+      box-shadow:
+        0 0 12px rgba(192,132,252,0.65);
     }
 
+    /*
+      O painel abre ao lado da barra lateral,
+      sem ocupar permanentemente espaço da imagem.
+    */
     .painel_ajuste_imagem {
       display: none;
-      width: min(360px, 100%);
-      padding: 8px;
+
+      position: absolute;
+      left: 52px;
+
+      width: 300px;
+
+      padding: 10px;
+
       border-radius: 11px;
-      background: rgba(8,16,32,0.88);
-      border: 1px solid rgba(255,255,255,0.08);
+
+      background:
+        rgba(8,16,32,0.97);
+
+      border:
+        1px solid rgba(192,132,252,0.30);
+
+      box-shadow:
+        0 16px 36px rgba(0,0,0,0.36);
+
+      z-index: 80;
+    }
+
+    #painelBrilho {
+      top: 0;
+    }
+
+    #painelContraste {
+      top: 50px;
     }
 
     .painel_ajuste_imagem.ativo {
@@ -941,6 +1021,43 @@
     .valor_ajuste_tempo_real,
     .ajuda_ajuste_tempo_real {
       display: none;
+    }
+
+    /* Confirma Brilho/Contraste para ser adicionado ao fluxograma. */
+    .botao_aplicar_ajuste_fluxo {
+      width: 100%;
+      min-height: 34px;
+
+      margin-top: 9px;
+      padding: 8px 12px;
+
+      border-radius: 8px;
+
+      border:
+        1px solid rgba(192,132,252,0.48);
+
+      background:
+        rgba(192,132,252,0.20);
+
+      color: #ffffff;
+
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+
+      cursor: pointer;
+
+      transition:
+        background 0.18s ease,
+        border-color 0.18s ease;
+    }
+
+    .botao_aplicar_ajuste_fluxo:hover {
+      background:
+        rgba(192,132,252,0.36);
+
+      border-color:
+        rgba(216,180,254,0.70);
     }
 
     /* DESIGN DA INFORMAÇÃO DO PIXEL */
@@ -2019,37 +2136,7 @@
 
           </div>
 
-        </div>
-
-        <!-- CAIXA DA IMAGEM -->
-
-        <div class="visualizacao_box">
-
-          <!-- Área da imagem original no comparativo -->
-          <div id="areaImagemOriginal" class="area_imagem_original">
-
-            <div id="visualizadorDicomOriginal"></div>
-
-            <img id="imagemOriginalNormal">
-
-          </div>
-
-          <!-- Área da imagem processada -->
-          <div id="areaImagemProcessada" class="area_imagem_processada">
-
-            <div id="visualizadorDicom"></div>
-
-            <img id="imagemNormal">
-
-            <!-- Camada usada para desenhar a seleção do recorte -->
-            <canvas id="canvasRecorte"></canvas>
-
-          </div>
-
-        </div>
-
-      </div>
-
+          <!-- BRILHO E CONTRASTE NA BARRA LATERAL -->
       <!-- CONTROLES DE BRILHO E CONTRASTE -->
 
       <div class="controles_brilho_contraste" id="controlesBrilhoContraste">
@@ -2143,6 +2230,14 @@
 
             <div class="valor_ajuste_tempo_real" id="valorBrilhoTempoReal"></div>
 
+            <button
+              type="button"
+              class="botao_aplicar_ajuste_fluxo"
+              id="botaoAplicarBrilhoFluxo"
+            >
+              Aplicar
+            </button>
+
           </div>
 
         </div>
@@ -2211,6 +2306,45 @@
             </div>
 
             <div class="valor_ajuste_tempo_real" id="valorContrasteTempoReal"></div>
+
+            <button
+              type="button"
+              class="botao_aplicar_ajuste_fluxo"
+              id="botaoAplicarContrasteFluxo"
+            >
+              Aplicar
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+        </div>
+
+        <!-- CAIXA DA IMAGEM -->
+
+        <div class="visualizacao_box">
+
+          <!-- Área da imagem original no comparativo -->
+          <div id="areaImagemOriginal" class="area_imagem_original">
+
+            <div id="visualizadorDicomOriginal"></div>
+
+            <img id="imagemOriginalNormal">
+
+          </div>
+
+          <!-- Área da imagem processada -->
+          <div id="areaImagemProcessada" class="area_imagem_processada">
+
+            <div id="visualizadorDicom"></div>
+
+            <img id="imagemNormal">
+
+            <!-- Camada usada para desenhar a seleção do recorte -->
+            <canvas id="canvasRecorte"></canvas>
 
           </div>
 
