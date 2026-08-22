@@ -96,6 +96,13 @@ let containerSalvarFluxoProjeto = null;
 let modalSalvarFluxoProjeto = null;
 let inputNomeProjetoFluxo = null;
 
+// VARIÁVEIS DO SALVAMENTO AUTOMÁTICO DO FLUXOGRAMA
+let salvamentoAutomaticoAtivo = false;
+let salvamentoAutomaticoPerguntado = false;
+let ativarSalvamentoAutomaticoAoSalvar = false;
+let projetoSalvamentoAutomaticoId = null;
+let projetoSalvamentoAutomaticoNome = "";
+
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone; // Conecta o Cornerstone ao loader DICOM
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser; // Conecta o dicomParser ao loader DICOM
 cornerstoneWADOImageLoader.configure({ // Configura o loader DICOM
@@ -383,6 +390,10 @@ async function colarFluxoCopiado() {
 
   }
 
+  // Se houver um projeto vinculado, o fluxo colado
+  // substitui automaticamente o fluxo salvo nele.
+  await salvarFluxogramaAutomaticamenteSeAtivo();
+
 }
 
 // Conecta os botões Copiar fluxo e Colar fluxo que já existem no HTML.
@@ -457,6 +468,33 @@ function adicionarProjetoAoBanco(db, projeto) {
 
 }
 
+// Atualiza um projeto já existente sem criar outro card na aba Projetos
+function atualizarProjetoNoBanco(db, projeto) {
+
+  return new Promise((resolve, reject) => {
+
+    const transaction = db.transaction("projects", "readwrite");
+
+    const store = transaction.objectStore("projects");
+
+    const request = store.put(projeto);
+
+    request.onsuccess = function() {
+
+      resolve(request.result);
+
+    };
+
+    request.onerror = function() {
+
+      reject(request.error);
+
+    };
+
+  });
+
+}
+
 // Busca um projeto salvo pelo ID
 function getProjetoSalvoPorId(db, idProjeto) {
 
@@ -481,6 +519,340 @@ function getProjetoSalvoPorId(db, idProjeto) {
     };
 
   });
+
+}
+
+
+// =============================================================
+// SALVAMENTO AUTOMÁTICO DO FLUXOGRAMA
+// =============================================================
+
+// Atualiza somente o indicador visual que existe no processamento.html.
+function atualizarIndicadorSalvamentoAutomatico(estado) {
+
+  const controle =
+    document.getElementById("controleSalvamentoAutomatico");
+
+  const chave =
+    document.getElementById("chaveSalvamentoAutomatico");
+
+  const texto =
+    document.getElementById("textoStatusSalvamentoAutomatico");
+
+
+  if (!controle) {
+
+    return;
+
+  }
+
+
+  controle.classList.remove(
+    "desativado",
+    "ativo",
+    "salvando"
+  );
+
+
+  if (estado === "salvando") {
+
+    controle.classList.add("salvando");
+
+    if (texto) {
+
+      texto.innerText =
+        "Salvando...";
+
+    }
+
+    if (chave) {
+
+      chave.setAttribute(
+        "aria-checked",
+        "true"
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  if (estado === "ativo") {
+
+    controle.classList.add("ativo");
+
+    if (texto) {
+
+      texto.innerText =
+        "Ativo";
+
+    }
+
+    if (chave) {
+
+      chave.setAttribute(
+        "aria-checked",
+        "true"
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  controle.classList.add("desativado");
+
+  if (texto) {
+
+    texto.innerText =
+      "Desativado";
+
+  }
+
+  if (chave) {
+
+    chave.setAttribute(
+      "aria-checked",
+      "false"
+    );
+
+  }
+
+}
+
+
+// Ativa o salvamento automático vinculando o fluxo a um único projeto.
+function ativarSalvamentoAutomaticoProjeto(
+  idProjeto,
+  nomeProjeto
+) {
+
+  const idNumerico =
+    Number(idProjeto);
+
+
+  if (
+    !Number.isInteger(idNumerico) ||
+    idNumerico <= 0
+  ) {
+
+    return;
+
+  }
+
+
+  projetoSalvamentoAutomaticoId =
+    idNumerico;
+
+  projetoSalvamentoAutomaticoNome =
+    nomeProjeto
+      ? String(nomeProjeto)
+      : "";
+
+  salvamentoAutomaticoAtivo =
+    true;
+
+  salvamentoAutomaticoPerguntado =
+    true;
+
+  atualizarIndicadorSalvamentoAutomatico(
+    "ativo"
+  );
+
+}
+
+
+// Desativa somente o vínculo automático.
+// O projeto já salvo permanece normalmente na aba Projetos.
+function desativarSalvamentoAutomaticoProjeto() {
+
+  salvamentoAutomaticoAtivo =
+    false;
+
+  projetoSalvamentoAutomaticoId =
+    null;
+
+  projetoSalvamentoAutomaticoNome =
+    "";
+
+  atualizarIndicadorSalvamentoAutomatico(
+    "desativado"
+  );
+
+}
+
+
+// Salva o pipeline atual dentro do MESMO projeto vinculado.
+async function salvarFluxogramaAutomaticamenteSeAtivo() {
+
+  if (
+    !salvamentoAutomaticoAtivo ||
+    !projetoSalvamentoAutomaticoId
+  ) {
+
+    return false;
+
+  }
+
+
+  sincronizarPipelineAtualNaImagem();
+
+  atualizarIndicadorSalvamentoAutomatico(
+    "salvando"
+  );
+
+
+  let db = null;
+
+
+  try {
+
+    db =
+      await openDatabase();
+
+
+    const projetoExistente =
+      await getProjetoSalvoPorId(
+        db,
+        projetoSalvamentoAutomaticoId
+      );
+
+
+    if (!projetoExistente) {
+
+      throw new Error(
+        "Projeto vinculado ao salvamento automático não foi encontrado."
+      );
+
+    }
+
+
+    const projetoAtualizado = {
+
+      ...projetoExistente,
+
+      id:
+        projetoSalvamentoAutomaticoId,
+
+      pipelineFerramentas:
+        clonarPipelineParaProjeto(
+          pipelineFerramentas
+        ),
+
+      quantidadeEtapas:
+        pipelineFerramentas.length,
+
+      updatedAt:
+        Date.now()
+
+    };
+
+
+    await atualizarProjetoNoBanco(
+      db,
+      projetoAtualizado
+    );
+
+
+    db.close();
+
+    db = null;
+
+
+    projetoSalvamentoAutomaticoNome =
+      projetoAtualizado.nome ||
+      projetoSalvamentoAutomaticoNome;
+
+
+    atualizarIndicadorSalvamentoAutomatico(
+      "ativo"
+    );
+
+
+    return true;
+
+  } catch (error) {
+
+    if (db) {
+
+      try {
+
+        db.close();
+
+      } catch (_) {
+      }
+
+    }
+
+
+    console.error(
+      "Erro no salvamento automático do fluxograma:",
+      error
+    );
+
+
+    desativarSalvamentoAutomaticoProjeto();
+
+
+    return false;
+
+  }
+
+}
+
+
+// Na primeira ferramenta aplicada, pergunta uma única vez
+// se o usuário deseja transformar o fluxo em projeto com autosave.
+async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
+
+  if (salvamentoAutomaticoAtivo) {
+
+    await salvarFluxogramaAutomaticamenteSeAtivo();
+
+    return;
+
+  }
+
+
+  if (salvamentoAutomaticoPerguntado) {
+
+    return;
+
+  }
+
+
+  salvamentoAutomaticoPerguntado =
+    true;
+
+
+  const desejaSalvar =
+    window.confirm(
+      "Deseja salvar esse fluxograma?"
+    );
+
+
+  if (!desejaSalvar) {
+
+    atualizarIndicadorSalvamentoAutomatico(
+      "desativado"
+    );
+
+    return;
+
+  }
+
+
+  // O modal já existente será usado apenas para pedir o nome.
+  // Depois de salvar, o projeto recém-criado passa a receber
+  // automaticamente todas as alterações seguintes do fluxograma.
+  ativarSalvamentoAutomaticoAoSalvar =
+    true;
+
+  abrirModalSalvarFluxoProjeto();
 
 }
 
@@ -812,10 +1184,18 @@ function fecharModalSalvarFluxoProjeto() {
 
   modalSalvarFluxoProjeto.classList.remove("ativo");
 
+  // Se o modal foi aberto pela pergunta do salvamento automático
+  // e foi fechado sem concluir o salvamento, o autosave continua desligado.
+  ativarSalvamentoAutomaticoAoSalvar =
+    false;
+
 }
 
 // Salva o pipeline atual como um novo projeto
 async function salvarFluxoComoProjeto() {
+
+  const deveAtivarSalvamentoAutomatico =
+    ativarSalvamentoAutomaticoAoSalvar;
 
   sincronizarPipelineAtualNaImagem();
 
@@ -868,14 +1248,37 @@ async function salvarFluxoComoProjeto() {
 
     const db = await openDatabase();
 
-    await adicionarProjetoAoBanco(db, projeto);
+    const idProjetoSalvo =
+      await adicionarProjetoAoBanco(
+        db,
+        projeto
+      );
 
     db.close();
 
     fecharModalSalvarFluxoProjeto();
 
-    statusText.innerText =
-      'Fluxo salvo no projeto "' + nomeProjeto + '".';
+
+    if (deveAtivarSalvamentoAutomatico) {
+
+      ativarSalvamentoAutomaticoProjeto(
+        idProjetoSalvo,
+        nomeProjeto
+      );
+
+      statusText.innerText =
+        'Fluxo salvo no projeto "' +
+        nomeProjeto +
+        '". Salvamento automático ativado.';
+
+    } else {
+
+      statusText.innerText =
+        'Fluxo salvo no projeto "' +
+        nomeProjeto +
+        '".';
+
+    }
 
   } catch (error) {
 
@@ -943,6 +1346,14 @@ async function restaurarProjetoSalvoSeNecessario() {
     // Ele será associado apenas à primeira imagem carregada.
     pipelineProjetoPendente =
       clonarPipelineDaImagem(pipelineProjeto);
+
+    // Como o processamento foi aberto pela aba Projetos,
+    // este fluxo já pertence a um projeto existente.
+    // As próximas alterações passam a atualizar esse mesmo projeto.
+    ativarSalvamentoAutomaticoProjeto(
+      projeto.id,
+      projeto.nome
+    );
 
     localStorage.removeItem("abrirProjetoSalvo");
 
@@ -3745,6 +4156,10 @@ async function removerEtapaPipeline(idEtapa) {
     pipelineFerramentas.length > 0
       ? "Etapa removida do fluxograma. Clique em Processar fluxo para executar o fluxo atualizado."
       : "Fluxograma vazio.";
+
+  // Se o fluxo estiver vinculado a um projeto,
+  // a remoção também precisa ser refletida nele.
+  await salvarFluxogramaAutomaticamenteSeAtivo();
 }
 
 // Função que processa a imagem selecionada pelo pipeline.
@@ -4012,6 +4427,10 @@ async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTo
 
   statusText.innerText =
     "Ferramenta adicionada ao fluxograma. Clique em Processar fluxo para executar.";
+
+  // Na primeira aplicação pergunta se o fluxo deve ser salvo.
+  // Depois de vinculado, cada nova etapa atualiza o mesmo projeto.
+  await verificarSalvamentoAutomaticoPrimeiraAplicacao();
 }
 
 // Função para abrir a imagem selecionada, fazendo a montagem da imagem na tela
@@ -6703,3 +7122,4 @@ configurarInterfaceSalvarFluxoProjeto();
 configurarInterfaceCopiarColarFluxo();
 configurarLinkMenuProjetos();
 atualizarControleSalvarFluxoProjeto();
+atualizarIndicadorSalvamentoAutomatico("desativado");

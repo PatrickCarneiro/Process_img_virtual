@@ -392,6 +392,187 @@
       flex-shrink: 0;
     }
 
+    /* =========================================================
+       CABEÇALHO DA ÁREA DE PROCESSAMENTO
+       + INDICADOR DE SALVAMENTO AUTOMÁTICO
+       ========================================================= */
+
+    .cabecalho_area_processamento {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .cabecalho_area_processamento h1 {
+      width: auto;
+      flex: 1;
+      margin: 0;
+    }
+
+    .controle_salvamento_automatico {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+
+      padding: 7px 10px;
+
+      border:
+        1px solid rgba(255,255,255,0.08);
+
+      border-radius: 12px;
+
+      background:
+        rgba(255,255,255,0.035);
+    }
+
+    .titulo_salvamento_automatico {
+      font-size: 12px;
+      color: rgba(255,255,255,0.78);
+      white-space: nowrap;
+    }
+
+    .chave_salvamento_automatico {
+      width: 42px;
+      height: 22px;
+
+      position: relative;
+      flex-shrink: 0;
+
+      border-radius: 999px;
+
+      background:
+        rgba(192,132,252,0.18);
+
+      border:
+        1px solid rgba(192,132,252,0.34);
+
+      box-shadow:
+        inset 0 0 8px rgba(0,0,0,0.20);
+
+      transition:
+        background 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .bolinha_salvamento_automatico {
+      width: 16px;
+      height: 16px;
+
+      position: absolute;
+
+      left: 2px;
+      top: 2px;
+
+      border-radius: 50%;
+
+      background:
+        rgba(255,255,255,0.72);
+
+      box-shadow:
+        0 2px 7px rgba(0,0,0,0.30);
+
+      transition:
+        left 0.25s ease,
+        background 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    /* Desativado: bolinha permanece à esquerda */
+    .controle_salvamento_automatico.desativado
+    .chave_salvamento_automatico {
+      background:
+        rgba(192,132,252,0.12);
+
+      border-color:
+        rgba(192,132,252,0.25);
+    }
+
+    /* Ativo: bolinha vai para a direita */
+    .controle_salvamento_automatico.ativo
+    .chave_salvamento_automatico,
+    .controle_salvamento_automatico.salvando
+    .chave_salvamento_automatico {
+      background:
+        rgba(192,132,252,0.58);
+
+      border-color:
+        rgba(216,180,254,0.72);
+
+      box-shadow:
+        0 0 12px rgba(192,132,252,0.28);
+    }
+
+    .controle_salvamento_automatico.ativo
+    .bolinha_salvamento_automatico,
+    .controle_salvamento_automatico.salvando
+    .bolinha_salvamento_automatico {
+      left: 22px;
+      background: #ffffff;
+    }
+
+    /* Enquanto estiver gravando, a chavinha continua à direita e pulsa */
+    .controle_salvamento_automatico.salvando
+    .chave_salvamento_automatico {
+      animation:
+        pulsoSalvamentoAutomatico 0.9s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulsoSalvamentoAutomatico {
+      from {
+        box-shadow:
+          0 0 6px rgba(192,132,252,0.22);
+      }
+
+      to {
+        box-shadow:
+          0 0 17px rgba(216,180,254,0.58);
+      }
+    }
+
+    .texto_status_salvamento_automatico {
+      min-width: 62px;
+
+      font-size: 11px;
+      text-align: left;
+
+      color:
+        rgba(255,255,255,0.55);
+
+      white-space: nowrap;
+
+      transition:
+        color 0.2s ease;
+    }
+
+    .controle_salvamento_automatico.ativo
+    .texto_status_salvamento_automatico,
+    .controle_salvamento_automatico.salvando
+    .texto_status_salvamento_automatico {
+      color:
+        rgba(216,180,254,0.95);
+    }
+
+    @media (max-width: 760px) {
+
+      .cabecalho_area_processamento {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 9px;
+      }
+
+      .controle_salvamento_automatico {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+    }
+
     /* DESIGN DA LINHA DE VISUALIZAÇÃO */
 
     .linha_visualizacao {
@@ -1531,7 +1712,40 @@
 
     <div class="area_visualizacao">
 
-      <h1>Área de processamento</h1>
+      <!-- Cabeçalho da área central + estado do salvamento automático -->
+      <div class="cabecalho_area_processamento">
+
+        <h1>Área de processamento</h1>
+
+        <div
+          class="controle_salvamento_automatico desativado"
+          id="controleSalvamentoAutomatico"
+        >
+
+          <span class="titulo_salvamento_automatico">
+            Salvamento automático
+          </span>
+
+          <div
+            class="chave_salvamento_automatico"
+            id="chaveSalvamentoAutomatico"
+            role="switch"
+            aria-checked="false"
+            aria-label="Salvamento automático"
+          >
+            <span class="bolinha_salvamento_automatico"></span>
+          </div>
+
+          <span
+            class="texto_status_salvamento_automatico"
+            id="textoStatusSalvamentoAutomatico"
+          >
+            Desativado
+          </span>
+
+        </div>
+
+      </div>
 
       <!-- Linha com botões laterais e imagem -->
       <div class="linha_visualizacao">
