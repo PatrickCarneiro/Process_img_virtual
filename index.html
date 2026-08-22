@@ -164,9 +164,28 @@
       flex-shrink: 0;
     }
 
+    /* PAINEL EXTERNO DAS MINIATURAS - PADRÃO DO PROCESSAMENTO */
+
+    .painel_miniaturas_inicio {
+      min-width: 0;
+      min-height: 0;
+      flex: 1;
+
+      display: flex;
+      flex-direction: column;
+
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 18px;
+
+      overflow: hidden;
+    }
+
     /* DESIGN DA GRADE DE MINIATURAS */
 
     .grid_recente {
+      width: 100%;
       min-width: 0;
       min-height: 0;
       flex: 1;
@@ -369,8 +388,13 @@
     <!-- Título da seção -->
     <h2 class="recent-titul">Últimas imagens enviadas</h2>
 
-    <!-- Grid das miniaturas. -->
-    <div id="recentImages" class="grid_recente"></div>
+    <!-- Painel das miniaturas com o mesmo padrão visual do processamento -->
+    <div class="painel_miniaturas_inicio">
+
+      <!-- Grid das miniaturas. -->
+      <div id="recentImages" class="grid_recente"></div>
+
+    </div>
 
     <!-- BOTÃO PARA PROCESSAR IMAGENS SELECIONADAS -->
 
