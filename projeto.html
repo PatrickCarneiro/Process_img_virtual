@@ -624,6 +624,161 @@
 
 
     /* =========================================================
+       MODAL DE CONFIRMAÇÃO DE EXCLUSÃO
+       ========================================================= */
+
+    .modal_excluir_projeto {
+      display: none;
+
+      position: fixed;
+      inset: 0;
+
+      z-index: 6000;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      background:
+        rgba(2,7,18,0.76);
+
+      backdrop-filter:
+        blur(4px);
+    }
+
+
+    .modal_excluir_projeto.ativo {
+      display: flex;
+    }
+
+
+    .caixa_excluir_projeto {
+      width: min(430px, 100%);
+
+      padding: 22px;
+
+      border-radius: 18px;
+
+      background: #0b162c;
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.45);
+    }
+
+
+    .caixa_excluir_projeto h3 {
+      margin-bottom: 8px;
+
+      color: #ffffff;
+    }
+
+
+    .caixa_excluir_projeto p {
+      margin-bottom: 8px;
+
+      color:
+        rgba(255,255,255,0.70);
+
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+
+    .aviso_excluir_projeto {
+      color:
+        rgba(255,255,255,0.50) !important;
+
+      font-size: 11px !important;
+    }
+
+
+    .acoes_excluir_projeto {
+      display: flex;
+      justify-content: flex-end;
+
+      gap: 8px;
+
+      margin-top: 16px;
+    }
+
+
+    .botao_modal_excluir_projeto {
+      padding: 10px 14px;
+
+      border-radius: 9px;
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      background:
+        rgba(192,132,252,0.20);
+
+      color: #ffffff;
+
+      font-family: inherit;
+      font-size: 13px;
+
+      cursor: pointer;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+    }
+
+
+    .botao_modal_excluir_projeto:hover {
+      background:
+        rgba(192,132,252,0.35);
+
+      border-color:
+        rgba(192,132,252,0.65);
+    }
+
+
+    .botao_modal_excluir_projeto.cancelar {
+      background:
+        rgba(255,255,255,0.055);
+
+      border-color:
+        rgba(255,255,255,0.12);
+    }
+
+
+    .botao_modal_excluir_projeto.cancelar:hover {
+      background:
+        rgba(255,255,255,0.10);
+    }
+
+
+    .botao_modal_excluir_projeto.excluir {
+      background:
+        rgba(239,68,68,0.18);
+
+      border-color:
+        rgba(248,113,113,0.44);
+
+      color:
+        #fecaca;
+    }
+
+
+    .botao_modal_excluir_projeto.excluir:hover {
+      background:
+        rgba(239,68,68,0.30);
+
+      border-color:
+        rgba(248,113,113,0.68);
+
+      color:
+        #ffffff;
+    }
+
+
+    /* =========================================================
        RESPONSIVIDADE
        ========================================================= */
 
@@ -897,6 +1052,58 @@
 
 
   </main>
+
+
+
+  <!-- =======================================================
+       MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE PROJETO
+       ======================================================= -->
+
+  <div
+    class="modal_excluir_projeto"
+    id="modalExcluirProjeto"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tituloModalExcluirProjeto"
+  >
+
+    <div class="caixa_excluir_projeto">
+
+      <h3 id="tituloModalExcluirProjeto">
+        Excluir projeto
+      </h3>
+
+      <p id="mensagemModalExcluirProjeto">
+        Deseja excluir este projeto?
+      </p>
+
+      <p class="aviso_excluir_projeto">
+        Esta ação não poderá ser desfeita.
+      </p>
+
+      <div class="acoes_excluir_projeto">
+
+        <button
+          type="button"
+          class="botao_modal_excluir_projeto cancelar"
+          id="botaoCancelarExclusaoProjeto"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="botao_modal_excluir_projeto excluir"
+          id="botaoConfirmarExclusaoProjeto"
+        >
+          Excluir
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
 
 
 

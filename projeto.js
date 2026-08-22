@@ -26,12 +26,23 @@ const statusProjetos = document.getElementById("statusProjetos");
 const campoPesquisaProjetos = document.getElementById("campoPesquisaProjetos");
 const ordenacaoProjetos = document.getElementById("ordenacaoProjetos");
 
+// Modal visual de confirmação de exclusão.
+// Substitui somente a confirmação nativa usada ao excluir projetos.
+const modalExcluirProjeto = document.getElementById("modalExcluirProjeto");
+const mensagemModalExcluirProjeto = document.getElementById("mensagemModalExcluirProjeto");
+const botaoCancelarExclusaoProjeto = document.getElementById("botaoCancelarExclusaoProjeto");
+const botaoConfirmarExclusaoProjeto = document.getElementById("botaoConfirmarExclusaoProjeto");
+
 
 // =============================================================
 // CONTROLE DO PROJETO QUE ESTÁ AGUARDANDO SELEÇÃO DE IMAGENS
 // =============================================================
 
 let projetoAguardandoImagens = null;
+
+// Projeto que está aguardando confirmação no modal de exclusão.
+// Ele só é removido do IndexedDB após o usuário clicar em "Excluir".
+let projetoAguardandoExclusao = null;
 
 // Lista completa dos projetos carregados do banco.
 // A pesquisa e a ordenação trabalham sobre esta cópia em memória.
@@ -1058,24 +1069,95 @@ inputImagensProjeto.addEventListener(
 // EXCLUIR PROJETO
 // =============================================================
 
-async function excluirProjeto(
+// Abre o modal visual sem excluir nada imediatamente.
+function excluirProjeto(
   idProjeto,
   nomeProjeto
 ) {
 
-  const confirmar =
-    confirm(
-      'Deseja realmente excluir o projeto "' +
-      nomeProjeto +
-      '"?'
+  projetoAguardandoExclusao = {
+    id:
+      idProjeto,
+    nome:
+      nomeProjeto ||
+      "Projeto sem nome"
+  };
+
+
+  if (mensagemModalExcluirProjeto) {
+
+    mensagemModalExcluirProjeto.innerText =
+      'Deseja excluir o projeto "' +
+      projetoAguardandoExclusao.nome +
+      '"?';
+
+  }
+
+
+  if (modalExcluirProjeto) {
+
+    modalExcluirProjeto.classList.add(
+      "ativo"
     );
-
-
-  if (!confirmar) {
 
     return;
 
   }
+
+
+  // O HTML atual possui o modal. Este fallback apenas evita
+  // qualquer exclusão acidental caso os elementos não existam.
+  projetoAguardandoExclusao =
+    null;
+
+  console.error(
+    "Modal de exclusão de projeto não encontrado."
+  );
+
+}
+
+
+// Fecha o modal sem excluir o projeto.
+function cancelarExclusaoProjeto() {
+
+  projetoAguardandoExclusao =
+    null;
+
+
+  if (modalExcluirProjeto) {
+
+    modalExcluirProjeto.classList.remove(
+      "ativo"
+    );
+
+  }
+
+}
+
+
+// Executa a mesma exclusão que já existia,
+// mas somente depois da confirmação no novo modal.
+async function confirmarExclusaoProjeto() {
+
+  if (!projetoAguardandoExclusao) {
+
+    cancelarExclusaoProjeto();
+
+    return;
+
+  }
+
+
+  const projetoParaExcluir = {
+    id:
+      projetoAguardandoExclusao.id,
+    nome:
+      projetoAguardandoExclusao.nome
+  };
+
+
+  // Fecha o modal antes de iniciar a operação no IndexedDB.
+  cancelarExclusaoProjeto();
 
 
   try {
@@ -1086,7 +1168,7 @@ async function excluirProjeto(
 
     await excluirProjetoBanco(
       db,
-      idProjeto
+      projetoParaExcluir.id
     );
 
 
@@ -1111,6 +1193,82 @@ async function excluirProjeto(
   }
 
 }
+
+
+// -------------------------------------------------------------
+// EVENTOS DO MODAL DE EXCLUSÃO
+// -------------------------------------------------------------
+
+if (botaoCancelarExclusaoProjeto) {
+
+  botaoCancelarExclusaoProjeto.addEventListener(
+    "click",
+    function() {
+
+      cancelarExclusaoProjeto();
+
+    }
+  );
+
+}
+
+
+if (botaoConfirmarExclusaoProjeto) {
+
+  botaoConfirmarExclusaoProjeto.addEventListener(
+    "click",
+    function() {
+
+      confirmarExclusaoProjeto();
+
+    }
+  );
+
+}
+
+
+// Clicar no fundo escuro fecha o modal sem excluir.
+// Clicar dentro da caixa não interfere.
+if (modalExcluirProjeto) {
+
+  modalExcluirProjeto.addEventListener(
+    "click",
+    function(event) {
+
+      if (
+        event.target ===
+        modalExcluirProjeto
+      ) {
+
+        cancelarExclusaoProjeto();
+
+      }
+
+    }
+  );
+
+}
+
+
+// Escape também funciona como cancelar enquanto o modal estiver aberto.
+document.addEventListener(
+  "keydown",
+  function(event) {
+
+    if (
+      event.key === "Escape" &&
+      modalExcluirProjeto &&
+      modalExcluirProjeto.classList.contains(
+        "ativo"
+      )
+    ) {
+
+      cancelarExclusaoProjeto();
+
+    }
+
+  }
+);
 
 
 // =============================================================
