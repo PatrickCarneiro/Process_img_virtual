@@ -78,7 +78,8 @@
     /* DESIGN DO MENU */
 
     .botao-menu,
-    .botao-ferramentas {
+    .botao-ferramentas,
+    .botao-fluxograma {
       width: 40px;
       height: 36px;
       padding: 0;
@@ -98,7 +99,8 @@
     }
 
     .botao-menu:hover,
-    .botao-ferramentas:hover {
+    .botao-ferramentas:hover,
+    .botao-fluxograma:hover {
       background: rgba(192,132,252,0.42);
       transform: scale(1.04);
     }
@@ -132,6 +134,16 @@
     /* Quando Ferramentas é recolhida, a área central ocupa o espaço liberado */
     .principal.ferramentas-fechadas {
       grid-template-columns: 64px minmax(0, 1fr) 320px;
+    }
+
+    /* Quando o Fluxograma é recolhido, a área central ocupa o espaço liberado */
+    .principal.fluxograma-fechado {
+      grid-template-columns: 260px minmax(0, 1fr) 64px;
+    }
+
+    /* Quando Ferramentas e Fluxograma estão recolhidos ao mesmo tempo */
+    .principal.ferramentas-fechadas.fluxograma-fechado {
+      grid-template-columns: 64px minmax(0, 1fr) 64px;
     }
 
     /* Mantém Ferramentas e Fluxograma estáticos nas laterais */
@@ -194,6 +206,26 @@
       grid-row: 1 / 3;
       min-height: 0;
       height: 100%;
+    }
+
+    /* PAINEL DO FLUXOGRAMA RECOLHÍVEL */
+
+    .painel_fluxograma {
+      transition: padding 0.3s ease;
+    }
+
+    .painel_fluxograma.fechado {
+      padding: 12px;
+      overflow: hidden !important;
+    }
+
+    /* Quando fechado, mantém visível somente o botão de abrir/fechar */
+    .painel_fluxograma.fechado > :not(.botao-fluxograma) {
+      display: none !important;
+    }
+
+    .painel_fluxograma.fechado .botao-fluxograma {
+      margin-bottom: 0;
     }
 
     /* DESIGN DOS PAINÉIS */
@@ -1781,7 +1813,17 @@
 
     <!-- PAINEL DO FLUXOGRAMA -->
 
-    <div class="painel">
+    <div class="painel painel_fluxograma" id="painelFluxograma">
+
+      <!-- Botão que abre ou fecha o painel do fluxograma -->
+      <button
+        class="botao-fluxograma"
+        id="botaoPainelFluxograma"
+        onclick="togglePainelFluxograma()"
+        title="Abrir ou fechar fluxograma"
+      >
+        ☰
+      </button>
 
       <h3>Fluxograma</h3>
 
@@ -1917,6 +1959,25 @@
       const fechado = painelFerramentas.classList.contains("fechado");
 
       principal.classList.toggle("ferramentas-fechadas", fechado);
+
+      /* Atualiza componentes que dependem da largura disponível após a animação */
+      setTimeout(function() {
+        window.dispatchEvent(new Event("resize"));
+      }, 320);
+    }
+
+    function togglePainelFluxograma() {
+
+      const painelFluxograma = document.getElementById("painelFluxograma");
+      const principal = document.querySelector(".principal");
+
+      if (!painelFluxograma || !principal) return;
+
+      painelFluxograma.classList.toggle("fechado");
+
+      const fechado = painelFluxograma.classList.contains("fechado");
+
+      principal.classList.toggle("fluxograma-fechado", fechado);
 
       /* Atualiza componentes que dependem da largura disponível após a animação */
       setTimeout(function() {

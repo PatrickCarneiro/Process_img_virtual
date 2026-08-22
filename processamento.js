@@ -1125,6 +1125,27 @@ function togglePainelFerramentas() {
 
 }
 
+// Função para abrir/fechar o painel do fluxograma
+function togglePainelFluxograma() {
+
+  const painelFluxograma = document.getElementById("painelFluxograma");
+  const principal = document.querySelector(".principal");
+
+  if (!painelFluxograma || !principal) return;
+
+  painelFluxograma.classList.toggle("fechado");
+
+  const fechado = painelFluxograma.classList.contains("fechado");
+
+  principal.classList.toggle("fluxograma-fechado", fechado);
+
+  // Aguarda a animação do painel terminar e atualiza componentes que dependem do espaço disponível
+  setTimeout(function() {
+    window.dispatchEvent(new Event("resize"));
+  }, 320);
+
+}
+
 // Função para abrir/fechar categoria de ferramentas
 function toggleCategoria(id) { 
 
