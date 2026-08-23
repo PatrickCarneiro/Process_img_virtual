@@ -13814,25 +13814,43 @@ function normalizarEtapaImportadaFluxo(
 }
 
 
-// Gera o nome padrão do arquivo exportado.
+// Gera o nome do arquivo exportado a partir do nome informado pelo usuário.
 function criarNomeArquivoFluxograma(
   extensao
 ) {
 
-  let nomeBase =
-    projetoSalvamentoAutomaticoNome ||
-    (
-      imagemAtualSelecionada &&
-      imagemAtualSelecionada.name
-        ? imagemAtualSelecionada.name
-        : "fluxograma"
+  const inputNome =
+    document.getElementById(
+      "inputNomeArquivoExportarFluxo"
     );
 
 
+  let nomeBase =
+    inputNome
+      ? String(inputNome.value || "").trim()
+      : "";
+
+
+  if (!nomeBase) {
+
+    alert(
+      "Digite o nome do arquivo que será salvo."
+    );
+
+    if (inputNome) {
+      inputNome.focus();
+    }
+
+    return null;
+  }
+
+
+  // Se o usuário digitar uma extensão conhecida, ela é removida
+  // para que a extensão correspondente ao botão escolhido seja aplicada.
   nomeBase =
-    String(nomeBase)
+    nomeBase
       .replace(
-        /\.[^.]+$/,
+        /\.(xlsx|xls|txt)$/i,
         ""
       )
       .replace(
@@ -13841,20 +13859,28 @@ function criarNomeArquivoFluxograma(
       )
       .replace(
         /\s+/g,
-        "_"
+        " "
       )
       .trim();
 
 
   if (!nomeBase) {
-    nomeBase =
-      "fluxograma";
+
+    alert(
+      "Digite um nome de arquivo válido."
+    );
+
+    if (inputNome) {
+      inputNome.focus();
+    }
+
+    return null;
   }
 
 
   return (
     nomeBase +
-    "_fluxo." +
+    "." +
     extensao
   );
 }
@@ -13911,9 +13937,27 @@ function abrirModalExportarFluxo() {
 
   if (modal) {
 
+    const inputNome =
+      document.getElementById(
+        "inputNomeArquivoExportarFluxo"
+      );
+
+    if (inputNome) {
+      inputNome.value = "";
+    }
+
     modal.classList.add(
       "ativo"
     );
+
+    if (inputNome) {
+      setTimeout(
+        function() {
+          inputNome.focus();
+        },
+        0
+      );
+    }
 
   }
 
@@ -14045,11 +14089,20 @@ function exportarFluxoParaExcel() {
   );
 
 
-  XLSX.writeFile(
-    livro,
+  const nomeArquivo =
     criarNomeArquivoFluxograma(
       "xlsx"
-    )
+    );
+
+
+  if (!nomeArquivo) {
+    return;
+  }
+
+
+  XLSX.writeFile(
+    livro,
+    nomeArquivo
   );
 
 
@@ -14239,11 +14292,20 @@ function exportarFluxoParaTxt() {
     );
 
 
-  baixarArquivoFluxograma(
-    blob,
+  const nomeArquivo =
     criarNomeArquivoFluxograma(
       "txt"
-    )
+    );
+
+
+  if (!nomeArquivo) {
+    return;
+  }
+
+
+  baixarArquivoFluxograma(
+    blob,
+    nomeArquivo
   );
 
 

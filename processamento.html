@@ -1553,6 +1553,37 @@
        EXPORTAÇÃO E IMPORTAÇÃO DE FLUXOGRAMA
        ========================================================= */
 
+    .campo_nome_exportacao_fluxo {
+      margin-top: 14px;
+    }
+
+    .campo_nome_exportacao_fluxo label {
+      display: block;
+      margin-bottom: 7px;
+      color: rgba(255,255,255,0.82);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #inputNomeArquivoExportarFluxo {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 9px;
+      outline: none;
+      background: rgba(255,255,255,0.07);
+      color: #ffffff;
+      font-size: 13px;
+    }
+
+    #inputNomeArquivoExportarFluxo::placeholder {
+      color: rgba(255,255,255,0.38);
+    }
+
+    #inputNomeArquivoExportarFluxo:focus {
+      border-color: rgba(192,132,252,0.60);
+    }
+
     .opcoes_formato_fluxo {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -3008,8 +3039,22 @@
       </h3>
 
       <p>
-        Escolha o formato do arquivo que será salvo no computador.
+        Digite o nome do arquivo e escolha o formato que será salvo no computador.
       </p>
+
+      <div class="campo_nome_exportacao_fluxo">
+        <label for="inputNomeArquivoExportarFluxo">
+          Nome do arquivo
+        </label>
+
+        <input
+          type="text"
+          id="inputNomeArquivoExportarFluxo"
+          maxlength="120"
+          placeholder="Ex.: fluxo_mamografia"
+          autocomplete="off"
+        >
+      </div>
 
       <div class="opcoes_formato_fluxo">
 
