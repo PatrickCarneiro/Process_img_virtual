@@ -1205,6 +1205,120 @@
 
     }
 
+  
+
+    /* =========================================================
+       AJUSTE DE ALTURA — SEM BARRA DE ROLAGEM NA PÁGINA
+       ========================================================= */
+
+    html,
+    body {
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    body {
+      height: 100vh;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .pagina_cadastro {
+      height: 100vh;
+      min-height: 0;
+      padding: clamp(10px, 2.2vh, 24px);
+      overflow: hidden;
+    }
+
+    .container_cadastro {
+      max-height: 100%;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .container_cadastro::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
+    @media (min-width: 921px) and (max-height: 900px) {
+
+      .area_apresentacao {
+        padding: 30px 36px;
+      }
+
+      .texto_apresentacao {
+        margin: 24px 0 18px;
+      }
+
+      .area_formulario {
+        padding: 22px 34px;
+      }
+
+      .cabecalho_formulario {
+        margin-bottom: 14px;
+      }
+
+      .cabecalho_formulario h2 {
+        font-size: 24px;
+      }
+
+      .area_foto_perfil {
+        gap: 14px;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+      }
+
+      .foto_perfil_preview {
+        width: 60px;
+        height: 60px;
+      }
+
+      .controles_foto p {
+        margin-bottom: 6px;
+      }
+
+      .botao_foto {
+        min-height: 29px;
+      }
+
+      .grid_campos {
+        gap: 9px 14px;
+      }
+
+      .grupo_campo label {
+        margin-bottom: 4px;
+      }
+
+      .campo_cadastro input {
+        height: 41px;
+      }
+
+      .informacao_senha {
+        margin-top: 3px;
+      }
+
+      .botao_criar_conta {
+        height: 44px;
+        margin-top: 14px;
+      }
+
+      .mensagem_cadastro {
+        margin-top: 9px;
+        padding: 8px 11px;
+      }
+
+      .area_login {
+        margin-top: 10px;
+      }
+
+    }
+
   </style>
 
 </head>
