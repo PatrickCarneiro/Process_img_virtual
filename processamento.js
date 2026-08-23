@@ -2950,6 +2950,61 @@ async function restaurarProjetoSalvoSeNecessario() {
 
 }
 
+// Ao voltar para o Início, garante uma última atualização do projeto
+// somente quando a imagem atual já estiver vinculada ao salvamento automático.
+// Fluxos que nunca foram salvos continuam podendo ser descartados normalmente.
+function configurarLinkMenuInicio() {
+
+  const itensMenu =
+    document.querySelectorAll(".menu-item");
+
+  itensMenu.forEach(function(item) {
+
+    const texto =
+      String(item.textContent || "").trim();
+
+    if (texto !== "Início") {
+      return;
+    }
+
+    // Remove o redirecionamento inline do HTML para que seja possível
+    // aguardar o salvamento do projeto antes de sair da página.
+    item.onclick = null;
+
+    if (item.dataset.listenerInicioProcessamento === "true") {
+      return;
+    }
+
+    item.addEventListener(
+      "click",
+      async function() {
+
+        if (imagemAtualSelecionada) {
+
+          sincronizarPipelineAtualNaImagem();
+
+          // Se o fluxo já foi salvo anteriormente, grava a versão mais recente
+          // antes de voltar ao Início. Sem projeto vinculado, não cria nada.
+          await salvarFluxogramaAutomaticamenteSeAtivo(
+            imagemAtualSelecionada
+          );
+
+        }
+
+        window.location.href =
+          "index.html";
+
+      }
+    );
+
+    item.dataset.listenerInicioProcessamento =
+      "true";
+
+  });
+
+}
+
+
 // Faz o item "Projetos" do menu desta página abrir projeto.html
 function configurarLinkMenuProjetos() {
 
@@ -12709,6 +12764,7 @@ window.addEventListener(
 
 configurarInterfaceSalvarFluxoProjeto();
 configurarInterfaceCopiarColarFluxo();
+configurarLinkMenuInicio();
 configurarLinkMenuProjetos();
 configurarModalPerguntaSalvarFluxograma();
 configurarModalAplicarFluxoTodasImagens();

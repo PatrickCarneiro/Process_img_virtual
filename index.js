@@ -130,6 +130,20 @@ function clearStore(db, storeName) { // Função para limpar todos os itens de u
   });
 }
 
+function limparEstadoParaNovaSessaoProcessamento() {
+
+  // Ao escolher um novo conjunto de imagens no Início, a sessão anterior
+  // deixa de ser retomada. Projetos já salvos no Supabase não são apagados.
+  localStorage.removeItem("ultimaSessaoProcessamento");
+  localStorage.removeItem("ultimaSessaoProcessamentoDisponivel");
+
+  // Garante também que um projeto aberto anteriormente não seja
+  // reutilizado acidentalmente no novo conjunto de imagens.
+  localStorage.removeItem("abrirProjetoSalvo");
+  localStorage.removeItem("projetoAtualId");
+  localStorage.removeItem("origemProcessamento");
+}
+
 async function processSelected() { // Função para processar as imagens selecionadas ao clicar no botão 
 
   if (selectedItems.length === 0) {
@@ -143,6 +157,11 @@ async function processSelected() { // Função para processar as imagens selecio
   for (const item of selectedItems) { 
     await addToStore(db, "files", item); // Adiciona cada item selecionado à tabela "files"
   }
+
+  // As novas imagens sempre iniciam uma nova sessão de processamento.
+  // Se o fluxograma anterior estava vinculado a um projeto, ele já vinha
+  // sendo salvo automaticamente no Supabase. Se não estava salvo, pode ser descartado.
+  limparEstadoParaNovaSessaoProcessamento();
 
   window.location.href = "processamento.html"; // Redireciona para a página de processamento
 }
