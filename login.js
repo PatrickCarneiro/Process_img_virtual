@@ -1,12 +1,11 @@
 
+
 // =============================================================
 // CONFIGURAÇÕES
 // =============================================================
 
-// Página aberta depois que o login for realizado com sucesso.
 const PAGINA_APOS_LOGIN =
-  "projeto.html";
-
+  "index.html";
 
 // =============================================================
 // ELEMENTOS DA PÁGINA
