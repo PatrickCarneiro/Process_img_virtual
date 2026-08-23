@@ -1550,6 +1550,69 @@
     }
 
     /* =========================================================
+       EXPORTAÇÃO E IMPORTAÇÃO DE FLUXOGRAMA
+       ========================================================= */
+
+    .opcoes_formato_fluxo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .opcoes_formato_fluxo .botao_confirmacao_salvar_fluxograma {
+      width: 100%;
+    }
+
+    .resumo_importacao_fluxo {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .nome_arquivo_importacao_fluxo {
+      margin-bottom: 10px;
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .lista_etapas_importacao_fluxo,
+    .lista_erros_importacao_fluxo {
+      max-height: 180px;
+      overflow-y: auto;
+      margin: 8px 0 0 18px;
+      padding-right: 6px;
+      color: rgba(255,255,255,0.82);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .area_erros_importacao_fluxo {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .area_erros_importacao_fluxo.ativo {
+      display: block;
+    }
+
+    .area_erros_importacao_fluxo strong {
+      color: #ffffff;
+      font-size: 13px;
+    }
+
+    #inputImportarFluxo {
+      display: none;
+    }
+
+    /* =========================================================
        REDIMENSIONADOR DA REGIÃO DAS MINIATURAS
        ========================================================= */
 
@@ -2815,6 +2878,22 @@
             Processar fluxo
           </button>
 
+          <button
+            type="button"
+            id="botaoExportarFluxo"
+            class="botao_controle_fluxo"
+          >
+            Exportar fluxo
+          </button>
+
+          <button
+            type="button"
+            id="botaoImportarFluxo"
+            class="botao_controle_fluxo"
+          >
+            Importar fluxo
+          </button>
+
         </div>
 
         <div class="opcao_aplicar_fluxo_todas">
@@ -2896,6 +2975,150 @@
           id="botaoSalvarTodasImagens"
         >
           Salvar todas
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- INPUT: SELECIONA UM FLUXOGRAMA DO COMPUTADOR -->
+  <input
+    type="file"
+    id="inputImportarFluxo"
+    accept=".xlsx,.xls,.txt,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+  >
+
+
+  <!-- MODAL: ESCOLHA DO FORMATO PARA EXPORTAR O FLUXOGRAMA -->
+  <div
+    class="modal_confirmacao_salvar_fluxograma"
+    id="modalExportarFluxo"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tituloModalExportarFluxo"
+  >
+
+    <div class="caixa_confirmacao_salvar_fluxograma">
+
+      <h3 id="tituloModalExportarFluxo">
+        Exportar fluxograma
+      </h3>
+
+      <p>
+        Escolha o formato do arquivo que será salvo no computador.
+      </p>
+
+      <div class="opcoes_formato_fluxo">
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma"
+          id="botaoExportarFluxoExcel"
+        >
+          Excel (.xlsx)
+        </button>
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma"
+          id="botaoExportarFluxoTxt"
+        >
+          Texto (.txt)
+        </button>
+
+      </div>
+
+      <div class="acoes_confirmacao_salvar_fluxograma">
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma secundario"
+          id="botaoCancelarExportarFluxo"
+        >
+          Cancelar
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- MODAL: CONFIRMA O FLUXOGRAMA LIDO DO COMPUTADOR -->
+  <div
+    class="modal_confirmacao_salvar_fluxograma"
+    id="modalImportarFluxo"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tituloModalImportarFluxo"
+  >
+
+    <div class="caixa_confirmacao_salvar_fluxograma">
+
+      <h3 id="tituloModalImportarFluxo">
+        Importar fluxograma
+      </h3>
+
+      <p>
+        Confira as etapas reconhecidas antes de substituir o fluxograma da imagem atual.
+      </p>
+
+      <div class="resumo_importacao_fluxo">
+
+        <div
+          class="nome_arquivo_importacao_fluxo"
+          id="nomeArquivoImportacaoFluxo"
+        >
+          Nenhum arquivo selecionado.
+        </div>
+
+        <strong id="resumoImportacaoFluxo">
+          Aguardando leitura do arquivo.
+        </strong>
+
+        <ol
+          class="lista_etapas_importacao_fluxo"
+          id="listaEtapasImportacaoFluxo"
+        ></ol>
+
+      </div>
+
+      <div
+        class="area_erros_importacao_fluxo"
+        id="areaErrosImportacaoFluxo"
+      >
+
+        <strong>
+          Itens não reconhecidos
+        </strong>
+
+        <ul
+          class="lista_erros_importacao_fluxo"
+          id="listaErrosImportacaoFluxo"
+        ></ul>
+
+      </div>
+
+      <div class="acoes_confirmacao_salvar_fluxograma">
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma secundario"
+          id="botaoCancelarImportarFluxo"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="botao_confirmacao_salvar_fluxograma"
+          id="botaoConfirmarImportarFluxo"
+        >
+          Importar fluxo
         </button>
 
       </div>
@@ -3077,6 +3300,10 @@
   <!-- BIBLIOTECA OPENCV -->
 
   <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+
+  <!-- BIBLIOTECA PARA IMPORTAR E EXPORTAR ARQUIVOS EXCEL -->
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- ARQUIVOS JAVASCRIPT DO SISTEMA -->
 

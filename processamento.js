@@ -12725,6 +12725,2975 @@ function configurarExportacaoImagens() {
 }
 
 
+
+// =============================================================
+// EXPORTAÇÃO E IMPORTAÇÃO DO FLUXOGRAMA PELO COMPUTADOR
+// =============================================================
+//
+// Este bloco cuida somente de:
+// - exportar o fluxograma atual em Excel (.xlsx) ou Texto (.txt);
+// - ler esses mesmos formatos do computador;
+// - validar e mostrar uma prévia antes de importar;
+// - substituir somente o fluxograma da imagem atual.
+//
+// Importar um arquivo NÃO processa a imagem e NÃO vincula o fluxo
+// automaticamente a um projeto do Supabase. Para isso, o usuário
+// continua usando o botão "Salvar fluxo" já existente.
+// =============================================================
+
+let fluxoImportacaoPendente = null;
+
+
+// Normaliza textos para reconhecer nomes mesmo quando houver
+// diferenças simples de maiúsculas, acentos, hífens e espaços.
+function normalizarTextoReconhecimentoFluxo(texto) {
+
+  return String(
+    texto === null ||
+    texto === undefined
+      ? ""
+      : texto
+  )
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+}
+
+
+// Converte nomes equivalentes para o nome exato já utilizado
+// internamente pelo processamento.js.
+function obterNomeCanonicoFerramentaFluxo(nomeInformado) {
+
+  const nomeNormalizado =
+    normalizarTextoReconhecimentoFluxo(
+      nomeInformado
+    );
+
+
+  const equivalencias = {
+
+    "brilho":
+      "Brilho",
+
+    "contraste":
+      "Contraste",
+
+    "negativo":
+      "Negativo",
+
+    "alargamento de contraste":
+      "Alargamento de contraste",
+
+    "estiramento de contraste":
+      "Alargamento de contraste",
+
+    "potencia":
+      "Potência",
+
+    "transformacao de potencia":
+      "Potência",
+
+    "log":
+      "Log",
+
+    "logaritmo":
+      "Log",
+
+    "transformacao logaritmica":
+      "Log",
+
+    "gamma":
+      "Gamma",
+
+    "gama":
+      "Gamma",
+
+    "correcao gamma":
+      "Gamma",
+
+    "correcao gama":
+      "Gamma",
+
+    "equalizacao convencional":
+      "Equalização Convencional",
+
+    "equalizacao":
+      "Equalização Convencional",
+
+    "histeq":
+      "Equalização Convencional",
+
+    "clahe":
+      "CLAHE",
+
+    "limiarizacao manual":
+      "Limiarização Manual",
+
+    "limiar manual":
+      "Limiarização Manual",
+
+    "limiarizacao otsu":
+      "Limiarização Otsu",
+
+    "otsu":
+      "Limiarização Otsu",
+
+    "conversao para tons de cinza":
+      "Conversão para tons de cinza",
+
+    "tons de cinza":
+      "Conversão para tons de cinza",
+
+    "escala de cinza":
+      "Conversão para tons de cinza",
+
+    "cinza":
+      "Conversão para tons de cinza",
+
+    "filtro gaussiano":
+      "Filtro Gaussiano",
+
+    "gaussiano":
+      "Filtro Gaussiano",
+
+    "filtro media":
+      "Filtro Média",
+
+    "filtro de media":
+      "Filtro Média",
+
+    "media":
+      "Filtro Média",
+
+    "filtro mediana":
+      "Filtro Mediana",
+
+    "filtro de mediana":
+      "Filtro Mediana",
+
+    "mediana":
+      "Filtro Mediana",
+
+    "erosao":
+      "Erosão",
+
+    "dilatacao":
+      "Dilatação",
+
+    "abertura":
+      "Abertura",
+
+    "fechamento":
+      "Fechamento",
+
+    "top hat":
+      "Top-hat",
+
+    "tophat":
+      "Top-hat",
+
+    "bottom hat":
+      "Bottom-hat",
+
+    "bottomhat":
+      "Bottom-hat"
+  };
+
+
+  return equivalencias[
+    nomeNormalizado
+  ] || null;
+
+}
+
+
+// Transforma um valor em texto legível para Excel/TXT.
+function formatarValorParametroFluxoParaArquivo(
+  valor
+) {
+
+  if (valor === true) {
+    return "Sim";
+  }
+
+
+  if (valor === false) {
+    return "Não";
+  }
+
+
+  if (
+    valor === null ||
+    valor === undefined
+  ) {
+
+    return "null";
+  }
+
+
+  if (
+    typeof valor === "object"
+  ) {
+
+    try {
+
+      return JSON.stringify(
+        valor
+      );
+
+    } catch (_) {
+
+      return String(
+        valor
+      );
+
+    }
+
+  }
+
+
+  return String(
+    valor
+  );
+
+}
+
+
+// Cria uma lista simples "caminho = valor" dos parâmetros.
+// Arrays são mantidos em uma única linha JSON para preservar
+// matrizes como elementos estruturantes.
+function achatarParametrosFluxo(
+  valor,
+  caminho,
+  resultado
+) {
+
+  const saida =
+    Array.isArray(resultado)
+      ? resultado
+      : [];
+
+
+  if (
+    Array.isArray(valor)
+  ) {
+
+    saida.push({
+      caminho: caminho,
+      valor: formatarValorParametroFluxoParaArquivo(
+        valor
+      )
+    });
+
+    return saida;
+  }
+
+
+  if (
+    valor &&
+    typeof valor === "object"
+  ) {
+
+    const chaves =
+      Object.keys(
+        valor
+      );
+
+
+    if (
+      chaves.length === 0
+    ) {
+
+      if (caminho) {
+
+        saida.push({
+          caminho: caminho,
+          valor: "{}"
+        });
+
+      }
+
+      return saida;
+    }
+
+
+    chaves.forEach(
+      function(chave) {
+
+        const novoCaminho =
+          caminho
+            ? caminho + "." + chave
+            : chave;
+
+
+        achatarParametrosFluxo(
+          valor[chave],
+          novoCaminho,
+          saida
+        );
+
+      }
+    );
+
+
+    return saida;
+  }
+
+
+  if (caminho) {
+
+    saida.push({
+      caminho: caminho,
+      valor: formatarValorParametroFluxoParaArquivo(
+        valor
+      )
+    });
+
+  }
+
+
+  return saida;
+}
+
+
+// Monta o texto legível dos parâmetros que aparece no Excel
+// e também no arquivo TXT.
+function criarResumoParametrosEtapaFluxo(
+  etapa
+) {
+
+  const parametros =
+    etapa &&
+    etapa.parametros &&
+    typeof etapa.parametros ===
+      "object"
+      ? etapa.parametros
+      : {};
+
+
+  const itens =
+    achatarParametrosFluxo(
+      parametros,
+      "",
+      []
+    );
+
+
+  if (
+    itens.length === 0
+  ) {
+
+    return "Sem parâmetros";
+  }
+
+
+  return itens
+    .map(
+      function(item) {
+
+        return (
+          item.caminho +
+          " = " +
+          item.valor
+        );
+
+      }
+    )
+    .join("\n");
+
+}
+
+
+// Converte o texto de uma célula/linha novamente para o tipo
+// mais provável: booleano, número, null, array/objeto ou string.
+function interpretarValorParametroFluxoImportado(
+  valor
+) {
+
+  if (
+    valor === null ||
+    valor === undefined
+  ) {
+
+    return null;
+  }
+
+
+  if (
+    typeof valor === "number" ||
+    typeof valor === "boolean"
+  ) {
+
+    return valor;
+  }
+
+
+  const texto =
+    String(valor).trim();
+
+
+  if (!texto) {
+    return "";
+  }
+
+
+  const normalizado =
+    normalizarTextoReconhecimentoFluxo(
+      texto
+    );
+
+
+  if (
+    normalizado === "sim" ||
+    normalizado === "true" ||
+    normalizado === "verdadeiro"
+  ) {
+
+    return true;
+  }
+
+
+  if (
+    normalizado === "nao" ||
+    normalizado === "false" ||
+    normalizado === "falso"
+  ) {
+
+    return false;
+  }
+
+
+  if (
+    normalizado === "null" ||
+    normalizado === "nulo"
+  ) {
+
+    return null;
+  }
+
+
+  if (
+    (
+      texto.startsWith("[") &&
+      texto.endsWith("]")
+    ) ||
+    (
+      texto.startsWith("{") &&
+      texto.endsWith("}")
+    )
+  ) {
+
+    try {
+
+      return JSON.parse(
+        texto
+      );
+
+    } catch (_) {
+
+      // Se não for JSON válido, continua como texto.
+    }
+
+  }
+
+
+  const textoNumero =
+    texto.replace(
+      ",",
+      "."
+    );
+
+
+  if (
+    /^[-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?$/i.test(
+      textoNumero
+    )
+  ) {
+
+    const numero =
+      Number(
+        textoNumero
+      );
+
+
+    if (
+      Number.isFinite(
+        numero
+      )
+    ) {
+
+      return numero;
+    }
+
+  }
+
+
+  return texto;
+}
+
+
+// Define um valor dentro de um objeto usando caminhos como:
+// configuracao.modo
+// elementoEstruturante.nhood
+function definirValorPorCaminhoFluxo(
+  objeto,
+  caminho,
+  valor
+) {
+
+  const partes =
+    String(caminho || "")
+      .split(".")
+      .map(
+        function(parte) {
+          return parte.trim();
+        }
+      )
+      .filter(Boolean);
+
+
+  if (
+    partes.length === 0
+  ) {
+
+    return;
+  }
+
+
+  let atual =
+    objeto;
+
+
+  for (
+    let i = 0;
+    i < partes.length - 1;
+    i++
+  ) {
+
+    const chave =
+      partes[i];
+
+
+    if (
+      !atual[chave] ||
+      typeof atual[chave] !==
+        "object" ||
+      Array.isArray(
+        atual[chave]
+      )
+    ) {
+
+      atual[chave] = {};
+
+    }
+
+
+    atual =
+      atual[chave];
+
+  }
+
+
+  atual[
+    partes[
+      partes.length - 1
+    ]
+  ] = valor;
+
+}
+
+
+// Interpreta um bloco de parâmetros no formato:
+// sigma = 1
+// tamanhoKernel = 3
+// ignorarZero = Sim
+function interpretarResumoParametrosFluxo(
+  texto
+) {
+
+  const parametros = {};
+
+
+  const linhas =
+    String(texto || "")
+      .split(
+        /\r?\n/
+      );
+
+
+  linhas.forEach(
+    function(linha) {
+
+      const textoLinha =
+        String(linha || "")
+          .replace(
+            /^\s*[-•]\s*/,
+            ""
+          )
+          .trim();
+
+
+      if (
+        !textoLinha ||
+        normalizarTextoReconhecimentoFluxo(
+          textoLinha
+        ) ===
+          "sem parametros"
+      ) {
+
+        return;
+      }
+
+
+      let separador =
+        textoLinha.indexOf("=");
+
+
+      if (
+        separador < 0
+      ) {
+
+        separador =
+          textoLinha.indexOf(":");
+
+      }
+
+
+      if (
+        separador < 1
+      ) {
+
+        return;
+      }
+
+
+      const caminho =
+        textoLinha
+          .slice(
+            0,
+            separador
+          )
+          .trim();
+
+
+      const valorTexto =
+        textoLinha
+          .slice(
+            separador + 1
+          )
+          .trim();
+
+
+      definirValorPorCaminhoFluxo(
+        parametros,
+        caminho,
+        interpretarValorParametroFluxoImportado(
+          valorTexto
+        )
+      );
+
+    }
+  );
+
+
+  return parametros;
+}
+
+
+// Encontra uma coluna de Excel aceitando pequenas diferenças
+// de escrita, por exemplo "Parâmetros" ou "Parametros".
+function obterValorColunaFluxo(
+  linha,
+  nomesAceitos
+) {
+
+  if (
+    !linha ||
+    typeof linha !==
+      "object"
+  ) {
+
+    return "";
+  }
+
+
+  const chaves =
+    Object.keys(
+      linha
+    );
+
+
+  for (
+    let i = 0;
+    i < chaves.length;
+    i++
+  ) {
+
+    const chaveAtual =
+      chaves[i];
+
+    const chaveNormalizada =
+      normalizarTextoReconhecimentoFluxo(
+        chaveAtual
+      );
+
+
+    const encontrou =
+      nomesAceitos.some(
+        function(nome) {
+
+          return (
+            chaveNormalizada ===
+            normalizarTextoReconhecimentoFluxo(
+              nome
+            )
+          );
+
+        }
+      );
+
+
+    if (encontrou) {
+
+      return linha[
+        chaveAtual
+      ];
+
+    }
+
+  }
+
+
+  return "";
+}
+
+
+// Retorna true quando o caminho informado existe no objeto.
+function possuiCaminhoFluxo(
+  objeto,
+  caminho
+) {
+
+  const partes =
+    String(caminho || "")
+      .split(".")
+      .filter(Boolean);
+
+
+  let atual =
+    objeto;
+
+
+  for (
+    let i = 0;
+    i < partes.length;
+    i++
+  ) {
+
+    if (
+      !atual ||
+      typeof atual !==
+        "object" ||
+      !Object.prototype.hasOwnProperty.call(
+        atual,
+        partes[i]
+      )
+    ) {
+
+      return false;
+    }
+
+
+    atual =
+      atual[
+        partes[i]
+      ];
+
+  }
+
+
+  return true;
+}
+
+
+// Confere apenas os parâmetros indispensáveis para impedir
+// a importação de um fluxo que certamente quebraria ao processar.
+function validarParametrosEtapaImportada(
+  etapa
+) {
+
+  const erros = [];
+
+  const nome =
+    etapa &&
+    etapa.nome
+      ? etapa.nome
+      : "";
+
+
+  const parametros =
+    etapa &&
+    etapa.parametros &&
+    typeof etapa.parametros ===
+      "object"
+      ? etapa.parametros
+      : {};
+
+
+  if (
+    nome ===
+      "Conversão para tons de cinza"
+  ) {
+
+    return erros;
+  }
+
+
+  if (
+    nome ===
+      "Filtro Gaussiano"
+  ) {
+
+    if (
+      !Number.isFinite(
+        Number(
+          parametros.sigma
+        )
+      ) ||
+      Number(
+        parametros.sigma
+      ) <= 0
+    ) {
+
+      erros.push(
+        "sigma"
+      );
+
+    }
+
+
+    if (
+      !Number.isFinite(
+        Number(
+          parametros.tamanhoKernel
+        )
+      ) ||
+      Number(
+        parametros.tamanhoKernel
+      ) < 1
+    ) {
+
+      erros.push(
+        "tamanhoKernel"
+      );
+
+    }
+
+
+    return erros;
+  }
+
+
+  if (
+    nome ===
+      "Filtro Média" ||
+    nome ===
+      "Filtro Mediana"
+  ) {
+
+    if (
+      !Number.isFinite(
+        Number(
+          parametros.kernelAltura
+        )
+      )
+    ) {
+
+      erros.push(
+        "kernelAltura"
+      );
+
+    }
+
+
+    if (
+      !Number.isFinite(
+        Number(
+          parametros.kernelLargura
+        )
+      )
+    ) {
+
+      erros.push(
+        "kernelLargura"
+      );
+
+    }
+
+
+    return erros;
+  }
+
+
+  if (
+    nome === "Erosão" ||
+    nome === "Dilatação" ||
+    nome === "Abertura" ||
+    nome === "Fechamento" ||
+    nome === "Top-hat" ||
+    nome === "Bottom-hat"
+  ) {
+
+    if (
+      !parametros.elementoEstruturante ||
+      typeof parametros.elementoEstruturante !==
+        "object"
+    ) {
+
+      erros.push(
+        "elementoEstruturante"
+      );
+
+    }
+
+
+    return erros;
+  }
+
+
+  if (
+    nome === "Brilho" ||
+    nome === "Contraste" ||
+    nome === "Alargamento de contraste" ||
+    nome === "Potência" ||
+    nome === "Log" ||
+    nome === "Gamma" ||
+    nome === "Equalização Convencional" ||
+    nome === "CLAHE" ||
+    nome === "Limiarização Manual" ||
+    nome === "Limiarização Otsu"
+  ) {
+
+    if (
+      !possuiCaminhoFluxo(
+        {
+          parametros:
+            parametros
+        },
+        "parametros.configuracao"
+      )
+    ) {
+
+      erros.push(
+        "configuracao"
+      );
+
+    }
+
+
+    return erros;
+  }
+
+
+  // Negativo possui apenas a opção ignorarZero e também funciona
+  // quando essa informação estiver ausente em arquivos mais simples.
+  return erros;
+}
+
+
+// Prepara uma etapa importada e atribui um novo ID local.
+// O nome precisa corresponder a uma ferramenta existente.
+function normalizarEtapaImportadaFluxo(
+  etapaOriginal,
+  ordem
+) {
+
+  if (
+    !etapaOriginal ||
+    typeof etapaOriginal !==
+      "object"
+  ) {
+
+    return {
+      etapa: null,
+      erros: [
+        "Etapa " +
+        ordem +
+        ": dados inválidos."
+      ]
+    };
+  }
+
+
+  const nomeCanonico =
+    obterNomeCanonicoFerramentaFluxo(
+      etapaOriginal.nome ||
+      etapaOriginal.ferramenta ||
+      ""
+    );
+
+
+  if (
+    !nomeCanonico
+  ) {
+
+    return {
+      etapa: null,
+      erros: [
+        "Etapa " +
+        ordem +
+        ': ferramenta "' +
+        (
+          etapaOriginal.nome ||
+          etapaOriginal.ferramenta ||
+          "sem nome"
+        ) +
+        '" não reconhecida.'
+      ]
+    };
+  }
+
+
+  const etapa = {
+    ...clonarPipelineParaProjeto(
+      etapaOriginal
+    ),
+    id: ordem,
+    nome: nomeCanonico
+  };
+
+
+  if (
+    nomeCanonico !==
+      "Conversão para tons de cinza" &&
+    (
+      !etapa.parametros ||
+      typeof etapa.parametros !==
+        "object"
+    )
+  ) {
+
+    etapa.parametros = {};
+
+  }
+
+
+  const parametrosAusentes =
+    validarParametrosEtapaImportada(
+      etapa
+    );
+
+
+  const erros =
+    parametrosAusentes.map(
+      function(parametro) {
+
+        return (
+          "Etapa " +
+          ordem +
+          " (" +
+          nomeCanonico +
+          '): parâmetro obrigatório "' +
+          parametro +
+          '" não foi reconhecido.'
+        );
+
+      }
+    );
+
+
+  return {
+    etapa: etapa,
+    erros: erros
+  };
+}
+
+
+// Gera o nome padrão do arquivo exportado.
+function criarNomeArquivoFluxograma(
+  extensao
+) {
+
+  let nomeBase =
+    projetoSalvamentoAutomaticoNome ||
+    (
+      imagemAtualSelecionada &&
+      imagemAtualSelecionada.name
+        ? imagemAtualSelecionada.name
+        : "fluxograma"
+    );
+
+
+  nomeBase =
+    String(nomeBase)
+      .replace(
+        /\.[^.]+$/,
+        ""
+      )
+      .replace(
+        /[\\/:*?"<>|]+/g,
+        "_"
+      )
+      .replace(
+        /\s+/g,
+        "_"
+      )
+      .trim();
+
+
+  if (!nomeBase) {
+    nomeBase =
+      "fluxograma";
+  }
+
+
+  return (
+    nomeBase +
+    "_fluxo." +
+    extensao
+  );
+}
+
+
+// Cria as linhas usadas no Excel.
+function criarLinhasExcelFluxograma() {
+
+  return pipelineFerramentas.map(
+    function(etapa, indice) {
+
+      return {
+        Ordem:
+          indice + 1,
+
+        Ferramenta:
+          etapa.nome || "",
+
+        "Parâmetros":
+          criarResumoParametrosEtapaFluxo(
+            etapa
+          )
+      };
+
+    }
+  );
+
+}
+
+
+// Abre o modal de escolha XLSX/TXT.
+function abrirModalExportarFluxo() {
+
+  if (
+    !Array.isArray(
+      pipelineFerramentas
+    ) ||
+    pipelineFerramentas.length === 0
+  ) {
+
+    alert(
+      "O fluxograma está vazio."
+    );
+
+    return;
+  }
+
+
+  const modal =
+    document.getElementById(
+      "modalExportarFluxo"
+    );
+
+
+  if (modal) {
+
+    modal.classList.add(
+      "ativo"
+    );
+
+  }
+
+}
+
+
+// Fecha o modal de exportação.
+function fecharModalExportarFluxo() {
+
+  const modal =
+    document.getElementById(
+      "modalExportarFluxo"
+    );
+
+
+  if (modal) {
+
+    modal.classList.remove(
+      "ativo"
+    );
+
+  }
+
+}
+
+
+// Exporta o fluxograma em Excel.
+// As colunas ficam legíveis e editáveis. O próprio texto dos
+// parâmetros contém informação suficiente para reconstruir o fluxo.
+function exportarFluxoParaExcel() {
+
+  if (
+    !Array.isArray(
+      pipelineFerramentas
+    ) ||
+    pipelineFerramentas.length === 0
+  ) {
+
+    alert(
+      "O fluxograma está vazio."
+    );
+
+    return;
+  }
+
+
+  if (
+    typeof XLSX ===
+      "undefined"
+  ) {
+
+    alert(
+      "A biblioteca para arquivos Excel não foi carregada."
+    );
+
+    return;
+  }
+
+
+  sincronizarPipelineAtualNaImagem();
+
+
+  const linhas =
+    criarLinhasExcelFluxograma();
+
+
+  const planilhaFluxo =
+    XLSX.utils.json_to_sheet(
+      linhas
+    );
+
+
+  planilhaFluxo["!cols"] = [
+    {
+      wch: 10
+    },
+    {
+      wch: 32
+    },
+    {
+      wch: 70
+    }
+  ];
+
+
+  const informacoes = [
+    {
+      Campo:
+        "Tipo",
+      Valor:
+        "Fluxograma de processamento de imagem"
+    },
+    {
+      Campo:
+        "Versão",
+      Valor:
+        "1"
+    },
+    {
+      Campo:
+        "Exportado em",
+      Valor:
+        new Date().toISOString()
+    }
+  ];
+
+
+  const planilhaInformacoes =
+    XLSX.utils.json_to_sheet(
+      informacoes
+    );
+
+
+  const livro =
+    XLSX.utils.book_new();
+
+
+  XLSX.utils.book_append_sheet(
+    livro,
+    planilhaFluxo,
+    "Fluxograma"
+  );
+
+
+  XLSX.utils.book_append_sheet(
+    livro,
+    planilhaInformacoes,
+    "Informações"
+  );
+
+
+  XLSX.writeFile(
+    livro,
+    criarNomeArquivoFluxograma(
+      "xlsx"
+    )
+  );
+
+
+  fecharModalExportarFluxo();
+
+
+  statusText.innerText =
+    "Fluxograma exportado em Excel.";
+
+}
+
+
+// Cria o conteúdo TXT em um formato legível por pessoas e,
+// ao mesmo tempo, seguro para ser importado novamente.
+function criarTextoExportacaoFluxograma() {
+
+  const linhas = [
+    "FLUXOGRAMA DE PROCESSAMENTO DE IMAGEM",
+    "Versão: 1",
+    "Exportado em: " +
+      new Date().toISOString(),
+    ""
+  ];
+
+
+  pipelineFerramentas.forEach(
+    function(etapa, indice) {
+
+      linhas.push(
+        "ETAPA " +
+        (indice + 1)
+      );
+
+      linhas.push(
+        "Ferramenta: " +
+        (
+          etapa.nome ||
+          ""
+        )
+      );
+
+
+      const parametros =
+        achatarParametrosFluxo(
+          etapa.parametros &&
+          typeof etapa.parametros ===
+            "object"
+            ? etapa.parametros
+            : {},
+          "",
+          []
+        );
+
+
+      if (
+        parametros.length === 0
+      ) {
+
+        linhas.push(
+          "Parâmetros: Sem parâmetros"
+        );
+
+      } else {
+
+        linhas.push(
+          "Parâmetros:"
+        );
+
+
+        parametros.forEach(
+          function(item) {
+
+            linhas.push(
+              "- " +
+              item.caminho +
+              " = " +
+              item.valor
+            );
+
+          }
+        );
+
+      }
+
+
+      linhas.push(
+        ""
+      );
+
+    }
+  );
+
+
+  return linhas.join(
+    "\n"
+  );
+
+}
+
+
+// Dispara o download de um Blob simples.
+function baixarArquivoFluxograma(
+  blob,
+  nomeArquivo
+) {
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    url;
+
+  link.download =
+    nomeArquivo;
+
+  link.style.display =
+    "none";
+
+
+  document.body.appendChild(
+    link
+  );
+
+
+  link.click();
+  link.remove();
+
+
+  setTimeout(
+    function() {
+
+      URL.revokeObjectURL(
+        url
+      );
+
+    },
+    1000
+  );
+
+}
+
+
+// Exporta o fluxograma em TXT.
+function exportarFluxoParaTxt() {
+
+  if (
+    !Array.isArray(
+      pipelineFerramentas
+    ) ||
+    pipelineFerramentas.length === 0
+  ) {
+
+    alert(
+      "O fluxograma está vazio."
+    );
+
+    return;
+  }
+
+
+  sincronizarPipelineAtualNaImagem();
+
+
+  const texto =
+    criarTextoExportacaoFluxograma();
+
+
+  const blob =
+    new Blob(
+      [
+        "\uFEFF" +
+        texto
+      ],
+      {
+        type:
+          "text/plain;charset=utf-8"
+      }
+    );
+
+
+  baixarArquivoFluxograma(
+    blob,
+    criarNomeArquivoFluxograma(
+      "txt"
+    )
+  );
+
+
+  fecharModalExportarFluxo();
+
+
+  statusText.innerText =
+    "Fluxograma exportado em texto.";
+
+}
+
+
+// Extrai uma etapa de uma linha do Excel.
+// Primeiro tenta "Dados da etapa" para manter o arquivo exportado
+// totalmente fiel. Se a coluna não existir, usa Ferramenta + Parâmetros.
+function interpretarLinhaExcelFluxograma(
+  linha,
+  ordemPadrao
+) {
+
+  const ferramenta =
+    obterValorColunaFluxo(
+      linha,
+      [
+        "Ferramenta",
+        "Etapa",
+        "Operação",
+        "Operacao",
+        "Nome"
+      ]
+    );
+
+
+  const parametrosTexto =
+    obterValorColunaFluxo(
+      linha,
+      [
+        "Parâmetros",
+        "Parametros",
+        "Configuração",
+        "Configuracao"
+      ]
+    );
+
+
+  const parametroUnico =
+    obterValorColunaFluxo(
+      linha,
+      [
+        "Parâmetro",
+        "Parametro"
+      ]
+    );
+
+
+  const valorUnico =
+    obterValorColunaFluxo(
+      linha,
+      [
+        "Valor"
+      ]
+    );
+
+
+  // O formato atual é intencionalmente legível/editável:
+  // Ferramenta + Parâmetros são a fonte principal da importação.
+  if (
+    String(
+      ferramenta || ""
+    ).trim()
+  ) {
+
+    const parametros =
+      interpretarResumoParametrosFluxo(
+        parametrosTexto
+      );
+
+
+    if (
+      String(
+        parametroUnico || ""
+      ).trim()
+    ) {
+
+      definirValorPorCaminhoFluxo(
+        parametros,
+        String(
+          parametroUnico
+        ).trim(),
+        interpretarValorParametroFluxoImportado(
+          valorUnico
+        )
+      );
+
+    }
+
+
+    return {
+      etapa: {
+        nome:
+          String(
+            ferramenta
+          ).trim(),
+        parametros:
+          parametros
+      },
+      erro:
+        null
+    };
+
+  }
+
+
+  // Compatibilidade com uma eventual versão anterior do arquivo
+  // que possua a coluna técnica "Dados da etapa".
+  const dadosEtapa =
+    obterValorColunaFluxo(
+      linha,
+      [
+        "Dados da etapa",
+        "Dados",
+        "Etapa JSON",
+        "JSON"
+      ]
+    );
+
+
+  if (
+    String(
+      dadosEtapa || ""
+    ).trim()
+  ) {
+
+    try {
+
+      const etapa =
+        JSON.parse(
+          String(
+            dadosEtapa
+          )
+        );
+
+
+      return {
+        etapa:
+          etapa,
+        erro:
+          null
+      };
+
+    } catch (_) {
+
+      return {
+        etapa:
+          null,
+        erro:
+          "Etapa " +
+          ordemPadrao +
+          ": a coluna Dados da etapa contém JSON inválido."
+      };
+
+    }
+
+  }
+
+
+  return {
+    etapa: null,
+    erro: null
+  };
+}
+
+
+// Lê o Excel e devolve todas as etapas encontradas.
+async function lerFluxogramaExcel(
+  arquivo
+) {
+
+  if (
+    typeof XLSX ===
+      "undefined"
+  ) {
+
+    throw new Error(
+      "A biblioteca para arquivos Excel não foi carregada."
+    );
+
+  }
+
+
+  const buffer =
+    await arquivo.arrayBuffer();
+
+
+  const livro =
+    XLSX.read(
+      buffer,
+      {
+        type:
+          "array"
+      }
+    );
+
+
+  if (
+    !livro.SheetNames ||
+    livro.SheetNames.length === 0
+  ) {
+
+    throw new Error(
+      "O arquivo Excel não possui planilhas."
+    );
+
+  }
+
+
+  const nomePlanilha =
+    livro.SheetNames.find(
+      function(nome) {
+
+        return (
+          normalizarTextoReconhecimentoFluxo(
+            nome
+          ) ===
+          "fluxograma"
+        );
+
+      }
+    ) ||
+    livro.SheetNames[0];
+
+
+  const planilha =
+    livro.Sheets[
+      nomePlanilha
+    ];
+
+
+  const linhas =
+    XLSX.utils.sheet_to_json(
+      planilha,
+      {
+        defval:
+          ""
+      }
+    );
+
+
+  if (
+    linhas.length === 0
+  ) {
+
+    throw new Error(
+      "Nenhuma etapa foi encontrada no arquivo Excel."
+    );
+
+  }
+
+
+  const etapasBrutas = [];
+  const erros = [];
+
+
+  linhas.forEach(
+    function(linha, indice) {
+
+      const interpretacao =
+        interpretarLinhaExcelFluxograma(
+          linha,
+          indice + 1
+        );
+
+
+      if (
+        interpretacao.erro
+      ) {
+
+        erros.push(
+          interpretacao.erro
+        );
+
+      }
+
+
+      if (
+        interpretacao.etapa
+      ) {
+
+        etapasBrutas.push(
+          interpretacao.etapa
+        );
+
+      }
+
+    }
+  );
+
+
+  return {
+    etapasBrutas:
+      etapasBrutas,
+    erros:
+      erros
+  };
+}
+
+
+// Lê o TXT exportado pelo sistema. Também aceita um formato
+// simplificado desde que cada etapa possua "Ferramenta:".
+async function lerFluxogramaTxt(
+  arquivo
+) {
+
+  const texto =
+    (
+      await arquivo.text()
+    )
+      .replace(
+        /^\uFEFF/,
+        ""
+      );
+
+
+  const linhas =
+    texto.split(
+      /\r?\n/
+    );
+
+
+  // O formato atual é lido a partir do texto visível, permitindo
+  // que o usuário altere nomes e valores diretamente no TXT.
+  const etapasBrutas = [];
+  const erros = [];
+
+  let etapaAtual = null;
+
+
+  function finalizarEtapaAtual() {
+
+    if (
+      !etapaAtual
+    ) {
+
+      return;
+    }
+
+
+    if (
+      etapaAtual.nome
+    ) {
+
+      etapasBrutas.push(
+        {
+          nome:
+            etapaAtual.nome,
+          parametros:
+            etapaAtual.parametros
+        }
+      );
+
+    }
+
+
+    etapaAtual =
+      null;
+  }
+
+
+  linhas.forEach(
+    function(linhaOriginal) {
+
+      const linha =
+        String(
+          linhaOriginal || ""
+        ).trim();
+
+
+      if (!linha) {
+        return;
+      }
+
+
+      const cabecalhoEtapa =
+        linha.match(
+          /^ETAPA\s+\d+\s*$/i
+        );
+
+
+      if (
+        cabecalhoEtapa
+      ) {
+
+        finalizarEtapaAtual();
+
+        etapaAtual = {
+          nome:
+            "",
+          parametros:
+            {}
+        };
+
+        return;
+      }
+
+
+      const ferramenta =
+        linha.match(
+          /^Ferramenta\s*:\s*(.+)$/i
+        );
+
+
+      if (
+        ferramenta
+      ) {
+
+        if (
+          !etapaAtual
+        ) {
+
+          etapaAtual = {
+            nome:
+              "",
+            parametros:
+              {}
+          };
+
+        }
+
+
+        etapaAtual.nome =
+          ferramenta[1].trim();
+
+        return;
+      }
+
+
+      // Também aceita "1. Filtro Gaussiano".
+      const etapaNumerada =
+        linha.match(
+          /^\d+\s*[\.\-\)]\s*(.+)$/
+        );
+
+
+      if (
+        etapaNumerada
+      ) {
+
+        finalizarEtapaAtual();
+
+        etapaAtual = {
+          nome:
+            etapaNumerada[1].trim(),
+          parametros:
+            {}
+        };
+
+        return;
+      }
+
+
+      const parametro =
+        linha
+          .replace(
+            /^\s*[-•]\s*/,
+            ""
+          )
+          .match(
+            /^([^=:]+?)\s*(?:=|:)\s*(.+)$/
+          );
+
+
+      if (
+        parametro &&
+        etapaAtual
+      ) {
+
+        const chave =
+          parametro[1].trim();
+
+
+        const chaveNormalizada =
+          normalizarTextoReconhecimentoFluxo(
+            chave
+          );
+
+
+        if (
+          chaveNormalizada !==
+            "parametros" &&
+          chaveNormalizada !==
+            "versao" &&
+          chaveNormalizada !==
+            "exportado em" &&
+          chaveNormalizada !==
+            "dados da etapa"
+        ) {
+
+          definirValorPorCaminhoFluxo(
+            etapaAtual.parametros,
+            chave,
+            interpretarValorParametroFluxoImportado(
+              parametro[2]
+            )
+          );
+
+        }
+
+      }
+
+    }
+  );
+
+
+  finalizarEtapaAtual();
+
+
+  if (
+    etapasBrutas.length > 0
+  ) {
+
+    return {
+      etapasBrutas:
+        etapasBrutas,
+      erros:
+        erros
+    };
+
+  }
+
+
+  // Compatibilidade com um arquivo que contenha somente
+  // linhas técnicas "Dados da etapa: {...}".
+  const etapasJson = [];
+  const errosJson = [];
+
+
+  linhas.forEach(
+    function(linha, indice) {
+
+      const correspondencia =
+        String(linha || "")
+          .match(
+            /^\s*Dados\s+da\s+etapa\s*:\s*(\{.*\})\s*$/i
+          );
+
+
+      if (
+        correspondencia
+      ) {
+
+        try {
+
+          etapasJson.push(
+            JSON.parse(
+              correspondencia[1]
+            )
+          );
+
+        } catch (_) {
+
+          errosJson.push(
+            "Linha " +
+            (indice + 1) +
+            ": Dados da etapa contém JSON inválido."
+          );
+
+        }
+
+      }
+
+    }
+  );
+
+
+  return {
+    etapasBrutas:
+      etapasJson,
+    erros:
+      errosJson
+  };
+}
+
+
+// Normaliza e valida o resultado da leitura antes de mostrar o modal.
+function prepararFluxogramaImportado(
+  etapasBrutas,
+  errosLeitura
+) {
+
+  const etapas = [];
+  const erros =
+    Array.isArray(
+      errosLeitura
+    )
+      ? errosLeitura.slice()
+      : [];
+
+
+  (
+    Array.isArray(
+      etapasBrutas
+    )
+      ? etapasBrutas
+      : []
+  ).forEach(
+    function(etapaBruta, indice) {
+
+      const resultado =
+        normalizarEtapaImportadaFluxo(
+          etapaBruta,
+          indice + 1
+        );
+
+
+      if (
+        resultado.etapa
+      ) {
+
+        etapas.push(
+          resultado.etapa
+        );
+
+      }
+
+
+      if (
+        resultado.erros &&
+        resultado.erros.length > 0
+      ) {
+
+        erros.push(
+          ...resultado.erros
+        );
+
+      }
+
+    }
+  );
+
+
+  if (
+    etapas.length === 0 &&
+    erros.length === 0
+  ) {
+
+    erros.push(
+      "Nenhuma etapa reconhecível foi encontrada no arquivo."
+    );
+
+  }
+
+
+  return {
+    etapas:
+      etapas,
+    erros:
+      erros
+  };
+}
+
+
+// Atualiza o modal com as etapas encontradas e os erros.
+function mostrarPreviaImportacaoFluxo(
+  arquivo,
+  resultado
+) {
+
+  const modal =
+    document.getElementById(
+      "modalImportarFluxo"
+    );
+
+  const nomeArquivo =
+    document.getElementById(
+      "nomeArquivoImportacaoFluxo"
+    );
+
+  const resumo =
+    document.getElementById(
+      "resumoImportacaoFluxo"
+    );
+
+  const listaEtapas =
+    document.getElementById(
+      "listaEtapasImportacaoFluxo"
+    );
+
+  const areaErros =
+    document.getElementById(
+      "areaErrosImportacaoFluxo"
+    );
+
+  const listaErros =
+    document.getElementById(
+      "listaErrosImportacaoFluxo"
+    );
+
+  const botaoConfirmar =
+    document.getElementById(
+      "botaoConfirmarImportarFluxo"
+    );
+
+
+  if (nomeArquivo) {
+
+    nomeArquivo.textContent =
+      arquivo &&
+      arquivo.name
+        ? arquivo.name
+        : "Arquivo selecionado";
+
+  }
+
+
+  if (listaEtapas) {
+
+    listaEtapas.innerHTML =
+      "";
+
+
+    resultado.etapas.forEach(
+      function(etapa) {
+
+        const item =
+          document.createElement(
+            "li"
+          );
+
+
+        item.textContent =
+          etapa.nome;
+
+
+        listaEtapas.appendChild(
+          item
+        );
+
+      }
+    );
+
+  }
+
+
+  if (resumo) {
+
+    resumo.textContent =
+      resultado.etapas.length === 1
+        ? "1 etapa reconhecida."
+        : (
+            resultado.etapas.length +
+            " etapas reconhecidas."
+          );
+
+  }
+
+
+  if (listaErros) {
+
+    listaErros.innerHTML =
+      "";
+
+
+    resultado.erros.forEach(
+      function(erro) {
+
+        const item =
+          document.createElement(
+            "li"
+          );
+
+
+        item.textContent =
+          erro;
+
+
+        listaErros.appendChild(
+          item
+        );
+
+      }
+    );
+
+  }
+
+
+  if (areaErros) {
+
+    areaErros.style.display =
+      resultado.erros.length > 0
+        ? "block"
+        : "none";
+
+  }
+
+
+  if (botaoConfirmar) {
+
+    botaoConfirmar.disabled =
+      resultado.erros.length > 0 ||
+      resultado.etapas.length === 0;
+
+  }
+
+
+  if (modal) {
+
+    modal.classList.add(
+      "ativo"
+    );
+
+  }
+
+}
+
+
+// Fecha o modal e limpa a importação pendente.
+function fecharModalImportarFluxo() {
+
+  const modal =
+    document.getElementById(
+      "modalImportarFluxo"
+    );
+
+  const input =
+    document.getElementById(
+      "inputImportarFluxo"
+    );
+
+
+  if (modal) {
+
+    modal.classList.remove(
+      "ativo"
+    );
+
+  }
+
+
+  fluxoImportacaoPendente =
+    null;
+
+
+  if (input) {
+
+    input.value =
+      "";
+
+  }
+
+}
+
+
+// Lê o arquivo escolhido e abre a prévia.
+async function lerArquivoImportacaoFluxo(
+  arquivo
+) {
+
+  if (!arquivo) {
+    return;
+  }
+
+
+  if (
+    !imagemAtualSelecionada
+  ) {
+
+    alert(
+      "Nenhuma imagem está selecionada para receber o fluxograma."
+    );
+
+    return;
+  }
+
+
+  const nome =
+    String(
+      arquivo.name || ""
+    );
+
+  const extensao =
+    nome.includes(".")
+      ? nome
+          .split(".")
+          .pop()
+          .toLowerCase()
+      : "";
+
+
+  try {
+
+    let leitura;
+
+
+    if (
+      extensao === "xlsx" ||
+      extensao === "xls"
+    ) {
+
+      leitura =
+        await lerFluxogramaExcel(
+          arquivo
+        );
+
+    } else if (
+      extensao === "txt"
+    ) {
+
+      leitura =
+        await lerFluxogramaTxt(
+          arquivo
+        );
+
+    } else {
+
+      throw new Error(
+        "Formato não suportado. Selecione um arquivo .xlsx, .xls ou .txt."
+      );
+
+    }
+
+
+    const resultado =
+      prepararFluxogramaImportado(
+        leitura.etapasBrutas,
+        leitura.erros
+      );
+
+
+    fluxoImportacaoPendente = {
+      arquivo:
+        arquivo,
+      etapas:
+        resultado.etapas,
+      erros:
+        resultado.erros
+    };
+
+
+    mostrarPreviaImportacaoFluxo(
+      arquivo,
+      resultado
+    );
+
+  } catch (error) {
+
+    fluxoImportacaoPendente =
+      null;
+
+
+    const input =
+      document.getElementById(
+        "inputImportarFluxo"
+      );
+
+
+    if (input) {
+
+      input.value =
+        "";
+
+    }
+
+
+    alert(
+      "Não foi possível ler o fluxograma: " +
+      (
+        error &&
+        error.message
+          ? error.message
+          : String(error)
+      )
+    );
+
+  }
+
+}
+
+
+// Substitui SOMENTE o fluxo da imagem atual.
+// O novo fluxo começa desvinculado de projeto/autosave.
+async function confirmarImportacaoFluxo() {
+
+  if (
+    !fluxoImportacaoPendente ||
+    !Array.isArray(
+      fluxoImportacaoPendente.etapas
+    ) ||
+    fluxoImportacaoPendente.etapas.length ===
+      0
+  ) {
+
+    return;
+  }
+
+
+  if (
+    fluxoImportacaoPendente.erros &&
+    fluxoImportacaoPendente.erros.length >
+      0
+  ) {
+
+    return;
+  }
+
+
+  if (
+    !imagemAtualSelecionada
+  ) {
+
+    alert(
+      "Nenhuma imagem está selecionada."
+    );
+
+    return;
+  }
+
+
+  pipelineFerramentas =
+    clonarPipelineDaImagem(
+      fluxoImportacaoPendente.etapas
+    );
+
+
+  pipelineFerramentas =
+    pipelineFerramentas.map(
+      function(etapa, indice) {
+
+        return {
+          ...etapa,
+          id:
+            indice + 1
+        };
+
+      }
+    );
+
+
+  recalcularProximoIdEtapaPipelineAtual();
+
+
+  imagemAtualSelecionada.pipelineFerramentas =
+    clonarPipelineDaImagem(
+      pipelineFerramentas
+    );
+
+
+  invalidarProcessamentoDaImagem(
+    imagemAtualSelecionada
+  );
+
+
+  // Importar não equivale a salvar. Qualquer vínculo antigo com
+  // projeto é removido da imagem atual para evitar sobrescrever
+  // um projeto existente sem intenção do usuário.
+  garantirEstadoSalvamentoAutomaticoImagem(
+    imagemAtualSelecionada
+  );
+
+
+  imagemAtualSelecionada.salvamentoAutomaticoAtivo =
+    false;
+
+  imagemAtualSelecionada.salvamentoAutomaticoPerguntado =
+    true;
+
+  imagemAtualSelecionada.projetoSalvamentoAutomaticoId =
+    null;
+
+  imagemAtualSelecionada.projetoSalvamentoAutomaticoNome =
+    "";
+
+
+  const checkAplicarTodas =
+    document.getElementById(
+      "checkAplicarTodasImagens"
+    );
+
+
+  if (checkAplicarTodas) {
+
+    checkAplicarTodas.checked =
+      false;
+
+  }
+
+
+  carregarPipelineDaImagem(
+    imagemAtualSelecionada
+  );
+
+
+  await openFile(
+    imagemAtualSelecionada
+  );
+
+
+  if (
+    analiseCarregada &&
+    typeof atualizarAnaliseDaImagemAtual ===
+      "function"
+  ) {
+
+    await atualizarAnaliseDaImagemAtual();
+
+  }
+
+
+  salvarUltimaSessaoProcessamento();
+
+
+  fecharModalImportarFluxo();
+
+
+  statusText.innerText =
+    "Fluxograma importado para a imagem atual. Clique em Processar fluxo para executar. Use Salvar fluxo se quiser armazená-lo como projeto.";
+
+}
+
+
+// Liga somente os controles adicionados no processamento.html
+// para este processo de exportação/importação.
+function configurarExportacaoImportacaoFluxo() {
+
+  const botaoExportar =
+    document.getElementById(
+      "botaoExportarFluxo"
+    );
+
+  const botaoImportar =
+    document.getElementById(
+      "botaoImportarFluxo"
+    );
+
+  const botaoExcel =
+    document.getElementById(
+      "botaoExportarFluxoExcel"
+    );
+
+  const botaoTxt =
+    document.getElementById(
+      "botaoExportarFluxoTxt"
+    );
+
+  const botaoCancelarExportacao =
+    document.getElementById(
+      "botaoCancelarExportarFluxo"
+    );
+
+  const inputImportar =
+    document.getElementById(
+      "inputImportarFluxo"
+    );
+
+  const botaoCancelarImportacao =
+    document.getElementById(
+      "botaoCancelarImportarFluxo"
+    );
+
+  const botaoConfirmarImportacao =
+    document.getElementById(
+      "botaoConfirmarImportarFluxo"
+    );
+
+  const modalExportar =
+    document.getElementById(
+      "modalExportarFluxo"
+    );
+
+  const modalImportar =
+    document.getElementById(
+      "modalImportarFluxo"
+    );
+
+
+  if (
+    botaoExportar &&
+    botaoExportar.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    botaoExportar.addEventListener(
+      "click",
+      abrirModalExportarFluxo
+    );
+
+    botaoExportar.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    botaoImportar &&
+    botaoImportar.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    botaoImportar.addEventListener(
+      "click",
+      function() {
+
+        if (
+          !imagemAtualSelecionada
+        ) {
+
+          alert(
+            "Nenhuma imagem está selecionada."
+          );
+
+          return;
+        }
+
+
+        if (inputImportar) {
+
+          inputImportar.value =
+            "";
+
+          inputImportar.click();
+
+        }
+
+      }
+    );
+
+    botaoImportar.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    botaoExcel &&
+    botaoExcel.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    botaoExcel.addEventListener(
+      "click",
+      exportarFluxoParaExcel
+    );
+
+    botaoExcel.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    botaoTxt &&
+    botaoTxt.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    botaoTxt.addEventListener(
+      "click",
+      exportarFluxoParaTxt
+    );
+
+    botaoTxt.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    botaoCancelarExportacao &&
+    botaoCancelarExportacao.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    botaoCancelarExportacao.addEventListener(
+      "click",
+      fecharModalExportarFluxo
+    );
+
+    botaoCancelarExportacao.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    inputImportar &&
+    inputImportar.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    inputImportar.addEventListener(
+      "change",
+      function() {
+
+        const arquivo =
+          inputImportar.files &&
+          inputImportar.files[0]
+            ? inputImportar.files[0]
+            : null;
+
+
+        if (arquivo) {
+
+          lerArquivoImportacaoFluxo(
+            arquivo
+          );
+
+        }
+
+      }
+    );
+
+    inputImportar.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    botaoCancelarImportacao &&
+    botaoCancelarImportacao.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    botaoCancelarImportacao.addEventListener(
+      "click",
+      fecharModalImportarFluxo
+    );
+
+    botaoCancelarImportacao.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    botaoConfirmarImportacao &&
+    botaoConfirmarImportacao.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    botaoConfirmarImportacao.addEventListener(
+      "click",
+      confirmarImportacaoFluxo
+    );
+
+    botaoConfirmarImportacao.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    modalExportar &&
+    modalExportar.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    modalExportar.addEventListener(
+      "click",
+      function(event) {
+
+        if (
+          event.target ===
+          modalExportar
+        ) {
+
+          fecharModalExportarFluxo();
+
+        }
+
+      }
+    );
+
+    modalExportar.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+
+  if (
+    modalImportar &&
+    modalImportar.dataset.listenerFluxoArquivo !==
+      "true"
+  ) {
+
+    modalImportar.addEventListener(
+      "click",
+      function(event) {
+
+        if (
+          event.target ===
+          modalImportar
+        ) {
+
+          fecharModalImportarFluxo();
+
+        }
+
+      }
+    );
+
+    modalImportar.dataset.listenerFluxoArquivo =
+      "true";
+  }
+
+}
+
+
+// Escape fecha também os dois modais deste novo processo.
+document.addEventListener(
+  "keydown",
+  function(event) {
+
+    if (
+      event.key !==
+        "Escape"
+    ) {
+
+      return;
+    }
+
+
+    const modalExportar =
+      document.getElementById(
+        "modalExportarFluxo"
+      );
+
+    const modalImportar =
+      document.getElementById(
+        "modalImportarFluxo"
+      );
+
+
+    if (
+      modalExportar &&
+      modalExportar.classList.contains(
+        "ativo"
+      )
+    ) {
+
+      fecharModalExportarFluxo();
+
+    }
+
+
+    if (
+      modalImportar &&
+      modalImportar.classList.contains(
+        "ativo"
+      )
+    ) {
+
+      fecharModalImportarFluxo();
+
+    }
+
+  }
+);
+
+
 // Escape fecha somente o novo modal de exportação quando ele estiver aberto.
 document.addEventListener(
   "keydown",
@@ -12772,5 +15741,6 @@ configurarSalvamentoAutomaticoTodasImagens();
 configurarRedimensionamentoMiniaturas();
 configurarAplicacaoBrilhoContrasteFluxograma();
 configurarExportacaoImagens();
+configurarExportacaoImportacaoFluxo();
 atualizarControleSalvarFluxoProjeto();
 atualizarIndicadorSalvamentoAutomatico("desativado");
