@@ -486,52 +486,35 @@ async function decodificarPixelsImagemNormal(blob, item, img) {
 
 async function gerarAnaliseImagemNormal(img, arquivo) {
 
-  let data = null;
-  let largura = img.naturalWidth;
-  let altura = img.naturalHeight;
+  // A análise deve sempre representar exatamente a imagem que está sendo
+  // exibida no momento. Se houver resultado processado, o <img> já contém
+  // esse resultado; se não houver, ele contém a imagem original.
+  const largura = img.naturalWidth;
+  const altura = img.naturalHeight;
 
-  // Recupera o arquivo/blob que originou a imagem atual.
-  const blobOriginal = await obterBlobOriginalImagemNormal(img, arquivo);
+  if (!largura || !altura) return;
 
-  // Tenta obter os pixels diretamente do arquivo decodificado, sem depender
-  // primeiro do elemento <img> já renderizado na página.
-  const pixelsDecodificados = await decodificarPixelsImagemNormal(
-    blobOriginal,
-    arquivo,
-    img
-  );
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = largura;
+  tempCanvas.height = altura;
 
-  if (pixelsDecodificados) {
-    data = pixelsDecodificados.data;
-    largura = pixelsDecodificados.largura;
-    altura = pixelsDecodificados.altura;
+  let tempCtx;
+
+  try {
+    tempCtx = tempCanvas.getContext("2d", {
+      willReadFrequently: true,
+      colorSpace: "srgb"
+    });
+  } catch (erro) {
+    tempCtx = tempCanvas.getContext("2d");
   }
 
-  // Fallback final para navegadores sem ImageDecoder/createImageBitmap.
-  if (!data) {
+  if (!tempCtx) return;
 
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = largura;
-    tempCanvas.height = altura;
+  tempCtx.clearRect(0, 0, largura, altura);
+  tempCtx.drawImage(img, 0, 0, largura, altura);
 
-    let tempCtx;
-
-    try {
-      tempCtx = tempCanvas.getContext("2d", {
-        willReadFrequently: true,
-        colorSpace: "srgb"
-      });
-    } catch (erro) {
-      tempCtx = tempCanvas.getContext("2d");
-    }
-
-    if (!tempCtx) return;
-
-    tempCtx.clearRect(0, 0, largura, altura);
-    tempCtx.drawImage(img, 0, 0, largura, altura);
-
-    data = tempCtx.getImageData(0, 0, largura, altura).data;
-  }
+  const data = tempCtx.getImageData(0, 0, largura, altura).data;
 
   const tipoImagem = identificarTipoPelosPixels(data);
 
