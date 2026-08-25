@@ -4566,18 +4566,17 @@ function selecionarFerramenta(nome, botaoClicado) {
         <input 
           type="text" 
           id="param1"
-          placeholder="Ex: 3, 3 3, 3x5, [6 6]"
+          placeholder="Ex: 3, 8 8 ou 3 5"
         >
 
         <div class="caixa_info_parametro">
-          Aceita 1 ou 2 valores: 3, 3 3, 3x5, 6x6, [3 5].
-          Igual ao MATLAB: medfilt2(I, [M N], PADOPT).
-          Kernels pares são permitidos.
+          Um ou dois valores positivos.
+          Exemplo: 3 gera 3x3; 3 5 gera 3x5.
         </div>
       </div>
 
       <div class="campo_parametro_info">
-        <label>Tratamento da borda</label>
+        <label>Padding</label>
 
         <select id="paramPadoptMediana">
           <option value="zeros">zeros</option>
@@ -4586,9 +4585,9 @@ function selecionarFerramenta(nome, botaoClicado) {
         </select>
 
         <div class="caixa_info_parametro">
-          zeros: preenche fora da imagem com 0.
-          symmetric: espelha a imagem nas bordas.
-          indexed: no MATLAB usa 1 para double e 0 para os demais tipos.
+          zeros: preenche fora da imagem com 0;
+          symmetric: espelha a imagem nas bordas;
+          indexed: Usa 1 para double e 0 para os demais tipos.
         </div>
       </div>
 
@@ -6457,7 +6456,7 @@ function desenharFluxograma() {
     if (etapa.nome.includes("Mediana")) {
       textoParametros = `
         Kernel: ${etapa.parametros.kernelAltura}x${etapa.parametros.kernelLargura}<br>
-        Borda: ${etapa.parametros.padopt}<br>
+        Padding: ${etapa.parametros.padopt}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
