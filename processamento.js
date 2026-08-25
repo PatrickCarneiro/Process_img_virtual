@@ -4501,13 +4501,12 @@ function selecionarFerramenta(nome, botaoClicado) {
         <input 
           type="text" 
           id="paramKernelMedia"
-          placeholder="Ex: 3, 5, 3x5, [7 7]"
+          placeholder="Ex: 3, ou 3 5"
         >
 
         <div class="caixa_info_parametro">
-          Igual ao MATLAB: imboxfilt(A, filterSize).
-          Aceita 1 ou 2 valores positivos e ímpares.
-          Exemplo: 3 gera 3x3; 3x5 gera 3 linhas e 5 colunas.
+          Um ou dois valores positivos e ímpares.
+          Exemplo: 3 gera 3x3; 3 5 gera 3x5.
         </div>
       </div>
 
@@ -4522,10 +4521,10 @@ function selecionarFerramenta(nome, botaoClicado) {
         </select>
 
         <div class="caixa_info_parametro">
-          replicate é o padrão do imboxfilt.
-          symmetric espelha a imagem.
-          circular considera a imagem periódica.
-          constante usa um valor numérico fora da imagem.
+          replicate: repete a borda;
+          symmetric: espelha a imagem;
+          circular: considera a imagem periódica;
+          constante: usa um valor numérico fora da imagem.
         </div>
       </div>
 
@@ -6451,8 +6450,6 @@ function desenharFluxograma() {
           etapa.parametros.padding,
           etapa.parametros.valorPadding
         )}<br>
-        Cálculo: Média local automática<br>
-        NormalizationFactor automático: ${normalizationFactorAutomatico}<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
