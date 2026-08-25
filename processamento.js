@@ -3483,6 +3483,260 @@ function verificarAlertaZerosComIgnorarZeroMediana(padopt, ignorarZero) {
 
 }
 
+// =====================================================
+// FUNÇÕES AUXILIARES DO GAUSSIANO
+// =====================================================
+
+// Lê o kernel no estilo do MATLAB imgaussfilt:
+// 3     -> 3x3
+// 3 5   -> 3x5
+// Também aceita 3x5, [3 5], [3,5] e (3, 5).
+function interpretarKernelGaussiano(textoKernel) {
+
+  let texto = String(textoKernel || "").trim();
+
+  // Mantém o padrão já utilizado anteriormente no site quando o campo estiver vazio.
+  if (texto === "") {
+    return {
+      valido: true,
+      kernelAltura: 3,
+      kernelLargura: 3
+    };
+  }
+
+  texto = texto
+    .replace(/\[/g, " ")
+    .replace(/\]/g, " ")
+    .replace(/\(/g, " ")
+    .replace(/\)/g, " ")
+    .replace(/,/g, " ")
+    .replace(/;/g, " ")
+    .replace(/x/gi, " ");
+
+  const partes = texto
+    .trim()
+    .split(/\s+/)
+    .filter(function(valor) {
+      return valor !== "";
+    });
+
+  if (partes.length !== 1 && partes.length !== 2) {
+    return {
+      valido: false,
+      mensagem: "Digite o kernel como 3 ou como dois valores, por exemplo 3 5."
+    };
+  }
+
+  const kernelAltura = Number(partes[0]);
+  const kernelLargura =
+    partes.length === 1
+      ? kernelAltura
+      : Number(partes[1]);
+
+  if (
+    !Number.isFinite(kernelAltura) ||
+    !Number.isFinite(kernelLargura) ||
+    !Number.isInteger(kernelAltura) ||
+    !Number.isInteger(kernelLargura) ||
+    kernelAltura < 1 ||
+    kernelLargura < 1
+  ) {
+    return {
+      valido: false,
+      mensagem: "As dimensões do kernel devem ser números inteiros positivos."
+    };
+  }
+
+  if (kernelAltura % 2 === 0 || kernelLargura % 2 === 0) {
+    return {
+      valido: false,
+      mensagem: "No imgaussfilt, as dimensões do kernel devem ser ímpares. Use 3, 5, 3 5, 5 7 etc."
+    };
+  }
+
+  return {
+    valido: true,
+    kernelAltura: kernelAltura,
+    kernelLargura: kernelLargura
+  };
+}
+
+
+function atualizarCampoValorPaddingGaussiano() {
+
+  const seletor = document.getElementById("paramPaddingGaussiano");
+  const campo = document.getElementById("campoValorPaddingGaussiano");
+
+  if (!seletor || !campo) return;
+
+  if (seletor.value === "constant") {
+    campo.style.display = "block";
+  } else {
+    campo.style.display = "none";
+  }
+}
+
+
+function obterPaddingGaussianoSelecionado() {
+
+  const seletor = document.getElementById("paramPaddingGaussiano");
+
+  if (!seletor) {
+    return {
+      valido: true,
+      padding: "replicate",
+      valorPadding: 0
+    };
+  }
+
+  const padding = String(seletor.value || "replicate").toLowerCase().trim();
+
+  if (
+    padding === "replicate" ||
+    padding === "symmetric" ||
+    padding === "circular"
+  ) {
+    return {
+      valido: true,
+      padding: padding,
+      valorPadding: 0
+    };
+  }
+
+  if (padding === "constant") {
+
+    const entradaValor = document.getElementById("paramValorPaddingGaussiano");
+    const textoValor = entradaValor ? entradaValor.value.trim() : "0";
+    const valorPadding = textoValor === "" ? 0 : Number(textoValor);
+
+    if (!Number.isFinite(valorPadding)) {
+      return {
+        valido: false,
+        mensagem: "O valor constante do padding deve ser numérico."
+      };
+    }
+
+    return {
+      valido: true,
+      padding: "constant",
+      valorPadding: valorPadding
+    };
+  }
+
+  return {
+    valido: false,
+    mensagem: "Padding inválido. Use replicate, symmetric, circular ou um valor numérico."
+  };
+}
+
+
+function verificarAlertaZerosComIgnorarZeroGaussiano(
+  padding,
+  valorPadding,
+  ignorarZero
+) {
+
+  if (padding === "constant" && Number(valorPadding) === 0 && ignorarZero) {
+    alert(
+      "Atenção: você selecionou padding constante 0 e também marcou 'Sem contabilizar pixels 0'. " +
+      "Nesse caso, os zeros adicionados na borda serão ignorados. Para reproduzir o padding 0 do imgaussfilt do MATLAB, desmarque 'Sem contabilizar pixels 0'."
+    );
+  }
+}
+
+
+function formatarPaddingGaussiano(padding, valorPadding) {
+
+  if (padding === "constant") {
+    return "constante (" + valorPadding + ")";
+  }
+
+  return padding;
+}
+
+
+// Lê os parâmetros do Gaussiano de uma etapa do fluxograma.
+// Mantém compatibilidade com fluxos antigos que usavam tamanhoKernel.
+function obterParametrosGaussianoEtapa(etapa) {
+
+  const parametros =
+    etapa &&
+    etapa.parametros &&
+    typeof etapa.parametros === "object"
+      ? etapa.parametros
+      : {};
+
+  let kernelAltura = Number(parametros.kernelAltura);
+  let kernelLargura = Number(parametros.kernelLargura);
+
+  const tamanhoKernelAntigo = Number(parametros.tamanhoKernel);
+
+  if (!Number.isFinite(kernelAltura) && Number.isFinite(tamanhoKernelAntigo)) {
+    kernelAltura = tamanhoKernelAntigo;
+  }
+
+  if (!Number.isFinite(kernelLargura)) {
+    if (Number.isFinite(tamanhoKernelAntigo)) {
+      kernelLargura = tamanhoKernelAntigo;
+    } else if (Number.isFinite(kernelAltura)) {
+      kernelLargura = kernelAltura;
+    }
+  }
+
+  let padding =
+    parametros.padding === undefined || parametros.padding === null
+      ? "replicate"
+      : parametros.padding;
+
+  let valorPadding = parametros.valorPadding;
+
+  if (
+    typeof padding === "number" ||
+    (
+      typeof padding === "string" &&
+      padding.trim() !== "" &&
+      Number.isFinite(Number(padding))
+    )
+  ) {
+    valorPadding = Number(padding);
+    padding = "constant";
+  } else {
+    padding = String(padding || "replicate").toLowerCase().trim();
+
+    if (padding === "constante") {
+      padding = "constant";
+    }
+  }
+
+  if (
+    padding !== "replicate" &&
+    padding !== "symmetric" &&
+    padding !== "circular" &&
+    padding !== "constant"
+  ) {
+    padding = "replicate";
+  }
+
+  if (padding === "constant") {
+    valorPadding = Number(valorPadding);
+    if (!Number.isFinite(valorPadding)) {
+      valorPadding = 0;
+    }
+  } else {
+    valorPadding = 0;
+  }
+
+  return {
+    sigma: Number(parametros.sigma),
+    kernelAltura: kernelAltura,
+    kernelLargura: kernelLargura,
+    padding: padding,
+    valorPadding: valorPadding,
+    ignorarZero: Boolean(parametros.ignorarZero)
+  };
+}
+
+
 function interpretarKernelMedia(textoKernel) {
 
   let texto = String(textoKernel || "").trim();
@@ -4163,30 +4417,68 @@ function selecionarFerramenta(nome, botaoClicado) {
       <div class="campo_parametro_info">
         <label>Sigma</label>
 
-        <input 
-          type="number" 
-          id="param1" 
-          min="0.1" 
-          step="0.1" 
+        <input
+          type="number"
+          id="paramSigmaGaussiano"
+          min="0.000001"
+          step="any"
+          placeholder="Vazio = 1"
         >
 
         <div class="caixa_info_parametro">
-          O sigma deve ser maior que 0.
+          O sigma deve ser um valor numérico maior que 0.
         </div>
       </div>
 
       <div class="campo_parametro_info">
         <label>Tamanho do kernel</label>
 
-        <input 
-          type="number" 
-          id="param2" 
-          min="1" 
-          step="1" 
+        <input
+          type="text"
+          id="paramKernelGaussiano"
+          placeholder="Ex: 3 ou 3 5"
         >
 
         <div class="caixa_info_parametro">
-          O tamanho do kernel deve ser ímpar e maior que 0.
+          Igual ao MATLAB: FilterSize pode ter 1 ou 2 valores positivos e ímpares.
+          Exemplo: 3 gera 3x3; 3 5 gera 3 linhas e 5 colunas.
+        </div>
+      </div>
+
+      <div class="campo_parametro_info">
+        <label>Padding</label>
+
+        <select id="paramPaddingGaussiano" onchange="atualizarCampoValorPaddingGaussiano()">
+          <option value="replicate">replicate</option>
+          <option value="symmetric">symmetric</option>
+          <option value="circular">circular</option>
+          <option value="constant">constante numérico</option>
+        </select>
+
+        <div class="caixa_info_parametro">
+          replicate repete a borda.
+          symmetric espelha a imagem.
+          circular considera a imagem periódica.
+          constante usa um valor numérico fora da imagem.
+        </div>
+      </div>
+
+      <div
+        class="campo_parametro_info"
+        id="campoValorPaddingGaussiano"
+        style="display:none;"
+      >
+        <label>Valor constante do padding</label>
+
+        <input
+          type="number"
+          id="paramValorPaddingGaussiano"
+          value="0"
+          step="any"
+        >
+
+        <div class="caixa_info_parametro">
+          Usado apenas quando o padding escolhido for constante numérico.
         </div>
       </div>
 
@@ -5606,36 +5898,56 @@ async function aplicarFerramenta(nome) {
       return;
     }
 
-    const p1 = document.getElementById("param1");
-    const p2 = document.getElementById("param2");
+    const entradaSigma = document.getElementById("paramSigmaGaussiano");
+    const entradaKernel = document.getElementById("paramKernelGaussiano");
 
-    const sigmaTexto = p1 ? p1.value.trim() : ""; // pega o texto digitado
-    const kernelTexto = p2 ? p2.value.trim() : "";
+    const sigmaTexto = entradaSigma ? entradaSigma.value.trim() : "";
+    const kernelTexto = entradaKernel ? entradaKernel.value.trim() : "";
 
-    let sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto);
-    let tamanhoKernel = kernelTexto === "" ? 3 : parseInt(kernelTexto);
+    const sigma = sigmaTexto === "" ? 1 : Number(sigmaTexto);
 
     if (!Number.isFinite(sigma) || sigma <= 0) {
       alert("Digite um sigma válido maior que zero.");
       return;
     }
 
-    if (!Number.isFinite(tamanhoKernel) || tamanhoKernel < 1) {
-      alert("Digite um tamanho de kernel válido.");
+    const kernelInterpretado = interpretarKernelGaussiano(kernelTexto);
+
+    if (!kernelInterpretado.valido) {
+      alert(kernelInterpretado.mensagem);
       return;
     }
 
-    if (tamanhoKernel % 2 === 0) {
-      tamanhoKernel = tamanhoKernel + 1;
+    const kernelAltura = kernelInterpretado.kernelAltura;
+    const kernelLargura = kernelInterpretado.kernelLargura;
+
+    const paddingSelecionado = obterPaddingGaussianoSelecionado();
+
+    if (!paddingSelecionado.valido) {
+      alert(paddingSelecionado.mensagem);
+      return;
     }
+
+    const padding = paddingSelecionado.padding;
+    const valorPadding = paddingSelecionado.valorPadding;
+    const ignorarZero = deveIgnorarPixelZeroFerramentas();
+
+    verificarAlertaZerosComIgnorarZeroGaussiano(
+      padding,
+      valorPadding,
+      ignorarZero
+    );
 
     const etapa = {
       id: proximoIdEtapa++,
       nome: "Filtro Gaussiano",
       parametros: {
         sigma: sigma,
-        tamanhoKernel: tamanhoKernel,
-        ignorarZero: deveIgnorarPixelZeroFerramentas()
+        kernelAltura: kernelAltura,
+        kernelLargura: kernelLargura,
+        padding: padding,
+        valorPadding: valorPadding,
+        ignorarZero: ignorarZero
       }
     };
 
@@ -6110,10 +6422,18 @@ function desenharFluxograma() {
     }
 
     if (etapa.nome.includes("Gaussiano")) {
+
+      const parametrosGaussiano =
+        obterParametrosGaussianoEtapa(etapa);
+
       textoParametros = `
-        Sigma: ${etapa.parametros.sigma}<br>
-        Tamanho do kernel: ${etapa.parametros.tamanhoKernel}x${etapa.parametros.tamanhoKernel}<br>
-        Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
+        Sigma: ${parametrosGaussiano.sigma}<br>
+        Kernel: ${parametrosGaussiano.kernelAltura}x${parametrosGaussiano.kernelLargura}<br>
+        Padding: ${formatarPaddingGaussiano(
+          parametrosGaussiano.padding,
+          parametrosGaussiano.valorPadding
+        )}<br>
+        Ignorar pixel 0: ${parametrosGaussiano.ignorarZero ? "Sim" : "Não"}
       `;
     }
 
@@ -7873,11 +8193,17 @@ async function processarImagemNormalPeloPipeline(item) {
 
     if (etapa.nome.includes("Gaussiano")) { 
 
+      const parametrosGaussiano =
+        obterParametrosGaussianoEtapa(etapa);
+
       canvasAtual = await aplicarGaussianoEmCanvas(
         canvasAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
+        parametrosGaussiano.sigma,
+        parametrosGaussiano.kernelAltura,
+        parametrosGaussiano.kernelLargura,
+        parametrosGaussiano.padding,
+        parametrosGaussiano.valorPadding,
+        parametrosGaussiano.ignorarZero,
         atualizarBarraProcessamento
       );
 
@@ -8149,11 +8475,17 @@ async function processarDicomPeloPipeline(item) {
 
     if (etapa.nome.includes("Gaussiano")) {
 
+      const parametrosGaussiano =
+        obterParametrosGaussianoEtapa(etapa);
+
       imagemAtual = await aplicarGaussianoEmDicom(
         imagemAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
+        parametrosGaussiano.sigma,
+        parametrosGaussiano.kernelAltura,
+        parametrosGaussiano.kernelLargura,
+        parametrosGaussiano.padding,
+        parametrosGaussiano.valorPadding,
+        parametrosGaussiano.ignorarZero,
         atualizarBarraProcessamento
       );
 
@@ -9299,11 +9631,17 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
     if (etapa.nome.includes("Gaussiano")) {
 
+      const parametrosGaussiano =
+        obterParametrosGaussianoEtapa(etapa);
+
       canvasAtual = await aplicarGaussianoEmCanvas(
         canvasAtual,
-        etapa.parametros.sigma,
-        etapa.parametros.tamanhoKernel,
-        etapa.parametros.ignorarZero,
+        parametrosGaussiano.sigma,
+        parametrosGaussiano.kernelAltura,
+        parametrosGaussiano.kernelLargura,
+        parametrosGaussiano.padding,
+        parametrosGaussiano.valorPadding,
+        parametrosGaussiano.ignorarZero,
         function() {}
       );
     }
@@ -13310,7 +13648,10 @@ function definirValorPorCaminhoFluxo(
 
 // Interpreta um bloco de parâmetros no formato:
 // sigma = 1
-// tamanhoKernel = 3
+// kernelAltura = 3
+// kernelLargura = 5
+// padding = symmetric
+// valorPadding = 0
 // ignorarZero = Sim
 function interpretarResumoParametrosFluxo(
   texto
@@ -13577,19 +13918,138 @@ function validarParametrosEtapaImportada(
     }
 
 
-    if (
-      !Number.isFinite(
-        Number(
-          parametros.tamanhoKernel
-        )
-      ) ||
+    const tamanhoKernelAntigo =
       Number(
         parametros.tamanhoKernel
-      ) < 1
+      );
+
+    const kernelAltura =
+      Number.isFinite(
+        Number(
+          parametros.kernelAltura
+        )
+      )
+        ? Number(
+            parametros.kernelAltura
+          )
+        : tamanhoKernelAntigo;
+
+    const kernelLargura =
+      Number.isFinite(
+        Number(
+          parametros.kernelLargura
+        )
+      )
+        ? Number(
+            parametros.kernelLargura
+          )
+        : (
+            Number.isFinite(
+              tamanhoKernelAntigo
+            )
+              ? tamanhoKernelAntigo
+              : kernelAltura
+          );
+
+
+    if (
+      !Number.isFinite(kernelAltura) ||
+      !Number.isInteger(kernelAltura) ||
+      kernelAltura < 1 ||
+      kernelAltura % 2 === 0
     ) {
 
       erros.push(
-        "tamanhoKernel"
+        "kernelAltura"
+      );
+
+    }
+
+
+    if (
+      !Number.isFinite(kernelLargura) ||
+      !Number.isInteger(kernelLargura) ||
+      kernelLargura < 1 ||
+      kernelLargura % 2 === 0
+    ) {
+
+      erros.push(
+        "kernelLargura"
+      );
+
+    }
+
+
+    let padding =
+      parametros.padding === undefined ||
+      parametros.padding === null
+        ? "replicate"
+        : parametros.padding;
+
+    let valorPadding =
+      parametros.valorPadding;
+
+
+    if (
+      typeof padding === "number" ||
+      (
+        typeof padding === "string" &&
+        padding.trim() !== "" &&
+        Number.isFinite(
+          Number(padding)
+        )
+      )
+    ) {
+
+      valorPadding =
+        Number(padding);
+
+      padding =
+        "constant";
+
+    } else {
+
+      padding =
+        String(
+          padding || "replicate"
+        )
+          .toLowerCase()
+          .trim();
+
+      if (
+        padding === "constante"
+      ) {
+        padding = "constant";
+      }
+
+    }
+
+
+    if (
+      padding !== "replicate" &&
+      padding !== "symmetric" &&
+      padding !== "circular" &&
+      padding !== "constant"
+    ) {
+
+      erros.push(
+        "padding"
+      );
+
+    }
+
+
+    if (
+      padding === "constant" &&
+      !Number.isFinite(
+        Number(
+          valorPadding
+        )
+      )
+    ) {
+
+      erros.push(
+        "valorPadding"
       );
 
     }
@@ -13787,6 +14247,26 @@ function normalizarEtapaImportadaFluxo(
     validarParametrosEtapaImportada(
       etapa
     );
+
+
+  if (
+    nomeCanonico === "Filtro Gaussiano" &&
+    parametrosAusentes.length === 0
+  ) {
+
+    const parametrosGaussiano =
+      obterParametrosGaussianoEtapa(etapa);
+
+    etapa.parametros = {
+      sigma: parametrosGaussiano.sigma,
+      kernelAltura: parametrosGaussiano.kernelAltura,
+      kernelLargura: parametrosGaussiano.kernelLargura,
+      padding: parametrosGaussiano.padding,
+      valorPadding: parametrosGaussiano.valorPadding,
+      ignorarZero: parametrosGaussiano.ignorarZero
+    };
+
+  }
 
 
   const erros =
