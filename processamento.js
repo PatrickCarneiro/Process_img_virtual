@@ -4422,11 +4422,11 @@ function selecionarFerramenta(nome, botaoClicado) {
           id="paramSigmaGaussiano"
           min="0.000001"
           step="any"
-          placeholder="Vazio = 1"
+          placeholder="Valor positivo"
         >
 
         <div class="caixa_info_parametro">
-          O sigma deve ser um valor numérico maior que 0.
+          O sigma deve ser positivo.
         </div>
       </div>
 
@@ -4440,8 +4440,8 @@ function selecionarFerramenta(nome, botaoClicado) {
         >
 
         <div class="caixa_info_parametro">
-          Igual ao MATLAB: FilterSize pode ter 1 ou 2 valores positivos e ímpares.
-          Exemplo: 3 gera 3x3; 3 5 gera 3 linhas e 5 colunas.
+          Um ou dois valores positivos e ímpares.
+          Exemplo: 3 gera 3x3; 3 5 gera 3x5.
         </div>
       </div>
 
@@ -4452,14 +4452,14 @@ function selecionarFerramenta(nome, botaoClicado) {
           <option value="replicate">replicate</option>
           <option value="symmetric">symmetric</option>
           <option value="circular">circular</option>
-          <option value="constant">constante numérico</option>
+          <option value="constant">constante numérica</option>
         </select>
 
         <div class="caixa_info_parametro">
-          replicate repete a borda.
-          symmetric espelha a imagem.
-          circular considera a imagem periódica.
-          constante usa um valor numérico fora da imagem.
+          replicate: repete a borda;
+          symmetric: espelha a imagem;
+          circular: considera a imagem periódica;
+          constante: usa um valor numérico fora da imagem.
         </div>
       </div>
 
