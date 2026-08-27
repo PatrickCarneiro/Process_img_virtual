@@ -4042,19 +4042,20 @@ function selecionarFerramenta(nome, botaoClicado) {
       <h4>Parâmetros</h4>
 
       <div class="campo_parametro_info">
-        <label>Faixa de entrada [LOW_IN HIGH_IN]</label>
+        <label>Faixa de entrada</label>
 
         <input
           type="text"
           id="paramFaixaEntradaContraste"
-          placeholder="Ex: [0.2 0.8] ou [0.1 0.2 0.3; 0.8 0.9 1]"
+          placeholder="Ex: 0,2 0,8 ou 0,1 0,2 0,3; 0,8 0,9 1"
         >
 
         <div class="caixa_info_parametro">
           Equivalente à faixa de entrada do imadjust.
-          Para uma única faixa, use [0.2 0.8].
-          Para RGB, também é possível informar uma matriz 2x3,
-          como [0.1 0.2 0.3; 0.8 0.9 1], definindo limites
+          Os colchetes são opcionais e os valores podem usar ponto
+          ou vírgula decimal. Para uma única faixa, use 0,2 0,8 ou
+          0.2 0.8. Para RGB, também é possível informar uma matriz
+          2x3, como 0,1 0,2 0,3; 0,8 0,9 1, definindo limites
           independentes para R, G e B. Se somente a entrada for
           informada, a saída será [0 1]. Se entrada e saída ficarem
           vazias, a entrada será calculada automaticamente por
@@ -4063,21 +4064,22 @@ function selecionarFerramenta(nome, botaoClicado) {
       </div>
 
       <div class="campo_parametro_info">
-        <label>Faixa de saída [LOW_OUT HIGH_OUT]</label>
+        <label>Faixa de saída</label>
 
         <input
           type="text"
           id="paramFaixaSaidaContraste"
-          placeholder="Ex: [0 1] ou [0 0 0; 1 1 1]"
+          placeholder="Ex: 0 1 ou 0 0 0; 1 1 1"
         >
 
         <div class="caixa_info_parametro">
           Equivalente à faixa de saída do imadjust.
-          Para uma única faixa, use [0 1]. Para RGB, também é
-          possível informar uma matriz 2x3 com limites diferentes
-          para R, G e B. Se somente a saída for informada, a entrada
-          será [0 1]. Se somente a entrada for informada, a saída será
-          [0 1]. Digite [] para usar explicitamente [0 1].
+          Os colchetes são opcionais e os valores podem usar ponto
+          ou vírgula decimal. Para uma única faixa, use 0 1. Para
+          RGB, também é possível informar uma matriz 2x3 com limites
+          diferentes para R, G e B. Se somente a saída for informada,
+          a entrada será [0 1]. Se somente a entrada for informada,
+          a saída será [0 1]. Digite [] para usar explicitamente [0 1].
         </div>
       </div>
 

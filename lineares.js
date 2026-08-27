@@ -67,6 +67,22 @@ function criarFaixaPadraoImadjustLineares() {
 }
 
 
+function converterNumeroFaixaImadjustLineares(
+  textoNumero
+) {
+  const textoNormalizado =
+    String(textoNumero)
+      .trim()
+      .replace(",", ".");
+
+  if (textoNormalizado === "") {
+    return NaN;
+  }
+
+  return Number(textoNormalizado);
+}
+
+
 function interpretarLinhaFaixaRgbImadjustLineares(
   textoLinha,
   nomeFaixa
@@ -74,7 +90,6 @@ function interpretarLinhaFaixaRgbImadjustLineares(
   const valoresTexto =
     String(textoLinha)
       .trim()
-      .replace(/,/g, " ")
       .split(/\s+/)
       .filter(function(valor) {
         return valor !== "";
@@ -86,13 +101,15 @@ function interpretarLinhaFaixaRgbImadjustLineares(
       mensagem:
         nomeFaixa +
         " em formato RGB deve possuir 3 valores em cada linha. " +
-        "Exemplo: [0.1 0.2 0.3; 0.8 0.9 1]."
+        "Exemplo: 0,1 0,2 0,3; 0,8 0,9 1."
     };
   }
 
   const valores =
     valoresTexto.map(function(valor) {
-      return Number(valor);
+      return converterNumeroFaixaImadjustLineares(
+        valor
+      );
     });
 
   if (
@@ -104,7 +121,8 @@ function interpretarLinhaFaixaRgbImadjustLineares(
       valido: false,
       mensagem:
         nomeFaixa +
-        " deve conter apenas valores numéricos válidos."
+        " deve conter apenas valores numéricos válidos. " +
+        "Use ponto ou vírgula como separador decimal."
     };
   }
 
@@ -159,25 +177,38 @@ function interpretarFaixaImadjust(
     };
   }
 
+  /*
+   * Os colchetes passam a ser opcionais.
+   * [] continua representando explicitamente a faixa padrão [0 1].
+   */
   if (textoSemBordas === "[]") {
     return criarFaixaPadraoImadjustLineares();
   }
 
+  const possuiColcheteInicial =
+    textoSemBordas.startsWith("[");
+
+  const possuiColcheteFinal =
+    textoSemBordas.endsWith("]");
+
   if (
-    !textoSemBordas.startsWith("[") ||
-    !textoSemBordas.endsWith("]")
+    possuiColcheteInicial !==
+    possuiColcheteFinal
   ) {
     return {
       valido: false,
       mensagem:
         nomeFaixa +
-        " deve ser informada entre colchetes. " +
-        "Exemplo: [0.2 0.8]."
+        " possui colchetes incompletos. " +
+        "Use os dois colchetes ou nenhum."
     };
   }
 
   const conteudo =
-    textoSemBordas.slice(1, -1).trim();
+    possuiColcheteInicial &&
+    possuiColcheteFinal
+      ? textoSemBordas.slice(1, -1).trim()
+      : textoSemBordas;
 
   if (conteudo === "") {
     return criarFaixaPadraoImadjustLineares();
@@ -230,7 +261,6 @@ function interpretarFaixaImadjust(
 
   const valoresTexto =
     conteudo
-      .replace(/,/g, " ")
       .split(/\s+/)
       .filter(function(valor) {
         return valor !== "";
@@ -242,15 +272,19 @@ function interpretarFaixaImadjust(
       mensagem:
         nomeFaixa +
         " deve possuir exatamente 2 valores, ou uma matriz RGB 2x3. " +
-        "Exemplos: [0.2 0.8] ou [0.1 0.2 0.3; 0.8 0.9 1]."
+        "Exemplos: 0,2 0,8 ou 0,1 0,2 0,3; 0,8 0,9 1."
     };
   }
 
   const low =
-    Number(valoresTexto[0]);
+    converterNumeroFaixaImadjustLineares(
+      valoresTexto[0]
+    );
 
   const high =
-    Number(valoresTexto[1]);
+    converterNumeroFaixaImadjustLineares(
+      valoresTexto[1]
+    );
 
   if (
     !Number.isFinite(low) ||
@@ -260,7 +294,8 @@ function interpretarFaixaImadjust(
       valido: false,
       mensagem:
         nomeFaixa +
-        " deve conter apenas valores numéricos válidos."
+        " deve conter apenas valores numéricos válidos. " +
+        "Use ponto ou vírgula como separador decimal."
     };
   }
 
