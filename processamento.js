@@ -4047,15 +4047,18 @@ function selecionarFerramenta(nome, botaoClicado) {
         <input
           type="text"
           id="paramFaixaEntradaContraste"
-          placeholder="Ex: [0.2 0.8], [0.2,] ou [,0.8]"
+          placeholder="Ex: [0.2 0.8] ou [0.1 0.2 0.3; 0.8 0.9 1]"
         >
 
         <div class="caixa_info_parametro">
           Equivalente à faixa de entrada do imadjust.
-          Use [0.2 0.8] para informar os dois limites,
-          [0.2,] para informar somente o inferior,
-          [,0.8] para informar somente o superior
-          ou [] para usar [0 1].
+          Para uma única faixa, use [0.2 0.8].
+          Para RGB, também é possível informar uma matriz 2x3,
+          como [0.1 0.2 0.3; 0.8 0.9 1], definindo limites
+          independentes para R, G e B. Se somente a entrada for
+          informada, a saída será [0 1]. Se entrada e saída ficarem
+          vazias, a entrada será calculada automaticamente por
+          stretchlim(I). Digite [] para usar explicitamente [0 1].
         </div>
       </div>
 
@@ -4065,15 +4068,16 @@ function selecionarFerramenta(nome, botaoClicado) {
         <input
           type="text"
           id="paramFaixaSaidaContraste"
-          placeholder="Ex: [0 1], [0.1,] ou [,0.9]"
+          placeholder="Ex: [0 1] ou [0 0 0; 1 1 1]"
         >
 
         <div class="caixa_info_parametro">
           Equivalente à faixa de saída do imadjust.
-          Use [0 1] para informar os dois limites,
-          [0.1,] para informar somente o inferior,
-          [,0.9] para informar somente o superior
-          ou [] para usar [0 1].
+          Para uma única faixa, use [0 1]. Para RGB, também é
+          possível informar uma matriz 2x3 com limites diferentes
+          para R, G e B. Se somente a saída for informada, a entrada
+          será [0 1]. Se somente a entrada for informada, a saída será
+          [0 1]. Digite [] para usar explicitamente [0 1].
         </div>
       </div>
 
@@ -6329,9 +6333,49 @@ function desenharFluxograma() {
       const configuracao =
         etapa.parametros.configuracao;
 
+      const formatarFaixaImadjustFluxograma =
+        function(low, high) {
+
+          if (
+            Array.isArray(low) &&
+            Array.isArray(high)
+          ) {
+
+            return (
+              "[" +
+              low.join(" ") +
+              "; " +
+              high.join(" ") +
+              "]"
+            );
+          }
+
+          return (
+            "[" +
+            low +
+            " " +
+            high +
+            "]"
+          );
+        };
+
+      const textoFaixaEntrada =
+        configuracao.usarStretchlim === true
+          ? "stretchlim(I) - automático"
+          : formatarFaixaImadjustFluxograma(
+              configuracao.lowIn,
+              configuracao.highIn
+            );
+
+      const textoFaixaSaida =
+        formatarFaixaImadjustFluxograma(
+          configuracao.lowOut,
+          configuracao.highOut
+        );
+
       textoParametros = `
-        Entrada: [${configuracao.lowIn} ${configuracao.highIn}]<br>
-        Saída: [${configuracao.lowOut} ${configuracao.highOut}]<br>
+        Entrada: ${textoFaixaEntrada}<br>
+        Saída: ${textoFaixaSaida}<br>
         Gamma: 1 (linear)<br>
         Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
       `;

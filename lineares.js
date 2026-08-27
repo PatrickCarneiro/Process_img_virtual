@@ -54,6 +54,81 @@ function atualizarProgressoLineares(
 // VALIDAÇÃO DOS PARÂMETROS DO ALARGAMENTO DE CONTRASTE
 // =========================================================
 
+function criarFaixaPadraoImadjustLineares() {
+  return {
+    valido: true,
+    informado: true,
+    tipo: "vetor",
+    low: 0,
+    high: 1,
+    lows: [0, 0, 0],
+    highs: [1, 1, 1]
+  };
+}
+
+
+function interpretarLinhaFaixaRgbImadjustLineares(
+  textoLinha,
+  nomeFaixa
+) {
+  const valoresTexto =
+    String(textoLinha)
+      .trim()
+      .replace(/,/g, " ")
+      .split(/\s+/)
+      .filter(function(valor) {
+        return valor !== "";
+      });
+
+  if (valoresTexto.length !== 3) {
+    return {
+      valido: false,
+      mensagem:
+        nomeFaixa +
+        " em formato RGB deve possuir 3 valores em cada linha. " +
+        "Exemplo: [0.1 0.2 0.3; 0.8 0.9 1]."
+    };
+  }
+
+  const valores =
+    valoresTexto.map(function(valor) {
+      return Number(valor);
+    });
+
+  if (
+    valores.some(function(valor) {
+      return !Number.isFinite(valor);
+    })
+  ) {
+    return {
+      valido: false,
+      mensagem:
+        nomeFaixa +
+        " deve conter apenas valores numéricos válidos."
+    };
+  }
+
+  if (
+    valores.some(function(valor) {
+      return valor < 0 || valor > 1;
+    })
+  ) {
+    return {
+      valido: false,
+      mensagem:
+        "Os limites de " +
+        nomeFaixa.toLowerCase() +
+        " devem estar entre 0 e 1."
+    };
+  }
+
+  return {
+    valido: true,
+    valores: valores
+  };
+}
+
+
 function interpretarFaixaImadjust(
   texto,
   nomeFaixa
@@ -66,16 +141,26 @@ function interpretarFaixaImadjust(
   const textoSemBordas =
     original.trim();
 
-  // Campo vazio e [] usam o padrão do imadjust: [0 1].
-  if (
-    textoSemBordas === "" ||
-    textoSemBordas === "[]"
-  ) {
+  /*
+   * Campo realmente vazio significa "não informado".
+   * Essa distinção é necessária porque:
+   * - imadjust(I) usa stretchlim(I);
+   * - imadjust(I, [], ...) usa explicitamente [0 1].
+   */
+  if (textoSemBordas === "") {
     return {
       valido: true,
-      low: 0,
-      high: 1
+      informado: false,
+      tipo: "nao_informada",
+      low: null,
+      high: null,
+      lows: null,
+      highs: null
     };
+  }
+
+  if (textoSemBordas === "[]") {
+    return criarFaixaPadraoImadjustLineares();
   }
 
   if (
@@ -86,93 +171,86 @@ function interpretarFaixaImadjust(
       valido: false,
       mensagem:
         nomeFaixa +
-        " deve ser informada entre colchetes. Exemplo: [0.2 0.8]."
+        " deve ser informada entre colchetes. " +
+        "Exemplo: [0.2 0.8]."
     };
   }
 
   const conteudo =
-    textoSemBordas.slice(1, -1);
+    textoSemBordas.slice(1, -1).trim();
 
-  let lowTexto = "";
-  let highTexto = "";
-
-  // Com vírgula ou ponto e vírgula é possível indicar
-  // explicitamente qual dos dois limites foi omitido.
-  if (
-    conteudo.includes(",") ||
-    conteudo.includes(";")
-  ) {
-    const partes =
-      conteudo.split(/[,;]/);
-
-    if (partes.length !== 2) {
-      return {
-        valido: false,
-        mensagem:
-          nomeFaixa +
-          " deve possuir no máximo dois limites."
-      };
-    }
-
-    lowTexto =
-      partes[0].trim();
-
-    highTexto =
-      partes[1].trim();
-
-  } else {
-    const comecaComEspaco =
-      /^\s/.test(conteudo);
-
-    const terminaComEspaco =
-      /\s$/.test(conteudo);
-
-    const conteudoLimpo =
-      conteudo.trim();
-
-    const partes =
-      conteudoLimpo === ""
-        ? []
-        : conteudoLimpo.split(/\s+/);
-
-    if (partes.length > 2) {
-      return {
-        valido: false,
-        mensagem:
-          nomeFaixa +
-          " deve possuir no máximo dois limites."
-      };
-    }
-
-    if (partes.length === 2) {
-      lowTexto = partes[0];
-      highTexto = partes[1];
-
-    } else if (partes.length === 1) {
-
-      // [ 0.8] = somente limite superior.
-      if (
-        comecaComEspaco &&
-        !terminaComEspaco
-      ) {
-        highTexto = partes[0];
-      } else {
-        // [0.2] ou [0.2 ] = somente limite inferior.
-        lowTexto = partes[0];
-      }
-    }
+  if (conteudo === "") {
+    return criarFaixaPadraoImadjustLineares();
   }
 
-  // Limites omitidos recebem os padrões do imadjust.
+  const linhas =
+    conteudo.split(";");
+
+  // Matriz 2x3, como aceita o imadjust para RGB.
+  if (linhas.length === 2) {
+    const linhaBaixa =
+      interpretarLinhaFaixaRgbImadjustLineares(
+        linhas[0],
+        nomeFaixa
+      );
+
+    if (!linhaBaixa.valido) {
+      return linhaBaixa;
+    }
+
+    const linhaAlta =
+      interpretarLinhaFaixaRgbImadjustLineares(
+        linhas[1],
+        nomeFaixa
+      );
+
+    if (!linhaAlta.valido) {
+      return linhaAlta;
+    }
+
+    return {
+      valido: true,
+      informado: true,
+      tipo: "rgb",
+      low: linhaBaixa.valores.slice(),
+      high: linhaAlta.valores.slice(),
+      lows: linhaBaixa.valores.slice(),
+      highs: linhaAlta.valores.slice()
+    };
+  }
+
+  if (linhas.length > 2) {
+    return {
+      valido: false,
+      mensagem:
+        nomeFaixa +
+        " deve ser um vetor com 2 valores ou uma matriz RGB 2x3."
+    };
+  }
+
+  const valoresTexto =
+    conteudo
+      .replace(/,/g, " ")
+      .split(/\s+/)
+      .filter(function(valor) {
+        return valor !== "";
+      });
+
+  if (valoresTexto.length !== 2) {
+    return {
+      valido: false,
+      mensagem:
+        nomeFaixa +
+        " deve possuir exatamente 2 valores, ou uma matriz RGB 2x3. " +
+        "Exemplos: [0.2 0.8] ou [0.1 0.2 0.3; 0.8 0.9 1]."
+    };
+  }
+
   const low =
-    lowTexto === ""
-      ? 0
-      : Number(lowTexto);
+    Number(valoresTexto[0]);
 
   const high =
-    highTexto === ""
-      ? 1
-      : Number(highTexto);
+    Number(valoresTexto[1]);
 
   if (
     !Number.isFinite(low) ||
@@ -203,8 +281,49 @@ function interpretarFaixaImadjust(
 
   return {
     valido: true,
+    informado: true,
+    tipo: "vetor",
     low: low,
-    high: high
+    high: high,
+    lows: [low, low, low],
+    highs: [high, high, high]
+  };
+}
+
+
+function validarOrdemFaixaEntradaImadjustLineares(
+  faixaEntrada
+) {
+  if (
+    !faixaEntrada ||
+    !faixaEntrada.informado
+  ) {
+    return {
+      valido: true
+    };
+  }
+
+  for (
+    let canal = 0;
+    canal < 3;
+    canal++
+  ) {
+    if (
+      faixaEntrada.lows[canal] >=
+      faixaEntrada.highs[canal]
+    ) {
+      return {
+        valido: false,
+        mensagem:
+          faixaEntrada.tipo === "rgb"
+            ? "LOW_IN deve ser menor que HIGH_IN em todos os canais R, G e B."
+            : "LOW_IN deve ser menor que HIGH_IN."
+      };
+    }
+  }
+
+  return {
+    valido: true
   };
 }
 
@@ -233,31 +352,92 @@ function interpretarParametrosAlargamentoContraste(
     return faixaSaida;
   }
 
-  if (
-    faixaEntrada.low >=
-    faixaEntrada.high
-  ) {
-    return {
-      valido: false,
-      mensagem:
-        "LOW_IN deve ser menor que HIGH_IN."
-    };
+  const entradaNaoInformada =
+    faixaEntrada.informado === false;
+
+  const saidaNaoInformada =
+    faixaSaida.informado === false;
+
+  /*
+   * Equivalências desejadas:
+   *
+   * entrada vazia + saída vazia:
+   *   imadjust(I) -> entrada = stretchlim(I), saída = [0 1]
+   *
+   * entrada informada + saída vazia:
+   *   usa entrada informada, saída = [0 1]
+   *
+   * entrada vazia + saída informada:
+   *   entrada = [0 1], usa saída informada
+   */
+  const usarStretchlim =
+    entradaNaoInformada &&
+    saidaNaoInformada;
+
+  const faixaEntradaFinal =
+    usarStretchlim
+      ? null
+      : entradaNaoInformada
+        ? criarFaixaPadraoImadjustLineares()
+        : faixaEntrada;
+
+  const faixaSaidaFinal =
+    saidaNaoInformada
+      ? criarFaixaPadraoImadjustLineares()
+      : faixaSaida;
+
+  if (faixaEntradaFinal) {
+    const validacaoOrdem =
+      validarOrdemFaixaEntradaImadjustLineares(
+        faixaEntradaFinal
+      );
+
+    if (!validacaoOrdem.valido) {
+      return validacaoOrdem;
+    }
   }
 
   return {
     valido: true,
 
+    usarStretchlim:
+      usarStretchlim,
+
+    tipoFaixaEntrada:
+      faixaEntradaFinal
+        ? faixaEntradaFinal.tipo
+        : "stretchlim",
+
+    tipoFaixaSaida:
+      faixaSaidaFinal.tipo,
+
     lowIn:
-      faixaEntrada.low,
+      faixaEntradaFinal
+        ? (
+            faixaEntradaFinal.tipo === "rgb"
+              ? faixaEntradaFinal.lows.slice()
+              : faixaEntradaFinal.low
+          )
+        : null,
 
     highIn:
-      faixaEntrada.high,
+      faixaEntradaFinal
+        ? (
+            faixaEntradaFinal.tipo === "rgb"
+              ? faixaEntradaFinal.highs.slice()
+              : faixaEntradaFinal.high
+          )
+        : null,
 
     lowOut:
-      faixaSaida.low,
+      faixaSaidaFinal.tipo === "rgb"
+        ? faixaSaidaFinal.lows.slice()
+        : faixaSaidaFinal.low,
 
     highOut:
-      faixaSaida.high,
+      faixaSaidaFinal.tipo === "rgb"
+        ? faixaSaidaFinal.highs.slice()
+        : faixaSaidaFinal.high,
 
     // O alargamento deste grupo é linear.
     gamma: 1,
@@ -268,7 +448,7 @@ function interpretarParametrosAlargamentoContraste(
 
 
 // =========================================================
-// FUNÇÕES MATEMÁTICAS DO IMADJUST LINEAR
+// FUNÇÕES MATEMÁTICAS DO IMADJUST LINEAR E STRETCHLIM
 // =========================================================
 
 function limitarValorLineares(
@@ -286,25 +466,86 @@ function limitarValorLineares(
 }
 
 
+function obterValorCanalFaixaLineares(
+  valor,
+  canal,
+  padrao
+) {
+  if (Array.isArray(valor)) {
+    const indice =
+      Math.max(
+        0,
+        Math.min(
+          2,
+          Number(canal) || 0
+        )
+      );
+
+    const valorCanal =
+      Number(valor[indice]);
+
+    return Number.isFinite(valorCanal)
+      ? valorCanal
+      : padrao;
+  }
+
+  const valorNumerico =
+    Number(valor);
+
+  return Number.isFinite(valorNumerico)
+    ? valorNumerico
+    : padrao;
+}
+
+
 function ajustarValorContrasteLinear(
   valorNormalizado,
-  configuracao
+  configuracao,
+  canal = 0
 ) {
+  const lowIn =
+    obterValorCanalFaixaLineares(
+      configuracao.lowIn,
+      canal,
+      0
+    );
+
+  const highIn =
+    obterValorCanalFaixaLineares(
+      configuracao.highIn,
+      canal,
+      1
+    );
+
+  const lowOut =
+    obterValorCanalFaixaLineares(
+      configuracao.lowOut,
+      canal,
+      0
+    );
+
+  const highOut =
+    obterValorCanalFaixaLineares(
+      configuracao.highOut,
+      canal,
+      1
+    );
+
   const valorLimitado =
     limitarValorLineares(
       valorNormalizado,
-      configuracao.lowIn,
-      configuracao.highIn
+      lowIn,
+      highIn
     );
 
   const intervaloEntrada =
-    configuracao.highIn -
-    configuracao.lowIn;
+    highIn -
+    lowIn;
 
   const posicaoNormalizada =
     (
       valorLimitado -
-      configuracao.lowIn
+      lowIn
     ) /
     intervaloEntrada;
 
@@ -315,11 +556,265 @@ function ajustarValorContrasteLinear(
   return (
     posicaoNormalizada *
     (
-      configuracao.highOut -
-      configuracao.lowOut
+      highOut -
+      lowOut
     ) +
-    configuracao.lowOut
+    lowOut
   );
+}
+
+
+function encontrarLimitesHistogramaStretchlimLineares(
+  histograma,
+  total,
+  nbins,
+  tolLow = 0.01,
+  tolHigh = 0.99
+) {
+  if (
+    !Array.isArray(histograma) &&
+    !(histograma instanceof Uint32Array) &&
+    !(histograma instanceof Float64Array)
+  ) {
+    return [0, 1];
+  }
+
+  if (
+    !Number.isFinite(total) ||
+    total <= 0 ||
+    tolLow >= tolHigh
+  ) {
+    return [0, 1];
+  }
+
+  let acumulado = 0;
+  let ilow = -1;
+  let ihigh = -1;
+
+  for (
+    let i = 0;
+    i < nbins;
+    i++
+  ) {
+    acumulado +=
+      Number(histograma[i]) || 0;
+
+    const cdf =
+      acumulado /
+      total;
+
+    if (
+      ilow < 0 &&
+      cdf > tolLow
+    ) {
+      ilow = i;
+    }
+
+    if (
+      ihigh < 0 &&
+      cdf >= tolHigh
+    ) {
+      ihigh = i;
+    }
+
+    if (
+      ilow >= 0 &&
+      ihigh >= 0
+    ) {
+      break;
+    }
+  }
+
+  if (
+    ilow < 0 ||
+    ihigh < 0 ||
+    ilow === ihigh
+  ) {
+    return [0, 1];
+  }
+
+  return [
+    ilow /
+      (nbins - 1),
+    ihigh /
+      (nbins - 1)
+  ];
+}
+
+
+function obterIndiceHistogramaStretchlimLineares(
+  valorNormalizado,
+  nbins
+) {
+  const valorLimitado =
+    limitarValorLineares(
+      Number(valorNormalizado),
+      0,
+      1
+    );
+
+  return Math.min(
+    nbins - 1,
+    Math.max(
+      0,
+      Math.floor(
+        valorLimitado *
+        nbins
+      )
+    )
+  );
+}
+
+
+function calcularStretchlimCanvasLineares(
+  dadosRgba,
+  ignorarZero = false
+) {
+  const nbins = 256;
+
+  const histogramas = [
+    new Uint32Array(nbins),
+    new Uint32Array(nbins),
+    new Uint32Array(nbins)
+  ];
+
+  const totais = [0, 0, 0];
+
+  for (
+    let indice = 0;
+    indice + 2 < dadosRgba.length;
+    indice += 4
+  ) {
+    const vermelho =
+      Number(dadosRgba[indice]);
+
+    const verde =
+      Number(dadosRgba[indice + 1]);
+
+    const azul =
+      Number(dadosRgba[indice + 2]);
+
+    const pixelEhZero =
+      vermelho === 0 &&
+      verde === 0 &&
+      azul === 0;
+
+    if (
+      ignorarZero &&
+      pixelEhZero
+    ) {
+      continue;
+    }
+
+    const valores = [
+      vermelho,
+      verde,
+      azul
+    ];
+
+    for (
+      let canal = 0;
+      canal < 3;
+      canal++
+    ) {
+      const indiceBin =
+        Math.max(
+          0,
+          Math.min(
+            255,
+            Math.round(
+              valores[canal]
+            )
+          )
+        );
+
+      histogramas[canal][indiceBin]++;
+      totais[canal]++;
+    }
+  }
+
+  const lows = [0, 0, 0];
+  const highs = [1, 1, 1];
+
+  for (
+    let canal = 0;
+    canal < 3;
+    canal++
+  ) {
+    const limites =
+      encontrarLimitesHistogramaStretchlimLineares(
+        histogramas[canal],
+        totais[canal],
+        nbins,
+        0.01,
+        0.99
+      );
+
+    lows[canal] = limites[0];
+    highs[canal] = limites[1];
+  }
+
+  return {
+    lows: lows,
+    highs: highs
+  };
+}
+
+
+function clonarConfiguracaoContrasteLineares(
+  configuracao
+) {
+  return {
+    ...configuracao,
+    lowIn:
+      Array.isArray(configuracao.lowIn)
+        ? configuracao.lowIn.slice()
+        : configuracao.lowIn,
+    highIn:
+      Array.isArray(configuracao.highIn)
+        ? configuracao.highIn.slice()
+        : configuracao.highIn,
+    lowOut:
+      Array.isArray(configuracao.lowOut)
+        ? configuracao.lowOut.slice()
+        : configuracao.lowOut,
+    highOut:
+      Array.isArray(configuracao.highOut)
+        ? configuracao.highOut.slice()
+        : configuracao.highOut
+  };
+}
+
+
+function resolverConfiguracaoContrasteCanvasLineares(
+  dadosRgba,
+  configuracao
+) {
+  const resolvida =
+    clonarConfiguracaoContrasteLineares(
+      configuracao
+    );
+
+  if (
+    configuracao.usarStretchlim === true
+  ) {
+    const limites =
+      calcularStretchlimCanvasLineares(
+        dadosRgba,
+        configuracao.ignorarZero === true
+      );
+
+    resolvida.lowIn =
+      limites.lows.slice();
+
+    resolvida.highIn =
+      limites.highs.slice();
+
+    resolvida.tipoFaixaEntrada =
+      "rgb";
+  }
+
+  return resolvida;
 }
 
 
@@ -582,6 +1077,16 @@ async function aplicarAlargamentoContrasteEmCanvas(
   const saida =
     imagemSaida.data;
 
+  const configuracaoResolvida =
+    resolverConfiguracaoContrasteCanvasLineares(
+      entrada,
+      configuracao
+    );
+
+  validarConfiguracaoContrasteLineares(
+    configuracaoResolvida
+  );
+
   const ignorarZero =
     configuracao.ignorarZero === true;
 
@@ -647,7 +1152,8 @@ async function aplicarAlargamentoContrasteEmCanvas(
             limitarValorLineares(
               ajustarValorContrasteLinear(
                 vermelhoNormalizado,
-                configuracao
+                configuracaoResolvida,
+                0
               ),
               0,
               1
@@ -659,7 +1165,8 @@ async function aplicarAlargamentoContrasteEmCanvas(
             limitarValorLineares(
               ajustarValorContrasteLinear(
                 verdeNormalizado,
-                configuracao
+                configuracaoResolvida,
+                1
               ),
               0,
               1
@@ -671,7 +1178,8 @@ async function aplicarAlargamentoContrasteEmCanvas(
             limitarValorLineares(
               ajustarValorContrasteLinear(
                 azulNormalizado,
-                configuracao
+                configuracaoResolvida,
+                2
               ),
               0,
               1
@@ -721,6 +1229,58 @@ async function aplicarAlargamentoContrasteEmCanvas(
 // VALIDAÇÃO INTERNA DA CONFIGURAÇÃO
 // =========================================================
 
+function validarValorOuArrayFaixaLineares(
+  valor,
+  nome,
+  permitirNulo = false
+) {
+  if (
+    permitirNulo &&
+    (valor === null || valor === undefined)
+  ) {
+    return;
+  }
+
+  const valores =
+    Array.isArray(valor)
+      ? valor
+      : [valor];
+
+  if (
+    valores.length !== 1 &&
+    valores.length !== 3
+  ) {
+    throw new Error(
+      nome +
+      " deve possuir um valor ou três valores para R, G e B."
+    );
+  }
+
+  if (
+    valores.some(function(item) {
+      return !Number.isFinite(
+        Number(item)
+      );
+    })
+  ) {
+    throw new Error(
+      "A configuração do alargamento de contraste possui valores inválidos."
+    );
+  }
+
+  if (
+    valores.some(function(item) {
+      const numero = Number(item);
+      return numero < 0 || numero > 1;
+    })
+  ) {
+    throw new Error(
+      "Os limites do alargamento de contraste devem estar entre 0 e 1."
+    );
+  }
+}
+
+
 function validarConfiguracaoContrasteLineares(
   configuracao
 ) {
@@ -732,47 +1292,62 @@ function validarConfiguracaoContrasteLineares(
     );
   }
 
-  const valores = [
+  const usarStretchlim =
+    configuracao.usarStretchlim === true;
+
+  validarValorOuArrayFaixaLineares(
     configuracao.lowIn,
+    "LOW_IN",
+    usarStretchlim
+  );
+
+  validarValorOuArrayFaixaLineares(
     configuracao.highIn,
+    "HIGH_IN",
+    usarStretchlim
+  );
+
+  validarValorOuArrayFaixaLineares(
     configuracao.lowOut,
-    configuracao.highOut
-  ];
+    "LOW_OUT"
+  );
 
-  if (
-    valores.some(function(valor) {
-      return !Number.isFinite(
-        Number(valor)
+  validarValorOuArrayFaixaLineares(
+    configuracao.highOut,
+    "HIGH_OUT"
+  );
+
+  if (usarStretchlim) {
+    return;
+  }
+
+  for (
+    let canal = 0;
+    canal < 3;
+    canal++
+  ) {
+    const lowIn =
+      obterValorCanalFaixaLineares(
+        configuracao.lowIn,
+        canal,
+        0
       );
-    })
-  ) {
-    throw new Error(
-      "A configuração do alargamento de contraste possui valores inválidos."
-    );
-  }
 
-  if (
-    configuracao.lowIn < 0 ||
-    configuracao.lowIn > 1 ||
-    configuracao.highIn < 0 ||
-    configuracao.highIn > 1 ||
-    configuracao.lowOut < 0 ||
-    configuracao.lowOut > 1 ||
-    configuracao.highOut < 0 ||
-    configuracao.highOut > 1
-  ) {
-    throw new Error(
-      "Os limites do alargamento de contraste devem estar entre 0 e 1."
-    );
-  }
+    const highIn =
+      obterValorCanalFaixaLineares(
+        configuracao.highIn,
+        canal,
+        1
+      );
 
-  if (
-    configuracao.lowIn >=
-    configuracao.highIn
-  ) {
-    throw new Error(
-      "LOW_IN deve ser menor que HIGH_IN."
-    );
+    if (lowIn >= highIn) {
+      throw new Error(
+        Array.isArray(configuracao.lowIn) ||
+        Array.isArray(configuracao.highIn)
+          ? "LOW_IN deve ser menor que HIGH_IN em todos os canais R, G e B."
+          : "LOW_IN deve ser menor que HIGH_IN."
+      );
+    }
   }
 }
 
@@ -1101,6 +1676,289 @@ function converterDoubleParaTipoLineares(
 
 
 // =========================================================
+// STRETCHLIM PARA DICOM
+// =========================================================
+
+function obterAmostrasPorPixelDicomLineares(
+  imagemEntrada,
+  pixelsEntrada
+) {
+  const largura =
+    Number(imagemEntrada.width);
+
+  const altura =
+    Number(imagemEntrada.height);
+
+  const quantidadePixels =
+    largura * altura;
+
+  if (
+    !Number.isFinite(quantidadePixels) ||
+    quantidadePixels <= 0
+  ) {
+    return 1;
+  }
+
+  const calculado =
+    pixelsEntrada.length /
+    quantidadePixels;
+
+  if (
+    Number.isInteger(calculado) &&
+    calculado >= 3 &&
+    calculado <= 4
+  ) {
+    return calculado;
+  }
+
+  return 1;
+}
+
+
+function calcularStretchlimDicomLineares(
+  imagemEntrada,
+  pixelsEntrada,
+  informacoesTipo,
+  ignorarZero = false
+) {
+  const nbins =
+    informacoesTipo.nome === "uint8"
+      ? 256
+      : 65536;
+
+  const amostrasPorPixel =
+    obterAmostrasPorPixelDicomLineares(
+      imagemEntrada,
+      pixelsEntrada
+    );
+
+  const canais =
+    amostrasPorPixel >= 3
+      ? 3
+      : 1;
+
+  const histogramas = [];
+  const totais = [];
+
+  for (
+    let canal = 0;
+    canal < canais;
+    canal++
+  ) {
+    histogramas.push(
+      new Uint32Array(nbins)
+    );
+    totais.push(0);
+  }
+
+  if (canais === 1) {
+    for (
+      let indice = 0;
+      indice < pixelsEntrada.length;
+      indice++
+    ) {
+      const valorOriginal =
+        Number(pixelsEntrada[indice]);
+
+      if (
+        ignorarZero &&
+        valorOriginal === 0
+      ) {
+        continue;
+      }
+
+      const valorNormalizado =
+        converterPixelParaDoubleLineares(
+          valorOriginal,
+          informacoesTipo
+        );
+
+      const indiceBin =
+        obterIndiceHistogramaStretchlimLineares(
+          valorNormalizado,
+          nbins
+        );
+
+      histogramas[0][indiceBin]++;
+      totais[0]++;
+    }
+
+    const limites =
+      encontrarLimitesHistogramaStretchlimLineares(
+        histogramas[0],
+        totais[0],
+        nbins,
+        0.01,
+        0.99
+      );
+
+    return {
+      lowIn: limites[0],
+      highIn: limites[1],
+      tipo: "vetor",
+      amostrasPorPixel: 1
+    };
+  }
+
+  const quantidadePixels =
+    Math.floor(
+      pixelsEntrada.length /
+      amostrasPorPixel
+    );
+
+  for (
+    let pixel = 0;
+    pixel < quantidadePixels;
+    pixel++
+  ) {
+    const inicio =
+      pixel *
+      amostrasPorPixel;
+
+    const vermelho =
+      Number(pixelsEntrada[inicio]);
+
+    const verde =
+      Number(pixelsEntrada[inicio + 1]);
+
+    const azul =
+      Number(pixelsEntrada[inicio + 2]);
+
+    const pixelEhZero =
+      vermelho === 0 &&
+      verde === 0 &&
+      azul === 0;
+
+    if (
+      ignorarZero &&
+      pixelEhZero
+    ) {
+      continue;
+    }
+
+    const valores = [
+      vermelho,
+      verde,
+      azul
+    ];
+
+    for (
+      let canal = 0;
+      canal < 3;
+      canal++
+    ) {
+      const valorNormalizado =
+        converterPixelParaDoubleLineares(
+          valores[canal],
+          informacoesTipo
+        );
+
+      const indiceBin =
+        obterIndiceHistogramaStretchlimLineares(
+          valorNormalizado,
+          nbins
+        );
+
+      histogramas[canal][indiceBin]++;
+      totais[canal]++;
+    }
+  }
+
+  const lows = [0, 0, 0];
+  const highs = [1, 1, 1];
+
+  for (
+    let canal = 0;
+    canal < 3;
+    canal++
+  ) {
+    const limites =
+      encontrarLimitesHistogramaStretchlimLineares(
+        histogramas[canal],
+        totais[canal],
+        nbins,
+        0.01,
+        0.99
+      );
+
+    lows[canal] = limites[0];
+    highs[canal] = limites[1];
+  }
+
+  return {
+    lowIn: lows,
+    highIn: highs,
+    tipo: "rgb",
+    amostrasPorPixel: amostrasPorPixel
+  };
+}
+
+
+function resolverConfiguracaoContrasteDicomLineares(
+  imagemEntrada,
+  pixelsEntrada,
+  informacoesTipo,
+  configuracao
+) {
+  const resolvida =
+    clonarConfiguracaoContrasteLineares(
+      configuracao
+    );
+
+  const amostrasPorPixel =
+    obterAmostrasPorPixelDicomLineares(
+      imagemEntrada,
+      pixelsEntrada
+    );
+
+  if (
+    amostrasPorPixel === 1 &&
+    (
+      Array.isArray(configuracao.lowIn) ||
+      Array.isArray(configuracao.highIn) ||
+      Array.isArray(configuracao.lowOut) ||
+      Array.isArray(configuracao.highOut)
+    ) &&
+    configuracao.usarStretchlim !== true
+  ) {
+    throw new Error(
+      "Faixas 2x3 são permitidas somente para imagens RGB."
+    );
+  }
+
+  if (
+    configuracao.usarStretchlim === true
+  ) {
+    const limites =
+      calcularStretchlimDicomLineares(
+        imagemEntrada,
+        pixelsEntrada,
+        informacoesTipo,
+        configuracao.ignorarZero === true
+      );
+
+    resolvida.lowIn =
+      Array.isArray(limites.lowIn)
+        ? limites.lowIn.slice()
+        : limites.lowIn;
+
+    resolvida.highIn =
+      Array.isArray(limites.highIn)
+        ? limites.highIn.slice()
+        : limites.highIn;
+
+    resolvida.tipoFaixaEntrada =
+      limites.tipo;
+  }
+
+  return {
+    configuracao: resolvida,
+    amostrasPorPixel: amostrasPorPixel
+  };
+}
+
+
+// =========================================================
 // NEGATIVO - DICOM
 // =========================================================
 
@@ -1304,6 +2162,24 @@ async function aplicarAlargamentoContrasteEmDicom(
     );
   }
 
+  const resolucao =
+    resolverConfiguracaoContrasteDicomLineares(
+      imagemEntrada,
+      pixelsEntrada,
+      informacoesTipo,
+      configuracao
+    );
+
+  const configuracaoResolvida =
+    resolucao.configuracao;
+
+  const amostrasPorPixel =
+    resolucao.amostrasPorPixel;
+
+  validarConfiguracaoContrasteLineares(
+    configuracaoResolvida
+  );
+
   const pixelsSaida =
     criarArrayLinearesMesmoTipo(
       pixelsEntrada,
@@ -1330,23 +2206,193 @@ async function aplicarAlargamentoContrasteEmDicom(
 
   await esperarAtualizacaoLineares();
 
-  for (
-    let y = 0;
-    y < altura;
-    y++
-  ) {
-    const inicioLinha =
-      y * largura;
-
-    const fimLinha =
+  if (amostrasPorPixel >= 3) {
+    const quantidadePixels =
       Math.min(
-        inicioLinha + largura,
-        pixelsEntrada.length
+        largura * altura,
+        Math.floor(
+          pixelsEntrada.length /
+          amostrasPorPixel
+        )
       );
 
     for (
-      let indice = inicioLinha;
-      indice < fimLinha;
+      let pixel = 0;
+      pixel < quantidadePixels;
+      pixel++
+    ) {
+      const inicio =
+        pixel *
+        amostrasPorPixel;
+
+      const vermelho =
+        Number(pixelsEntrada[inicio]);
+
+      const verde =
+        Number(pixelsEntrada[inicio + 1]);
+
+      const azul =
+        Number(pixelsEntrada[inicio + 2]);
+
+      const pixelEhZero =
+        vermelho === 0 &&
+        verde === 0 &&
+        azul === 0;
+
+      if (
+        ignorarZero &&
+        pixelEhZero
+      ) {
+        pixelsSaida[inicio] = 0;
+        pixelsSaida[inicio + 1] = 0;
+        pixelsSaida[inicio + 2] = 0;
+      } else {
+        const valores = [
+          vermelho,
+          verde,
+          azul
+        ];
+
+        for (
+          let canal = 0;
+          canal < 3;
+          canal++
+        ) {
+          const valorNormalizado =
+            converterPixelParaDoubleLineares(
+              valores[canal],
+              informacoesTipo
+            );
+
+          const valorAjustado =
+            ajustarValorContrasteLinear(
+              valorNormalizado,
+              configuracaoResolvida,
+              canal
+            );
+
+          pixelsSaida[inicio + canal] =
+            converterDoubleParaTipoLineares(
+              valorAjustado,
+              informacoesTipo
+            );
+        }
+      }
+
+      // Em RGBA, o alfa é preservado.
+      if (amostrasPorPixel === 4) {
+        pixelsSaida[inicio + 3] =
+          pixelsEntrada[inicio + 3];
+      }
+
+      if (
+        pixel % Math.max(1, largura * 8) === 0 ||
+        pixel === quantidadePixels - 1
+      ) {
+        atualizarProgressoLineares(
+          atualizarProgresso,
+          (
+            (
+              pixel + 1
+            ) /
+            quantidadePixels
+          ) * 100
+        );
+
+        await esperarAtualizacaoLineares();
+      }
+    }
+
+    const posicaoFinalProcessada =
+      quantidadePixels *
+      amostrasPorPixel;
+
+    for (
+      let indice = posicaoFinalProcessada;
+      indice < pixelsEntrada.length;
+      indice++
+    ) {
+      pixelsSaida[indice] =
+        pixelsEntrada[indice];
+    }
+
+  } else {
+    for (
+      let y = 0;
+      y < altura;
+      y++
+    ) {
+      const inicioLinha =
+        y * largura;
+
+      const fimLinha =
+        Math.min(
+          inicioLinha + largura,
+          pixelsEntrada.length
+        );
+
+      for (
+        let indice = inicioLinha;
+        indice < fimLinha;
+        indice++
+      ) {
+        const valorOriginal =
+          Number(
+            pixelsEntrada[indice]
+          );
+
+        if (
+          ignorarZero &&
+          valorOriginal === 0
+        ) {
+          pixelsSaida[indice] = 0;
+          continue;
+        }
+
+        const valorNormalizado =
+          converterPixelParaDoubleLineares(
+            valorOriginal,
+            informacoesTipo
+          );
+
+        const valorAjustado =
+          ajustarValorContrasteLinear(
+            valorNormalizado,
+            configuracaoResolvida,
+            0
+          );
+
+        pixelsSaida[indice] =
+          converterDoubleParaTipoLineares(
+            valorAjustado,
+            informacoesTipo
+          );
+      }
+
+      if (
+        y % 8 === 0 ||
+        y === altura - 1
+      ) {
+        atualizarProgressoLineares(
+          atualizarProgresso,
+          (
+            (
+              y + 1
+            ) /
+            altura
+          ) * 100
+        );
+
+        await esperarAtualizacaoLineares();
+      }
+    }
+
+    const pixelsImagem =
+      largura * altura;
+
+    for (
+      let indice = pixelsImagem;
+      indice < pixelsEntrada.length;
       indice++
     ) {
       const valorOriginal =
@@ -1371,7 +2417,8 @@ async function aplicarAlargamentoContrasteEmDicom(
       const valorAjustado =
         ajustarValorContrasteLinear(
           valorNormalizado,
-          configuracao
+          configuracaoResolvida,
+          0
         );
 
       pixelsSaida[indice] =
@@ -1380,63 +2427,6 @@ async function aplicarAlargamentoContrasteEmDicom(
           informacoesTipo
         );
     }
-
-    if (
-      y % 8 === 0 ||
-      y === altura - 1
-    ) {
-      atualizarProgressoLineares(
-        atualizarProgresso,
-        (
-          (
-            y + 1
-          ) /
-          altura
-        ) * 100
-      );
-
-      await esperarAtualizacaoLineares();
-    }
-  }
-
-  const pixelsImagem =
-    largura * altura;
-
-  for (
-    let indice = pixelsImagem;
-    indice < pixelsEntrada.length;
-    indice++
-  ) {
-    const valorOriginal =
-      Number(
-        pixelsEntrada[indice]
-      );
-
-    if (
-      ignorarZero &&
-      valorOriginal === 0
-    ) {
-      pixelsSaida[indice] = 0;
-      continue;
-    }
-
-    const valorNormalizado =
-      converterPixelParaDoubleLineares(
-        valorOriginal,
-        informacoesTipo
-      );
-
-    const valorAjustado =
-      ajustarValorContrasteLinear(
-        valorNormalizado,
-        configuracao
-      );
-
-    pixelsSaida[indice] =
-      converterDoubleParaTipoLineares(
-        valorAjustado,
-        informacoesTipo
-      );
   }
 
   atualizarProgressoLineares(
@@ -1450,7 +2440,14 @@ async function aplicarAlargamentoContrasteEmDicom(
     altura,
     imagemEntrada,
     "dicom_alargamento_contraste_" +
-      Date.now()
+      Date.now(),
+    amostrasPorPixel >= 3
+      ? {
+          color: true,
+          rgba:
+            amostrasPorPixel === 4
+        }
+      : null
   );
 }
 
@@ -1519,7 +2516,8 @@ function criarImagemDicomLineares(
   largura,
   altura,
   imagemBase,
-  imageId
+  imageId,
+  opcoes = null
 ) {
   let minimo =
     Infinity;
@@ -1593,13 +2591,34 @@ function criarImagemDicomLineares(
         )
       : 0;
 
+  const imagemColorida =
+    Boolean(
+      opcoes &&
+      opcoes.color === true
+    );
+
+  const imagemRgba =
+    Boolean(
+      opcoes &&
+      opcoes.rgba === true
+    );
+
   const renderizador =
+    imagemColorida &&
     typeof cornerstone !==
       "undefined" &&
-    typeof cornerstone.renderGrayscaleImage ===
+    typeof cornerstone.renderColorImage ===
       "function"
-      ? cornerstone.renderGrayscaleImage
-      : imagemBase.render;
+      ? cornerstone.renderColorImage
+      : (
+          !imagemColorida &&
+          typeof cornerstone !==
+            "undefined" &&
+          typeof cornerstone.renderGrayscaleImage ===
+            "function"
+            ? cornerstone.renderGrayscaleImage
+            : imagemBase.render
+        );
 
   return {
     imageId,
@@ -1657,10 +2676,10 @@ function criarImagemDicomLineares(
       largura,
 
     color:
-      false,
+      imagemColorida,
 
     rgba:
-      false,
+      imagemRgba,
 
     columnPixelSpacing:
       imagemBase.columnPixelSpacing ||
