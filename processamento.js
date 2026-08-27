@@ -4017,10 +4017,9 @@ function selecionarFerramenta(nome, botaoClicado) {
       <h4>Negativo</h4>
 
       <div class="campo_parametro_info">
-        <label>Complemento da imagem</label>
+        <label>Inversão da imagem</label>
 
         <div class="caixa_info_parametro">
-          Equivalente ao imcomplement do MATLAB.
           Os valores de intensidade são invertidos.
         </div>
       </div>
@@ -4047,19 +4046,11 @@ function selecionarFerramenta(nome, botaoClicado) {
         <input
           type="text"
           id="paramFaixaEntradaContraste"
-          placeholder="Ex: 0,2 0,8 ou 0,1 0,2 0,3; 0,8 0,9 1"
+          placeholder="Ex: 0,2 0,8"
         >
 
         <div class="caixa_info_parametro">
-          Equivalente à faixa de entrada do imadjust.
-          Os colchetes são opcionais e os valores podem usar ponto
-          ou vírgula decimal. Para uma única faixa, use 0,2 0,8 ou
-          0.2 0.8. Para RGB, também é possível informar uma matriz
-          2x3, como 0,1 0,2 0,3; 0,8 0,9 1, definindo limites
-          independentes para R, G e B. Se somente a entrada for
-          informada, a saída será [0 1]. Se entrada e saída ficarem
-          vazias, a entrada será calculada automaticamente por
-          stretchlim(I). Digite [] para usar explicitamente [0 1].
+          Informe dois valores decimais entre 0 e 1, separados por espaço. Para imagens RGB, informe três valores separados por espaço, seguidos de ponto e vírgula e mais três valores, quando quiser definir faixas distintas para os canais R, G e B.
         </div>
       </div>
 
@@ -4069,17 +4060,11 @@ function selecionarFerramenta(nome, botaoClicado) {
         <input
           type="text"
           id="paramFaixaSaidaContraste"
-          placeholder="Ex: 0 1 ou 0 0 0; 1 1 1"
+          placeholder="Ex: 0,2 0,8"
         >
 
         <div class="caixa_info_parametro">
-          Equivalente à faixa de saída do imadjust.
-          Os colchetes são opcionais e os valores podem usar ponto
-          ou vírgula decimal. Para uma única faixa, use 0 1. Para
-          RGB, também é possível informar uma matriz 2x3 com limites
-          diferentes para R, G e B. Se somente a saída for informada,
-          a entrada será [0 1]. Se somente a entrada for informada,
-          a saída será [0 1]. Digite [] para usar explicitamente [0 1].
+          Informe dois valores decimais entre 0 e 1, separados por espaço. Para imagens RGB, informe três valores separados por espaço, seguidos de ponto e vírgula e mais três valores, quando quiser definir faixas distintas para os canais R, G e B.
         </div>
       </div>
 
