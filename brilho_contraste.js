@@ -10,7 +10,7 @@
  * - O controle varia de -1 a +1.
  * - O valor do controle é convertido em uma soma:
  *
- *     delta = posicao * 0.5 * faixaDeIntensidade
+ *     delta = posicao * faixaDeIntensidade
  *
  * - Para "Todos os pixels", a faixa usada no cálculo é a
  *   faixa real da imagem-base (máximo - mínimo).
@@ -317,7 +317,6 @@ function calcularDeltaBrilhoAtual() {
 
   return (
     posicao *
-    0.5 *
     amplitude
   );
 }
@@ -2289,7 +2288,7 @@ function obterAmplitudeBrilhoConfiguracaoFluxo(
 
 
 // Executa a etapa Brilho no fluxo usando a MESMA regra do preview:
-// delta = posição * 0.5 * amplitude.
+// delta = posição * amplitude.
 async function aplicarBrilhoFluxoEmCanvas(
   canvasEntrada,
   configuracao,
@@ -2352,7 +2351,6 @@ async function aplicarBrilhoFluxoEmCanvas(
 
   const delta =
     posicao *
-    0.5 *
     amplitude;
 
   const ignorarZero =
@@ -2698,7 +2696,6 @@ async function aplicarBrilhoFluxoEmDicom(
 
   const delta =
     posicao *
-    0.5 *
     amplitude;
 
   const ignorarZero =
