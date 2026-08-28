@@ -4087,37 +4087,30 @@ function selecionarFerramenta(nome, botaoClicado) {
       <h4>Parâmetros</h4>
 
       <div class="campo_parametro_info">
-        <label>Constante c</label>
+        <label>Constante</label>
 
         <input
           type="number"
           id="paramConstantePotencia"
           step="any"
-          placeholder="Ex: 1"
+          placeholder="Valor positivo"
         >
 
         <div class="caixa_info_parametro">
-          Transformação de potência: s = c × r^p.
           Se o campo ficar vazio, será usado c = 1.
         </div>
       </div>
 
       <div class="campo_parametro_info">
-        <label>Expoente p</label>
+        <label>Expoente</label>
 
         <input
           type="number"
           id="paramExpoentePotencia"
           min="0.000001"
           step="any"
-          placeholder="Ex: 2"
+          placeholder="Valor positivo"
         >
-
-        <div class="caixa_info_parametro">
-          Expoente da transformação de potência.
-          O valor deve ser maior que 0.
-        </div>
-      </div>
 
       <button
         class="botao-aplicar"
@@ -6374,9 +6367,8 @@ function desenharFluxograma() {
         etapa.parametros.configuracao;
 
       textoParametros = `
-        Fórmula: s = c × r^p<br>
-        c: ${configuracao.constante}<br>
-        Expoente p: ${configuracao.expoente}<br>
+        Constante: ${configuracao.constante}<br>
+        Expoente: ${configuracao.expoente}<br>
         Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
       `;
     }
