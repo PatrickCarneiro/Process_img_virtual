@@ -4168,15 +4168,8 @@ function selecionarFerramenta(nome, botaoClicado) {
           id="paramGammaNaoLinear"
           min="0.000001"
           step="any"
-          placeholder="Ex: 0.5, 1 ou 2"
+          placeholder="Valor positivo"
         >
-
-        <div class="caixa_info_parametro">
-          Correção gamma equivalente ao parâmetro gamma do imadjust
-          do MATLAB, usando as faixas padrão [0 1].
-          O valor deve ser maior que 0.
-        </div>
-      </div>
 
       <button
         class="botao-aplicar"
@@ -6265,7 +6258,6 @@ function desenharFluxograma() {
 
     if (etapa.nome === "Negativo") {
       textoParametros = `
-        Operação: imcomplement<br>
         Ignorar pixel 0: ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
       `;
     }
@@ -6388,7 +6380,6 @@ function desenharFluxograma() {
         etapa.parametros.configuracao;
 
       textoParametros = `
-        Operação: imadjust com gamma<br>
         Gamma: ${configuracao.gamma}<br>
         Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
       `;
