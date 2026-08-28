@@ -4129,20 +4129,18 @@ function selecionarFerramenta(nome, botaoClicado) {
       <h4>Parâmetros</h4>
 
       <div class="campo_parametro_info">
-        <label>Constante c</label>
+        <label>Constante</label>
 
         <input
           type="number"
           id="paramConstanteLog"
           min="0.000001"
           step="any"
-          placeholder="Vazio = automático"
+          placeholder="Valor positivo"
         >
 
         <div class="caixa_info_parametro">
-          Transformação logarítmica: s = c × log(1 + r).
-          Se o campo ficar vazio, a constante será calculada
-          automaticamente para manter a saída na faixa da imagem.
+          Se o campo ficar vazio, a constante será calculada como 1.442695.
         </div>
       </div>
 
@@ -6379,8 +6377,7 @@ function desenharFluxograma() {
         etapa.parametros.configuracao;
 
       textoParametros = `
-        Fórmula: s = c × log(1 + r)<br>
-        c: ${configuracao.constanteAutomatica ? "Automático" : configuracao.constante}<br>
+        Constante: ${configuracao.constanteAutomatica ? "Automático" : configuracao.constante}<br>
         Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
       `;
     }
