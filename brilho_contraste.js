@@ -631,23 +631,16 @@ function atualizarTextoBrilhoTempoReal() {
     )
   ) {
     elemento.innerText =
-      "Soma: informe uma faixa válida";
+      "Informe uma faixa válida";
 
     return;
   }
 
-  const delta =
-    calcularDeltaBrilhoAtual();
-
-  const sinal =
-    delta > 0
-      ? "+"
-      : "";
-
   elemento.innerText =
-    "Soma: " +
-    sinal +
-    formatarNumeroBrilhoContraste(delta);
+    "Valor: " +
+    Number(
+      estadoBrilhoContraste.posicaoBrilho
+    ).toFixed(2);
 }
 
 
@@ -673,17 +666,16 @@ function atualizarTextoContrasteTempoReal() {
     )
   ) {
     elemento.innerText =
-      "Multiplicação: informe uma faixa válida";
+      "Informe uma faixa válida";
 
     return;
   }
 
   elemento.innerText =
-    "Multiplicação: " +
+    "Valor: " +
     Number(
       estadoBrilhoContraste.fatorContraste
-    ).toFixed(2) +
-    "×";
+    ).toFixed(2);
 }
 
 
