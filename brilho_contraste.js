@@ -12,10 +12,11 @@
  *
  *     delta = posicao * faixaDeIntensidade
  *
- * - Para "Todos os pixels", a faixa usada no cálculo é a
- *   faixa real da imagem-base (máximo - mínimo).
- * - Para "Faixa de pixel", a faixa usada no cálculo é a
- *   própria faixa digitada pelo usuário (máximo - mínimo).
+ * - Em imagens comuns RGB, para "Todos os pixels", cada canal
+ *   usa sua própria faixa real: Rmax-Rmin, Gmax-Gmin e Bmax-Bmin.
+ * - Em imagens comuns RGB, para "Faixa de pixel", a faixa
+ *   digitada é avaliada separadamente em R, G e B.
+ * - Em DICOM, permanece a lógica de uma única faixa de intensidade.
  *
  * CONTRASTE
  * - Todos os pixels ou somente uma faixa de intensidades.
@@ -48,6 +49,7 @@ const estadoBrilhoContraste = {
   // Imagem comum
   canvasBase: null,
   imageDataBase: null,
+  faixasCanaisBase: null,
 
   // DICOM
   imagemDicomBase: null,
@@ -319,6 +321,81 @@ function calcularDeltaBrilhoAtual() {
     posicao *
     amplitude
   );
+}
+
+
+function obterAmplitudeBrilhoCanalAtual(canal) {
+  let amplitude;
+
+  if (
+    estadoBrilhoContraste.modoBrilho === "faixa"
+  ) {
+    if (
+      !Number.isFinite(
+        estadoBrilhoContraste.brilhoMinimo
+      ) ||
+      !Number.isFinite(
+        estadoBrilhoContraste.brilhoMaximo
+      ) ||
+      estadoBrilhoContraste.brilhoMinimo >
+        estadoBrilhoContraste.brilhoMaximo
+    ) {
+      return 0;
+    }
+
+    amplitude =
+      estadoBrilhoContraste.brilhoMaximo -
+      estadoBrilhoContraste.brilhoMinimo;
+  } else {
+    const faixas =
+      estadoBrilhoContraste.faixasCanaisBase;
+
+    const faixaCanal =
+      faixas && faixas[canal]
+        ? faixas[canal]
+        : null;
+
+    if (!faixaCanal) {
+      return 255;
+    }
+
+    amplitude =
+      Number(faixaCanal.maximo) -
+      Number(faixaCanal.minimo);
+  }
+
+  if (
+    !Number.isFinite(amplitude) ||
+    amplitude <= 0
+  ) {
+    return 255;
+  }
+
+  return amplitude;
+}
+
+
+function calcularDeltasBrilhoRgbAtual() {
+  const posicao =
+    limitarValorBrilhoContraste(
+      Number(
+        estadoBrilhoContraste.posicaoBrilho
+      ) || 0,
+      -1,
+      1
+    );
+
+  return {
+    r:
+      posicao *
+      obterAmplitudeBrilhoCanalAtual("r"),
+    g:
+      posicao *
+      obterAmplitudeBrilhoCanalAtual("g"),
+    b:
+      posicao *
+      obterAmplitudeBrilhoCanalAtual("b")
+  };
 }
 
 
@@ -718,6 +795,7 @@ async function prepararBrilhoContrasteParaImagemAtual(
 
   estadoBrilhoContraste.canvasBase = null;
   estadoBrilhoContraste.imageDataBase = null;
+  estadoBrilhoContraste.faixasCanaisBase = null;
   estadoBrilhoContraste.imagemDicomBase = null;
   estadoBrilhoContraste.pixelsDicomBase = null;
   estadoBrilhoContraste.informacoesTipoDicom = null;
@@ -816,6 +894,11 @@ function prepararImagemComumBrilhoContraste() {
 
   estadoBrilhoContraste.intensidadeMaximaBase =
     faixa.maximo;
+
+  estadoBrilhoContraste.faixasCanaisBase =
+    calcularFaixasCanaisImagemComumBrilhoContraste(
+      estadoBrilhoContraste.imageDataBase
+    );
 }
 
 
@@ -1150,8 +1233,8 @@ function aplicarBrilhoContrasteImagemComum() {
   const ignorarZero =
     obterIgnorarZeroBrilhoContraste();
 
-  const deltaBrilho =
-    calcularDeltaBrilhoAtual();
+  const deltasBrilhoRgb =
+    calcularDeltasBrilhoRgbAtual();
 
   const fatorContraste =
     Number(
@@ -1198,9 +1281,25 @@ function aplicarBrilhoContrasteImagemComum() {
         bOriginal
       );
 
-    const aplicarBrilho =
+    const aplicarBrilhoR =
       pixelPertenceFaixaBrilhoContraste(
-        intensidadeOriginal,
+        rOriginal,
+        estadoBrilhoContraste.modoBrilho,
+        estadoBrilhoContraste.brilhoMinimo,
+        estadoBrilhoContraste.brilhoMaximo
+      );
+
+    const aplicarBrilhoG =
+      pixelPertenceFaixaBrilhoContraste(
+        gOriginal,
+        estadoBrilhoContraste.modoBrilho,
+        estadoBrilhoContraste.brilhoMinimo,
+        estadoBrilhoContraste.brilhoMaximo
+      );
+
+    const aplicarBrilhoB =
+      pixelPertenceFaixaBrilhoContraste(
+        bOriginal,
         estadoBrilhoContraste.modoBrilho,
         estadoBrilhoContraste.brilhoMinimo,
         estadoBrilhoContraste.brilhoMaximo
@@ -1218,11 +1317,17 @@ function aplicarBrilhoContrasteImagemComum() {
     let g = Number(gOriginal);
     let b = Number(bOriginal);
 
-    // Primeiro soma o brilho.
-    if (aplicarBrilho) {
-      r += deltaBrilho;
-      g += deltaBrilho;
-      b += deltaBrilho;
+    // Primeiro soma o brilho separadamente em cada canal RGB.
+    if (aplicarBrilhoR) {
+      r += deltasBrilhoRgb.r;
+    }
+
+    if (aplicarBrilhoG) {
+      g += deltasBrilhoRgb.g;
+    }
+
+    if (aplicarBrilhoB) {
+      b += deltasBrilhoRgb.b;
     }
 
     // Depois aplica a multiplicação direta do contraste.
@@ -1322,6 +1427,78 @@ function calcularFaixaImagemComumBrilhoContraste(
   return {
     minimo,
     maximo
+  };
+}
+
+
+function calcularFaixasCanaisImagemComumBrilhoContraste(
+  imageData
+) {
+  let minimoR = Infinity;
+  let maximoR = -Infinity;
+  let minimoG = Infinity;
+  let maximoG = -Infinity;
+  let minimoB = Infinity;
+  let maximoB = -Infinity;
+
+  const dados = imageData.data;
+
+  for (
+    let i = 0;
+    i < dados.length;
+    i += 4
+  ) {
+    const r = Number(dados[i]);
+    const g = Number(dados[i + 1]);
+    const b = Number(dados[i + 2]);
+
+    if (r < minimoR) minimoR = r;
+    if (r > maximoR) maximoR = r;
+
+    if (g < minimoG) minimoG = g;
+    if (g > maximoG) maximoG = g;
+
+    if (b < minimoB) minimoB = b;
+    if (b > maximoB) maximoB = b;
+  }
+
+  if (
+    minimoR === Infinity ||
+    maximoR === -Infinity
+  ) {
+    minimoR = 0;
+    maximoR = 255;
+  }
+
+  if (
+    minimoG === Infinity ||
+    maximoG === -Infinity
+  ) {
+    minimoG = 0;
+    maximoG = 255;
+  }
+
+  if (
+    minimoB === Infinity ||
+    maximoB === -Infinity
+  ) {
+    minimoB = 0;
+    maximoB = 255;
+  }
+
+  return {
+    r: {
+      minimo: minimoR,
+      maximo: maximoR
+    },
+    g: {
+      minimo: minimoG,
+      maximo: maximoG
+    },
+    b: {
+      minimo: minimoB,
+      maximo: maximoB
+    }
   };
 }
 
@@ -2247,6 +2424,15 @@ function calcularFaixaCanvasParaFluxograma(
 }
 
 
+function calcularFaixasCanaisCanvasParaFluxograma(
+  imageData
+) {
+  return calcularFaixasCanaisImagemComumBrilhoContraste(
+    imageData
+  );
+}
+
+
 function obterAmplitudeBrilhoConfiguracaoFluxo(
   configuracao,
   minimoBase,
@@ -2279,8 +2465,8 @@ function obterAmplitudeBrilhoConfiguracaoFluxo(
 }
 
 
-// Executa a etapa Brilho no fluxo usando a MESMA regra do preview:
-// delta = posição * amplitude.
+// Executa a etapa Brilho RGB no fluxo usando a MESMA regra do preview:
+// deltaCanal = posição * (máximoCanal - mínimoCanal).
 async function aplicarBrilhoFluxoEmCanvas(
   canvasEntrada,
   configuracao,
@@ -2321,16 +2507,32 @@ async function aplicarBrilhoFluxoEmCanvas(
       entrada.height
     );
 
-  const faixaBase =
-    calcularFaixaCanvasParaFluxograma(
+  const faixasCanais =
+    calcularFaixasCanaisCanvasParaFluxograma(
       entrada
     );
 
-  const amplitude =
+  const amplitudeR =
     obterAmplitudeBrilhoConfiguracaoFluxo(
       configuracao,
-      faixaBase.minimo,
-      faixaBase.maximo,
+      faixasCanais.r.minimo,
+      faixasCanais.r.maximo,
+      255
+    );
+
+  const amplitudeG =
+    obterAmplitudeBrilhoConfiguracaoFluxo(
+      configuracao,
+      faixasCanais.g.minimo,
+      faixasCanais.g.maximo,
+      255
+    );
+
+  const amplitudeB =
+    obterAmplitudeBrilhoConfiguracaoFluxo(
+      configuracao,
+      faixasCanais.b.minimo,
+      faixasCanais.b.maximo,
       255
     );
 
@@ -2341,9 +2543,17 @@ async function aplicarBrilhoFluxoEmCanvas(
       1
     );
 
-  const delta =
+  const deltaR =
     posicao *
-    amplitude;
+    amplitudeR;
+
+  const deltaG =
+    posicao *
+    amplitudeG;
+
+  const deltaB =
+    posicao *
+    amplitudeB;
 
   const ignorarZero =
     Boolean(
@@ -2376,34 +2586,43 @@ async function aplicarBrilhoFluxoEmCanvas(
       continue;
     }
 
-    const intensidadeOriginal =
-      intensidadeRgbBrilhoContraste(
+    const aplicarR =
+      pixelPertenceFaixaBrilhoContraste(
         rOriginal,
-        gOriginal,
-        bOriginal
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
       );
 
-    const aplicar =
+    const aplicarG =
       pixelPertenceFaixaBrilhoContraste(
-        intensidadeOriginal,
+        gOriginal,
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
+      );
+
+    const aplicarB =
+      pixelPertenceFaixaBrilhoContraste(
+        bOriginal,
         configuracao.modo,
         configuracao.minimo,
         configuracao.maximo
       );
 
     const r =
-      aplicar
-        ? rOriginal + delta
+      aplicarR
+        ? rOriginal + deltaR
         : rOriginal;
 
     const g =
-      aplicar
-        ? gOriginal + delta
+      aplicarG
+        ? gOriginal + deltaG
         : gOriginal;
 
     const b =
-      aplicar
-        ? bOriginal + delta
+      aplicarB
+        ? bOriginal + deltaB
         : bOriginal;
 
     saida.data[i] =
