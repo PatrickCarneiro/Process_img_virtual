@@ -1855,36 +1855,171 @@ function makeTileMappingsEqualizacao(
 // CLAHE - INTERPOLAÇÃO BILINEAR
 // =========================================================
 
-function obterIndiceMappingClaheEqualizacao(
-  valor,
+function criarALutClaheEqualizacao(
   selectedRange,
-  numBins
+  fullRange,
+  numBins,
+  informacoesTipo
 ) {
-  if (numBins <= 1) {
-    return 0;
-  }
+  const minimoSelecionado = Number(selectedRange[0]);
+  const maximoSelecionado = Number(selectedRange[1]);
 
-  const minimo = Number(selectedRange[0]);
-  const maximo = Number(selectedRange[1]);
+  if (informacoesTipo.inteiro) {
+    const minimoCompleto = Number(fullRange[0]);
+    const maximoCompleto = Number(fullRange[1]);
+    const faixaCompleta = maximoCompleto - minimoCompleto;
 
-  if (maximo === minimo) {
-    return 0;
-  }
+    if (faixaCompleta <= 0) {
+      return new Float64Array([0]);
+    }
 
-  const normalizado =
-    limitarValorEqualizacao(
-      (Number(valor) - minimo) /
-        (maximo - minimo),
+    const inicio = limitarValorEqualizacao(
+      arredondarComoMatlabEqualizacao(
+        minimoSelecionado - minimoCompleto
+      ),
       0,
-      1
+      faixaCompleta
     );
 
-  return limitarValorEqualizacao(
+    const fim = limitarValorEqualizacao(
+      arredondarComoMatlabEqualizacao(
+        maximoSelecionado - minimoCompleto
+      ),
+      0,
+      faixaCompleta
+    );
+
+    const aLut = new Float64Array(fim + 1);
+
+    if (fim <= inicio) {
+      aLut[inicio] = 0;
+      return aLut;
+    }
+
+    const divisor = fim - inicio;
+
+    for (let i = inicio; i <= fim; i++) {
+      aLut[i] = (i - inicio) / divisor;
+    }
+
+    return aLut;
+  }
+
+  if (numBins <= 1) {
+    return new Float64Array([0]);
+  }
+
+  const binStep = 1 / (numBins - 1);
+  const inicio = Math.ceil(minimoSelecionado / binStep);
+  const fim = Math.floor(maximoSelecionado / binStep);
+
+  if (fim < inicio) {
+    return new Float64Array([0]);
+  }
+
+  const aLut = new Float64Array(fim + 1);
+  const quantidade = fim - inicio + 1;
+
+  if (quantidade === 1) {
+    aLut[inicio] = 0;
+    return aLut;
+  }
+
+  for (let i = 0; i < quantidade; i++) {
+    aLut[inicio + i] = i / (quantidade - 1);
+  }
+
+  return aLut;
+}
+
+
+function aplicarGrayxformValorClaheEqualizacao(
+  valor,
+  transformacao,
+  fullRange,
+  informacoesTipo
+) {
+  if (!transformacao || transformacao.length === 0) {
+    return Number(valor);
+  }
+
+  const maximoIndice = transformacao.length - 1;
+
+  const minimoCompleto = Number(fullRange[0]);
+  const maximoCompleto = Number(fullRange[1]);
+  const faixaCompleta = maximoCompleto - minimoCompleto;
+
+  let normalizado;
+
+  if (informacoesTipo.inteiro) {
+    if (faixaCompleta <= 0) {
+      normalizado = 0;
+    } else {
+      normalizado =
+        (Number(valor) - minimoCompleto) /
+        faixaCompleta;
+    }
+  } else {
+    normalizado = Number(valor);
+  }
+
+  normalizado = limitarValorEqualizacao(
+    normalizado,
+    0,
+    1
+  );
+
+  const indiceTransformacao = limitarValorEqualizacao(
     arredondarComoMatlabEqualizacao(
-      normalizado * (numBins - 1)
+      normalizado * maximoIndice
     ),
     0,
-    numBins - 1
+    maximoIndice
+  );
+
+  const valorTransformado = limitarValorEqualizacao(
+    Number(transformacao[indiceTransformacao]),
+    0,
+    1
+  );
+
+  if (!informacoesTipo.inteiro) {
+    return valorTransformado;
+  }
+
+  return limitarValorEqualizacao(
+    minimoCompleto +
+      arredondarComoMatlabEqualizacao(
+        valorTransformado * faixaCompleta
+      ),
+    minimoCompleto,
+    maximoCompleto
+  );
+}
+
+
+function converterValorInterpoladoClaheParaTipoEqualizacao(
+  valor,
+  fullRange,
+  informacoesTipo
+) {
+  const minimoCompleto = Number(fullRange[0]);
+  const maximoCompleto = Number(fullRange[1]);
+
+  if (informacoesTipo.inteiro) {
+    return arredondarComoMatlabEqualizacao(
+      limitarValorEqualizacao(
+        Number(valor),
+        minimoCompleto,
+        maximoCompleto
+      )
+    );
+  }
+
+  return limitarValorEqualizacao(
+    Number(valor),
+    0,
+    1
   );
 }
 
@@ -1903,6 +2038,14 @@ function makeClaheImageEqualizacao(
   mascaraIgnorar
 ) {
   const saida = new Array(pixels.length);
+
+  const aLut =
+    criarALutClaheEqualizacao(
+      selectedRange,
+      fullRange,
+      numBins,
+      informacoesTipo
+    );
 
   const tilesLinhas = Number(numTiles[0]);
   const tilesColunas = Number(numTiles[1]);
@@ -2000,23 +2143,51 @@ function makeClaheImageEqualizacao(
             continue;
           }
 
-          const indiceMapping =
-            obterIndiceMappingClaheEqualizacao(
+          const imgPixVal =
+            aplicarGrayxformValorClaheEqualizacao(
               pixels[indice],
-              selectedRange,
-              numBins
+              aLut,
+              fullRange,
+              informacoesTipo
             );
 
-          const ul = ulMapTile[indiceMapping];
-          const ur = urMapTile[indiceMapping];
-          const bl = blMapTile[indiceMapping];
-          const br = brMapTile[indiceMapping];
+          const ul =
+            aplicarGrayxformValorClaheEqualizacao(
+              imgPixVal,
+              ulMapTile,
+              fullRange,
+              informacoesTipo
+            );
+
+          const ur =
+            aplicarGrayxformValorClaheEqualizacao(
+              imgPixVal,
+              urMapTile,
+              fullRange,
+              informacoesTipo
+            );
+
+          const bl =
+            aplicarGrayxformValorClaheEqualizacao(
+              imgPixVal,
+              blMapTile,
+              fullRange,
+              informacoesTipo
+            );
+
+          const br =
+            aplicarGrayxformValorClaheEqualizacao(
+              imgPixVal,
+              brMapTile,
+              fullRange,
+              informacoesTipo
+            );
 
           const colW = localX;
           const colRevW =
             imgTileNumCols - localX;
 
-          const valorNormalizado =
+          const valorInterpolado =
             (
               rowRevW *
                 (
@@ -2032,8 +2203,8 @@ function makeClaheImageEqualizacao(
             normFactor;
 
           saida[indice] =
-            converterNormalizadoClaheParaValorEqualizacao(
-              valorNormalizado,
+            converterValorInterpoladoClaheParaTipoEqualizacao(
+              valorInterpolado,
               fullRange,
               informacoesTipo
             );
