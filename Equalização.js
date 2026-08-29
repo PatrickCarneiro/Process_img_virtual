@@ -1446,7 +1446,9 @@ function valorParaBinClaheEqualizacao(
     );
 
   return limitarValorEqualizacao(
-    Math.floor(normalizado * numBins),
+    arredondarComoMatlabEqualizacao(
+      normalizado * (numBins - 1)
+    ),
     0,
     numBins - 1
   );
