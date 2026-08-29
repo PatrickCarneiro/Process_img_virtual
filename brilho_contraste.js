@@ -24,7 +24,7 @@
  *
  *     pixelSaida = pixelEntrada * fator
  *
- * - O controle varia de 0.5x até 2x, com 1x no centro.
+ * - O controle varia de 0x até 2x, com 1x no centro.
  *
  * IMPORTANTE
  * - Os ajustes são sempre recalculados a partir da imagem-base.
@@ -676,7 +676,7 @@ function atualizarContrasteTempoReal(valor) {
     Number.isFinite(numero)
       ? limitarValorBrilhoContraste(
           numero,
-          0.5,
+          0,
           2
         )
       : 1;
@@ -974,6 +974,8 @@ function resetarInterfaceBrilhoContraste() {
   }
 
   if (sliderContraste) {
+    sliderContraste.min = "0";
+    sliderContraste.max = "2";
     sliderContraste.value = "1";
   }
 
@@ -1274,13 +1276,6 @@ function aplicarBrilhoContrasteImagemComum() {
       continue;
     }
 
-    const intensidadeOriginal =
-      intensidadeRgbBrilhoContraste(
-        rOriginal,
-        gOriginal,
-        bOriginal
-      );
-
     const aplicarBrilhoR =
       pixelPertenceFaixaBrilhoContraste(
         rOriginal,
@@ -1305,9 +1300,25 @@ function aplicarBrilhoContrasteImagemComum() {
         estadoBrilhoContraste.brilhoMaximo
       );
 
-    const aplicarContraste =
+    const aplicarContrasteR =
       pixelPertenceFaixaBrilhoContraste(
-        intensidadeOriginal,
+        rOriginal,
+        estadoBrilhoContraste.modoContraste,
+        estadoBrilhoContraste.contrasteMinimo,
+        estadoBrilhoContraste.contrasteMaximo
+      );
+
+    const aplicarContrasteG =
+      pixelPertenceFaixaBrilhoContraste(
+        gOriginal,
+        estadoBrilhoContraste.modoContraste,
+        estadoBrilhoContraste.contrasteMinimo,
+        estadoBrilhoContraste.contrasteMaximo
+      );
+
+    const aplicarContrasteB =
+      pixelPertenceFaixaBrilhoContraste(
+        bOriginal,
         estadoBrilhoContraste.modoContraste,
         estadoBrilhoContraste.contrasteMinimo,
         estadoBrilhoContraste.contrasteMaximo
@@ -1330,10 +1341,17 @@ function aplicarBrilhoContrasteImagemComum() {
       b += deltasBrilhoRgb.b;
     }
 
-    // Depois aplica a multiplicação direta do contraste.
-    if (aplicarContraste) {
+    // Depois aplica o contraste separadamente em cada canal RGB.
+    // Na opção por faixa, cada canal é testado pelo seu próprio valor.
+    if (aplicarContrasteR) {
       r *= fatorContraste;
+    }
+
+    if (aplicarContrasteG) {
       g *= fatorContraste;
+    }
+
+    if (aplicarContrasteB) {
       b *= fatorContraste;
     }
 
@@ -2289,14 +2307,19 @@ function obterConfiguracaoContrasteParaFluxograma() {
 
   const configuracao = {
     modo,
-    valor:
-      limitarValorBrilhoContraste(
-        Number(
-          estadoBrilhoContraste.fatorContraste
-        ) || 1,
-        0.5,
-        2
-      ),
+    valor: (() => {
+      const numero = Number(
+        estadoBrilhoContraste.fatorContraste
+      );
+
+      return Number.isFinite(numero)
+        ? limitarValorBrilhoContraste(
+            numero,
+            0,
+            2
+          )
+        : 1;
+    })(),
     minimo: null,
     maximo: null,
     ignorarZero:
@@ -2711,12 +2734,17 @@ async function aplicarContrasteFluxoEmCanvas(
       entrada.height
     );
 
+  const numeroFator =
+    Number(configuracao.valor);
+
   const fator =
-    limitarValorBrilhoContraste(
-      Number(configuracao.valor) || 1,
-      0.5,
-      2
-    );
+    Number.isFinite(numeroFator)
+      ? limitarValorBrilhoContraste(
+          numeroFator,
+          0,
+          2
+        )
+      : 1;
 
   const ignorarZero =
     Boolean(
@@ -2749,33 +2777,42 @@ async function aplicarContrasteFluxoEmCanvas(
       continue;
     }
 
-    const intensidadeOriginal =
-      intensidadeRgbBrilhoContraste(
+    const aplicarR =
+      pixelPertenceFaixaBrilhoContraste(
         rOriginal,
-        gOriginal,
-        bOriginal
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
       );
 
-    const aplicar =
+    const aplicarG =
       pixelPertenceFaixaBrilhoContraste(
-        intensidadeOriginal,
+        gOriginal,
+        configuracao.modo,
+        configuracao.minimo,
+        configuracao.maximo
+      );
+
+    const aplicarB =
+      pixelPertenceFaixaBrilhoContraste(
+        bOriginal,
         configuracao.modo,
         configuracao.minimo,
         configuracao.maximo
       );
 
     const r =
-      aplicar
+      aplicarR
         ? rOriginal * fator
         : rOriginal;
 
     const g =
-      aplicar
+      aplicarG
         ? gOriginal * fator
         : gOriginal;
 
     const b =
-      aplicar
+      aplicarB
         ? bOriginal * fator
         : bOriginal;
 
@@ -3031,12 +3068,17 @@ async function aplicarContrasteFluxoEmDicom(
         : minimoReal + 1;
   }
 
+  const numeroFator =
+    Number(configuracao.valor);
+
   const fator =
-    limitarValorBrilhoContraste(
-      Number(configuracao.valor) || 1,
-      0.5,
-      2
-    );
+    Number.isFinite(numeroFator)
+      ? limitarValorBrilhoContraste(
+          numeroFator,
+          0,
+          2
+        )
+      : 1;
 
   const ignorarZero =
     Boolean(
