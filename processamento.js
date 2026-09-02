@@ -4266,13 +4266,13 @@ function selecionarFerramenta(nome, botaoClicado) {
         <input
           type="text"
           id="paramNumTilesClahe"
-          placeholder="Vazio = [8 8]"
+          placeholder="Ex: M N"
         >
 
         <div class="caixa_info_parametro">
           Número de regiões contextuais no formato [M N].
           M e N devem ser inteiros e pelo menos 2.
-          Padrão do MATLAB: [8 8].
+          Padrão quando vazio: [8 8].
         </div>
       </div>
 
@@ -4285,12 +4285,12 @@ function selecionarFerramenta(nome, botaoClicado) {
           min="0"
           max="1"
           step="any"
-          placeholder="Vazio = 0.01"
+          placeholder="Valor entre 0 e 1"
         >
 
         <div class="caixa_info_parametro">
           Limite normalizado de contraste entre 0 e 1.
-          Padrão do MATLAB: 0.01.
+          Padrão quando vazio: 0.01.
         </div>
       </div>
 
@@ -4302,12 +4302,12 @@ function selecionarFerramenta(nome, botaoClicado) {
           id="paramNBinsClahe"
           min="1"
           step="1"
-          placeholder="Vazio = 256"
+          placeholder="Valor inteiro positivo"
         >
 
         <div class="caixa_info_parametro">
           Número de bins usados na construção do histograma de cada região.
-          Padrão do MATLAB: 256.
+          Padrão quando vazio: 256.
         </div>
       </div>
 
@@ -4320,9 +4320,9 @@ function selecionarFerramenta(nome, botaoClicado) {
         </select>
 
         <div class="caixa_info_parametro">
-          full utiliza a faixa completa da classe da imagem.
-          original limita a saída à faixa [min(I(:)) max(I(:))].
-          Padrão do MATLAB: full.
+          full: utiliza a faixa completa da classe da imagem.
+          original: limita a saída à faixa da imagem.
+          Padrão quando vazio: full.
         </div>
       </div>
 
@@ -4340,7 +4340,6 @@ function selecionarFerramenta(nome, botaoClicado) {
 
         <div class="caixa_info_parametro">
           Distribuição desejada para o histograma de cada região.
-          Padrão do MATLAB: uniform.
         </div>
       </div>
 
@@ -4356,12 +4355,12 @@ function selecionarFerramenta(nome, botaoClicado) {
           id="paramAlphaClahe"
           min="0.000001"
           step="any"
-          placeholder="Vazio = 0.4"
+          placeholder="Valor positivo"
         >
 
         <div class="caixa_info_parametro">
           Parâmetro da distribuição usado com rayleigh ou exponential.
-          Padrão do MATLAB: 0.4.
+          Padrão quando vazio: 0.4.
         </div>
       </div>
 
