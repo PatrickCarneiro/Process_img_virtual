@@ -1,4 +1,4 @@
-// Código do processamento de imagem, incluindo o pipeline de ferramentas, miniaturas, seleção múltipla e barra de processamento
+/// Código do processamento de imagem, incluindo o pipeline de ferramentas, miniaturas, seleção múltipla e barra de processamento
 
 // VARIÁVEIS GLOBAIS 
 
@@ -6112,6 +6112,9 @@ async function aplicarFerramenta(nome) {
       return;
     }
 
+    const ignorarZero =
+      deveIgnorarPixelZeroFerramentas();
+
     const etapa = {
       id:
         proximoIdEtapa++,
@@ -6125,6 +6128,9 @@ async function aplicarFerramenta(nome) {
 
         valorElemento:
           valorElemento,
+
+        ignorarZero:
+          ignorarZero,
 
         elementoEstruturante: {
           nhood:
@@ -6480,6 +6486,10 @@ function desenharFluxograma() {
 
         Elemento:
         ${etapa.parametros.elementoEstruturante.descricao}
+        <br>
+
+        Ignorar pixel 0:
+        ${etapa.parametros.ignorarZero ? "Sim" : "Não"}
         <br>
 
       `;
@@ -8330,7 +8340,9 @@ async function processarImagemNormalPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8343,7 +8355,9 @@ async function processarImagemNormalPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8356,7 +8370,9 @@ async function processarImagemNormalPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8369,7 +8385,9 @@ async function processarImagemNormalPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8382,7 +8400,9 @@ async function processarImagemNormalPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8395,7 +8415,9 @@ async function processarImagemNormalPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8612,7 +8634,9 @@ async function processarDicomPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8625,7 +8649,9 @@ async function processarDicomPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8638,7 +8664,9 @@ async function processarDicomPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8651,7 +8679,9 @@ async function processarDicomPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8664,7 +8694,9 @@ async function processarDicomPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -8677,7 +8709,9 @@ async function processarDicomPeloPipeline(item) {
 
           etapa.parametros.formatoSaida,
 
-          atualizarBarraProcessamento
+          atualizarBarraProcessamento,
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9663,7 +9697,9 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
           etapa.parametros.elementoEstruturante,
 
           etapa.parametros.formatoSaida,
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9677,7 +9713,9 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
           etapa.parametros.formatoSaida,
 
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9690,7 +9728,9 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9703,7 +9743,9 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9716,7 +9758,9 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9729,7 +9773,9 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9831,7 +9877,9 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9844,7 +9892,9 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9857,7 +9907,9 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9870,7 +9922,9 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9883,7 +9937,9 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 
@@ -9896,7 +9952,9 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
           etapa.parametros.formatoSaida,
 
-          function() {}
+          function() {},
+
+          etapa.parametros.ignorarZero
         );
     }
 

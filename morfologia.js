@@ -1800,7 +1800,8 @@ async function aplicarMorfologiaEmCanvas(
   elementoEstruturante,
   formatoSaida,
   atualizarProgresso,
-  operacao
+  operacao,
+  ignorarZero = false
 ) {
   if (!canvasEntrada) {
     throw new Error(
@@ -1811,6 +1812,9 @@ async function aplicarMorfologiaEmCanvas(
   const dilatar =
     operacao ===
     "dilatacao";
+
+  ignorarZero =
+    Boolean(ignorarZero);
 
   const elemento =
     dilatar
@@ -1991,8 +1995,6 @@ async function aplicarMorfologiaEmCanvas(
           continue;
         }
 
-        encontrouPixel = true;
-
         const indiceEntrada =
           (
             yEntrada *
@@ -2017,6 +2019,17 @@ async function aplicarMorfologiaEmCanvas(
             indiceEntrada +
             2
           ];
+
+        if (
+          ignorarZero &&
+          r === 0 &&
+          g === 0 &&
+          b === 0
+        ) {
+          continue;
+        }
+
+        encontrouPixel = true;
 
         if (dilatar) {
           if (r > valorR) {
@@ -2173,14 +2186,16 @@ async function aplicarErosaoEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarMorfologiaEmCanvas(
     canvasEntrada,
     elementoEstruturante,
     formatoSaida,
     atualizarProgresso,
-    "erosao"
+    "erosao",
+    ignorarZero
   );
 }
 
@@ -2193,14 +2208,16 @@ async function aplicarDilatacaoEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarMorfologiaEmCanvas(
     canvasEntrada,
     elementoEstruturante,
     formatoSaida,
     atualizarProgresso,
-    "dilatacao"
+    "dilatacao",
+    ignorarZero
   );
 }
 
@@ -2223,7 +2240,8 @@ async function aplicarAberturaEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (!canvasEntrada) {
     throw new Error(
@@ -2256,7 +2274,8 @@ async function aplicarAberturaEmCanvas(
           atualizarProgresso,
           Number(porcentagemErosao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   const canvasAberto =
@@ -2270,7 +2289,8 @@ async function aplicarAberturaEmCanvas(
           50 +
           Number(porcentagemDilatacao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   atualizarProgressoMorfologia(
@@ -2287,13 +2307,15 @@ async function aplicarImopenEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarAberturaEmCanvas(
     canvasEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
@@ -2404,7 +2426,8 @@ async function aplicarFechamentoEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (!canvasEntrada) {
     throw new Error(
@@ -2439,7 +2462,8 @@ async function aplicarFechamentoEmCanvas(
             atualizarProgresso,
             Number(porcentagemDilatacao) * 0.5
           );
-        }
+        },
+        ignorarZero
       );
 
     const canvasFechado =
@@ -2452,7 +2476,8 @@ async function aplicarFechamentoEmCanvas(
             atualizarProgresso,
             50 + Number(porcentagemErosao) * 0.5
           );
-        }
+        },
+        ignorarZero
       );
 
     atualizarProgressoMorfologia(
@@ -2490,7 +2515,8 @@ async function aplicarFechamentoEmCanvas(
           atualizarProgresso,
           Number(porcentagemDilatacao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   const canvasErodido =
@@ -2503,7 +2529,8 @@ async function aplicarFechamentoEmCanvas(
           atualizarProgresso,
           50 + Number(porcentagemErosao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   const canvasFechado =
@@ -2529,13 +2556,15 @@ async function aplicarImcloseEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarFechamentoEmCanvas(
     canvasEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
@@ -2747,7 +2776,8 @@ async function aplicarTopHatEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (!canvasEntrada) {
     throw new Error(
@@ -2780,7 +2810,8 @@ async function aplicarTopHatEmCanvas(
           atualizarProgresso,
           Number(porcentagemAbertura) * 0.9
         );
-      }
+      },
+      ignorarZero
     );
 
   const canvasTopHat =
@@ -2810,13 +2841,15 @@ async function aplicarImtophatEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarTopHatEmCanvas(
     canvasEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
@@ -2838,7 +2871,8 @@ async function aplicarBottomHatEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (!canvasEntrada) {
     throw new Error(
@@ -2871,7 +2905,8 @@ async function aplicarBottomHatEmCanvas(
           atualizarProgresso,
           Number(porcentagemFechamento) * 0.9
         );
-      }
+      },
+      ignorarZero
     );
 
   const canvasBottomHat =
@@ -2901,13 +2936,15 @@ async function aplicarImbothatEmCanvas(
   canvasEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarBottomHatEmCanvas(
     canvasEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
@@ -3247,7 +3284,8 @@ async function aplicarMorfologiaEmDicom(
   elementoEstruturante,
   formatoSaida,
   atualizarProgresso,
-  operacao
+  operacao,
+  ignorarZero = false
 ) {
   if (
     !imagemEntrada ||
@@ -3262,6 +3300,9 @@ async function aplicarMorfologiaEmDicom(
   const dilatar =
     operacao ===
     "dilatacao";
+
+  ignorarZero =
+    Boolean(ignorarZero);
 
   const elemento =
     dilatar
@@ -3400,8 +3441,6 @@ async function aplicarMorfologiaEmDicom(
           continue;
         }
 
-        encontrouPixel = true;
-
         const indiceEntrada =
           yEntrada *
           larguraEntrada +
@@ -3413,6 +3452,15 @@ async function aplicarMorfologiaEmDicom(
               indiceEntrada
             ]
           );
+
+        if (
+          ignorarZero &&
+          valor === 0
+        ) {
+          continue;
+        }
+
+        encontrouPixel = true;
 
         if (dilatar) {
           if (
@@ -3495,14 +3543,16 @@ async function aplicarErosaoEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarMorfologiaEmDicom(
     imagemEntrada,
     elementoEstruturante,
     formatoSaida,
     atualizarProgresso,
-    "erosao"
+    "erosao",
+    ignorarZero
   );
 }
 
@@ -3515,14 +3565,16 @@ async function aplicarDilatacaoEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarMorfologiaEmDicom(
     imagemEntrada,
     elementoEstruturante,
     formatoSaida,
     atualizarProgresso,
-    "dilatacao"
+    "dilatacao",
+    ignorarZero
   );
 }
 
@@ -3544,7 +3596,8 @@ async function aplicarAberturaEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (
     !imagemEntrada ||
@@ -3581,7 +3634,8 @@ async function aplicarAberturaEmDicom(
           atualizarProgresso,
           Number(porcentagemErosao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   const imagemDilatada =
@@ -3595,7 +3649,8 @@ async function aplicarAberturaEmDicom(
           50 +
           Number(porcentagemDilatacao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   const imagemAberta =
@@ -3621,13 +3676,15 @@ async function aplicarImopenEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarAberturaEmDicom(
     imagemEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
@@ -3768,7 +3825,8 @@ async function aplicarFechamentoEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (
     !imagemEntrada ||
@@ -3807,7 +3865,8 @@ async function aplicarFechamentoEmDicom(
             atualizarProgresso,
             Number(porcentagemDilatacao) * 0.5
           );
-        }
+        },
+        ignorarZero
       );
 
     const imagemErodida =
@@ -3820,7 +3879,8 @@ async function aplicarFechamentoEmDicom(
             atualizarProgresso,
             50 + Number(porcentagemErosao) * 0.5
           );
-        }
+        },
+        ignorarZero
       );
 
     const imagemFechada =
@@ -3867,7 +3927,8 @@ async function aplicarFechamentoEmDicom(
           atualizarProgresso,
           Number(porcentagemDilatacao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   const imagemErodida =
@@ -3880,7 +3941,8 @@ async function aplicarFechamentoEmDicom(
           atualizarProgresso,
           50 + Number(porcentagemErosao) * 0.5
         );
-      }
+      },
+      ignorarZero
     );
 
   const imagemFechada =
@@ -3908,13 +3970,15 @@ async function aplicarImcloseEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarFechamentoEmDicom(
     imagemEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
@@ -4078,7 +4142,8 @@ async function aplicarTopHatEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (
     !imagemEntrada ||
@@ -4115,7 +4180,8 @@ async function aplicarTopHatEmDicom(
           atualizarProgresso,
           Number(porcentagemAbertura) * 0.9
         );
-      }
+      },
+      ignorarZero
     );
 
   const imagemTopHat =
@@ -4147,13 +4213,15 @@ async function aplicarImtophatEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarTopHatEmDicom(
     imagemEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
@@ -4172,7 +4240,8 @@ async function aplicarBottomHatEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   if (
     !imagemEntrada ||
@@ -4209,7 +4278,8 @@ async function aplicarBottomHatEmDicom(
           atualizarProgresso,
           Number(porcentagemFechamento) * 0.9
         );
-      }
+      },
+      ignorarZero
     );
 
   const imagemBottomHat =
@@ -4241,13 +4311,15 @@ async function aplicarImbothatEmDicom(
   imagemEntrada,
   elementoEstruturante,
   formatoSaida = "same",
-  atualizarProgresso
+  atualizarProgresso,
+  ignorarZero = false
 ) {
   return aplicarBottomHatEmDicom(
     imagemEntrada,
     elementoEstruturante,
     formatoSaida,
-    atualizarProgresso
+    atualizarProgresso,
+    ignorarZero
   );
 }
 
