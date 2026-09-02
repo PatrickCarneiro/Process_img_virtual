@@ -4190,18 +4190,20 @@ function selecionarFerramenta(nome, botaoClicado) {
       <h4>Equalização Convencional</h4>
 
       <div class="campo_parametro_info">
+        <label>Modo do HISTEQ</label>
 
         <select
           id="paramModoHisteq"
           onchange="atualizarCamposEqualizacaoConvencional()"
         >
-          <option value="padrao">Padrão</option>
-          <option value="niveis">Número de níveis</option>
-          <option value="hgram">Histograma desejado</option>
+          <option value="padrao">histeq(I) - padrão</option>
+          <option value="niveis">histeq(I,N) - número de níveis</option>
+          <option value="hgram">histeq(I,HGRAM) - histograma desejado</option>
         </select>
 
         <div class="caixa_info_parametro">
-          Padrão com 64 níveis.
+          No modo padrão, o MATLAB utiliza N = 64 níveis.
+          Também é possível informar N ou um histograma desejado HGRAM.
         </div>
       </div>
 
@@ -4210,29 +4212,39 @@ function selecionarFerramenta(nome, botaoClicado) {
         id="campoNumeroNiveisHisteq"
         style="display:none;"
       >
+        <label>N - número de níveis discretos</label>
 
         <input
           type="number"
           id="paramNumeroNiveisHisteq"
           min="1"
           step="1"
-          placeholder="Valor inteiro positivo"
+          placeholder="Ex: 64"
         >
+
+        <div class="caixa_info_parametro">
+          Equivalente a histeq(I,N).
+          N deve ser um número inteiro positivo.
+        </div>
+      </div>
 
       <div
         class="campo_parametro_info"
         id="campoHgramHisteq"
         style="display:none;"
       >
+        <label>HGRAM - histograma desejado</label>
 
         <input
           type="text"
           id="paramHgramHisteq"
-          placeholder="Ex: 1 1 1 1"
+          placeholder="Ex: [1 1 1 1]"
         >
 
         <div class="caixa_info_parametro">
+          Equivalente a histeq(I,HGRAM).
           Informe um vetor real e não vazio com as contagens desejadas.
+          A implementação fará a normalização de HGRAM como no MATLAB.
         </div>
       </div>
 
@@ -6378,17 +6390,20 @@ function desenharFluxograma() {
       const configuracao =
         etapa.parametros.configuracao;
 
+      let operacaoHisteq = "histeq(I)";
       let parametrosHisteq =
-        "Número de níveis: 64 <br>";
+        "N: 64 (padrão MATLAB)<br>";
 
       if (configuracao.modo === "niveis") {
+        operacaoHisteq = "histeq(I,N)";
         parametrosHisteq =
-          `Número de níveis: ${configuracao.numeroNiveis}<br>`;
+          `N: ${configuracao.numeroNiveis}<br>`;
       }
 
       if (configuracao.modo === "hgram") {
+        operacaoHisteq = "histeq(I,HGRAM)";
         parametrosHisteq =
-          `Histograma desejado: [${configuracao.hgram.join(" ")}]<br>`;
+          `HGRAM: [${configuracao.hgram.join(" ")}]<br>`;
       }
 
       textoParametros = `
