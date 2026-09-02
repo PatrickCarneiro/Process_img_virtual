@@ -1947,6 +1947,50 @@ async function aplicarMorfologiaEmCanvas(
         xSaida +
         geometria.inicioX;
 
+      const indiceSaida =
+        (
+          ySaida *
+          geometria.largura +
+          xSaida
+        ) *
+        4;
+
+      const possuiPixelCentral =
+        xCentro >= 0 &&
+        yCentro >= 0 &&
+        xCentro < larguraEntrada &&
+        yCentro < alturaEntrada;
+
+      let indiceCentro = -1;
+      let valorCentralR = 0;
+      let valorCentralG = 0;
+      let valorCentralB = 0;
+
+      if (possuiPixelCentral) {
+        indiceCentro =
+          (
+            yCentro *
+            larguraEntrada +
+            xCentro
+          ) *
+          4;
+
+        valorCentralR =
+          dadosEntrada[
+            indiceCentro
+          ];
+
+        valorCentralG =
+          dadosEntrada[
+            indiceCentro + 1
+          ];
+
+        valorCentralB =
+          dadosEntrada[
+            indiceCentro + 2
+          ];
+      }
+
       let valorR =
         dilatar
           ? -Infinity
@@ -1962,7 +2006,9 @@ async function aplicarMorfologiaEmCanvas(
           ? -Infinity
           : Infinity;
 
-      let encontrouPixel = false;
+      let encontrouPixelR = false;
+      let encontrouPixelG = false;
+      let encontrouPixelB = false;
 
       for (
         const deslocamento of
@@ -2020,66 +2066,73 @@ async function aplicarMorfologiaEmCanvas(
             2
           ];
 
-        if (
-          ignorarZero &&
-          r === 0 &&
-          g === 0 &&
-          b === 0
-        ) {
-          continue;
+        if (!ignorarZero || r !== 0) {
+          encontrouPixelR = true;
+
+          if (dilatar) {
+            if (r > valorR) {
+              valorR = r;
+            }
+          } else if (r < valorR) {
+            valorR = r;
+          }
         }
 
-        encontrouPixel = true;
+        if (!ignorarZero || g !== 0) {
+          encontrouPixelG = true;
 
-        if (dilatar) {
-          if (r > valorR) {
-            valorR = r;
-          }
-
-          if (g > valorG) {
+          if (dilatar) {
+            if (g > valorG) {
+              valorG = g;
+            }
+          } else if (g < valorG) {
             valorG = g;
           }
+        }
 
-          if (b > valorB) {
-            valorB = b;
-          }
-        } else {
-          if (r < valorR) {
-            valorR = r;
-          }
+        if (!ignorarZero || b !== 0) {
+          encontrouPixelB = true;
 
-          if (g < valorG) {
-            valorG = g;
-          }
-
-          if (b < valorB) {
+          if (dilatar) {
+            if (b > valorB) {
+              valorB = b;
+            }
+          } else if (b < valorB) {
             valorB = b;
           }
         }
       }
 
-      const indiceSaida =
-        (
-          ySaida *
-          geometria.largura +
-          xSaida
-        ) *
-        4;
-
-      if (encontrouPixel) {
+      if (ignorarZero) {
         dadosSaida[
           indiceSaida
-        ] = valorR;
+        ] =
+          possuiPixelCentral &&
+          valorCentralR === 0
+            ? 0
+            : encontrouPixelR
+              ? valorR
+              : 0;
 
         dadosSaida[
-          indiceSaida +
-          1
-        ] = valorG;
+          indiceSaida + 1
+        ] =
+          possuiPixelCentral &&
+          valorCentralG === 0
+            ? 0
+            : encontrouPixelG
+              ? valorG
+              : 0;
 
         dadosSaida[
-          indiceSaida +
-          2
-        ] = valorB;
+          indiceSaida + 2
+        ] =
+          possuiPixelCentral &&
+          valorCentralB === 0
+            ? 0
+            : encontrouPixelB
+              ? valorB
+              : 0;
       } else {
         /*
          * Valor neutro:
@@ -2094,36 +2147,30 @@ async function aplicarMorfologiaEmCanvas(
 
         dadosSaida[
           indiceSaida
-        ] = neutro;
+        ] =
+          encontrouPixelR
+            ? valorR
+            : neutro;
 
         dadosSaida[
-          indiceSaida +
-          1
-        ] = neutro;
+          indiceSaida + 1
+        ] =
+          encontrouPixelG
+            ? valorG
+            : neutro;
 
         dadosSaida[
-          indiceSaida +
-          2
-        ] = neutro;
+          indiceSaida + 2
+        ] =
+          encontrouPixelB
+            ? valorB
+            : neutro;
       }
 
       /*
        * Preserva o canal alfa do pixel central.
        */
-      if (
-        xCentro >= 0 &&
-        yCentro >= 0 &&
-        xCentro < larguraEntrada &&
-        yCentro < alturaEntrada
-      ) {
-        const indiceCentro =
-          (
-            yCentro *
-            larguraEntrada +
-            xCentro
-          ) *
-          4;
-
+      if (possuiPixelCentral) {
         dadosSaida[
           indiceSaida +
           3
@@ -3407,6 +3454,30 @@ async function aplicarMorfologiaEmDicom(
         xSaida +
         geometria.inicioX;
 
+      const indiceSaida =
+        ySaida *
+        geometria.largura +
+        xSaida;
+
+      const possuiPixelCentral =
+        xCentro >= 0 &&
+        yCentro >= 0 &&
+        xCentro < larguraEntrada &&
+        yCentro < alturaEntrada;
+
+      let valorCentral = 0;
+
+      if (possuiPixelCentral) {
+        valorCentral =
+          Number(
+            pixelsEntrada[
+              yCentro *
+              larguraEntrada +
+              xCentro
+            ]
+          );
+      }
+
       let acumulado =
         dilatar
           ? -Infinity
@@ -3479,17 +3550,24 @@ async function aplicarMorfologiaEmDicom(
         }
       }
 
-      const indiceSaida =
-        ySaida *
-        geometria.largura +
-        xSaida;
-
-      pixelsSaida[
-        indiceSaida
-      ] =
-        encontrouPixel
-          ? acumulado
-          : valorNeutro;
+      if (ignorarZero) {
+        pixelsSaida[
+          indiceSaida
+        ] =
+          possuiPixelCentral &&
+          valorCentral === 0
+            ? 0
+            : encontrouPixel
+              ? acumulado
+              : 0;
+      } else {
+        pixelsSaida[
+          indiceSaida
+        ] =
+          encontrouPixel
+            ? acumulado
+            : valorNeutro;
+      }
     }
 
     if (
