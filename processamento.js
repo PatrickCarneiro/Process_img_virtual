@@ -4219,6 +4219,8 @@ function selecionarFerramenta(nome, botaoClicado) {
           placeholder="Valor inteiro positivo"
         >
 
+      </div>
+
       <div
         class="campo_parametro_info"
         id="campoHgramHisteq"
