@@ -306,13 +306,29 @@ function interpretarSquare(valores) {
 
   if (
     largura === null ||
-    largura < 1
+    largura < 0
   ) {
     return {
       valido: false,
 
       mensagem:
-        "A largura de square deve ser um inteiro maior ou igual a 1."
+        "A largura de square deve ser um inteiro não negativo."
+    };
+  }
+
+  if (largura === 0) {
+    return {
+      valido: true,
+      formato: "square",
+      parametros: { largura },
+      nhood: [],
+      descricao: `square com largura ${largura}`,
+      altura: 0,
+      largura: 0,
+      origemY: -1,
+      origemX: -1,
+      deslocamentos: [],
+      vazioMatlab: true
     };
   }
 
@@ -361,14 +377,30 @@ function interpretarRectangle(valores) {
   if (
     linhas === null ||
     colunas === null ||
-    linhas < 1 ||
-    colunas < 1
+    linhas < 0 ||
+    colunas < 0
   ) {
     return {
       valido: false,
 
       mensagem:
-        "As dimensões de rectangle devem ser inteiros maiores ou iguais a 1."
+        "As dimensões de rectangle devem ser inteiros não negativos."
+    };
+  }
+
+  if (linhas === 0 || colunas === 0) {
+    return {
+      valido: true,
+      formato: "rectangle",
+      parametros: { linhas, colunas },
+      nhood: [],
+      descricao: `rectangle de ${linhas}x${colunas}`,
+      altura: linhas,
+      largura: colunas,
+      origemY: Math.floor((linhas - 1) / 2),
+      origemX: Math.floor((colunas - 1) / 2),
+      deslocamentos: [],
+      vazioMatlab: true
     };
   }
 
@@ -588,13 +620,13 @@ function interpretarLine(valores) {
 
   if (
     comprimento === null ||
-    comprimento < 1
+    comprimento < 0
   ) {
     return {
       valido: false,
 
       mensagem:
-        "O comprimento de line deve ser maior ou igual a 1."
+        "O comprimento de line deve ser um número finito não negativo."
     };
   }
 
@@ -604,6 +636,22 @@ function interpretarLine(valores) {
 
       mensagem:
         "O ângulo de line deve ser um número finito."
+    };
+  }
+
+  if (comprimento < 1) {
+    return {
+      valido: true,
+      formato: "line",
+      parametros: { comprimento, angulo },
+      nhood: [],
+      descricao: `line com comprimento ${comprimento} e ângulo ${angulo}°`,
+      altura: 0,
+      largura: 0,
+      origemY: -1,
+      origemX: -1,
+      deslocamentos: [],
+      vazioMatlab: true
     };
   }
 
@@ -1059,6 +1107,19 @@ function criarLinha(
 }
 
 
+function arredondarComoMatlab(valor) {
+  const numero = Number(valor);
+
+  if (!Number.isFinite(numero)) {
+    return numero;
+  }
+
+  return numero >= 0
+    ? Math.floor(numero + 0.5)
+    : Math.ceil(numero - 0.5);
+}
+
+
 function criarConjuntoLinha(
   comprimento,
   anguloGraus
@@ -1086,7 +1147,7 @@ function criarConjuntoLinha(
     2;
 
   const extremoX =
-    Math.round(
+    arredondarComoMatlab(
       meio *
       Math.cos(theta)
     );
@@ -1095,16 +1156,16 @@ function criarConjuntoLinha(
    * No Canvas, o eixo Y aumenta para baixo.
    */
   const extremoY =
-    -Math.round(
+    -arredondarComoMatlab(
       meio *
       Math.sin(theta)
     );
 
   const pontos =
-    rasterizarLinha(
+    rasterizarLinhaComoMatlabIntline(
       -extremoX,
-      -extremoY,
       extremoX,
+      -extremoY,
       extremoY
     );
 
@@ -1121,74 +1182,106 @@ function criarConjuntoLinha(
 }
 
 
-// Algoritmo de Bresenham.
-function rasterizarLinha(
-  x0,
-  y0,
+// Algoritmo equivalente ao iptui.intline usado pelo STREL('line', LEN, DEG).
+function rasterizarLinhaComoMatlabIntline(
   x1,
-  y1
+  x2,
+  y1,
+  y2
 ) {
-  const pontos = [];
-
-  let x = x0;
-  let y = y0;
-
   const dx =
     Math.abs(
-      x1 -
-      x0
+      x2 -
+      x1
     );
-
-  const sx =
-    x0 < x1
-      ? 1
-      : -1;
 
   const dy =
-    -Math.abs(
-      y1 -
-      y0
+    Math.abs(
+      y2 -
+      y1
     );
 
-  const sy =
-    y0 < y1
-      ? 1
-      : -1;
+  if (
+    dx === 0 &&
+    dy === 0
+  ) {
+    return [
+      {
+        x: x1,
+        y: y1
+      }
+    ];
+  }
 
-  let erro =
-    dx +
-    dy;
+  let inverter = false;
+  const pontos = [];
 
-  while (true) {
-    pontos.push({
-      x,
-      y
-    });
+  if (dx >= dy) {
+    if (x1 > x2) {
+      const temporarioX = x1;
+      x1 = x2;
+      x2 = temporarioX;
 
-    if (
-      x === x1 &&
-      y === y1
-    ) {
-      break;
+      const temporarioY = y1;
+      y1 = y2;
+      y2 = temporarioY;
+
+      inverter = true;
     }
 
-    const erro2 =
-      2 *
-      erro;
+    const inclinacao =
+      (y2 - y1) /
+      (x2 - x1);
 
-    if (
-      erro2 >= dy
+    for (
+      let x = x1;
+      x <= x2;
+      x++
     ) {
-      erro += dy;
-      x += sx;
+      pontos.push({
+        x,
+        y: arredondarComoMatlab(
+          y1 +
+          inclinacao *
+          (x - x1)
+        )
+      });
+    }
+  } else {
+    if (y1 > y2) {
+      const temporarioX = x1;
+      x1 = x2;
+      x2 = temporarioX;
+
+      const temporarioY = y1;
+      y1 = y2;
+      y2 = temporarioY;
+
+      inverter = true;
     }
 
-    if (
-      erro2 <= dx
+    const inclinacao =
+      (x2 - x1) /
+      (y2 - y1);
+
+    for (
+      let y = y1;
+      y <= y2;
+      y++
     ) {
-      erro += dx;
-      y += sy;
+      pontos.push({
+        x: arredondarComoMatlab(
+          x1 +
+          inclinacao *
+          (y - y1)
+        ),
+        y
+      });
     }
+  }
+
+  if (inverter) {
+    pontos.reverse();
   }
 
   return pontos;
@@ -1432,6 +1525,10 @@ function prepararElementoEstruturante(
     );
   }
 
+  if (elemento.vazioMatlab === true) {
+    return elemento;
+  }
+
   const resultado =
     finalizarElementoEstruturante(
       elemento.nhood,
@@ -1523,15 +1620,29 @@ function prepararElementoEstruturanteBottomHat(
 function normalizarFormatoMorfologia(
   formatoSaida
 ) {
-  return String(
-    formatoSaida ||
-    "same"
-  )
-    .trim()
-    .toLowerCase() ===
-    "full"
-    ? "full"
-    : "same";
+  if (
+    formatoSaida === undefined ||
+    formatoSaida === null ||
+    String(formatoSaida).trim() === ""
+  ) {
+    return "same";
+  }
+
+  const formato =
+    String(formatoSaida)
+      .trim()
+      .toLowerCase();
+
+  if (
+    formato === "same" ||
+    formato === "full"
+  ) {
+    return formato;
+  }
+
+  throw new Error(
+    'SHAPE inválido. Use somente "same" ou "full".'
+  );
 }
 
 
