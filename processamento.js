@@ -4190,15 +4190,15 @@ function selecionarFerramenta(nome, botaoClicado) {
       <h4>Equalização Convencional</h4>
 
       <div class="campo_parametro_info">
-        <label>Modo do HISTEQ</label>
+        <label>Modo da Equalização</label>
 
         <select
           id="paramModoHisteq"
           onchange="atualizarCamposEqualizacaoConvencional()"
         >
-          <option value="padrao">histeq(I) - padrão</option>
-          <option value="niveis">histeq(I,N) - número de níveis</option>
-          <option value="hgram">histeq(I,HGRAM) - histograma desejado</option>
+          <option value="padrao">Padrão</option>
+          <option value="niveis">Número de níveis</option>
+          <option value="hgram">Histograma desejado</option>
         </select>
 
         <div class="caixa_info_parametro">
@@ -4212,20 +4212,16 @@ function selecionarFerramenta(nome, botaoClicado) {
         id="campoNumeroNiveisHisteq"
         style="display:none;"
       >
-        <label>N - número de níveis discretos</label>
+        <label>Número de níveis discretos</label>
 
         <input
           type="number"
           id="paramNumeroNiveisHisteq"
           min="1"
           step="1"
-          placeholder="Ex: 64"
+          placeholder="Valor inteiro positivo"
         >
 
-        <div class="caixa_info_parametro">
-          Equivalente a histeq(I,N).
-          N deve ser um número inteiro positivo.
-        </div>
       </div>
 
       <div
@@ -4233,18 +4229,16 @@ function selecionarFerramenta(nome, botaoClicado) {
         id="campoHgramHisteq"
         style="display:none;"
       >
-        <label>HGRAM - histograma desejado</label>
+        <label>Valores do histograma</label>
 
         <input
           type="text"
           id="paramHgramHisteq"
-          placeholder="Ex: [1 1 1 1]"
+          placeholder="Ex: 1 1 1 1"
         >
 
         <div class="caixa_info_parametro">
-          Equivalente a histeq(I,HGRAM).
           Informe um vetor real e não vazio com as contagens desejadas.
-          A implementação fará a normalização de HGRAM como no MATLAB.
         </div>
       </div>
 
@@ -6392,22 +6386,19 @@ function desenharFluxograma() {
 
       let operacaoHisteq = "histeq(I)";
       let parametrosHisteq =
-        "N: 64 (padrão MATLAB)<br>";
+        "Número de níveis: 64 <br>";
 
       if (configuracao.modo === "niveis") {
-        operacaoHisteq = "histeq(I,N)";
         parametrosHisteq =
-          `N: ${configuracao.numeroNiveis}<br>`;
+          `Número de níveis: ${configuracao.numeroNiveis}<br>`;
       }
 
       if (configuracao.modo === "hgram") {
-        operacaoHisteq = "histeq(I,HGRAM)";
         parametrosHisteq =
-          `HGRAM: [${configuracao.hgram.join(" ")}]<br>`;
+          `Histograma desejado: [${configuracao.hgram.join(" ")}]<br>`;
       }
 
       textoParametros = `
-        Operação: ${operacaoHisteq}<br>
         ${parametrosHisteq}
         Ignorar pixel 0: ${configuracao.ignorarZero ? "Sim" : "Não"}
       `;
@@ -6419,7 +6410,6 @@ function desenharFluxograma() {
         etapa.parametros.configuracao;
 
       textoParametros = `
-        Operação: adapthisteq<br>
         NumTiles: [${configuracao.numTiles[0]} ${configuracao.numTiles[1]}]<br>
         ClipLimit: ${configuracao.clipLimit}<br>
         NBins: ${configuracao.numBins}<br>
