@@ -3920,6 +3920,18 @@ function atualizarCamposLimiarizacaoManual() {
     "labelValorInicialLimiarizacaoManual"
   );
 
+  const seletorOperador = document.getElementById(
+    "paramOperadorLimiarizacaoManual"
+  );
+
+  const campoIncluirLimites = document.getElementById(
+    "campoIncluirLimitesLimiarizacaoManual"
+  );
+
+  const checkIncluirLimites = document.getElementById(
+    "checkIncluirLimitesLimiarizacaoManual"
+  );
+
   const ajudaValores = document.getElementById(
     "ajudaValoresLimiarizacaoManual"
   );
@@ -3928,6 +3940,8 @@ function atualizarCamposLimiarizacaoManual() {
     !seletorTipo ||
     !campoValorFinal ||
     !labelValorInicial ||
+    !seletorOperador ||
+    !campoIncluirLimites ||
     !ajudaValores
   ) {
     return;
@@ -3941,10 +3955,22 @@ function atualizarCamposLimiarizacaoManual() {
     campoValorFinal.style.display =
       "block";
 
+    campoIncluirLimites.style.display =
+      "block";
+
+    seletorOperador.innerHTML = `
+      <option value="dentro">
+        Dentro da faixa
+      </option>
+
+      <option value="fora">
+        Fora da faixa
+      </option>
+    `;
+
     ajudaValores.innerText =
-      "Na opção igual, ficam brancos os pixels dentro da faixa. " +
-      "Menor e menor ou igual usam o limite mínimo. " +
-      "Maior e maior ou igual usam o limite máximo.";
+      "Escolha se a binarização deve selecionar os pixels dentro ou fora da faixa. " +
+      "Marque a opção abaixo para incluir as intensidades mínima e máxima na seleção.";
 
   } else {
 
@@ -3952,6 +3978,9 @@ function atualizarCamposLimiarizacaoManual() {
       "Intensidade";
 
     campoValorFinal.style.display =
+      "none";
+
+    campoIncluirLimites.style.display =
       "none";
 
     const entradaFinal =
@@ -3962,6 +3991,32 @@ function atualizarCamposLimiarizacaoManual() {
     if (entradaFinal) {
       entradaFinal.value = "";
     }
+
+    if (checkIncluirLimites) {
+      checkIncluirLimites.checked = false;
+    }
+
+    seletorOperador.innerHTML = `
+      <option value="maior">
+        Maior que
+      </option>
+
+      <option value="menor">
+        Menor que
+      </option>
+
+      <option value="menor_igual">
+        Menor ou igual
+      </option>
+
+      <option value="maior_igual">
+        Maior ou igual
+      </option>
+
+      <option value="igual">
+        Igual
+      </option>
+    `;
 
     ajudaValores.innerText =
       "Digite uma intensidade e escolha a comparação que será aplicada.";
@@ -3980,7 +4035,9 @@ function formatarOperadorLimiarizacaoManual(
     menor: "Menor que",
     menor_igual: "Menor ou igual",
     maior_igual: "Maior ou igual",
-    igual: "Igual"
+    igual: "Igual",
+    dentro: "Dentro da faixa",
+    fora: "Fora da faixa"
   };
 
   return nomes[operador] || operador;
@@ -4729,6 +4786,24 @@ function selecionarFerramenta(nome, botaoClicado) {
         >
           Digite uma intensidade e escolha a comparação que será aplicada.
         </div>
+
+      </div>
+
+
+      <div
+        class="campo_parametro_info"
+        id="campoIncluirLimitesLimiarizacaoManual"
+        style="display:none;"
+      >
+
+        <label>
+          <input
+            type="checkbox"
+            id="checkIncluirLimitesLimiarizacaoManual"
+            style="width:auto; margin-right:6px;"
+          >
+          Incluir intensidades limites na binarização
+        </label>
 
       </div>
 
@@ -5709,6 +5784,11 @@ async function aplicarFerramenta(nome) {
         "paramOperadorLimiarizacaoManual"
       );
 
+    const checkIncluirLimites =
+      document.getElementById(
+        "checkIncluirLimitesLimiarizacaoManual"
+      );
+
 
     const tipoEntrada =
       seletorTipo
@@ -5733,6 +5813,12 @@ async function aplicarFerramenta(nome) {
         ? seletorOperador.value
         : "maior";
 
+    const incluirLimites =
+      tipoEntrada === "faixa" &&
+      checkIncluirLimites
+        ? checkIncluirLimites.checked
+        : false;
+
     const ignorarZero =
       deveIgnorarPixelZeroFerramentas();
 
@@ -5745,7 +5831,8 @@ async function aplicarFerramenta(nome) {
         tipoEntrada,
         valorInicial,
         valorFinal,
-        operador
+        operador,
+        incluirLimites
       );
 
 
@@ -6520,6 +6607,16 @@ function desenharFluxograma() {
         Regra:
         ${configuracao.descricao}
         <br>
+
+        ${
+          configuracao.tipo === "faixa"
+            ? `
+              Incluir intensidades limites:
+              ${configuracao.incluirLimites ? "Sim" : "Não"}
+              <br>
+            `
+            : ""
+        }
 
         Ignorar pixel 0:
         ${configuracao.ignorarZero ? "Sim" : "Não"}

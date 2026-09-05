@@ -6,16 +6,18 @@
 //   condição verdadeira = 255 (branco)
 //   condição falsa      = 0   (preto)
 //
-// Operadores aceitos:
+// Operadores aceitos para intensidade:
 //   maior, menor, menor_igual, maior_igual e igual
 //   Também aceita: >, <, <=, >= e =
 //
-// Regras quando a entrada for uma faixa [mínimo, máximo]:
-//   igual       -> dentro da faixa, incluindo os limites
-//   menor       -> abaixo do mínimo
-//   menor_igual -> menor ou igual ao mínimo
-//   maior       -> acima do máximo
-//   maior_igual -> maior ou igual ao máximo
+// Operadores aceitos quando a entrada for uma faixa [mínimo, máximo]:
+//   dentro -> pixels dentro da faixa
+//   fora   -> pixels fora da faixa
+//
+// Quando configuracao.incluirLimites for true:
+//   os valores mínimo e máximo também pertencem à região selecionada.
+// Quando for false:
+//   os valores mínimo e máximo não pertencem à região selecionada.
 //
 // Quando configuracao.ignorarZero for true:
 //   pixels com intensidade 0 não participam da comparação
@@ -119,7 +121,13 @@ function normalizarOperadorLimiarizacao(operador) {
     maior_que_ou_igual: "maior_igual",
 
     igual: "igual",
-    igual_a: "igual"
+    igual_a: "igual",
+
+    dentro: "dentro",
+    dentro_da_faixa: "dentro",
+
+    fora: "fora",
+    fora_da_faixa: "fora"
   };
 
   return nomes[texto] || "";
@@ -131,7 +139,9 @@ function operadorLimiarizacaoValido(operador) {
     "menor",
     "menor_igual",
     "maior_igual",
-    "igual"
+    "igual",
+    "dentro",
+    "fora"
   ].includes(operador);
 }
 
@@ -208,7 +218,8 @@ function interpretarLimiarizacaoManual(
   tipoEntrada,
   valorInicial,
   valorFinal,
-  operador
+  operador,
+  incluirLimites
 ) {
   // Também aceita um objeto:
   // {
@@ -219,11 +230,13 @@ function interpretarLimiarizacaoManual(
   // ou
   // {
   //   tipo: "faixa",
-  //   operador: "igual",
+  //   operador: "dentro" ou "fora",
   //   minimo: 80,
-  //   maximo: 180
+  //   maximo: 180,
+  //   incluirLimites: true ou false
   // }
   let ignorarZeroInformado = false;
+  let incluirLimitesInformado = incluirLimites === true;
 
   if (
     tipoEntrada &&
@@ -234,6 +247,9 @@ function interpretarLimiarizacaoManual(
 
     ignorarZeroInformado =
       config.ignorarZero === true;
+
+    incluirLimitesInformado =
+      config.incluirLimites === true;
 
     tipoEntrada =
       config.tipo ||
@@ -262,15 +278,6 @@ function interpretarLimiarizacaoManual(
   let tipo = normalizarTipoEntradaLimiarizacao(tipoEntrada);
   const operadorNormalizado = normalizarOperadorLimiarizacao(operador);
 
-  if (!operadorLimiarizacaoValido(operadorNormalizado)) {
-    return {
-      valido: false,
-      mensagem:
-        "Selecione um operador válido: maior, menor, menor ou igual, " +
-        "maior ou igual ou igual."
-    };
-  }
-
   const valoresIniciais = separarValoresLimiarizacao(valorInicial);
   const valoresFinais = separarValoresLimiarizacao(valorFinal);
 
@@ -285,6 +292,21 @@ function interpretarLimiarizacaoManual(
   }
 
   if (tipo === "intensidade") {
+    if (![
+      "maior",
+      "menor",
+      "menor_igual",
+      "maior_igual",
+      "igual"
+    ].includes(operadorNormalizado)) {
+      return {
+        valido: false,
+        mensagem:
+          "Selecione um operador válido: maior, menor, menor ou igual, " +
+          "maior ou igual ou igual."
+      };
+    }
+
     if (valoresIniciais.length !== 1) {
       return {
         valido: false,
@@ -312,6 +334,14 @@ function interpretarLimiarizacaoManual(
   }
 
   if (tipo === "faixa") {
+    if (!["dentro", "fora"].includes(operadorNormalizado)) {
+      return {
+        valido: false,
+        mensagem:
+          "Para faixa, selecione Dentro da faixa ou Fora da faixa."
+      };
+    }
+
     let minimo = null;
     let maximo = null;
 
@@ -346,19 +376,21 @@ function interpretarLimiarizacaoManual(
       maximo = temporario;
     }
 
+    const incluirLimitesFaixa =
+      incluirLimitesInformado === true;
+
     let descricao;
 
-    if (operadorNormalizado === "igual") {
-      descricao =
-        "intensidade dentro da faixa [" + minimo + ", " + maximo + "]";
-    } else if (operadorNormalizado === "menor") {
-      descricao = "intensidade < " + minimo;
-    } else if (operadorNormalizado === "menor_igual") {
-      descricao = "intensidade ≤ " + minimo;
-    } else if (operadorNormalizado === "maior") {
-      descricao = "intensidade > " + maximo;
+    if (operadorNormalizado === "dentro") {
+      descricao = incluirLimitesFaixa
+        ? "intensidade dentro da faixa [" + minimo + ", " + maximo + "]"
+        : "intensidade dentro da faixa (" + minimo + ", " + maximo + ")";
     } else {
-      descricao = "intensidade ≥ " + maximo;
+      descricao = incluirLimitesFaixa
+        ? "intensidade fora da faixa, incluindo os limites " +
+          "(" + minimo + " e " + maximo + ")"
+        : "intensidade fora da faixa, sem incluir os limites " +
+          "(" + minimo + " e " + maximo + ")";
     }
 
     return {
@@ -369,6 +401,7 @@ function interpretarLimiarizacaoManual(
       maximo: maximo,
       valorInicial: minimo,
       valorFinal: maximo,
+      incluirLimites: incluirLimitesFaixa,
       ignorarZero: ignorarZeroInformado,
       descricao: descricao
     };
@@ -384,10 +417,30 @@ function interpretarLimiarizacaoManual(
 function prepararConfiguracaoLimiarizacaoManual(configuracao) {
   if (
     configuracao &&
-    configuracao.valido === true &&
-    operadorLimiarizacaoValido(configuracao.operador)
+    configuracao.valido === true
   ) {
-    return configuracao;
+    const tipoConfiguracao =
+      normalizarTipoEntradaLimiarizacao(configuracao.tipo);
+
+    const operadorConfiguracao =
+      normalizarOperadorLimiarizacao(configuracao.operador);
+
+    const operadorValidoParaTipo =
+      tipoConfiguracao === "intensidade"
+        ? [
+            "maior",
+            "menor",
+            "menor_igual",
+            "maior_igual",
+            "igual"
+          ].includes(operadorConfiguracao)
+        : tipoConfiguracao === "faixa"
+          ? ["dentro", "fora"].includes(operadorConfiguracao)
+          : false;
+
+    if (operadorValidoParaTipo) {
+      return configuracao;
+    }
   }
 
   const interpretada = interpretarLimiarizacaoManual(configuracao);
@@ -424,12 +477,49 @@ function limiarizacaoIgual(valor, limite) {
   return Number(valor) === Number(limite);
 }
 
-function limiarizacaoDentroDaFaixa(valor, minimo, maximo) {
+function limiarizacaoDentroDaFaixa(
+  valor,
+  minimo,
+  maximo,
+  incluirLimites
+) {
   const intensidade = Number(valor);
+  const limiteMinimo = Number(minimo);
+  const limiteMaximo = Number(maximo);
+
+  if (incluirLimites === true) {
+    return (
+      intensidade >= limiteMinimo &&
+      intensidade <= limiteMaximo
+    );
+  }
 
   return (
-    intensidade >= Number(minimo) &&
-    intensidade <= Number(maximo)
+    intensidade > limiteMinimo &&
+    intensidade < limiteMaximo
+  );
+}
+
+function limiarizacaoForaDaFaixa(
+  valor,
+  minimo,
+  maximo,
+  incluirLimites
+) {
+  const intensidade = Number(valor);
+  const limiteMinimo = Number(minimo);
+  const limiteMaximo = Number(maximo);
+
+  if (incluirLimites === true) {
+    return (
+      intensidade <= limiteMinimo ||
+      intensidade >= limiteMaximo
+    );
+  }
+
+  return (
+    intensidade < limiteMinimo ||
+    intensidade > limiteMaximo
   );
 }
 
@@ -466,37 +556,31 @@ function criarComparadorLimiarizacaoManual(configuracao) {
     };
   }
 
-  if (config.operador === "igual") {
+  if (config.operador === "dentro") {
     return function(valor) {
       return limiarizacaoDentroDaFaixa(
         valor,
         config.minimo,
-        config.maximo
+        config.maximo,
+        config.incluirLimites === true
       );
     };
   }
 
-  if (config.operador === "menor") {
+  if (config.operador === "fora") {
     return function(valor) {
-      return limiarizacaoMenorQue(valor, config.minimo);
+      return limiarizacaoForaDaFaixa(
+        valor,
+        config.minimo,
+        config.maximo,
+        config.incluirLimites === true
+      );
     };
   }
 
-  if (config.operador === "menor_igual") {
-    return function(valor) {
-      return limiarizacaoMenorOuIgual(valor, config.minimo);
-    };
-  }
-
-  if (config.operador === "maior") {
-    return function(valor) {
-      return limiarizacaoMaiorQue(valor, config.maximo);
-    };
-  }
-
-  return function(valor) {
-    return limiarizacaoMaiorOuIgual(valor, config.maximo);
-  };
+  throw new Error(
+    "Operador de faixa inválido para a limiarização manual."
+  );
 }
 
 function valorAtendeLimiarizacaoManual(valor, configuracao) {
