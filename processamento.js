@@ -3969,8 +3969,7 @@ function atualizarCamposLimiarizacaoManual() {
     `;
 
     ajudaValores.innerText =
-      "Escolha se a binarização deve selecionar os pixels dentro ou fora da faixa. " +
-      "Marque a opção abaixo para incluir as intensidades mínima e máxima na seleção.";
+      "Escolha se a binarização deve selecionar os pixels dentro ou fora da faixa. ";
 
   } else {
 
@@ -6579,14 +6578,6 @@ function desenharFluxograma() {
         }
         <br>
 
-        Operador:
-        ${
-          formatarOperadorLimiarizacaoManual(
-            configuracao.operador
-          )
-        }
-        <br>
-
         Regra:
         ${configuracao.descricao}
         <br>
@@ -6604,10 +6595,6 @@ function desenharFluxograma() {
         Ignorar pixel 0:
         ${configuracao.ignorarZero ? "Sim" : "Não"}
         <br>
-
-        Saída:
-        verdadeiro = 255;
-        falso = 0
       `;
     }
 
@@ -6617,25 +6604,11 @@ function desenharFluxograma() {
         etapa.parametros.configuracao || {};
 
       textoParametros = `
-        Método:
-        Otsu global
-        <br>
-
-        Limiar:
-        Calculado automaticamente
-        <br>
-
-        Histograma:
-        256 níveis
-        <br>
 
         Ignorar pixel 0:
         ${configuracao.ignorarZero ? "Sim" : "Não"}
         <br>
-
-        Saída:
-        verdadeiro = 255;
-        falso = 0
+        
       `;
     }
 
