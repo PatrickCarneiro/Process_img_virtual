@@ -521,11 +521,10 @@ function calcularIntensidadePixelLimiarizacao(vermelho, verde, azul) {
     return r;
   }
 
-  // Converte RGB para uma intensidade inteira entre 0 e 255.
+  // Converte RGB para intensidade pela média simples dos canais,
+  // igual ao histograma de Média RGB.
   return Math.round(
-    0.299 * r +
-    0.587 * g +
-    0.114 * b
+    (r + g + b) / 3
   );
 }
 
