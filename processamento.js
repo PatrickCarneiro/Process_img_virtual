@@ -4651,10 +4651,6 @@ function selecionarFerramenta(nome, botaoClicado) {
           <option value="octagon">octagon</option>
         </select>
 
-        <div class="caixa_info_parametro">
-          Selecione o formato do elemento estruturante, equivalente aos
-          formatos disponíveis na função strel do MATLAB.
-        </div>
       </div>
 
       <div class="campo_parametro_info">
@@ -4935,45 +4931,39 @@ function atualizarCampoElementoEstruturanteErosao() {
     square: {
       placeholder: "Ex: 5",
       ajuda:
-        "Digite a largura W do quadrado. " +
-        "Exemplo: 5 equivale a strel('square',5)."
+        "Digite a largura do quadrado. "
     },
 
     rectangle: {
       placeholder: "Ex: 3 5",
       ajuda:
-        "Digite o número de linhas e colunas. " +
-        "Exemplo: 3 5 equivale a strel('rectangle',[3 5])."
+        "Digite o número de linhas e colunas. " 
     },
 
     diamond: {
       placeholder: "Ex: 4",
       ajuda:
-        "Digite o raio R do losango. " +
-        "Exemplo: 4 equivale a strel('diamond',4)."
+        "Digite o raio do losango. " 
     },
 
     disk: {
       placeholder: "Ex: 5 ou 5 0",
       ajuda:
-        "Digite o raio R. Opcionalmente, informe N depois do raio. " +
-        "N pode ser 0, 4, 6 ou 8. " +
-        "Exemplo: 5 0 equivale a strel('disk',5,0)."
+        "Digite o raio. Opcionalmente, informe N depois do raio que é a aproximação do formato circular. " +
+        "N pode ser 0, 4, 6 ou 8. "
     },
 
     line: {
       placeholder: "Ex: 11 90",
       ajuda:
-        "Digite o comprimento LEN e o ângulo DEG. " +
-        "Exemplo: 11 90 equivale a strel('line',11,90)."
+        "Digite o comprimento e o ângulo. "
     },
 
     octagon: {
       placeholder: "Ex: 6",
       ajuda:
         "Digite o raio R do octógono. " +
-        "O valor deve ser um múltiplo não negativo de 3. " +
-        "Exemplo: 6 equivale a strel('octagon',6)."
+        "O valor deve ser um múltiplo não negativo de 3. " 
     }
 
   };
@@ -6563,15 +6553,8 @@ function desenharFluxograma() {
       etapa.nome === "Bottom-hat"
     ) {
       textoParametros = `
-        Formato:
-        ${etapa.parametros.formatoElemento}
-        <br>
 
-        Valor:
-        ${etapa.parametros.valorElemento}
-        <br>
-
-        Elemento:
+        Elemento estruturante:
         ${etapa.parametros.elementoEstruturante.descricao}
         <br>
 
