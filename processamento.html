@@ -1434,6 +1434,10 @@
       border-color: rgba(192,132,252,0.65);
     }
 
+    .botao_salvar_fluxo_largo {
+      grid-column: 1 / -1;
+    }
+
     .opcao_aplicar_fluxo_todas {
       margin-top: 10px;
       padding: 10px 12px;
@@ -2910,18 +2914,18 @@
 
           <button
             type="button"
-            id="botaoSalvarFluxoProjeto"
-            class="botao_controle_fluxo"
-          >
-            Salvar fluxo
-          </button>
-
-          <button
-            type="button"
             id="botaoProcessarFluxo"
             class="botao_controle_fluxo"
           >
             Processar fluxo
+          </button>
+
+          <button
+            type="button"
+            id="botaoRetirarProcessamento"
+            class="botao_controle_fluxo"
+          >
+            Retirar processamento
           </button>
 
           <button
@@ -2938,6 +2942,14 @@
             class="botao_controle_fluxo"
           >
             Importar fluxo
+          </button>
+
+          <button
+            type="button"
+            id="botaoSalvarFluxoProjeto"
+            class="botao_controle_fluxo botao_salvar_fluxo_largo"
+          >
+            Salvar fluxo
           </button>
 
         </div>

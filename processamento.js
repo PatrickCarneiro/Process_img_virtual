@@ -667,7 +667,9 @@ function clonarPipelineDaImagem(pipeline) {
 
 }
 
-// Invalida somente o resultado de uma imagem quando o fluxo dela muda.
+// Invalida completamente o processamento de uma imagem.
+// Esta limpeza total passa a ser usada quando o usuário escolher
+// explicitamente retirar o processamento e voltar à imagem original.
 function invalidarProcessamentoDaImagem(item) {
 
   if (!item) return;
@@ -676,6 +678,81 @@ function invalidarProcessamentoDaImagem(item) {
   item.processado = false;
   item.assinaturaPipeline = "";
   item.cacheEtapas = {};
+  item.pipelineProcessado = [];
+
+}
+
+// Marca que o fluxograma foi alterado sem apagar o último resultado.
+// Assim, editar o fluxo não faz a imagem voltar automaticamente à original.
+function marcarProcessamentoDaImagemComoDesatualizado(item) {
+
+  if (!item) return;
+
+  item.processado = false;
+
+  if (!Array.isArray(item.pipelineProcessado)) {
+    item.pipelineProcessado = [];
+  }
+
+}
+
+// Compara duas etapas somente pelo conteúdo que interfere no processamento.
+// O id não entra na comparação porque ele serve apenas para identificar
+// visualmente a etapa dentro do fluxograma.
+function etapasProcessamentoEquivalentes(etapaA, etapaB) {
+
+  if (!etapaA || !etapaB) return false;
+
+  return JSON.stringify({
+    nome: etapaA.nome,
+    parametros: etapaA.parametros
+  }) === JSON.stringify({
+    nome: etapaB.nome,
+    parametros: etapaB.parametros
+  });
+
+}
+
+// Verifica se o pipeline já aplicado é exatamente o começo do pipeline atual.
+// Quando isso acontece, as etapas novas podem continuar a partir do resultado
+// que já está na tela, sem refazer as etapas anteriores.
+function pipelineProcessadoEhPrefixoDoPipelineAtual(item) {
+
+  if (!item || !Array.isArray(item.pipelineProcessado)) {
+    return false;
+  }
+
+  if (item.pipelineProcessado.length > pipelineFerramentas.length) {
+    return false;
+  }
+
+  for (let i = 0; i < item.pipelineProcessado.length; i++) {
+
+    if (!etapasProcessamentoEquivalentes(
+      item.pipelineProcessado[i],
+      pipelineFerramentas[i]
+    )) {
+      return false;
+    }
+
+  }
+
+  return true;
+
+}
+
+// Verifica se o resultado salvo já corresponde exatamente ao fluxo atual.
+function resultadoCorrespondeAoPipelineAtual(item) {
+
+  if (!item || !item.resultado) return false;
+
+  if (!Array.isArray(item.pipelineProcessado)) return false;
+
+  if (item.pipelineProcessado.length !== pipelineFerramentas.length) {
+    return false;
+  }
+
+  return pipelineProcessadoEhPrefixoDoPipelineAtual(item);
 
 }
 
@@ -791,7 +868,7 @@ async function colarFluxoCopiado() {
       item.pipelineFerramentas =
         clonarPipelineDaImagem(pipelineFluxoCopiado);
 
-      invalidarProcessamentoDaImagem(item);
+      marcarProcessamentoDaImagemComoDesatualizado(item);
 
     });
 
@@ -807,7 +884,7 @@ async function colarFluxoCopiado() {
     imagemAtualSelecionada.pipelineFerramentas =
       clonarPipelineDaImagem(pipelineFluxoCopiado);
 
-    invalidarProcessamentoDaImagem(imagemAtualSelecionada);
+    marcarProcessamentoDaImagemComoDesatualizado(imagemAtualSelecionada);
 
     carregarPipelineDaImagem(imagemAtualSelecionada);
 
@@ -2224,7 +2301,7 @@ function replicarFluxoAtualParaTodasImagens() {
         item !== imagemAtualSelecionada
       ) {
 
-        invalidarProcessamentoDaImagem(
+        marcarProcessamentoDaImagemComoDesatualizado(
           item
         );
 
@@ -2587,6 +2664,22 @@ function configurarInterfaceSalvarFluxoProjeto() {
     );
 
     botaoProcessarFluxo.dataset.listenerFluxo = "true";
+  }
+
+  const botaoRetirarProcessamento =
+    document.getElementById("botaoRetirarProcessamento");
+
+  if (
+    botaoRetirarProcessamento &&
+    botaoRetirarProcessamento.dataset.listenerRetirarProcessamento !== "true"
+  ) {
+
+    botaoRetirarProcessamento.addEventListener(
+      "click",
+      retirarProcessamentoImagemAtual
+    );
+
+    botaoRetirarProcessamento.dataset.listenerRetirarProcessamento = "true";
   }
 
   modalSalvarFluxoProjeto = document.getElementById("modalSalvarFluxoProjeto");
@@ -3064,6 +3157,7 @@ async function loadFiles() {
         processado: false,
         assinaturaPipeline: "",
         cacheEtapas: {},
+        pipelineProcessado: [],
         pipelineFerramentas: [],
 
         // Salvamento automático localizado por imagem.
@@ -6667,10 +6761,10 @@ async function removerEtapaPipeline(idEtapa) {
 
   }
 
-  // Somente o resultado desta imagem deixa de representar o fluxograma atual.
-  invalidarProcessamentoDaImagem(imagemAtualSelecionada);
+  // O último resultado permanece visível. O novo fluxo fica marcado
+  // como pendente até o usuário clicar novamente em Processar fluxo.
+  marcarProcessamentoDaImagemComoDesatualizado(imagemAtualSelecionada);
 
-  // A imagem atual volta a ser exibida sem o resultado antigo.
   if (imagemAtualSelecionada) {
     await openFile(imagemAtualSelecionada);
   }
@@ -6724,6 +6818,11 @@ async function processarImagemSelecionada(item) {
   item.processado = true;
 
   item.assinaturaPipeline = assinaturaAtual;
+
+  item.pipelineProcessado =
+    clonarPipelineDaImagem(
+      pipelineFerramentas
+    );
 
   atualizarBarraProcessamento(100);
 
@@ -6785,10 +6884,12 @@ async function processarTodasAsImagensComPipeline() {
 
     recalcularProximoIdEtapaPipelineAtual();
 
-    // Imagens sem etapas permanecem sem processamento.
+    // Imagens sem etapas não têm novo processamento para executar.
+    // O último resultado permanece como está; somente o botão
+    // "Retirar processamento" volta explicitamente à imagem original.
     if (pipelineFerramentas.length === 0) {
 
-      invalidarProcessamentoDaImagem(item);
+      marcarProcessamentoDaImagemComoDesatualizado(item);
 
       continue;
     }
@@ -6926,6 +7027,62 @@ async function processarFluxoPeloBotao() {
 }
 
 
+// Retira o processamento da imagem atual e restaura explicitamente
+// o arquivo original. Este passa a ser o comando responsável por
+// voltar à imagem original e também limpa o fluxograma dessa imagem.
+async function retirarProcessamentoImagemAtual() {
+
+  if (!imagemAtualSelecionada) {
+
+    alert("Nenhuma imagem está selecionada.");
+    return;
+  }
+
+  pipelineFerramentas = [];
+  proximoIdEtapa = 1;
+
+  imagemAtualSelecionada.pipelineFerramentas = [];
+
+  invalidarProcessamentoDaImagem(
+    imagemAtualSelecionada
+  );
+
+  etapaComparativoSelecionada = "original";
+
+  desenharFluxograma();
+  atualizarControleSalvarFluxoProjeto();
+
+  await openFile(
+    imagemAtualSelecionada
+  );
+
+  atualizarCardSelecionado();
+
+  if (modoComparativoAtivo) {
+
+    await atualizarImagemComparativa();
+    desenharFluxograma();
+  }
+
+  if (
+    analiseCarregada &&
+    typeof atualizarAnaliseDaImagemAtual === "function"
+  ) {
+
+    await atualizarAnaliseDaImagemAtual();
+  }
+
+  salvarUltimaSessaoProcessamento();
+
+  // Se esta imagem estiver vinculada a um projeto com salvamento
+  // automático, a retirada do fluxo também é refletida nesse projeto.
+  await salvarFluxogramaAutomaticamenteSeAtivo();
+
+  statusText.innerText =
+    "Processamento retirado. Imagem original restaurada e fluxograma removido.";
+}
+
+
 // Depois de adicionar uma ferramenta, apenas atualiza o fluxograma.
 // Nenhum processamento é executado nesta etapa.
 async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTodasImagens) {
@@ -6941,10 +7098,11 @@ async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTo
 
   }
 
-  // O resultado anterior somente desta imagem não corresponde mais ao novo fluxo.
-  invalidarProcessamentoDaImagem(imagemAtualSelecionada);
+  // Mantém o último resultado processado visível e apenas marca que
+  // existem etapas novas aguardando execução. Quando o usuário clicar
+  // em Processar fluxo, o processamento continuará desse resultado.
+  marcarProcessamentoDaImagemComoDesatualizado(imagemAtualSelecionada);
 
-  // Mostra novamente a imagem sem o resultado antigo.
   if (imagemAtualSelecionada) {
     await openFile(imagemAtualSelecionada);
   }
@@ -6965,7 +7123,7 @@ async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTo
   }
 
   statusText.innerText =
-    "Ferramenta adicionada ao fluxograma. Clique em Processar fluxo para executar.";
+    "Ferramenta adicionada ao fluxograma. O resultado anterior foi mantido. Clique em Processar fluxo para executar somente as etapas novas quando possível.";
 
   // Na primeira aplicação pergunta se o fluxo deve ser salvo.
   // Depois de vinculado, cada nova etapa atualiza o mesmo projeto.
@@ -8240,15 +8398,51 @@ async function aplicarContrasteFluxoEmDicom(
 // Processa uma imagem normal usando o pipeline de ferramentas.
 async function processarImagemNormalPeloPipeline(item) {
 
-  let canvasAtual = await criarCanvasOriginalImagemNormal(item.file);
+  const podeContinuarDoResultado =
+    item &&
+    item.resultado &&
+    item.resultado.tipo === "image" &&
+    Array.isArray(item.pipelineProcessado) &&
+    item.pipelineProcessado.length > 0 &&
+    item.pipelineProcessado.length < pipelineFerramentas.length &&
+    pipelineProcessadoEhPrefixoDoPipelineAtual(item);
 
-  // Cria ou limpa o cache das etapas dessa imagem
-  item.cacheEtapas = {};
+  const indiceInicial =
+    podeContinuarDoResultado
+      ? item.pipelineProcessado.length
+      : 0;
 
-  // Salva a imagem original no cache
-  salvarCanvasNoCache(item, "original", canvasAtual);
+  let canvasAtual;
 
-  for (const etapa of pipelineFerramentas) {
+  if (podeContinuarDoResultado) {
+
+    canvasAtual =
+      await criarCanvasAPartirResultadoProcessado(
+        item.resultado.dataURL
+      );
+
+    if (!item.cacheEtapas) {
+      item.cacheEtapas = {};
+    }
+
+  } else {
+
+    canvasAtual =
+      await criarCanvasOriginalImagemNormal(
+        item.file
+      );
+
+    // Um fluxo que não é continuação direta precisa ser recalculado.
+    item.cacheEtapas = {};
+
+    // Salva a imagem original no cache apenas no início de um cálculo completo.
+    salvarCanvasNoCache(item, "original", canvasAtual);
+  }
+
+  const etapasParaProcessar =
+    pipelineFerramentas.slice(indiceInicial);
+
+  for (const etapa of etapasParaProcessar) {
 
     if (etapa.nome.includes("Gaussiano")) { 
 
@@ -8534,15 +8728,48 @@ async function processarImagemNormalPeloPipeline(item) {
 // Processa um DICOM usando o pipeline de ferramentas.
 async function processarDicomPeloPipeline(item) {
 
-  let imagemAtual = await carregarDicomOriginal(item);
+  const podeContinuarDoResultado =
+    item &&
+    item.resultado &&
+    item.resultado.tipo === "dicom" &&
+    item.resultado.imagem &&
+    Array.isArray(item.pipelineProcessado) &&
+    item.pipelineProcessado.length > 0 &&
+    item.pipelineProcessado.length < pipelineFerramentas.length &&
+    pipelineProcessadoEhPrefixoDoPipelineAtual(item);
 
-  // Cria ou limpa o cache das etapas dessa imagem
-  item.cacheEtapas = {};
+  const indiceInicial =
+    podeContinuarDoResultado
+      ? item.pipelineProcessado.length
+      : 0;
 
-  // Salva o DICOM original no cache
-  salvarDicomNoCache(item, "original", imagemAtual);
+  let imagemAtual;
 
-  for (const etapa of pipelineFerramentas) {
+  if (podeContinuarDoResultado) {
+
+    imagemAtual =
+      item.resultado.imagem;
+
+    if (!item.cacheEtapas) {
+      item.cacheEtapas = {};
+    }
+
+  } else {
+
+    imagemAtual =
+      await carregarDicomOriginal(item);
+
+    // Um fluxo que não é continuação direta precisa ser recalculado.
+    item.cacheEtapas = {};
+
+    // Salva o DICOM original no cache apenas no início de um cálculo completo.
+    salvarDicomNoCache(item, "original", imagemAtual);
+  }
+
+  const etapasParaProcessar =
+    pipelineFerramentas.slice(indiceInicial);
+
+  for (const etapa of etapasParaProcessar) {
 
     if (etapa.nome.includes("Gaussiano")) {
 
@@ -8820,6 +9047,36 @@ async function processarDicomPeloPipeline(item) {
     tipo: "dicom",
     imagem: imagemAtual
   };
+}
+
+// Cria um canvas a partir do último resultado raster já processado.
+// É usado para continuar o fluxo somente pelas etapas novas.
+function criarCanvasAPartirResultadoProcessado(dataURL) {
+
+  return new Promise(function(resolve, reject) {
+
+    const img = new Image();
+
+    img.onload = function() {
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+
+      ctx.drawImage(img, 0, 0);
+
+      resolve(canvas);
+    };
+
+    img.onerror = function(error) {
+      reject(error);
+    };
+
+    img.src = dataURL;
+  });
+
 }
 
 // Cria um canvas com a imagem original.
@@ -9336,6 +9593,12 @@ function imagemPrecisaProcessar(item) {
 
   const assinaturaAtual = gerarAssinaturaPipeline();
 
+  // Se o resultado já corresponde exatamente ao pipeline atual,
+  // não há etapa nova para executar.
+  if (resultadoCorrespondeAoPipelineAtual(item)) {
+    return false;
+  }
+
   // Se nunca processou, precisa processar
   if (!item.processado) return true;
 
@@ -9357,6 +9620,7 @@ function invalidarProcessamentoDeTodasAsImagens() {
     item.processado = false;
     item.assinaturaPipeline = "";
     item.cacheEtapas = {};
+    item.pipelineProcessado = [];
   });
 
 }
@@ -11435,6 +11699,10 @@ async function salvarRecorteSubstituindoImagemAtual(arquivoRecortado, dataURL, l
   imagemAtualSelecionada.processado = pipelineFerramentas.length > 0;
   imagemAtualSelecionada.assinaturaPipeline = assinaturaAtual;
   imagemAtualSelecionada.cacheEtapas = {};
+  imagemAtualSelecionada.pipelineProcessado =
+    pipelineFerramentas.length > 0
+      ? clonarPipelineDaImagem(pipelineFerramentas)
+      : [];
 
   await atualizarRegistroArquivoNoBanco({
     id: imagemAtualSelecionada.id,
@@ -11477,6 +11745,7 @@ async function salvarRecorteComoNovaImagem(arquivoRecortado, dataURL, largura, a
     processado: false,
     assinaturaPipeline: "",
     cacheEtapas: {},
+    pipelineProcessado: [],
     pipelineFerramentas: []
   };
 
@@ -15939,7 +16208,7 @@ async function confirmarImportacaoFluxo() {
     );
 
 
-  invalidarProcessamentoDaImagem(
+  marcarProcessamentoDaImagemComoDesatualizado(
     imagemAtualSelecionada
   );
 
