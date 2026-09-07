@@ -1175,6 +1175,20 @@ function atualizarIndicadorSalvamentoAutomatico(estado) {
   );
 
 
+  // O controle pode ser clicado somente enquanto existe um projeto
+  // com salvamento automático ativo. Desativado ou salvando não abre
+  // o modal de parada.
+  controle.style.cursor =
+    estado === "ativo"
+      ? "pointer"
+      : "default";
+
+  controle.title =
+    estado === "ativo"
+      ? "Clique para parar o salvamento automático"
+      : "Salvamento automático";
+
+
   if (estado === "salvando") {
 
     controle.classList.add("salvando");
@@ -1828,6 +1842,291 @@ function desativarSalvamentoAutomaticoProjeto(
 
 
   salvarUltimaSessaoProcessamento();
+
+}
+
+
+// Abre o modal visual que confirma a interrupção do salvamento automático.
+// O modal só pode ser aberto quando a imagem atual pertence a um projeto
+// com autosave ativo.
+function abrirModalPararSalvamentoAutomatico() {
+
+  if (!imagemAtualSelecionada) {
+    return;
+  }
+
+  garantirEstadoSalvamentoAutomaticoImagem(
+    imagemAtualSelecionada
+  );
+
+  if (
+    !imagemAtualSelecionada.salvamentoAutomaticoAtivo ||
+    !obterIdProjetoDaImagem(imagemAtualSelecionada)
+  ) {
+    return;
+  }
+
+  const modal =
+    document.getElementById(
+      "modalConfirmarPararSalvamentoAutomatico"
+    );
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.add("ativo");
+
+}
+
+
+// Fecha somente o modal de parada do salvamento automático.
+function fecharModalPararSalvamentoAutomatico() {
+
+  const modal =
+    document.getElementById(
+      "modalConfirmarPararSalvamentoAutomatico"
+    );
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.remove("ativo");
+
+}
+
+
+// Interrompe o autosave do PROJETO da imagem atual.
+// Antes de desvincular, grava uma última versão do fluxo no projeto salvo.
+// O projeto permanece na página de Projetos; somente as imagens desta área
+// deixam de pertencer a ele e passam a ter fluxos independentes.
+async function confirmarParadaSalvamentoAutomatico() {
+
+  if (!imagemAtualSelecionada) {
+    fecharModalPararSalvamentoAutomatico();
+    return;
+  }
+
+  garantirEstadoSalvamentoAutomaticoImagem(
+    imagemAtualSelecionada
+  );
+
+  const idProjeto =
+    obterIdProjetoDaImagem(
+      imagemAtualSelecionada
+    );
+
+  if (
+    !idProjeto ||
+    !imagemAtualSelecionada.salvamentoAutomaticoAtivo
+  ) {
+    fecharModalPararSalvamentoAutomatico();
+    carregarSalvamentoAutomaticoDaImagem(
+      imagemAtualSelecionada
+    );
+    return;
+  }
+
+  sincronizarPipelineAtualNaImagem();
+
+  const grupoProjeto =
+    obterImagensDoMesmoProjeto(
+      imagemAtualSelecionada
+    );
+
+  // Guarda o vínculo apenas para poder restaurá-lo caso a última gravação
+  // falhe. Assim, clicar em "Parar de salvar" nunca perde silenciosamente
+  // a versão mais recente do fluxo.
+  const estadosAnteriores =
+    grupoProjeto.map(function(item) {
+
+      garantirEstadoSalvamentoAutomaticoImagem(item);
+
+      return {
+        item: item,
+        salvamentoAutomaticoAtivo:
+          Boolean(item.salvamentoAutomaticoAtivo),
+        salvamentoAutomaticoPerguntado:
+          Boolean(item.salvamentoAutomaticoPerguntado),
+        projetoSalvamentoAutomaticoId:
+          item.projetoSalvamentoAutomaticoId,
+        projetoSalvamentoAutomaticoNome:
+          item.projetoSalvamentoAutomaticoNome
+      };
+
+    });
+
+  const salvouUltimaVersao =
+    await salvarFluxogramaAutomaticamenteSeAtivo(
+      imagemAtualSelecionada
+    );
+
+  if (!salvouUltimaVersao) {
+
+    estadosAnteriores.forEach(function(estado) {
+
+      estado.item.salvamentoAutomaticoAtivo =
+        estado.salvamentoAutomaticoAtivo;
+
+      estado.item.salvamentoAutomaticoPerguntado =
+        estado.salvamentoAutomaticoPerguntado;
+
+      estado.item.projetoSalvamentoAutomaticoId =
+        estado.projetoSalvamentoAutomaticoId;
+
+      estado.item.projetoSalvamentoAutomaticoNome =
+        estado.projetoSalvamentoAutomaticoNome;
+
+    });
+
+    carregarSalvamentoAutomaticoDaImagem(
+      imagemAtualSelecionada
+    );
+
+    salvarUltimaSessaoProcessamento();
+    fecharModalPararSalvamentoAutomatico();
+
+    alert(
+      "Não foi possível salvar a última versão do projeto. O salvamento automático foi mantido."
+    );
+
+    return;
+  }
+
+  // Depois da última gravação, todas as imagens do mesmo projeto deixam
+  // de estar vinculadas. O fluxo permanece em cada imagem, em cópia própria,
+  // para que alterações futuras não afetem o projeto salvo nem as demais.
+  grupoProjeto.forEach(function(item) {
+
+    item.pipelineFerramentas =
+      clonarPipelineDaImagem(
+        Array.isArray(item.pipelineFerramentas)
+          ? item.pipelineFerramentas
+          : []
+      );
+
+    item.salvamentoAutomaticoAtivo = false;
+    item.salvamentoAutomaticoPerguntado = true;
+    item.projetoSalvamentoAutomaticoId = null;
+    item.projetoSalvamentoAutomaticoNome = "";
+
+  });
+
+  carregarSalvamentoAutomaticoDaImagem(
+    imagemAtualSelecionada
+  );
+
+  atualizarVisibilidadeBotaoVincularImagensProjeto();
+  salvarUltimaSessaoProcessamento();
+  fecharModalPararSalvamentoAutomatico();
+
+  statusText.innerText =
+    grupoProjeto.length > 1
+      ? (
+          "Salvamento automático encerrado. As " +
+          grupoProjeto.length +
+          " imagens foram desvinculadas do projeto, que permanece salvo em Projetos."
+        )
+      : (
+          "Salvamento automático encerrado. A imagem foi desvinculada do projeto, que permanece salvo em Projetos."
+        );
+
+}
+
+
+// Liga o clique do indicador ao modal visual já existente no HTML.
+function configurarParadaSalvamentoAutomatico() {
+
+  const controle =
+    document.getElementById(
+      "controleSalvamentoAutomatico"
+    );
+
+  const modal =
+    document.getElementById(
+      "modalConfirmarPararSalvamentoAutomatico"
+    );
+
+  const botaoCancelar =
+    document.getElementById(
+      "botaoCancelarPararSalvamentoAutomatico"
+    );
+
+  const botaoConfirmar =
+    document.getElementById(
+      "botaoConfirmarPararSalvamentoAutomatico"
+    );
+
+  if (
+    controle &&
+    controle.dataset.listenerPararSalvamento !== "true"
+  ) {
+
+    controle.addEventListener(
+      "click",
+      function() {
+
+        abrirModalPararSalvamentoAutomatico();
+
+      }
+    );
+
+    controle.dataset.listenerPararSalvamento =
+      "true";
+
+  }
+
+  if (
+    botaoCancelar &&
+    botaoCancelar.dataset.listenerPararSalvamento !== "true"
+  ) {
+
+    botaoCancelar.addEventListener(
+      "click",
+      fecharModalPararSalvamentoAutomatico
+    );
+
+    botaoCancelar.dataset.listenerPararSalvamento =
+      "true";
+
+  }
+
+  if (
+    botaoConfirmar &&
+    botaoConfirmar.dataset.listenerPararSalvamento !== "true"
+  ) {
+
+    botaoConfirmar.addEventListener(
+      "click",
+      confirmarParadaSalvamentoAutomatico
+    );
+
+    botaoConfirmar.dataset.listenerPararSalvamento =
+      "true";
+
+  }
+
+  if (
+    modal &&
+    modal.dataset.listenerPararSalvamento !== "true"
+  ) {
+
+    modal.addEventListener(
+      "click",
+      function(event) {
+
+        if (event.target === modal) {
+          fecharModalPararSalvamentoAutomatico();
+        }
+
+      }
+    );
+
+    modal.dataset.listenerPararSalvamento =
+      "true";
+
+  }
 
 }
 
@@ -7497,8 +7796,9 @@ async function processarFluxoPeloBotao() {
 }
 
 
-// Retira somente o processamento da imagem atual e restaura explicitamente
-// o arquivo original. O fluxograma da imagem permanece exatamente como está.
+// Retira o processamento da imagem atual. Quando ela pertence a um projeto,
+// retira também de todas as outras imagens vinculadas ao mesmo projeto.
+// O fluxograma e o vínculo com o projeto permanecem exatamente como estão.
 async function retirarProcessamentoImagemAtual() {
 
   if (!imagemAtualSelecionada) {
@@ -7507,12 +7807,25 @@ async function retirarProcessamentoImagemAtual() {
     return;
   }
 
-  // Remove somente o resultado já aplicado à imagem.
-  // O pipelineFerramentas e imagemAtualSelecionada.pipelineFerramentas
-  // permanecem intactos para que o mesmo fluxo possa ser processado novamente.
-  invalidarProcessamentoDaImagem(
-    imagemAtualSelecionada
-  );
+  const idProjetoAtual =
+    obterIdProjetoDaImagem(
+      imagemAtualSelecionada
+    );
+
+  const imagensParaRetirar =
+    idProjetoAtual
+      ? obterImagensDoMesmoProjeto(
+          imagemAtualSelecionada
+        )
+      : [imagemAtualSelecionada];
+
+  // Remove somente os resultados já aplicados. Os pipelines permanecem
+  // intactos para que o mesmo fluxo possa ser processado novamente.
+  imagensParaRetirar.forEach(function(item) {
+
+    invalidarProcessamentoDaImagem(item);
+
+  });
 
   etapaComparativoSelecionada = "original";
 
@@ -7539,12 +7852,20 @@ async function retirarProcessamentoImagemAtual() {
     await atualizarAnaliseDaImagemAtual();
   }
 
-  // A última sessão registra que a imagem voltou ao original,
-  // mas mantém o mesmo fluxograma associado à imagem.
+  // A última sessão registra o retorno ao original, mantendo o mesmo
+  // fluxograma e, quando existir, o vínculo com o projeto.
   salvarUltimaSessaoProcessamento();
 
   statusText.innerText =
-    "Processamento retirado. Imagem original restaurada. O fluxograma foi mantido.";
+    idProjetoAtual
+      ? (
+          "Processamento retirado das " +
+          imagensParaRetirar.length +
+          " imagem(ns) vinculada(s) ao projeto atual. Os fluxogramas foram mantidos."
+        )
+      : (
+          "Processamento retirado. Imagem original restaurada. O fluxograma foi mantido."
+        );
 }
 
 
@@ -17045,6 +17366,23 @@ document.addEventListener(
 
     }
 
+
+    const modalPararSalvamento =
+      document.getElementById(
+        "modalConfirmarPararSalvamentoAutomatico"
+      );
+
+    if (
+      modalPararSalvamento &&
+      modalPararSalvamento.classList.contains(
+        "ativo"
+      )
+    ) {
+
+      fecharModalPararSalvamentoAutomatico();
+
+    }
+
   }
 );
 
@@ -17091,6 +17429,7 @@ configurarInterfaceCopiarColarFluxo();
 configurarLinkMenuInicio();
 configurarLinkMenuProjetos();
 configurarModalPerguntaSalvarFluxograma();
+configurarParadaSalvamentoAutomatico();
 configurarVinculoImagensProjeto();
 configurarRedimensionamentoMiniaturas();
 configurarAplicacaoBrilhoContrasteFluxograma();
