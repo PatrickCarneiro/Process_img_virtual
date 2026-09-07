@@ -78,6 +78,9 @@ let imagemDicomOriginalAtual = null;
 const areaImagemProcessada = document.getElementById("areaImagemProcessada");
 const legendaComparacaoOriginal = document.getElementById("legendaComparacaoOriginal");
 const legendaComparacaoProcessada = document.getElementById("legendaComparacaoProcessada");
+const seletorComparacaoEsquerda = document.getElementById("seletorComparacaoEsquerda");
+const seletorComparacaoDireita = document.getElementById("seletorComparacaoDireita");
+let selecaoComparacaoDireita = "resultado";
 const botaoRecorte = document.getElementById("botaoRecorte");
 const opcoesRecorte = document.getElementById("opcoesRecorte");
 const botaoRecorteRetangular = document.getElementById("botaoRecorteRetangular");
@@ -7498,6 +7501,8 @@ function configurarArrasteEtapaFluxograma(
 // Desenha o fluxograma com as etapas do pipeline
 function desenharFluxograma() {
 
+  atualizarOpcoesSeletoresComparacao();
+
   areaFluxograma.innerHTML = ""; // Limpa o fluxograma
 
   const blocoOriginal = document.createElement("div");
@@ -8759,11 +8764,38 @@ function atualizarTamanhoImagemAtual() {
     imagemNormal.style.height = alturaFinal + "px";
   }
 
-  // IMAGEM NORMAL ORIGINAL DO COMPARATIVO
+  // IMAGEM DO LADO ESQUERDO DO COMPARATIVO
   if (imagemOriginalNormal.style.display === "block") {
 
-    imagemOriginalNormal.style.width = larguraFinal + "px";
-    imagemOriginalNormal.style.height = alturaFinal + "px";
+    if (
+      modoComparativoAtivo &&
+      imagemOriginalNormal.naturalWidth > 0 &&
+      imagemOriginalNormal.naturalHeight > 0
+    ) {
+
+      const escalaEsquerda =
+        calcularEscalaAutomaticaComparacao(
+          imagemOriginalNormal.naturalWidth,
+          imagemOriginalNormal.naturalHeight
+        );
+
+      imagemOriginalNormal.style.width =
+        imagemOriginalNormal.naturalWidth *
+        escalaEsquerda *
+        zoomAtual +
+        "px";
+
+      imagemOriginalNormal.style.height =
+        imagemOriginalNormal.naturalHeight *
+        escalaEsquerda *
+        zoomAtual +
+        "px";
+
+    } else {
+
+      imagemOriginalNormal.style.width = larguraFinal + "px";
+      imagemOriginalNormal.style.height = alturaFinal + "px";
+    }
   }
 
   // DICOM PROCESSADO
@@ -8775,11 +8807,37 @@ function atualizarTamanhoImagemAtual() {
     cornerstone.resize(visualizadorDicom, true);
   }
 
-  // DICOM ORIGINAL DO COMPARATIVO
+  // DICOM DO LADO ESQUERDO DO COMPARATIVO
   if (visualizadorDicomOriginal.style.display === "block") {
 
-    visualizadorDicomOriginal.style.width = larguraFinal + "px";
-    visualizadorDicomOriginal.style.height = alturaFinal + "px";
+    if (
+      modoComparativoAtivo &&
+      imagemDicomOriginalAtual
+    ) {
+
+      const escalaEsquerdaDicom =
+        calcularEscalaAutomaticaComparacao(
+          imagemDicomOriginalAtual.width,
+          imagemDicomOriginalAtual.height
+        );
+
+      visualizadorDicomOriginal.style.width =
+        imagemDicomOriginalAtual.width *
+        escalaEsquerdaDicom *
+        zoomAtual +
+        "px";
+
+      visualizadorDicomOriginal.style.height =
+        imagemDicomOriginalAtual.height *
+        escalaEsquerdaDicom *
+        zoomAtual +
+        "px";
+
+    } else {
+
+      visualizadorDicomOriginal.style.width = larguraFinal + "px";
+      visualizadorDicomOriginal.style.height = alturaFinal + "px";
+    }
 
     cornerstone.resize(visualizadorDicomOriginal, true);
   }
@@ -10332,7 +10390,7 @@ function limitarAlturaMiniaturas(
       ? Number(
           redimensionador.dataset.alturaMinima
         )
-      : 120;
+      : 34;
 
   const maximaConfigurada =
     redimensionador
@@ -10345,7 +10403,7 @@ function limitarAlturaMiniaturas(
   const alturaMinima =
     Number.isFinite(minimaConfigurada)
       ? minimaConfigurada
-      : 120;
+      : 34;
 
 
   let alturaMaxima =
@@ -10427,6 +10485,10 @@ function aplicarAlturaMiniaturas(
     "--altura-miniaturas",
     alturaFinal + "px"
   );
+
+  // A mudança da altura das miniaturas altera imediatamente o espaço
+  // disponível para a imagem. Recalcula somente a escala de exibição.
+  agendarReajusteVisualizacaoResponsiva();
 
 
   if (salvarPreferencia) {
@@ -10774,6 +10836,454 @@ function salvarDicomNoCache(item, chave, imagemDicom) {
 
 }
 
+// Mantém os dois seletores do comparativo sincronizados com o fluxo atual.
+// Cada lado pode mostrar Original, qualquer etapa já processada ou Resultado final.
+function atualizarOpcoesSeletoresComparacao() {
+
+  if (!seletorComparacaoEsquerda || !seletorComparacaoDireita) {
+    return;
+  }
+
+  const opcoes = [
+    {
+      valor: "original",
+      texto: "Original"
+    }
+  ];
+
+  pipelineFerramentas.forEach(function(etapa, indice) {
+
+    if (!etapa || !etapa.id) {
+      return;
+    }
+
+    opcoes.push({
+      valor: String(etapa.id),
+      texto:
+        String(indice + 1) +
+        " - " +
+        String(etapa.nome || "Etapa")
+    });
+
+  });
+
+  opcoes.push({
+    valor: "resultado",
+    texto: "Resultado final"
+  });
+
+  const valoresValidos =
+    new Set(
+      opcoes.map(function(opcao) {
+        return opcao.valor;
+      })
+    );
+
+  if (
+    !valoresValidos.has(
+      String(etapaComparativoSelecionada)
+    )
+  ) {
+    etapaComparativoSelecionada = "original";
+  }
+
+  if (
+    !valoresValidos.has(
+      String(selecaoComparacaoDireita)
+    )
+  ) {
+    selecaoComparacaoDireita = "resultado";
+  }
+
+  function preencherSeletor(
+    seletor,
+    valorSelecionado
+  ) {
+
+    seletor.innerHTML = "";
+
+    opcoes.forEach(function(opcao) {
+
+      const elementoOpcao =
+        document.createElement("option");
+
+      elementoOpcao.value =
+        opcao.valor;
+
+      elementoOpcao.innerText =
+        opcao.texto;
+
+      if (
+        opcao.valor ===
+        String(valorSelecionado)
+      ) {
+        elementoOpcao.selected = true;
+      }
+
+      seletor.appendChild(
+        elementoOpcao
+      );
+
+    });
+
+  }
+
+  preencherSeletor(
+    seletorComparacaoEsquerda,
+    etapaComparativoSelecionada
+  );
+
+  preencherSeletor(
+    seletorComparacaoDireita,
+    selecaoComparacaoDireita
+  );
+}
+
+
+function obterNomeSelecaoComparacao(
+  selecao
+) {
+
+  if (selecao === "original") {
+    return "Original";
+  }
+
+  if (selecao === "resultado") {
+    return "Resultado final";
+  }
+
+  const etapa =
+    pipelineFerramentas.find(function(item) {
+      return (
+        item &&
+        String(item.id) ===
+          String(selecao)
+      );
+    });
+
+  return etapa && etapa.nome
+    ? etapa.nome
+    : "Etapa";
+}
+
+
+// Retorna o conteúdo já disponível para a seleção informada.
+// O comparativo nunca executa o fluxo automaticamente.
+async function obterConteudoSelecaoComparacao(
+  item,
+  selecao
+) {
+
+  if (!item) {
+    return null;
+  }
+
+  if (!item.cacheEtapas) {
+    item.cacheEtapas = {};
+  }
+
+  if (selecao === "original") {
+
+    const cacheOriginal =
+      item.cacheEtapas["original"];
+
+    if (cacheOriginal) {
+      return cacheOriginal;
+    }
+
+    if (item.type === "image") {
+      return {
+        tipo: "image",
+        dataURL: URL.createObjectURL(item.file),
+        origemTemporaria: true
+      };
+    }
+
+    if (item.type === "dicom") {
+      return {
+        tipo: "dicom",
+        imagem: await carregarDicomOriginal(item)
+      };
+    }
+
+    return null;
+  }
+
+  if (selecao === "resultado") {
+
+    if (!item.resultado) {
+      return null;
+    }
+
+    return item.resultado;
+  }
+
+  return (
+    item.cacheEtapas[
+      String(selecao)
+    ] ||
+    null
+  );
+}
+
+
+function limparLadoComparacao(
+  lado
+) {
+
+  if (lado === "esquerda") {
+
+    imagemOriginalNormal.style.display =
+      "none";
+
+    imagemOriginalNormal.style.visibility =
+      "hidden";
+
+    visualizadorDicomOriginal.style.display =
+      "none";
+
+    imagemDicomOriginalAtual = null;
+
+    return;
+  }
+
+  imagemNormal.style.display =
+    "none";
+
+  imagemNormal.style.visibility =
+    "hidden";
+
+  visualizadorDicom.style.display =
+    "none";
+
+  imagemDicomAtual = null;
+
+  if (canvasRecorte && contextoCanvasRecorte) {
+    contextoCanvasRecorte.clearRect(
+      0,
+      0,
+      canvasRecorte.width,
+      canvasRecorte.height
+    );
+  }
+}
+
+
+async function mostrarImagemNormalNoLadoDireitoComparacao(
+  dataURL
+) {
+
+  visualizadorDicom.style.display =
+    "none";
+
+  imagemDicomAtual = null;
+
+  imagemNormal.style.display =
+    "none";
+
+  imagemNormal.style.visibility =
+    "hidden";
+
+  await new Promise(function(resolve, reject) {
+
+    imagemNormal.addEventListener(
+      "load",
+      function() {
+
+        larguraOriginalAtual =
+          imagemNormal.naturalWidth;
+
+        alturaOriginalAtual =
+          imagemNormal.naturalHeight;
+
+        escalaBaseAtual =
+          calcularEscalaAutomatica(
+            larguraOriginalAtual,
+            alturaOriginalAtual
+          );
+
+        imagemNormal.style.width =
+          larguraOriginalAtual *
+          escalaBaseAtual *
+          zoomAtual +
+          "px";
+
+        imagemNormal.style.height =
+          alturaOriginalAtual *
+          escalaBaseAtual *
+          zoomAtual +
+          "px";
+
+        imagemNormal.style.display =
+          "block";
+
+        imagemNormal.style.visibility =
+          "visible";
+
+        resolve();
+
+      },
+      {
+        once: true
+      }
+    );
+
+    imagemNormal.addEventListener(
+      "error",
+      function() {
+        reject(
+          new Error(
+            "Erro ao mostrar imagem no lado direito do comparativo."
+          )
+        );
+      },
+      {
+        once: true
+      }
+    );
+
+    imagemNormal.src =
+      dataURL;
+
+  });
+}
+
+
+async function mostrarDicomNoLadoDireitoComparacao(
+  imagem
+) {
+
+  imagemNormal.style.display =
+    "none";
+
+  imagemNormal.style.visibility =
+    "hidden";
+
+  visualizadorDicom.style.display =
+    "block";
+
+  imagemDicomAtual =
+    imagem;
+
+  larguraOriginalAtual =
+    imagem.width;
+
+  alturaOriginalAtual =
+    imagem.height;
+
+  escalaBaseAtual =
+    calcularEscalaAutomatica(
+      imagem.width,
+      imagem.height
+    );
+
+  visualizadorDicom.style.width =
+    imagem.width *
+    escalaBaseAtual *
+    zoomAtual +
+    "px";
+
+  visualizadorDicom.style.height =
+    imagem.height *
+    escalaBaseAtual *
+    zoomAtual +
+    "px";
+
+  cornerstone.displayImage(
+    visualizadorDicom,
+    imagem
+  );
+
+  const viewport =
+    cornerstone.getViewport(
+      visualizadorDicom
+    );
+
+  viewport.voi = {
+    windowCenter:
+      imagem.windowCenter,
+    windowWidth:
+      imagem.windowWidth
+  };
+
+  viewport.invert =
+    imagem.invert || false;
+
+  viewport.scale =
+    escalaBaseAtual * zoomAtual;
+
+  cornerstone.setViewport(
+    visualizadorDicom,
+    viewport
+  );
+
+  cornerstone.resize(
+    visualizadorDicom,
+    true
+  );
+}
+
+
+async function renderizarSelecaoComparacao(
+  lado,
+  selecao
+) {
+
+  const item =
+    imagemAtualSelecionada;
+
+  const conteudo =
+    await obterConteudoSelecaoComparacao(
+      item,
+      selecao
+    );
+
+  if (!conteudo) {
+
+    limparLadoComparacao(
+      lado
+    );
+
+    return false;
+  }
+
+  if (lado === "esquerda") {
+
+    if (conteudo.tipo === "image") {
+      await mostrarImagemNormalNoComparativo(
+        conteudo.dataURL
+      );
+      return true;
+    }
+
+    if (conteudo.tipo === "dicom") {
+      await mostrarDicomNoComparativo(
+        conteudo.imagem
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  if (conteudo.tipo === "image") {
+    await mostrarImagemNormalNoLadoDireitoComparacao(
+      conteudo.dataURL
+    );
+    return true;
+  }
+
+  if (conteudo.tipo === "dicom") {
+    await mostrarDicomNoLadoDireitoComparacao(
+      conteudo.imagem
+    );
+    return true;
+  }
+
+  return false;
+}
+
+
 async function toggleComparativo() {
 
   if (!imagemAtualSelecionada) {
@@ -10781,23 +11291,28 @@ async function toggleComparativo() {
     return;
   }
 
-  modoComparativoAtivo = !modoComparativoAtivo;
+  modoComparativoAtivo =
+    !modoComparativoAtivo;
 
   if (modoComparativoAtivo) {
 
-    botaoOriginal.classList.add("ativo");
-    areaImagemOriginal.classList.add("ativo");
+    botaoOriginal.classList.add(
+      "ativo"
+    );
 
-    escalaBaseAtual = calcularEscalaAutomaticaComparacao(
-      larguraOriginalAtual,
-      alturaOriginalAtual
+    areaImagemOriginal.classList.add(
+      "ativo"
     );
 
     zoomAtual = 1;
-    atualizarTamanhoImagemAtual();
 
-    etapaComparativoSelecionada = "original";
+    etapaComparativoSelecionada =
+      "original";
 
+    selecaoComparacaoDireita =
+      "resultado";
+
+    atualizarOpcoesSeletoresComparacao();
     atualizarLegendasComparacao();
 
     await atualizarImagemComparativa();
@@ -10809,27 +11324,35 @@ async function toggleComparativo() {
 
     atualizarCanvasRecorte();
 
-    statusText.innerText = "Modo comparativo ativo.";
+    statusText.innerText =
+      "Modo comparativo ativo.";
 
   } else {
 
-    botaoOriginal.classList.remove("ativo");
-    areaImagemOriginal.classList.remove("ativo");
+    botaoOriginal.classList.remove(
+      "ativo"
+    );
 
-    imagemOriginalNormal.style.display = "none";
-    visualizadorDicomOriginal.style.display = "none";
+    areaImagemOriginal.classList.remove(
+      "ativo"
+    );
 
-    imagemDicomOriginalAtual = null;
+    imagemOriginalNormal.style.display =
+      "none";
+
+    visualizadorDicomOriginal.style.display =
+      "none";
+
+    imagemDicomOriginalAtual =
+      null;
 
     atualizarLegendasComparacao();
 
-    escalaBaseAtual = calcularEscalaAutomatica(
-      larguraOriginalAtual,
-      alturaOriginalAtual
+    // O lado direito pode estar mostrando qualquer etapa durante
+    // a comparação. Ao sair, restaura a visualização normal da imagem.
+    await openFile(
+      imagemAtualSelecionada
     );
-
-    zoomAtual = 1;
-    atualizarTamanhoImagemAtual();
 
     desenharFluxograma();
 
@@ -10838,102 +11361,72 @@ async function toggleComparativo() {
 
     atualizarCanvasRecorte();
 
-    statusText.innerText = "Modo comparativo desativado.";
+    statusText.innerText =
+      "Modo comparativo desativado.";
   }
 }
+
 
 async function atualizarImagemComparativa() {
 
   if (!modoComparativoAtivo) return;
   if (!imagemAtualSelecionada) return;
 
+  atualizarOpcoesSeletoresComparacao();
   atualizarLegendasComparacao();
 
-  const item = imagemAtualSelecionada;
+  const esquerdaDisponivel =
+    await renderizarSelecaoComparacao(
+      "esquerda",
+      etapaComparativoSelecionada
+    );
 
-  // O comparativo não inicia processamento automaticamente.
-  // A imagem original pode ser visualizada sem executar o fluxo.
+  const direitaDisponivel =
+    await renderizarSelecaoComparacao(
+      "direita",
+      selecaoComparacaoDireita
+    );
+
+  reajustarVisualizacaoAoEspacoDisponivel();
+
+  const nomeEsquerda =
+    obterNomeSelecaoComparacao(
+      etapaComparativoSelecionada
+    );
+
+  const nomeDireita =
+    obterNomeSelecaoComparacao(
+      selecaoComparacaoDireita
+    );
+
   if (
-    imagemPrecisaProcessar(item) &&
-    etapaComparativoSelecionada !== "original"
+    !esquerdaDisponivel ||
+    !direitaDisponivel
   ) {
 
     statusText.innerText =
-      "Processe o fluxo antes de visualizar uma etapa processada no comparativo.";
+      "Uma das visualizações selecionadas ainda não possui resultado. Clique em Processar fluxo para gerar as etapas necessárias.";
 
     return;
   }
 
-  if (!item.cacheEtapas) {
-    item.cacheEtapas = {};
-  }
-
-  if (etapaComparativoSelecionada === "original") {
-
-    const cacheOriginal = item.cacheEtapas["original"];
-
-    if (cacheOriginal && cacheOriginal.tipo === "image") {
-      await mostrarImagemNormalNoComparativo(cacheOriginal.dataURL);
-      statusText.innerText = "Comparativo mostrando: Original.";
-      return;
-    }
-
-    if (cacheOriginal && cacheOriginal.tipo === "dicom") {
-      await mostrarDicomNoComparativo(cacheOriginal.imagem);
-      statusText.innerText = "Comparativo mostrando: Original.";
-      return;
-    }
-
-    await abrirImagemOriginalNoComparativo(item);
-
-    statusText.innerText = "Comparativo mostrando: Original.";
-
-    return;
-  }
-
-  const etapa = pipelineFerramentas.find(function(etapa) {
-    return etapa.id === etapaComparativoSelecionada;
-  });
-
-  if (!etapa) return;
-
-  const cache = item.cacheEtapas[etapa.id];
-
-  if (!cache) {
-
-    statusText.innerText =
-      "Essa etapa ainda não possui resultado. Clique em Processar fluxo.";
-
-    return;
-  }
-
-  statusText.innerText = "Carregando etapa salva no comparativo: " + etapa.nome + "...";
-
-  await esperarAtualizacaoTela();
-
-  if (cache.tipo === "image") {
-
-    await mostrarImagemNormalNoComparativo(cache.dataURL);
-
-    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
-
-    return;
-  }
-
-  if (cache.tipo === "dicom") {
-
-    await mostrarDicomNoComparativo(cache.imagem);
-
-    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
-
-    return;
-  }
+  statusText.innerText =
+    "Comparando: " +
+    nomeEsquerda +
+    " × " +
+    nomeDireita +
+    ".";
 }
 
-async function selecionarEtapaComparativo(etapaId) {
 
-  etapaComparativoSelecionada = etapaId;
+async function selecionarEtapaComparativo(
+  etapaId
+) {
 
+  etapaComparativoSelecionada =
+    etapaId;
+
+  atualizarOpcoesSeletoresComparacao();
   atualizarLegendasComparacao();
 
   desenharFluxograma();
@@ -10942,6 +11435,69 @@ async function selecionarEtapaComparativo(etapaId) {
     await atualizarImagemComparativa();
   }
 }
+
+
+function configurarSeletoresComparacaoIndependentes() {
+
+  if (
+    seletorComparacaoEsquerda &&
+    seletorComparacaoEsquerda.dataset.listenerComparacao !==
+      "true"
+  ) {
+
+    seletorComparacaoEsquerda.addEventListener(
+      "change",
+      async function() {
+
+        etapaComparativoSelecionada =
+          seletorComparacaoEsquerda.value ||
+          "original";
+
+        atualizarLegendasComparacao();
+        desenharFluxograma();
+
+        if (modoComparativoAtivo) {
+          await atualizarImagemComparativa();
+        }
+
+      }
+    );
+
+    seletorComparacaoEsquerda.dataset.listenerComparacao =
+      "true";
+  }
+
+  if (
+    seletorComparacaoDireita &&
+    seletorComparacaoDireita.dataset.listenerComparacao !==
+      "true"
+  ) {
+
+    seletorComparacaoDireita.addEventListener(
+      "change",
+      async function() {
+
+        selecaoComparacaoDireita =
+          seletorComparacaoDireita.value ||
+          "resultado";
+
+        atualizarLegendasComparacao();
+
+        if (modoComparativoAtivo) {
+          await atualizarImagemComparativa();
+        }
+
+      }
+    );
+
+    seletorComparacaoDireita.dataset.listenerComparacao =
+      "true";
+  }
+
+  atualizarOpcoesSeletoresComparacao();
+  atualizarLegendasComparacao();
+}
+
 
 async function abrirImagemOriginalNoComparativo(item) {
 
@@ -11481,58 +12037,31 @@ function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
 function atualizarLegendasComparacao() {
 
   if (legendaComparacaoOriginal) {
-
-    let textoComparado = "Original";
-
-    if (
-      modoComparativoAtivo &&
-      etapaComparativoSelecionada !== "original"
-    ) {
-
-      const etapaComparada =
-        pipelineFerramentas.find(function(etapa) {
-          return etapa.id === etapaComparativoSelecionada;
-        });
-
-      if (etapaComparada && etapaComparada.nome) {
-        textoComparado = etapaComparada.nome;
-      }
-    }
-
-    legendaComparacaoOriginal.innerText = textoComparado;
+    legendaComparacaoOriginal.innerText =
+      obterNomeSelecaoComparacao(
+        etapaComparativoSelecionada
+      );
   }
 
   if (legendaComparacaoProcessada) {
+    legendaComparacaoProcessada.innerText =
+      obterNomeSelecaoComparacao(
+        selecaoComparacaoDireita
+      );
+  }
 
-    let textoPrincipal = "Original";
+  if (seletorComparacaoEsquerda) {
+    seletorComparacaoEsquerda.value =
+      String(
+        etapaComparativoSelecionada
+      );
+  }
 
-    if (
-      imagemAtualSelecionada &&
-      imagemAtualSelecionada.resultado
-    ) {
-
-      const fluxoAtual =
-        Array.isArray(imagemAtualSelecionada.pipelineFerramentas)
-          ? imagemAtualSelecionada.pipelineFerramentas
-          : pipelineFerramentas;
-
-      if (
-        Array.isArray(fluxoAtual) &&
-        fluxoAtual.length > 0
-      ) {
-
-        const ultimaEtapa = fluxoAtual[fluxoAtual.length - 1];
-
-        textoPrincipal =
-          ultimaEtapa && ultimaEtapa.nome
-            ? ultimaEtapa.nome
-            : "Processada";
-      } else {
-        textoPrincipal = "Processada";
-      }
-    }
-
-    legendaComparacaoProcessada.innerText = textoPrincipal;
+  if (seletorComparacaoDireita) {
+    seletorComparacaoDireita.value =
+      String(
+        selecaoComparacaoDireita
+      );
   }
 }
 
@@ -18000,6 +18529,7 @@ configurarModalPerguntaSalvarFluxograma();
 configurarParadaSalvamentoAutomatico();
 configurarVinculoImagensProjeto();
 configurarRedimensionamentoMiniaturas();
+configurarSeletoresComparacaoIndependentes();
 configurarAplicacaoBrilhoContrasteFluxograma();
 configurarExportacaoImagens();
 configurarExportacaoImportacaoFluxo();
