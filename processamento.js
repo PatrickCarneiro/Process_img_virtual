@@ -124,8 +124,8 @@ let projetoSalvamentoAutomaticoNome = "";
 // Controle do novo modal estilizado "Deseja salvar esse fluxograma?"
 let resolverPerguntaSalvarFluxograma = null;
 
-// Controle do modal "Deseja aplicar o mesmo fluxo em todas as imagens?"
-let resolverConfirmacaoAplicarFluxoTodasImagens = null;
+// O vínculo entre imagens passa a ser definido pelo projeto associado ao fluxo.
+// Imagens com o mesmo projeto compartilham sempre o mesmo fluxograma.
 
 // Guarda a altura escolhida pelo usuário para a região das miniaturas.
 const CHAVE_ALTURA_MINIATURAS_PROCESSAMENTO =
@@ -275,12 +275,6 @@ function salvarUltimaSessaoProcessamento() {
 
   try {
 
-    const checkAplicarTodas =
-      document.getElementById(
-        "checkAplicarTodasImagens"
-      );
-
-
     const sessao = {
 
       versao: 1,
@@ -292,11 +286,6 @@ function salvarUltimaSessaoProcessamento() {
         imagemAtualSelecionada
           ? imagemAtualSelecionada.id
           : null,
-
-      aplicarFluxoEmTodas:
-        checkAplicarTodas
-          ? Boolean(checkAplicarTodas.checked)
-          : false,
 
       imagens:
         imagensProcessamento.map(
@@ -602,22 +591,6 @@ function restaurarUltimaSessaoProcessamento() {
       imagensProcessamento[0];
 
 
-    const checkAplicarTodas =
-      document.getElementById(
-        "checkAplicarTodasImagens"
-      );
-
-
-    if (checkAplicarTodas) {
-
-      checkAplicarTodas.checked =
-        Boolean(
-          sessao.aplicarFluxoEmTodas
-        );
-
-    }
-
-
     // O indicador e as variáveis globais passam a refletir
     // exclusivamente a imagem que está atualmente selecionada.
     carregarSalvamentoAutomaticoDaImagem(
@@ -779,8 +752,18 @@ function sincronizarPipelineAtualNaImagem() {
 
   if (!imagemAtualSelecionada) return;
 
+  // A imagem atual recebe primeiro o pipeline que está na interface.
   imagemAtualSelecionada.pipelineFerramentas =
-    clonarPipelineDaImagem(pipelineFerramentas);
+    clonarPipelineDaImagem(
+      pipelineFerramentas
+    );
+
+  // Se ela pertence a um projeto, todas as imagens daquele projeto
+  // passam obrigatoriamente a compartilhar o mesmo fluxo.
+  sincronizarFluxoEntreImagensDoProjeto(
+    imagemAtualSelecionada,
+    pipelineFerramentas
+  );
 
   // Mantém a última sessão atualizada sem executar processamento.
   salvarUltimaSessaoProcessamento();
@@ -840,8 +823,8 @@ function copiarFluxoImagemAtual() {
 
 }
 
-// Cola o fluxo copiado na imagem atual ou em todas as imagens,
-// conforme o checkbox "Aplicar fluxo em todas as imagens".
+// Cola o fluxo copiado na imagem atual. Se ela pertencer a um projeto,
+// o mesmo fluxo é refletido automaticamente nas demais imagens vinculadas.
 async function colarFluxoCopiado() {
 
   if (!pipelineFluxoCopiado) {
@@ -858,42 +841,41 @@ async function colarFluxoCopiado() {
     return;
   }
 
-  const aplicarEmTodas =
-    deveAplicarFluxoEmTodasImagens();
 
-  if (aplicarEmTodas) {
+  imagemAtualSelecionada.pipelineFerramentas =
+    clonarPipelineDaImagem(
+      pipelineFluxoCopiado
+    );
 
-    imagensProcessamento.forEach(function(item) {
+  pipelineFerramentas =
+    clonarPipelineDaImagem(
+      pipelineFluxoCopiado
+    );
 
-      item.pipelineFerramentas =
-        clonarPipelineDaImagem(pipelineFluxoCopiado);
 
+  // Se a imagem pertence a um projeto, o fluxo colado passa a ser
+  // o fluxo daquele projeto e é copiado para todas as imagens vinculadas.
+  const grupoAtualizado =
+    sincronizarFluxoEntreImagensDoProjeto(
+      imagemAtualSelecionada,
+      pipelineFerramentas
+    );
+
+  grupoAtualizado.forEach(
+    function(item) {
       marcarProcessamentoDaImagemComoDesatualizado(item);
+    }
+  );
 
-    });
 
-    carregarPipelineDaImagem(imagemAtualSelecionada);
+  carregarPipelineDaImagem(
+    imagemAtualSelecionada
+  );
 
-    await openFile(imagemAtualSelecionada);
+  await openFile(
+    imagemAtualSelecionada
+  );
 
-    statusText.innerText =
-      "Fluxograma colado em todas as imagens. Clique em Processar fluxo para executar.";
-
-  } else {
-
-    imagemAtualSelecionada.pipelineFerramentas =
-      clonarPipelineDaImagem(pipelineFluxoCopiado);
-
-    marcarProcessamentoDaImagemComoDesatualizado(imagemAtualSelecionada);
-
-    carregarPipelineDaImagem(imagemAtualSelecionada);
-
-    await openFile(imagemAtualSelecionada);
-
-    statusText.innerText =
-      "Fluxograma colado na imagem atual. Clique em Processar fluxo para executar.";
-
-  }
 
   if (
     analiseCarregada &&
@@ -904,13 +886,17 @@ async function colarFluxoCopiado() {
 
   }
 
+
   // Se houver um projeto vinculado, o fluxo colado
   // substitui automaticamente o fluxo salvo nele.
   await salvarFluxogramaAutomaticamenteSeAtivo();
 
-  // Mesmo sem projeto vinculado, a última sessão guarda
-  // o fluxo que acabou de ser colado.
   salvarUltimaSessaoProcessamento();
+
+  statusText.innerText =
+    obterIdProjetoDaImagem(imagemAtualSelecionada)
+      ? "Fluxograma colado no projeto atual. As imagens vinculadas receberam o mesmo fluxo. Clique em Processar fluxo para executar."
+      : "Fluxograma colado na imagem atual. Clique em Processar fluxo para executar.";
 
 }
 
@@ -1322,44 +1308,16 @@ function garantirEstadoSalvamentoAutomaticoImagem(item) {
 // permanece disponível ao trocar de imagem.
 function obterProjetoAtualDaSessaoProcessamento() {
 
-  const idGlobal =
-    projetoSalvamentoAutomaticoId === null ||
-    projetoSalvamentoAutomaticoId === undefined
-      ? ""
-      : String(
-          projetoSalvamentoAutomaticoId
-        ).trim();
-
-  const nomeGlobal =
-    projetoSalvamentoAutomaticoNome
-      ? String(
-          projetoSalvamentoAutomaticoNome
-        ).trim()
-      : "";
-
-
-  if (idGlobal || nomeGlobal) {
-
-    return {
-      id: idGlobal || null,
-      nome: nomeGlobal,
-      salvamentoAutomaticoAtivo:
-        Boolean(
-          salvamentoAutomaticoAtivo &&
-          idGlobal
-        )
-    };
-
-  }
-
-
+  // O projeto mostrado no cabeçalho pertence exclusivamente à imagem
+  // atualmente selecionada. Isso permite manter mais de um projeto
+  // dentro da mesma Área de processamento sem misturar os títulos.
   if (imagemAtualSelecionada) {
 
     garantirEstadoSalvamentoAutomaticoImagem(
       imagemAtualSelecionada
     );
 
-    const idImagemAtual =
+    const idProjeto =
       imagemAtualSelecionada
         .projetoSalvamentoAutomaticoId === null ||
       imagemAtualSelecionada
@@ -1370,7 +1328,7 @@ function obterProjetoAtualDaSessaoProcessamento() {
               .projetoSalvamentoAutomaticoId
           ).trim();
 
-    const nomeImagemAtual =
+    const nomeProjeto =
       imagemAtualSelecionada
         .projetoSalvamentoAutomaticoNome
         ? String(
@@ -1378,86 +1336,23 @@ function obterProjetoAtualDaSessaoProcessamento() {
               .projetoSalvamentoAutomaticoNome
           ).trim()
         : "";
-
-
-    if (idImagemAtual || nomeImagemAtual) {
-
-      return {
-        id: idImagemAtual || null,
-        nome: nomeImagemAtual,
-        salvamentoAutomaticoAtivo:
-          Boolean(
-            imagemAtualSelecionada
-              .salvamentoAutomaticoAtivo &&
-            idImagemAtual
-          )
-      };
-
-    }
-
-  }
-
-
-  const imagemComProjeto =
-    Array.isArray(imagensProcessamento)
-      ? imagensProcessamento.find(
-          function(item) {
-
-            if (!item) {
-              return false;
-            }
-
-            garantirEstadoSalvamentoAutomaticoImagem(
-              item
-            );
-
-            return Boolean(
-              item.projetoSalvamentoAutomaticoId ||
-              item.projetoSalvamentoAutomaticoNome
-            );
-
-          }
-        )
-      : null;
-
-
-  if (imagemComProjeto) {
-
-    const idImagem =
-      imagemComProjeto
-        .projetoSalvamentoAutomaticoId === null ||
-      imagemComProjeto
-        .projetoSalvamentoAutomaticoId === undefined
-        ? ""
-        : String(
-            imagemComProjeto
-              .projetoSalvamentoAutomaticoId
-          ).trim();
-
-    const nomeImagem =
-      imagemComProjeto
-        .projetoSalvamentoAutomaticoNome
-        ? String(
-            imagemComProjeto
-              .projetoSalvamentoAutomaticoNome
-          ).trim()
-        : "";
-
 
     return {
-      id: idImagem || null,
-      nome: nomeImagem,
+      id: idProjeto || null,
+      nome: nomeProjeto,
       salvamentoAutomaticoAtivo:
         Boolean(
-          imagemComProjeto
+          imagemAtualSelecionada
             .salvamentoAutomaticoAtivo &&
-          idImagem
+          idProjeto
         )
     };
 
   }
 
 
+  // Durante a abertura pela página de Projetos, o vínculo pode existir
+  // por alguns instantes antes de as imagens serem montadas.
   if (projetoSalvamentoAutomaticoPendente) {
 
     return {
@@ -1484,6 +1379,187 @@ function obterProjetoAtualDaSessaoProcessamento() {
     nome: "",
     salvamentoAutomaticoAtivo: false
   };
+
+}
+
+
+// Retorna o ID de projeto normalizado da imagem informada.
+function obterIdProjetoDaImagem(item) {
+
+  if (!item) return "";
+
+  garantirEstadoSalvamentoAutomaticoImagem(item);
+
+  return item.projetoSalvamentoAutomaticoId === null ||
+    item.projetoSalvamentoAutomaticoId === undefined
+      ? ""
+      : String(
+          item.projetoSalvamentoAutomaticoId
+        ).trim();
+
+}
+
+
+// Retorna somente as imagens vinculadas exatamente ao mesmo projeto.
+// Uma imagem sem projeto permanece independente e não forma grupo.
+function obterImagensDoMesmoProjeto(itemReferencia) {
+
+  const idProjeto =
+    obterIdProjetoDaImagem(
+      itemReferencia
+    );
+
+  if (!idProjeto) {
+    return itemReferencia
+      ? [itemReferencia]
+      : [];
+  }
+
+  return imagensProcessamento.filter(
+    function(item) {
+
+      return (
+        obterIdProjetoDaImagem(item) ===
+        idProjeto
+      );
+
+    }
+  );
+
+}
+
+
+// Compara dois fluxogramas sem compartilhar referências entre imagens.
+function pipelinesFerramentasEquivalentes(
+  pipelineA,
+  pipelineB
+) {
+
+  const a =
+    Array.isArray(pipelineA)
+      ? pipelineA
+      : [];
+
+  const b =
+    Array.isArray(pipelineB)
+      ? pipelineB
+      : [];
+
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let i = 0; i < a.length; i++) {
+
+    if (
+      !etapasProcessamentoEquivalentes(
+        a[i],
+        b[i]
+      )
+    ) {
+      return false;
+    }
+
+  }
+
+  return true;
+
+}
+
+
+// Mantém o princípio "Projeto = Fluxo".
+// Ao alterar o fluxo em uma imagem vinculada, todas as outras imagens
+// do mesmo projeto recebem o mesmo pipeline. O último resultado visível
+// é preservado; somente fica marcado como desatualizado até novo processamento.
+function sincronizarFluxoEntreImagensDoProjeto(
+  itemReferencia,
+  pipelineBase
+) {
+
+  if (!itemReferencia) {
+    return [];
+  }
+
+  const fluxo =
+    clonarPipelineDaImagem(
+      Array.isArray(pipelineBase)
+        ? pipelineBase
+        : []
+    );
+
+  const grupo =
+    obterImagensDoMesmoProjeto(
+      itemReferencia
+    );
+
+  grupo.forEach(
+    function(item) {
+
+      const mudou =
+        !pipelinesFerramentasEquivalentes(
+          item.pipelineFerramentas,
+          fluxo
+        );
+
+      item.pipelineFerramentas =
+        clonarPipelineDaImagem(
+          fluxo
+        );
+
+      if (
+        mudou &&
+        item !== itemReferencia
+      ) {
+        marcarProcessamentoDaImagemComoDesatualizado(
+          item
+        );
+      }
+
+    }
+  );
+
+  return grupo;
+
+}
+
+
+// Exibe o botão de vínculo somente quando a imagem atual pertence a
+// um projeto e existe pelo menos uma imagem fora desse projeto.
+function atualizarVisibilidadeBotaoVincularImagensProjeto() {
+
+  const container =
+    document.getElementById(
+      "containerVincularImagensProjeto"
+    );
+
+  if (!container) {
+    return;
+  }
+
+  const idProjetoAtual =
+    obterIdProjetoDaImagem(
+      imagemAtualSelecionada
+    );
+
+  const existeImagemForaDoProjeto =
+    Boolean(
+      idProjetoAtual &&
+      imagensProcessamento.some(
+        function(item) {
+
+          return (
+            obterIdProjetoDaImagem(item) !==
+            idProjetoAtual
+          );
+
+        }
+      )
+    );
+
+  container.classList.toggle(
+    "ativo",
+    existeImagemForaDoProjeto
+  );
 
 }
 
@@ -1548,6 +1624,9 @@ function atualizarNomeProjetoProcessamento() {
     elementoNomeProjeto.style.display = "none";
 
   }
+
+
+  atualizarVisibilidadeBotaoVincularImagensProjeto();
 
 }
 
@@ -1666,74 +1745,20 @@ function definirSalvamentoAutomaticoImagem(
 }
 
 
-// Quando "Aplicar fluxo em todas as imagens" estiver marcado,
-// o mesmo vínculo de autosave da imagem atual é disponibilizado
-// para todas as imagens da área de processamento.
-function propagarSalvamentoAutomaticoAtualParaTodasImagens() {
-
-  if (!imagemAtualSelecionada) {
-
-    return false;
-
-  }
 
 
-  garantirEstadoSalvamentoAutomaticoImagem(
-    imagemAtualSelecionada
-  );
 
-
-  if (
-    !imagemAtualSelecionada.salvamentoAutomaticoAtivo ||
-    !imagemAtualSelecionada.projetoSalvamentoAutomaticoId
-  ) {
-
-    return false;
-
-  }
-
-
-  imagensProcessamento.forEach(
-    function(item) {
-
-      definirSalvamentoAutomaticoImagem(
-        item,
-        imagemAtualSelecionada
-          .projetoSalvamentoAutomaticoId,
-        imagemAtualSelecionada
-          .projetoSalvamentoAutomaticoNome
-      );
-
-    }
-  );
-
-
-  carregarSalvamentoAutomaticoDaImagem(
-    imagemAtualSelecionada
-  );
-
-
-  salvarUltimaSessaoProcessamento();
-
-
-  return true;
-
-}
-
-
-// Ativa o autosave na imagem atual.
-// Se o checkbox de todas estiver marcado, ativa nas demais também.
+// Ativa o autosave somente na imagem informada. O compartilhamento com
+// outras imagens acontece exclusivamente quando elas possuem o mesmo projeto.
 function ativarSalvamentoAutomaticoProjeto(
   idProjeto,
   nomeProjeto,
-  itemAlvo,
-  aplicarEmTodas
+  itemAlvo
 ) {
 
   const item =
     itemAlvo ||
     imagemAtualSelecionada;
-
 
   if (
     !definirSalvamentoAutomaticoImagem(
@@ -1742,38 +1767,11 @@ function ativarSalvamentoAutomaticoProjeto(
       nomeProjeto
     )
   ) {
-
     return;
-
   }
-
-
-  const devePropagar =
-    typeof aplicarEmTodas ===
-    "boolean"
-      ? aplicarEmTodas
-      : deveAplicarFluxoEmTodasImagens();
-
-
-  if (devePropagar) {
-
-    imagensProcessamento.forEach(
-      function(outroItem) {
-
-        definirSalvamentoAutomaticoImagem(
-          outroItem,
-          idProjeto,
-          nomeProjeto
-        );
-
-      }
-    );
-
-  }
-
 
   if (
-    imagemAtualSelecionada
+    item === imagemAtualSelecionada
   ) {
 
     carregarSalvamentoAutomaticoDaImagem(
@@ -1782,7 +1780,7 @@ function ativarSalvamentoAutomaticoProjeto(
 
   }
 
-
+  atualizarVisibilidadeBotaoVincularImagensProjeto();
   salvarUltimaSessaoProcessamento();
 
 }
@@ -1867,18 +1865,6 @@ async function salvarFluxogramaAutomaticamenteSeAtivo(
   }
 
 
-  // Se a imagem atual está com a opção de todas marcada,
-  // o autosave passa a ficar disponível para todas as imagens.
-  if (
-    item === imagemAtualSelecionada &&
-    deveAplicarFluxoEmTodasImagens()
-  ) {
-
-    propagarSalvamentoAutomaticoAtualParaTodasImagens();
-
-  }
-
-
   if (
     item === imagemAtualSelecionada
   ) {
@@ -1902,6 +1888,14 @@ async function salvarFluxogramaAutomaticamenteSeAtivo(
             ? item.pipelineFerramentas
             : []
         );
+
+
+  // O projeto possui um único fluxo. Antes de salvar, garante que todas
+  // as imagens vinculadas mantenham exatamente o pipeline que será gravado.
+  sincronizarFluxoEntreImagensDoProjeto(
+    item,
+    pipelineDoItem
+  );
 
 
   let db = null;
@@ -2233,15 +2227,6 @@ async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
       .salvamentoAutomaticoAtivo
   ) {
 
-    if (
-      deveAplicarFluxoEmTodasImagens()
-    ) {
-
-      propagarSalvamentoAutomaticoAtualParaTodasImagens();
-
-    }
-
-
     await salvarFluxogramaAutomaticamenteSeAtivo(
       imagemAtualSelecionada
     );
@@ -2307,420 +2292,393 @@ async function verificarSalvamentoAutomaticoPrimeiraAplicacao() {
 
 
 // =============================================================
-// APLICAR O MESMO FLUXO EM TODAS AS IMAGENS
+// VINCULAR IMAGENS AO PROJETO DO FLUXO ATUAL
 // =============================================================
 
-// Configura o modal estilizado que já existe no processamento.html.
-function configurarModalAplicarFluxoTodasImagens() {
+// Fecha o modal de vínculo sem alterar nenhuma imagem.
+function fecharModalVincularImagensProjeto() {
 
   const modal =
     document.getElementById(
-      "modalConfirmarAplicarFluxoTodasImagens"
+      "modalVincularImagensProjeto"
     );
 
-  const botaoNao =
+  if (modal) {
+    modal.classList.remove("ativo");
+  }
+
+}
+
+
+// Monta a lista apenas com imagens que ainda não pertencem ao
+// projeto da imagem atualmente selecionada.
+function abrirModalVincularImagensProjeto() {
+
+  if (!imagemAtualSelecionada) {
+    return;
+  }
+
+  const idProjetoAtual =
+    obterIdProjetoDaImagem(
+      imagemAtualSelecionada
+    );
+
+  if (!idProjetoAtual) {
+    return;
+  }
+
+  const modal =
     document.getElementById(
-      "botaoNaoAplicarFluxoTodasImagens"
+      "modalVincularImagensProjeto"
     );
 
-  const botaoSim =
+  const lista =
     document.getElementById(
-      "botaoSimAplicarFluxoTodasImagens"
+      "listaImagensVinculoProjeto"
     );
 
+  const nomeProjetoModal =
+    document.getElementById(
+      "nomeProjetoModalVinculo"
+    );
 
-  if (
-    botaoNao &&
-    botaoNao.dataset.listenerAplicarTodas !==
-      "true"
-  ) {
+  if (!modal || !lista) {
+    return;
+  }
 
-    botaoNao.addEventListener(
-      "click",
-      function() {
+  const nomeProjeto =
+    imagemAtualSelecionada
+      .projetoSalvamentoAutomaticoNome ||
+    "Projeto atual";
 
-        responderConfirmacaoAplicarFluxoTodasImagens(
-          false
+  if (nomeProjetoModal) {
+    nomeProjetoModal.innerText =
+      nomeProjeto;
+  }
+
+  const imagensElegiveis =
+    imagensProcessamento.filter(
+      function(item) {
+
+        return (
+          obterIdProjetoDaImagem(item) !==
+          idProjetoAtual
         );
 
       }
     );
 
-    botaoNao.dataset.listenerAplicarTodas =
-      "true";
+  lista.innerHTML = "";
 
+  imagensElegiveis.forEach(
+    function(item) {
+
+      const label =
+        document.createElement("label");
+
+      label.className =
+        "item_imagem_vinculo_projeto";
+
+      const check =
+        document.createElement("input");
+
+      check.type = "checkbox";
+      check.className =
+        "check_imagem_vinculo_projeto";
+      check.value =
+        String(item.idProcessamento);
+
+      const dados =
+        document.createElement("span");
+
+      dados.className =
+        "dados_imagem_vinculo_projeto";
+
+      const nome =
+        document.createElement("span");
+
+      nome.className =
+        "nome_imagem_vinculo_projeto";
+      nome.innerText =
+        item.name;
+
+      const projetoAnterior =
+        document.createElement("span");
+
+      projetoAnterior.className =
+        "projeto_atual_imagem_vinculo";
+
+      const idProjetoAnterior =
+        obterIdProjetoDaImagem(item);
+
+      projetoAnterior.innerText =
+        idProjetoAnterior
+          ? (
+              "Projeto atual: " +
+              (
+                item.projetoSalvamentoAutomaticoNome ||
+                "Projeto sem nome"
+              )
+            )
+          : "Sem projeto";
+
+      dados.appendChild(nome);
+      dados.appendChild(projetoAnterior);
+
+      label.appendChild(check);
+      label.appendChild(dados);
+
+      lista.appendChild(label);
+
+    }
+  );
+
+  if (imagensElegiveis.length === 0) {
+    atualizarVisibilidadeBotaoVincularImagensProjeto();
+    return;
   }
 
+  modal.classList.add("ativo");
 
-  if (
-    botaoSim &&
-    botaoSim.dataset.listenerAplicarTodas !==
-      "true"
-  ) {
+}
 
-    botaoSim.addEventListener(
-      "click",
-      function() {
 
-        responderConfirmacaoAplicarFluxoTodasImagens(
-          true
-        );
+// Executa efetivamente a troca de vínculo das imagens marcadas.
+// Após a inclusão, TODAS as imagens do projeto de destino voltam ao
+// arquivo original e precisam ter o fluxo processado novamente.
+async function confirmarVinculoImagensProjeto() {
 
-      }
+  if (!imagemAtualSelecionada) {
+    return;
+  }
+
+  garantirEstadoSalvamentoAutomaticoImagem(
+    imagemAtualSelecionada
+  );
+
+  const idProjetoDestino =
+    obterIdProjetoDaImagem(
+      imagemAtualSelecionada
     );
 
-    botaoSim.dataset.listenerAplicarTodas =
+  if (!idProjetoDestino) {
+    fecharModalVincularImagensProjeto();
+    return;
+  }
+
+  const checks =
+    Array.from(
+      document.querySelectorAll(
+        "#listaImagensVinculoProjeto .check_imagem_vinculo_projeto:checked"
+      )
+    );
+
+  if (checks.length === 0) {
+    alert("Selecione pelo menos uma imagem para vincular.");
+    return;
+  }
+
+  // Garante que o fluxo exibido é a versão mais recente do projeto.
+  sincronizarPipelineAtualNaImagem();
+
+  const fluxoProjeto =
+    clonarPipelineDaImagem(
+      pipelineFerramentas
+    );
+
+  const nomeProjetoDestino =
+    imagemAtualSelecionada
+      .projetoSalvamentoAutomaticoNome ||
+    "";
+
+  const idsSelecionados =
+    new Set(
+      checks.map(
+        function(check) {
+          return Number(check.value);
+        }
+      )
+    );
+
+  imagensProcessamento.forEach(
+    function(item) {
+
+      if (
+        !idsSelecionados.has(
+          Number(item.idProcessamento)
+        )
+      ) {
+        return;
+      }
+
+      item.pipelineFerramentas =
+        clonarPipelineDaImagem(
+          fluxoProjeto
+        );
+
+      definirSalvamentoAutomaticoImagem(
+        item,
+        idProjetoDestino,
+        nomeProjetoDestino
+      );
+
+    }
+  );
+
+  // Depois de mover as imagens, todo o grupo do projeto deve recomeçar
+  // visualmente do original, mantendo o fluxograma intacto.
+  const imagensDoProjeto =
+    obterImagensDoMesmoProjeto(
+      imagemAtualSelecionada
+    );
+
+  imagensDoProjeto.forEach(
+    function(item) {
+
+      item.pipelineFerramentas =
+        clonarPipelineDaImagem(
+          fluxoProjeto
+        );
+
+      definirSalvamentoAutomaticoImagem(
+        item,
+        idProjetoDestino,
+        nomeProjetoDestino
+      );
+
+      invalidarProcessamentoDaImagem(item);
+
+    }
+  );
+
+  fecharModalVincularImagensProjeto();
+
+  carregarPipelineDaImagem(
+    imagemAtualSelecionada
+  );
+
+  await openFile(
+    imagemAtualSelecionada
+  );
+
+  atualizarCardSelecionado();
+  redesenharCardsImagens();
+
+  if (
+    analiseCarregada &&
+    typeof atualizarAnaliseDaImagemAtual === "function"
+  ) {
+    await atualizarAnaliseDaImagemAtual();
+  }
+
+  await salvarFluxogramaAutomaticamenteSeAtivo(
+    imagemAtualSelecionada
+  );
+
+  salvarUltimaSessaoProcessamento();
+  atualizarNomeProjetoProcessamento();
+
+  statusText.innerText =
+    checks.length === 1
+      ? "1 imagem vinculada ao projeto. Todas as imagens desse projeto voltaram ao estado original. Clique em Processar fluxo para executar novamente."
+      : (
+          checks.length +
+          " imagens vinculadas ao projeto. Todas as imagens desse projeto voltaram ao estado original. Clique em Processar fluxo para executar novamente."
+        );
+
+}
+
+
+// Liga os controles do novo botão e do modal já existentes no HTML.
+function configurarVinculoImagensProjeto() {
+
+  const botaoVincular =
+    document.getElementById(
+      "botaoVincularImagensProjeto"
+    );
+
+  const botaoCancelar =
+    document.getElementById(
+      "botaoCancelarVinculoProjeto"
+    );
+
+  const botaoConfirmar =
+    document.getElementById(
+      "botaoConfirmarVinculoProjeto"
+    );
+
+  const modal =
+    document.getElementById(
+      "modalVincularImagensProjeto"
+    );
+
+  if (
+    botaoVincular &&
+    botaoVincular.dataset.listenerVinculoProjeto !== "true"
+  ) {
+
+    botaoVincular.addEventListener(
+      "click",
+      abrirModalVincularImagensProjeto
+    );
+
+    botaoVincular.dataset.listenerVinculoProjeto =
       "true";
 
   }
 
+  if (
+    botaoCancelar &&
+    botaoCancelar.dataset.listenerVinculoProjeto !== "true"
+  ) {
+
+    botaoCancelar.addEventListener(
+      "click",
+      fecharModalVincularImagensProjeto
+    );
+
+    botaoCancelar.dataset.listenerVinculoProjeto =
+      "true";
+
+  }
+
+  if (
+    botaoConfirmar &&
+    botaoConfirmar.dataset.listenerVinculoProjeto !== "true"
+  ) {
+
+    botaoConfirmar.addEventListener(
+      "click",
+      confirmarVinculoImagensProjeto
+    );
+
+    botaoConfirmar.dataset.listenerVinculoProjeto =
+      "true";
+
+  }
 
   if (
     modal &&
-    modal.dataset.listenerAplicarTodas !==
-      "true"
+    modal.dataset.listenerVinculoProjeto !== "true"
   ) {
 
     modal.addEventListener(
       "click",
       function(event) {
 
-        if (
-          event.target === modal
-        ) {
-
-          responderConfirmacaoAplicarFluxoTodasImagens(
-            false
-          );
-
+        if (event.target === modal) {
+          fecharModalVincularImagensProjeto();
         }
 
       }
     );
 
-    modal.dataset.listenerAplicarTodas =
+    modal.dataset.listenerVinculoProjeto =
       "true";
 
   }
 
-}
-
-
-// Abre o modal e devolve true somente quando o usuário clicar em Sim.
-function abrirModalAplicarFluxoTodasImagens() {
-
-  configurarModalAplicarFluxoTodasImagens();
-
-
-  const modal =
-    document.getElementById(
-      "modalConfirmarAplicarFluxoTodasImagens"
-    );
-
-
-  if (!modal) {
-
-    return Promise.resolve(
-      false
-    );
-
-  }
-
-
-  modal.classList.add(
-    "ativo"
-  );
-
-
-  return new Promise(
-    function(resolve) {
-
-      resolverConfirmacaoAplicarFluxoTodasImagens =
-        resolve;
-
-    }
-  );
-
-}
-
-
-// Fecha o modal e devolve a escolha para quem o abriu.
-function responderConfirmacaoAplicarFluxoTodasImagens(
-  aplicar
-) {
-
-  const modal =
-    document.getElementById(
-      "modalConfirmarAplicarFluxoTodasImagens"
-    );
-
-
-  if (modal) {
-
-    modal.classList.remove(
-      "ativo"
-    );
-
-  }
-
-
-  const resolver =
-    resolverConfirmacaoAplicarFluxoTodasImagens;
-
-
-  resolverConfirmacaoAplicarFluxoTodasImagens =
-    null;
-
-
-  if (resolver) {
-
-    resolver(
-      Boolean(aplicar)
-    );
-
-  }
-
-}
-
-
-// Copia o pipeline atual para todas as imagens sem processá-las.
-// Isso mantém a regra existente de que a execução só ocorre
-// quando o usuário clicar em "Processar fluxo".
-function replicarFluxoAtualParaTodasImagens() {
-
-  if (
-    !imagemAtualSelecionada ||
-    !Array.isArray(imagensProcessamento) ||
-    imagensProcessamento.length === 0
-  ) {
-
-    return false;
-
-  }
-
-
-  sincronizarPipelineAtualNaImagem();
-
-
-  if (
-    !Array.isArray(pipelineFerramentas) ||
-    pipelineFerramentas.length === 0
-  ) {
-
-    return false;
-
-  }
-
-
-  const fluxoBase =
-    clonarPipelineDaImagem(
-      pipelineFerramentas
-    );
-
-
-  imagensProcessamento.forEach(
-    function(item) {
-
-      if (!item) {
-
-        return;
-
-      }
-
-
-      item.pipelineFerramentas =
-        clonarPipelineDaImagem(
-          fluxoBase
-        );
-
-
-      // A imagem atual continua com o mesmo fluxo que já possuía.
-      // Nas demais, qualquer resultado anterior deixa de representar
-      // o novo fluxo que acabou de ser copiado.
-      if (
-        item !== imagemAtualSelecionada
-      ) {
-
-        marcarProcessamentoDaImagemComoDesatualizado(
-          item
-        );
-
-      }
-
-    }
-  );
-
-
-  salvarUltimaSessaoProcessamento();
-
-
-  return true;
-
-}
-
-
-// Depois que o usuário confirma a opção, o mesmo fluxo passa
-// a pertencer a todas as imagens da área de processamento.
-async function confirmarAplicacaoFluxoEmTodasImagens() {
-
-  const fluxoCopiado =
-    replicarFluxoAtualParaTodasImagens();
-
-
-  if (!fluxoCopiado) {
-
-    return false;
-
-  }
-
-
-  garantirEstadoSalvamentoAutomaticoImagem(
-    imagemAtualSelecionada
-  );
-
-
-  // Se a imagem atual já estava vinculada a um projeto,
-  // o mesmo vínculo de autosave passa para todas as imagens.
-  if (
-    imagemAtualSelecionada
-      .salvamentoAutomaticoAtivo &&
-    imagemAtualSelecionada
-      .projetoSalvamentoAutomaticoId
-  ) {
-
-    propagarSalvamentoAutomaticoAtualParaTodasImagens();
-
-    await salvarFluxogramaAutomaticamenteSeAtivo(
-      imagemAtualSelecionada
-    );
-
-  }
-
-
-  desenharFluxograma();
-
-  salvarUltimaSessaoProcessamento();
-
-
-  statusText.innerText =
-    "O mesmo fluxograma foi aplicado em todas as imagens. Clique em Processar fluxo para executar.";
-
-
-  return true;
-
-}
-
-
-// O checkbox agora pede confirmação antes de copiar o fluxo.
-// Se o usuário responder Não, ele volta a ficar desmarcado.
-function configurarSalvamentoAutomaticoTodasImagens() {
-
-  const check =
-    document.getElementById(
-      "checkAplicarTodasImagens"
-    );
-
-
-  if (
-    !check ||
-    check.dataset.listenerAutosave ===
-      "true"
-  ) {
-
-    return;
-
-  }
-
-
-  check.addEventListener(
-    "change",
-    async function() {
-
-      // Desmarcar não altera os fluxos que já foram copiados.
-      // Apenas desativa o modo de aplicar em todas dali em diante.
-      if (!check.checked) {
-
-        salvarUltimaSessaoProcessamento();
-
-        return;
-
-      }
-
-
-      if (!imagemAtualSelecionada) {
-
-        check.checked =
-          false;
-
-        alert(
-          "Nenhuma imagem está selecionada."
-        );
-
-        salvarUltimaSessaoProcessamento();
-
-        return;
-
-      }
-
-
-      sincronizarPipelineAtualNaImagem();
-
-
-      if (
-        !Array.isArray(pipelineFerramentas) ||
-        pipelineFerramentas.length === 0
-      ) {
-
-        check.checked =
-          false;
-
-        alert(
-          "Adicione pelo menos uma ferramenta ao fluxograma antes de aplicar o fluxo em todas as imagens."
-        );
-
-        salvarUltimaSessaoProcessamento();
-
-        return;
-
-      }
-
-
-      const confirmou =
-        await abrirModalAplicarFluxoTodasImagens();
-
-
-      if (!confirmou) {
-
-        check.checked =
-          false;
-
-        salvarUltimaSessaoProcessamento();
-
-        return;
-
-      }
-
-
-      const aplicado =
-        await confirmarAplicacaoFluxoEmTodasImagens();
-
-
-      if (!aplicado) {
-
-        check.checked =
-          false;
-
-      }
-
-
-      salvarUltimaSessaoProcessamento();
-
-    }
-  );
-
-
-  check.dataset.listenerAutosave =
-    "true";
+  atualizarVisibilidadeBotaoVincularImagensProjeto();
 
 }
 
@@ -3021,9 +2979,8 @@ function configurarInterfaceSalvarFluxoProjeto() {
 
 }
 
-// Mantém os controles do fluxo visíveis.
-// Isso permite usar "Aplicar fluxo em todas as imagens" também
-// quando a imagem atual ainda possui fluxograma vazio.
+// Mantém os controles do fluxo visíveis, inclusive o botão de vínculo
+// quando a imagem atual pertence a um projeto e existem imagens fora dele.
 function atualizarControleSalvarFluxoProjeto() {
 
   if (!containerSalvarFluxoProjeto) return;
@@ -3142,34 +3099,20 @@ async function salvarFluxoComoProjeto() {
     fecharModalSalvarFluxoProjeto();
 
 
-    // Qualquer salvamento pelo botão "Salvar fluxo"
-    // passa a ativar o autosave da imagem atual.
-    // Se "Aplicar fluxo em todas as imagens" estiver marcado,
-    // o vínculo é disponibilizado para todas as imagens.
-    const aplicarAutosaveEmTodas =
-      deveAplicarFluxoEmTodasImagens();
-
-
+    // Salvar fluxo cria um novo projeto somente para a imagem atual.
+    // Se ela pertencia a outro projeto, passa a ficar independente daquele grupo.
     ativarSalvamentoAutomaticoProjeto(
       idProjetoSalvo,
       nomeProjeto,
-      imagemAtualSelecionada,
-      aplicarAutosaveEmTodas
+      imagemAtualSelecionada
     );
 
+    atualizarNomeProjetoProcessamento();
 
     statusText.innerText =
-      aplicarAutosaveEmTodas
-        ? (
-            'Fluxo salvo no projeto "' +
-            nomeProjeto +
-            '". Salvamento automático ativado em todas as imagens.'
-          )
-        : (
-            'Fluxo salvo no projeto "' +
-            nomeProjeto +
-            '". Salvamento automático ativado nesta imagem.'
-          );
+      'Fluxo salvo no projeto "' +
+      nomeProjeto +
+      '". Salvamento automático ativado nesta imagem.';
 
   } catch (error) {
 
@@ -3237,13 +3180,13 @@ async function restaurarProjetoSalvoSeNecessario() {
           );
 
     // O projeto fornece somente o fluxo inicial.
-    // Ele será associado apenas à primeira imagem carregada.
+    // Ele será associado a todas as imagens escolhidas para abrir este projeto.
     pipelineProjetoPendente =
       clonarPipelineDaImagem(pipelineProjeto);
 
     // Como as imagens ainda serão criadas logo depois,
     // guarda temporariamente o vínculo do projeto.
-    // Ele será aplicado SOMENTE à primeira imagem carregada.
+    // Ele será aplicado a TODAS as imagens carregadas para este projeto.
     projetoSalvamentoAutomaticoPendente = {
 
       id:
@@ -3423,9 +3366,9 @@ async function loadFiles() {
 
     }
 
-    // Se veio de um projeto salvo, o fluxo do projeto pertence
-    // inicialmente somente à primeira imagem e tem prioridade
-    // sobre qualquer sessão anterior.
+    // Se veio de um projeto salvo, TODAS as imagens escolhidas passam
+    // a pertencer ao mesmo projeto e recebem exatamente o mesmo fluxo.
+    // Nenhuma delas é processada automaticamente.
     if (
       projetoRestaurado &&
       Array.isArray(pipelineProjetoPendente)
@@ -3434,27 +3377,42 @@ async function loadFiles() {
       imagemAtualSelecionada =
         imagensProcessamento[0];
 
-      imagemAtualSelecionada.pipelineFerramentas =
-        clonarPipelineDaImagem(pipelineProjetoPendente);
-
-      pipelineProjetoPendente = null;
-
-
-      if (
-        projetoSalvamentoAutomaticoPendente
-      ) {
-
-        ativarSalvamentoAutomaticoProjeto(
-          projetoSalvamentoAutomaticoPendente.id,
-          projetoSalvamentoAutomaticoPendente.nome,
-          imagemAtualSelecionada,
-          false
+      const fluxoProjetoAberto =
+        clonarPipelineDaImagem(
+          pipelineProjetoPendente
         );
 
-        projetoSalvamentoAutomaticoPendente =
-          null;
+      imagensProcessamento.forEach(
+        function(item) {
 
-      }
+          item.pipelineFerramentas =
+            clonarPipelineDaImagem(
+              fluxoProjetoAberto
+            );
+
+          invalidarProcessamentoDaImagem(item);
+
+          if (
+            projetoSalvamentoAutomaticoPendente
+          ) {
+
+            definirSalvamentoAutomaticoImagem(
+              item,
+              projetoSalvamentoAutomaticoPendente.id,
+              projetoSalvamentoAutomaticoPendente.nome
+            );
+
+          }
+
+        }
+      );
+
+      pipelineProjetoPendente = null;
+      projetoSalvamentoAutomaticoPendente = null;
+
+      carregarSalvamentoAutomaticoDaImagem(
+        imagemAtualSelecionada
+      );
 
     }
 
@@ -3749,38 +3707,19 @@ async function adicionarMaisImagensAoProcessamento(
       arquivos || []
     );
 
-
   if (
     listaArquivos.length === 0
   ) {
-
     return;
-
   }
-
 
   let proximoIdProcessamento =
     obterProximoIdProcessamentoImagem();
-
-
-  // Captura o vínculo atual uma única vez antes de criar as novas imagens.
-  // Assim, adicionar arquivos não interrompe o projeto/autosave em andamento.
-  const projetoAtualDaSessao =
-    obterProjetoAtualDaSessaoProcessamento();
-
-  const herdarSalvamentoAutomatico =
-    Boolean(
-      projetoAtualDaSessao.id &&
-      projetoAtualDaSessao
-        .salvamentoAutomaticoAtivo
-    );
-
 
   try {
 
     statusText.innerText =
       "Adicionando novas imagens...";
-
 
     for (
       const file of listaArquivos
@@ -3789,14 +3728,12 @@ async function adicionarMaisImagensAoProcessamento(
       const nomeArquivo =
         file.name.toLowerCase();
 
-
       const type =
         nomeArquivo.endsWith(".dcm") ||
         nomeArquivo.endsWith(".dicom") ||
         file.type === "application/dicom"
           ? "dicom"
           : "image";
-
 
       const registro = {
 
@@ -3814,12 +3751,10 @@ async function adicionarMaisImagensAoProcessamento(
 
       };
 
-
       const idBanco =
         await adicionarRegistroArquivoNoBanco(
           registro
         );
-
 
       const novoItem = {
 
@@ -3853,27 +3788,25 @@ async function adicionarMaisImagensAoProcessamento(
         pipelineProcessado:
           [],
 
+        // Imagens adicionadas depois entram sempre independentes.
+        // Elas só recebem um projeto quando o usuário usar o botão
+        // "Vincular imagens a esse projeto".
         pipelineFerramentas:
           [],
 
         salvamentoAutomaticoAtivo:
-          herdarSalvamentoAutomatico,
+          false,
 
         salvamentoAutomaticoPerguntado:
-          herdarSalvamentoAutomatico,
+          false,
 
         projetoSalvamentoAutomaticoId:
-          herdarSalvamentoAutomatico
-            ? projetoAtualDaSessao.id
-            : null,
+          null,
 
         projetoSalvamentoAutomaticoNome:
-          herdarSalvamentoAutomatico
-            ? projetoAtualDaSessao.nome
-            : ""
+          ""
 
       };
-
 
       imagensProcessamento.push(
         novoItem
@@ -3881,18 +3814,16 @@ async function adicionarMaisImagensAoProcessamento(
 
     }
 
-
     redesenharCardsImagens();
     salvarUltimaSessaoProcessamento();
     atualizarNomeProjetoProcessamento();
 
-
     statusText.innerText =
       listaArquivos.length === 1
-        ? "1 imagem adicionada à área de processamento."
+        ? "1 imagem adicionada à área de processamento. Ela ainda não pertence a nenhum projeto."
         : (
             listaArquivos.length +
-            " imagens adicionadas à área de processamento."
+            " imagens adicionadas à área de processamento. Elas ainda não pertencem a nenhum projeto."
           );
 
   } catch (error) {
@@ -3901,7 +3832,6 @@ async function adicionarMaisImagensAoProcessamento(
       "Erro ao adicionar novas imagens:",
       error
     );
-
 
     alert(
       "Não foi possível adicionar as novas imagens: " +
@@ -7310,14 +7240,6 @@ async function removerEtapaPipeline(idEtapa) {
   // Salva o novo fluxo dentro da imagem atual.
   sincronizarPipelineAtualNaImagem();
 
-  // Se a opção de todas estiver ativa, a remoção também é
-  // refletida nas demais imagens para manter o mesmo fluxograma.
-  if (deveAplicarFluxoEmTodasImagens()) {
-
-    replicarFluxoAtualParaTodasImagens();
-
-  }
-
   // O último resultado permanece visível. O novo fluxo fica marcado
   // como pendente até o usuário clicar novamente em Processar fluxo.
   marcarProcessamentoDaImagemComoDesatualizado(imagemAtualSelecionada);
@@ -7484,74 +7406,55 @@ async function processarFluxoPeloBotao() {
     return;
   }
 
-  const aplicarEmTodas =
-    deveAplicarFluxoEmTodasImagens();
+  sincronizarPipelineAtualNaImagem();
 
-  if (aplicarEmTodas) {
-
-    const existeAlgumFluxo =
-      imagensProcessamento.some(function(item) {
-
-        return (
-          item &&
-          Array.isArray(item.pipelineFerramentas) &&
-          item.pipelineFerramentas.length > 0
-        );
-
-      });
-
-    if (!existeAlgumFluxo) {
-
-      alert("Nenhuma imagem possui ferramentas no fluxograma.");
-
-      return;
-    }
-
-  } else if (pipelineFerramentas.length === 0) {
+  if (pipelineFerramentas.length === 0) {
 
     alert("Adicione pelo menos uma ferramenta ao fluxograma antes de processar.");
-
     return;
 
   }
 
   try {
 
-    // Mantém o fluxo global sincronizado com a imagem aberta.
-    sincronizarPipelineAtualNaImagem();
+    const imagemSelecionadaAntes =
+      imagemAtualSelecionada;
 
-    // Checkbox marcado: processa todas as imagens,
-    // cada uma com o fluxo que estiver salvo nela.
-    if (deveAplicarFluxoEmTodasImagens()) {
+    const idProjetoAtual =
+      obterIdProjetoDaImagem(
+        imagemSelecionadaAntes
+      );
 
-      await processarTodasAsImagensComPipeline();
+    const imagensParaProcessar =
+      idProjetoAtual
+        ? obterImagensDoMesmoProjeto(
+            imagemSelecionadaAntes
+          )
+        : [imagemSelecionadaAntes];
 
-      // Mantém na tela a imagem que já estava selecionada.
-      await openFile(imagemAtualSelecionada);
+    for (
+      const item of imagensParaProcessar
+    ) {
 
-      atualizarCardSelecionado();
+      imagemAtualSelecionada = item;
+      carregarPipelineDaImagem(item);
 
-      if (modoComparativoAtivo) {
-        etapaComparativoSelecionada = "original";
-        await atualizarImagemComparativa();
-        desenharFluxograma();
+      if (pipelineFerramentas.length > 0) {
+        await processarImagemSelecionada(item);
       }
 
-      if (
-        analiseCarregada &&
-        typeof atualizarAnaliseDaImagemAtual === "function"
-      ) {
-        await atualizarAnaliseDaImagemAtual();
-      }
-
-      statusText.innerText = "Fluxo processado em todas as imagens.";
-      return;
     }
 
-    // Checkbox desmarcado: processa somente a imagem exibida.
-    await processarImagemSelecionada(imagemAtualSelecionada);
+    imagemAtualSelecionada =
+      imagemSelecionadaAntes;
 
-    await openFile(imagemAtualSelecionada);
+    carregarPipelineDaImagem(
+      imagemAtualSelecionada
+    );
+
+    await openFile(
+      imagemAtualSelecionada
+    );
 
     atualizarCardSelecionado();
 
@@ -7569,8 +7472,16 @@ async function processarFluxoPeloBotao() {
     }
 
     statusText.innerText =
-      "Fluxo processado na imagem atual: " +
-      imagemAtualSelecionada.name;
+      idProjetoAtual
+        ? (
+            "Fluxo processado nas " +
+            imagensParaProcessar.length +
+            " imagem(ns) vinculada(s) ao projeto atual."
+          )
+        : (
+            "Fluxo processado na imagem atual: " +
+            imagemAtualSelecionada.name
+          );
 
   } catch (error) {
 
@@ -7580,7 +7491,9 @@ async function processarFluxoPeloBotao() {
       "Não foi possível processar o fluxo: " +
       (error.message || String(error))
     );
+
   }
+
 }
 
 
@@ -7641,14 +7554,6 @@ async function aplicarPipelineAposAdicionarEtapa(mensagemImagemAtual, mensagemTo
 
   // Salva o fluxo atualizado na imagem atual.
   sincronizarPipelineAtualNaImagem();
-
-  // Se o usuário já confirmou "Aplicar fluxo em todas as imagens",
-  // qualquer nova etapa mantém o mesmo fluxograma nas demais imagens.
-  if (deveAplicarFluxoEmTodasImagens()) {
-
-    replicarFluxoAtualParaTodasImagens();
-
-  }
 
   // Mantém o último resultado processado visível e apenas marca que
   // existem etapas novas aguardando execução. Quando o usuário clicar
@@ -9726,15 +9631,7 @@ function deveIgnorarPixelZeroFerramentas() {
 
 }
 
-function deveAplicarFluxoEmTodasImagens() {
 
-  const check = document.getElementById("checkAplicarTodasImagens");
-
-  if (!check) return false;
-
-  return check.checked;
-
-}
 
 
 // =============================================================
@@ -16788,20 +16685,6 @@ async function confirmarImportacaoFluxo() {
     "";
 
 
-  const checkAplicarTodas =
-    document.getElementById(
-      "checkAplicarTodasImagens"
-    );
-
-
-  if (checkAplicarTodas) {
-
-    checkAplicarTodas.checked =
-      false;
-
-  }
-
-
   carregarPipelineDaImagem(
     imagemAtualSelecionada
   );
@@ -17208,8 +17091,7 @@ configurarInterfaceCopiarColarFluxo();
 configurarLinkMenuInicio();
 configurarLinkMenuProjetos();
 configurarModalPerguntaSalvarFluxograma();
-configurarModalAplicarFluxoTodasImagens();
-configurarSalvamentoAutomaticoTodasImagens();
+configurarVinculoImagensProjeto();
 configurarRedimensionamentoMiniaturas();
 configurarAplicacaoBrilhoContrasteFluxograma();
 configurarExportacaoImagens();

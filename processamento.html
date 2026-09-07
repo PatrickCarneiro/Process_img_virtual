@@ -1460,25 +1460,72 @@
       grid-column: 1 / -1;
     }
 
-    .opcao_aplicar_fluxo_todas {
+    .opcao_vincular_imagens_projeto {
+      display: none;
+      width: 100%;
       margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.045);
-      border: 1px solid rgba(255,255,255,0.08);
     }
 
-    .opcao_aplicar_fluxo_todas label {
+    .opcao_vincular_imagens_projeto.ativo {
+      display: block;
+    }
+
+    #botaoVincularImagensProjeto {
+      width: 100%;
+    }
+
+    .lista_imagens_vinculo_projeto {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      margin-top: 14px;
+      overflow-y: auto;
+    }
+
+    .item_imagem_vinculo_projeto {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 12px;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.045);
       cursor: pointer;
     }
 
-    .opcao_aplicar_fluxo_todas input {
+    .item_imagem_vinculo_projeto:hover {
+      background: rgba(192,132,252,0.10);
+      border-color: rgba(192,132,252,0.30);
+    }
+
+    .item_imagem_vinculo_projeto input {
       width: auto;
+      flex: 0 0 auto;
       cursor: pointer;
+    }
+
+    .dados_imagem_vinculo_projeto {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .nome_imagem_vinculo_projeto {
+      display: block;
+      overflow: hidden;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .projeto_atual_imagem_vinculo {
+      display: block;
+      margin-top: 3px;
+      color: rgba(255,255,255,0.62);
+      font-size: 11px;
     }
 
     /* =========================================================
@@ -3027,12 +3074,18 @@
 
         </div>
 
-        <div class="opcao_aplicar_fluxo_todas">
+        <div
+          class="opcao_vincular_imagens_projeto"
+          id="containerVincularImagensProjeto"
+        >
 
-          <label>
-            <input type="checkbox" id="checkAplicarTodasImagens">
-            Aplicar fluxo em todas as imagens
-          </label>
+          <button
+            type="button"
+            id="botaoVincularImagensProjeto"
+            class="botao_controle_fluxo"
+          >
+            Vincular imagens a esse projeto
+          </button>
 
         </div>
 
@@ -3281,38 +3334,44 @@
   </div>
 
 
-  <!-- MODAL: CONFIRMA A APLICAÇÃO DO MESMO FLUXO EM TODAS AS IMAGENS -->
+  <!-- MODAL: VINCULA IMAGENS AO PROJETO DA IMAGEM ATUAL -->
   <div
     class="modal_confirmacao_salvar_fluxograma"
-    id="modalConfirmarAplicarFluxoTodasImagens"
+    id="modalVincularImagensProjeto"
   >
 
     <div class="caixa_confirmacao_salvar_fluxograma">
 
       <h3>
-        Aplicar fluxo em todas as imagens
+        Vincular imagens ao projeto
       </h3>
 
       <p>
-        Deseja aplicar o mesmo fluxo em todas as imagens?
+        Selecione as imagens que deseja vincular ao projeto
+        <strong id="nomeProjetoModalVinculo"></strong>.
       </p>
+
+      <div
+        class="lista_imagens_vinculo_projeto"
+        id="listaImagensVinculoProjeto"
+      ></div>
 
       <div class="acoes_confirmacao_salvar_fluxograma">
 
         <button
           type="button"
           class="botao_confirmacao_salvar_fluxograma secundario"
-          id="botaoNaoAplicarFluxoTodasImagens"
+          id="botaoCancelarVinculoProjeto"
         >
-          Não
+          Cancelar
         </button>
 
         <button
           type="button"
           class="botao_confirmacao_salvar_fluxograma"
-          id="botaoSimAplicarFluxoTodasImagens"
+          id="botaoConfirmarVinculoProjeto"
         >
-          Sim
+          Vincular selecionadas
         </button>
 
       </div>
