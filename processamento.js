@@ -76,6 +76,12 @@ let etapaComparativoSelecionada = "original";
 let imagemDicomOriginalAtual = null;
 
 const areaImagemProcessada = document.getElementById("areaImagemProcessada");
+const legendaComparacaoOriginal = document.getElementById("legendaComparacaoOriginal");
+const legendaComparacaoProcessada = document.getElementById("legendaComparacaoProcessada");
+const botaoComparacaoEsquerda = document.getElementById("botaoComparacaoEsquerda");
+const botaoComparacaoDireita = document.getElementById("botaoComparacaoDireita");
+let selecaoComparacaoDireita = "resultado";
+let ladoComparacaoAtivo = "esquerda";
 const botaoRecorte = document.getElementById("botaoRecorte");
 const opcoesRecorte = document.getElementById("opcoesRecorte");
 const botaoRecorteRetangular = document.getElementById("botaoRecorteRetangular");
@@ -7163,8 +7169,340 @@ async function aplicarFerramenta(nome) {
   alert("Ferramenta ainda não implementada no pipeline.");
 }
 
+// =============================================================
+// REORDENAÇÃO DAS ETAPAS DO FLUXOGRAMA POR ARRASTAR E SOLTAR
+// =============================================================
+//
+// A reordenação altera somente a ordem das etapas do pipeline.
+// O último resultado processado permanece visível até o usuário clicar
+// novamente em "Processar fluxo". Se a imagem pertencer a um projeto,
+// a nova ordem é refletida automaticamente em todas as imagens vinculadas.
+
+let indiceEtapaArrastadaFluxograma = null;
+let idEtapaArrastadaFluxograma = null;
+let blocoDestinoArrasteFluxograma = null;
+let posicaoDestinoArrasteFluxograma = null;
+
+
+// Remove somente os destaques visuais usados durante o arraste.
+function limparDestinoArrasteFluxograma() {
+
+  const blocos =
+    areaFluxograma.querySelectorAll(
+      ".bloco_fluxo.destino_arraste_antes, .bloco_fluxo.destino_arraste_depois"
+    );
+
+  blocos.forEach(function(bloco) {
+    bloco.classList.remove("destino_arraste_antes");
+    bloco.classList.remove("destino_arraste_depois");
+  });
+
+  blocoDestinoArrasteFluxograma = null;
+  posicaoDestinoArrasteFluxograma = null;
+
+}
+
+
+// Finaliza o estado visual e as variáveis temporárias do arraste.
+function limparEstadoArrasteFluxograma() {
+
+  limparDestinoArrasteFluxograma();
+
+  const blocosArrastando =
+    areaFluxograma.querySelectorAll(
+      ".bloco_fluxo.arrastando"
+    );
+
+  blocosArrastando.forEach(function(bloco) {
+    bloco.classList.remove("arrastando");
+  });
+
+  indiceEtapaArrastadaFluxograma = null;
+  idEtapaArrastadaFluxograma = null;
+
+}
+
+
+// Move uma etapa de uma posição para outra sem executar processamento.
+async function reordenarEtapaFluxograma(
+  indiceOrigem,
+  indiceDestino,
+  posicaoDestino
+) {
+
+  if (
+    !Number.isInteger(indiceOrigem) ||
+    !Number.isInteger(indiceDestino) ||
+    indiceOrigem < 0 ||
+    indiceDestino < 0 ||
+    indiceOrigem >= pipelineFerramentas.length ||
+    indiceDestino >= pipelineFerramentas.length
+  ) {
+    return false;
+  }
+
+  if (
+    posicaoDestino !== "antes" &&
+    posicaoDestino !== "depois"
+  ) {
+    return false;
+  }
+
+  const ordemAnterior =
+    pipelineFerramentas.map(function(etapa) {
+      return etapa && etapa.id;
+    });
+
+  const etapaMovida =
+    pipelineFerramentas.splice(
+      indiceOrigem,
+      1
+    )[0];
+
+  if (!etapaMovida) {
+    return false;
+  }
+
+  // Depois que a etapa de origem é removida, os índices localizados
+  // depois dela recuam uma posição.
+  let indiceDestinoAjustado =
+    indiceDestino;
+
+  if (indiceOrigem < indiceDestino) {
+    indiceDestinoAjustado -= 1;
+  }
+
+  let indiceInsercao =
+    posicaoDestino === "depois"
+      ? indiceDestinoAjustado + 1
+      : indiceDestinoAjustado;
+
+  indiceInsercao = Math.max(
+    0,
+    Math.min(
+      indiceInsercao,
+      pipelineFerramentas.length
+    )
+  );
+
+  pipelineFerramentas.splice(
+    indiceInsercao,
+    0,
+    etapaMovida
+  );
+
+  const ordemNova =
+    pipelineFerramentas.map(function(etapa) {
+      return etapa && etapa.id;
+    });
+
+  const ordemMudou =
+    ordemAnterior.length === ordemNova.length &&
+    ordemAnterior.some(function(idEtapa, indice) {
+      return idEtapa !== ordemNova[indice];
+    });
+
+  if (!ordemMudou) {
+    desenharFluxograma();
+    return false;
+  }
+
+  // Salva a nova ordem na imagem atual e, quando existir projeto,
+  // sincroniza automaticamente o mesmo fluxo nas demais imagens dele.
+  sincronizarPipelineAtualNaImagem();
+
+  // A imagem atual também fica marcada como desatualizada. As demais
+  // imagens do mesmo projeto são marcadas pela própria sincronização.
+  marcarProcessamentoDaImagemComoDesatualizado(
+    imagemAtualSelecionada
+  );
+
+  desenharFluxograma();
+
+  statusText.innerText =
+    "Ordem do fluxograma alterada. O resultado anterior foi mantido. Clique em Processar fluxo para executar na nova ordem.";
+
+  // Se houver projeto vinculado e autosave ativo, grava a nova ordem.
+  await salvarFluxogramaAutomaticamenteSeAtivo();
+
+  return true;
+
+}
+
+
+// Torna somente os blocos de etapas arrastáveis. O bloco Original não
+// recebe esta configuração e permanece fixo no início do fluxograma.
+function configurarArrasteEtapaFluxograma(
+  bloco,
+  etapa,
+  index
+) {
+
+  if (!bloco || !etapa) {
+    return;
+  }
+
+  bloco.draggable = true;
+  bloco.dataset.indicePipeline = String(index);
+  bloco.dataset.idEtapaPipeline = String(etapa.id);
+
+  // O cursor visual acompanha o CSS criado especificamente para
+  // a reordenação do fluxograma.
+  bloco.style.cursor = "grab";
+
+  bloco.addEventListener(
+    "dragstart",
+    function(event) {
+
+      // O botão Remover continua executando apenas a remoção da etapa.
+      if (
+        event.target &&
+        event.target.closest &&
+        event.target.closest(".remover")
+      ) {
+        event.preventDefault();
+        return;
+      }
+
+      indiceEtapaArrastadaFluxograma = index;
+      idEtapaArrastadaFluxograma = etapa.id;
+
+      bloco.classList.add("arrastando");
+
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(
+          "text/plain",
+          String(etapa.id)
+        );
+      }
+
+    }
+  );
+
+  bloco.addEventListener(
+    "dragover",
+    function(event) {
+
+      if (
+        indiceEtapaArrastadaFluxograma === null
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+
+      limparDestinoArrasteFluxograma();
+
+      const retangulo =
+        bloco.getBoundingClientRect();
+
+      const metadeVertical =
+        retangulo.top +
+        (retangulo.height / 2);
+
+      const posicao =
+        event.clientY < metadeVertical
+          ? "antes"
+          : "depois";
+
+      bloco.classList.add(
+        posicao === "antes"
+          ? "destino_arraste_antes"
+          : "destino_arraste_depois"
+      );
+
+      blocoDestinoArrasteFluxograma = bloco;
+      posicaoDestinoArrasteFluxograma = posicao;
+
+    }
+  );
+
+  bloco.addEventListener(
+    "dragleave",
+    function(event) {
+
+      if (
+        event.relatedTarget &&
+        bloco.contains(event.relatedTarget)
+      ) {
+        return;
+      }
+
+      bloco.classList.remove(
+        "destino_arraste_antes"
+      );
+      bloco.classList.remove(
+        "destino_arraste_depois"
+      );
+
+      if (
+        blocoDestinoArrasteFluxograma === bloco
+      ) {
+        blocoDestinoArrasteFluxograma = null;
+        posicaoDestinoArrasteFluxograma = null;
+      }
+
+    }
+  );
+
+  bloco.addEventListener(
+    "drop",
+    async function(event) {
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const indiceOrigem =
+        indiceEtapaArrastadaFluxograma;
+
+      const indiceDestinoAtual =
+        Number(
+          bloco.dataset.indicePipeline
+        );
+
+      const retangulo =
+        bloco.getBoundingClientRect();
+
+      const posicao =
+        event.clientY <
+        retangulo.top +
+        (retangulo.height / 2)
+          ? "antes"
+          : "depois";
+
+      limparDestinoArrasteFluxograma();
+
+      await reordenarEtapaFluxograma(
+        indiceOrigem,
+        indiceDestinoAtual,
+        posicao
+      );
+
+      indiceEtapaArrastadaFluxograma = null;
+      idEtapaArrastadaFluxograma = null;
+
+    }
+  );
+
+  bloco.addEventListener(
+    "dragend",
+    function() {
+      limparEstadoArrasteFluxograma();
+    }
+  );
+
+}
+
+
 // Desenha o fluxograma com as etapas do pipeline
 function desenharFluxograma() {
+
+  atualizarOpcoesSeletoresComparacao();
 
   areaFluxograma.innerHTML = ""; // Limpa o fluxograma
 
@@ -7172,18 +7510,38 @@ function desenharFluxograma() {
 
   blocoOriginal.className = "bloco_fluxo";
 
-  if (modoComparativoAtivo && etapaComparativoSelecionada === "original") { // se estiver no modo comparativo e a etapa original estiver selecionada
-    blocoOriginal.classList.add("selecionado_comparativo");
-  }
+  if (modoComparativoAtivo) {
 
-  if (modoComparativoAtivo) { 
-    blocoOriginal.onclick = async function() { // Adiciona evento de clique para selecionar a etapa original no modo comparativo
-      await selecionarEtapaComparativo("original");
+    if (String(etapaComparativoSelecionada) === "original") {
+      blocoOriginal.classList.add(
+        "selecionado_comparacao_esquerda"
+      );
+    }
+
+    if (String(selecaoComparacaoDireita) === "original") {
+      blocoOriginal.classList.add(
+        "selecionado_comparacao_direita"
+      );
+    }
+
+    blocoOriginal.onclick = async function() {
+
+      await selecionarEtapaComparativo(
+        "original"
+      );
     };
 
+    blocoOriginal.title =
+      ladoComparacaoAtivo === "direita"
+        ? "Selecionar Original para o lado direito"
+        : "Selecionar Original para o lado esquerdo";
+
     blocoOriginal.style.cursor = "pointer";
+
   } else {
+
     blocoOriginal.style.cursor = "default";
+    blocoOriginal.removeAttribute("title");
   }
 
   blocoOriginal.innerHTML = `
@@ -7205,8 +7563,25 @@ function desenharFluxograma() {
     const bloco = document.createElement("div"); // Cria um bloco para cada etapa do pipeline
     bloco.className = "bloco_fluxo";
 
-    if (modoComparativoAtivo && etapaComparativoSelecionada === etapa.id) { // se estiver no modo comparativo e a etapa atual estiver selecionada
-      bloco.classList.add("selecionado_comparativo");
+    if (modoComparativoAtivo) {
+
+      if (
+        String(etapaComparativoSelecionada) ===
+        String(etapa.id)
+      ) {
+        bloco.classList.add(
+          "selecionado_comparacao_esquerda"
+        );
+      }
+
+      if (
+        String(selecaoComparacaoDireita) ===
+        String(etapa.id)
+      ) {
+        bloco.classList.add(
+          "selecionado_comparacao_direita"
+        );
+      }
     }
 
     let textoParametros = ""; // Texto dos parâmetros
@@ -7495,22 +7870,30 @@ function desenharFluxograma() {
     if (etapa.nome.includes("tons de cinza")) {
     }
 
-    if (modoComparativoAtivo) { 
+    if (modoComparativoAtivo) {
 
-      bloco.onclick = async function(event) { // Adiciona evento de clique para selecionar a etapa no modo comparativo
+      bloco.onclick = async function(event) {
 
-        if (event.target.classList.contains("remover")) { // Se clicou no botão remover
+        if (event.target.classList.contains("remover")) {
           return;
         }
 
-        await selecionarEtapaComparativo(etapa.id);
+        await selecionarEtapaComparativo(
+          etapa.id
+        );
       };
+
+      bloco.title =
+        ladoComparacaoAtivo === "direita"
+          ? "Selecionar esta etapa para o lado direito"
+          : "Selecionar esta etapa para o lado esquerdo";
 
       bloco.style.cursor = "pointer";
 
     } else {
 
       bloco.style.cursor = "default";
+      bloco.removeAttribute("title");
 
     }
 
@@ -7521,6 +7904,13 @@ function desenharFluxograma() {
         Remover
       </button>
     `;
+
+    // Permite mover esta etapa para outra posição do fluxograma.
+    configurarArrasteEtapaFluxograma(
+      bloco,
+      etapa,
+      index
+    );
 
     areaFluxograma.appendChild(bloco);
   });
@@ -8378,10 +8768,22 @@ function resetarZoom() {
 function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
   let limiteLargura = visualizacaoBox.clientWidth - 30;
-  const limiteAltura = visualizacaoBox.clientHeight - 30;
+  let limiteAltura = visualizacaoBox.clientHeight - 30;
 
   if (modoComparativoAtivo) {
-    limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
+
+    const larguraAreaProcessada =
+      areaImagemProcessada && areaImagemProcessada.clientWidth > 0
+        ? areaImagemProcessada.clientWidth
+        : visualizacaoBox.clientWidth / 2;
+
+    const alturaAreaProcessada =
+      areaImagemProcessada && areaImagemProcessada.clientHeight > 0
+        ? areaImagemProcessada.clientHeight
+        : visualizacaoBox.clientHeight - 42;
+
+    limiteLargura = larguraAreaProcessada - 28;
+    limiteAltura = alturaAreaProcessada - 20;
   }
 
   const escalaLargura = limiteLargura / larguraImagem;
@@ -8408,11 +8810,38 @@ function atualizarTamanhoImagemAtual() {
     imagemNormal.style.height = alturaFinal + "px";
   }
 
-  // IMAGEM NORMAL ORIGINAL DO COMPARATIVO
+  // IMAGEM DO LADO ESQUERDO DO COMPARATIVO
   if (imagemOriginalNormal.style.display === "block") {
 
-    imagemOriginalNormal.style.width = larguraFinal + "px";
-    imagemOriginalNormal.style.height = alturaFinal + "px";
+    if (
+      modoComparativoAtivo &&
+      imagemOriginalNormal.naturalWidth > 0 &&
+      imagemOriginalNormal.naturalHeight > 0
+    ) {
+
+      const escalaEsquerda =
+        calcularEscalaAutomaticaComparacao(
+          imagemOriginalNormal.naturalWidth,
+          imagemOriginalNormal.naturalHeight
+        );
+
+      imagemOriginalNormal.style.width =
+        imagemOriginalNormal.naturalWidth *
+        escalaEsquerda *
+        zoomAtual +
+        "px";
+
+      imagemOriginalNormal.style.height =
+        imagemOriginalNormal.naturalHeight *
+        escalaEsquerda *
+        zoomAtual +
+        "px";
+
+    } else {
+
+      imagemOriginalNormal.style.width = larguraFinal + "px";
+      imagemOriginalNormal.style.height = alturaFinal + "px";
+    }
   }
 
   // DICOM PROCESSADO
@@ -8424,11 +8853,37 @@ function atualizarTamanhoImagemAtual() {
     cornerstone.resize(visualizadorDicom, true);
   }
 
-  // DICOM ORIGINAL DO COMPARATIVO
+  // DICOM DO LADO ESQUERDO DO COMPARATIVO
   if (visualizadorDicomOriginal.style.display === "block") {
 
-    visualizadorDicomOriginal.style.width = larguraFinal + "px";
-    visualizadorDicomOriginal.style.height = alturaFinal + "px";
+    if (
+      modoComparativoAtivo &&
+      imagemDicomOriginalAtual
+    ) {
+
+      const escalaEsquerdaDicom =
+        calcularEscalaAutomaticaComparacao(
+          imagemDicomOriginalAtual.width,
+          imagemDicomOriginalAtual.height
+        );
+
+      visualizadorDicomOriginal.style.width =
+        imagemDicomOriginalAtual.width *
+        escalaEsquerdaDicom *
+        zoomAtual +
+        "px";
+
+      visualizadorDicomOriginal.style.height =
+        imagemDicomOriginalAtual.height *
+        escalaEsquerdaDicom *
+        zoomAtual +
+        "px";
+
+    } else {
+
+      visualizadorDicomOriginal.style.width = larguraFinal + "px";
+      visualizadorDicomOriginal.style.height = alturaFinal + "px";
+    }
 
     cornerstone.resize(visualizadorDicomOriginal, true);
   }
@@ -9981,7 +10436,7 @@ function limitarAlturaMiniaturas(
       ? Number(
           redimensionador.dataset.alturaMinima
         )
-      : 120;
+      : 34;
 
   const maximaConfigurada =
     redimensionador
@@ -9994,7 +10449,7 @@ function limitarAlturaMiniaturas(
   const alturaMinima =
     Number.isFinite(minimaConfigurada)
       ? minimaConfigurada
-      : 120;
+      : 34;
 
 
   let alturaMaxima =
@@ -10076,6 +10531,10 @@ function aplicarAlturaMiniaturas(
     "--altura-miniaturas",
     alturaFinal + "px"
   );
+
+  // A mudança da altura das miniaturas altera imediatamente o espaço
+  // disponível para a imagem. Recalcula somente a escala de exibição.
+  agendarReajusteVisualizacaoResponsiva();
 
 
   if (salvarPreferencia) {
@@ -10423,6 +10882,391 @@ function salvarDicomNoCache(item, chave, imagemDicom) {
 
 }
 
+// Mantém válidas as duas seleções do comparativo em relação ao fluxo atual.
+// O usuário escolhe primeiro qual lado deseja alterar e depois clica
+// diretamente no bloco desejado do fluxograma.
+function atualizarOpcoesSeletoresComparacao() {
+
+  const valoresValidos =
+    new Set([
+      "original",
+      "resultado"
+    ]);
+
+  pipelineFerramentas.forEach(function(etapa) {
+
+    if (!etapa || etapa.id === null || etapa.id === undefined) {
+      return;
+    }
+
+    valoresValidos.add(
+      String(etapa.id)
+    );
+
+  });
+
+  if (
+    !valoresValidos.has(
+      String(etapaComparativoSelecionada)
+    )
+  ) {
+    etapaComparativoSelecionada = "original";
+  }
+
+  if (
+    !valoresValidos.has(
+      String(selecaoComparacaoDireita)
+    )
+  ) {
+    selecaoComparacaoDireita = "resultado";
+  }
+}
+
+
+function obterNomeSelecaoComparacao(
+  selecao
+) {
+
+  if (selecao === "original") {
+    return "Original";
+  }
+
+  if (selecao === "resultado") {
+    return "Resultado final";
+  }
+
+  const etapa =
+    pipelineFerramentas.find(function(item) {
+      return (
+        item &&
+        String(item.id) ===
+          String(selecao)
+      );
+    });
+
+  return etapa && etapa.nome
+    ? etapa.nome
+    : "Etapa";
+}
+
+
+// Retorna o conteúdo já disponível para a seleção informada.
+// O comparativo nunca executa o fluxo automaticamente.
+async function obterConteudoSelecaoComparacao(
+  item,
+  selecao
+) {
+
+  if (!item) {
+    return null;
+  }
+
+  if (!item.cacheEtapas) {
+    item.cacheEtapas = {};
+  }
+
+  if (selecao === "original") {
+
+    const cacheOriginal =
+      item.cacheEtapas["original"];
+
+    if (cacheOriginal) {
+      return cacheOriginal;
+    }
+
+    if (item.type === "image") {
+      return {
+        tipo: "image",
+        dataURL: URL.createObjectURL(item.file),
+        origemTemporaria: true
+      };
+    }
+
+    if (item.type === "dicom") {
+      return {
+        tipo: "dicom",
+        imagem: await carregarDicomOriginal(item)
+      };
+    }
+
+    return null;
+  }
+
+  if (selecao === "resultado") {
+
+    if (!item.resultado) {
+      return null;
+    }
+
+    return item.resultado;
+  }
+
+  return (
+    item.cacheEtapas[
+      String(selecao)
+    ] ||
+    null
+  );
+}
+
+
+function limparLadoComparacao(
+  lado
+) {
+
+  if (lado === "esquerda") {
+
+    imagemOriginalNormal.style.display =
+      "none";
+
+    imagemOriginalNormal.style.visibility =
+      "hidden";
+
+    visualizadorDicomOriginal.style.display =
+      "none";
+
+    imagemDicomOriginalAtual = null;
+
+    return;
+  }
+
+  imagemNormal.style.display =
+    "none";
+
+  imagemNormal.style.visibility =
+    "hidden";
+
+  visualizadorDicom.style.display =
+    "none";
+
+  imagemDicomAtual = null;
+
+  if (canvasRecorte && contextoCanvasRecorte) {
+    contextoCanvasRecorte.clearRect(
+      0,
+      0,
+      canvasRecorte.width,
+      canvasRecorte.height
+    );
+  }
+}
+
+
+async function mostrarImagemNormalNoLadoDireitoComparacao(
+  dataURL
+) {
+
+  visualizadorDicom.style.display =
+    "none";
+
+  imagemDicomAtual = null;
+
+  imagemNormal.style.display =
+    "none";
+
+  imagemNormal.style.visibility =
+    "hidden";
+
+  await new Promise(function(resolve, reject) {
+
+    imagemNormal.addEventListener(
+      "load",
+      function() {
+
+        larguraOriginalAtual =
+          imagemNormal.naturalWidth;
+
+        alturaOriginalAtual =
+          imagemNormal.naturalHeight;
+
+        escalaBaseAtual =
+          calcularEscalaAutomatica(
+            larguraOriginalAtual,
+            alturaOriginalAtual
+          );
+
+        imagemNormal.style.width =
+          larguraOriginalAtual *
+          escalaBaseAtual *
+          zoomAtual +
+          "px";
+
+        imagemNormal.style.height =
+          alturaOriginalAtual *
+          escalaBaseAtual *
+          zoomAtual +
+          "px";
+
+        imagemNormal.style.display =
+          "block";
+
+        imagemNormal.style.visibility =
+          "visible";
+
+        resolve();
+
+      },
+      {
+        once: true
+      }
+    );
+
+    imagemNormal.addEventListener(
+      "error",
+      function() {
+        reject(
+          new Error(
+            "Erro ao mostrar imagem no lado direito do comparativo."
+          )
+        );
+      },
+      {
+        once: true
+      }
+    );
+
+    imagemNormal.src =
+      dataURL;
+
+  });
+}
+
+
+async function mostrarDicomNoLadoDireitoComparacao(
+  imagem
+) {
+
+  imagemNormal.style.display =
+    "none";
+
+  imagemNormal.style.visibility =
+    "hidden";
+
+  visualizadorDicom.style.display =
+    "block";
+
+  imagemDicomAtual =
+    imagem;
+
+  larguraOriginalAtual =
+    imagem.width;
+
+  alturaOriginalAtual =
+    imagem.height;
+
+  escalaBaseAtual =
+    calcularEscalaAutomatica(
+      imagem.width,
+      imagem.height
+    );
+
+  visualizadorDicom.style.width =
+    imagem.width *
+    escalaBaseAtual *
+    zoomAtual +
+    "px";
+
+  visualizadorDicom.style.height =
+    imagem.height *
+    escalaBaseAtual *
+    zoomAtual +
+    "px";
+
+  cornerstone.displayImage(
+    visualizadorDicom,
+    imagem
+  );
+
+  const viewport =
+    cornerstone.getViewport(
+      visualizadorDicom
+    );
+
+  viewport.voi = {
+    windowCenter:
+      imagem.windowCenter,
+    windowWidth:
+      imagem.windowWidth
+  };
+
+  viewport.invert =
+    imagem.invert || false;
+
+  viewport.scale =
+    escalaBaseAtual * zoomAtual;
+
+  cornerstone.setViewport(
+    visualizadorDicom,
+    viewport
+  );
+
+  cornerstone.resize(
+    visualizadorDicom,
+    true
+  );
+}
+
+
+async function renderizarSelecaoComparacao(
+  lado,
+  selecao
+) {
+
+  const item =
+    imagemAtualSelecionada;
+
+  const conteudo =
+    await obterConteudoSelecaoComparacao(
+      item,
+      selecao
+    );
+
+  if (!conteudo) {
+
+    limparLadoComparacao(
+      lado
+    );
+
+    return false;
+  }
+
+  if (lado === "esquerda") {
+
+    if (conteudo.tipo === "image") {
+      await mostrarImagemNormalNoComparativo(
+        conteudo.dataURL
+      );
+      return true;
+    }
+
+    if (conteudo.tipo === "dicom") {
+      await mostrarDicomNoComparativo(
+        conteudo.imagem
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  if (conteudo.tipo === "image") {
+    await mostrarImagemNormalNoLadoDireitoComparacao(
+      conteudo.dataURL
+    );
+    return true;
+  }
+
+  if (conteudo.tipo === "dicom") {
+    await mostrarDicomNoLadoDireitoComparacao(
+      conteudo.imagem
+    );
+    return true;
+  }
+
+  return false;
+}
+
+
 async function toggleComparativo() {
 
   if (!imagemAtualSelecionada) {
@@ -10430,22 +11274,40 @@ async function toggleComparativo() {
     return;
   }
 
-  modoComparativoAtivo = !modoComparativoAtivo;
+  modoComparativoAtivo =
+    !modoComparativoAtivo;
 
   if (modoComparativoAtivo) {
 
-    botaoOriginal.classList.add("ativo");
-    areaImagemOriginal.classList.add("ativo");
+    botaoOriginal.classList.add(
+      "ativo"
+    );
 
-    escalaBaseAtual = calcularEscalaAutomaticaComparacao(
-      larguraOriginalAtual,
-      alturaOriginalAtual
+    areaImagemOriginal.classList.add(
+      "ativo"
     );
 
     zoomAtual = 1;
-    atualizarTamanhoImagemAtual();
 
-    etapaComparativoSelecionada = "original";
+    etapaComparativoSelecionada =
+      "original";
+
+    selecaoComparacaoDireita =
+      "resultado";
+
+    ladoComparacaoAtivo =
+      "esquerda";
+
+    atualizarOpcoesSeletoresComparacao();
+    atualizarLegendasComparacao();
+
+    // Aguarda o navegador aplicar a nova largura e altura das duas áreas
+    // antes de calcular a escala das imagens do comparativo.
+    await new Promise(function(resolve) {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(resolve);
+      });
+    });
 
     await atualizarImagemComparativa();
 
@@ -10456,25 +11318,35 @@ async function toggleComparativo() {
 
     atualizarCanvasRecorte();
 
-    statusText.innerText = "Modo comparativo ativo.";
+    statusText.innerText =
+      "Modo comparativo ativo.";
 
   } else {
 
-    botaoOriginal.classList.remove("ativo");
-    areaImagemOriginal.classList.remove("ativo");
-
-    imagemOriginalNormal.style.display = "none";
-    visualizadorDicomOriginal.style.display = "none";
-
-    imagemDicomOriginalAtual = null;
-
-    escalaBaseAtual = calcularEscalaAutomatica(
-      larguraOriginalAtual,
-      alturaOriginalAtual
+    botaoOriginal.classList.remove(
+      "ativo"
     );
 
-    zoomAtual = 1;
-    atualizarTamanhoImagemAtual();
+    areaImagemOriginal.classList.remove(
+      "ativo"
+    );
+
+    imagemOriginalNormal.style.display =
+      "none";
+
+    visualizadorDicomOriginal.style.display =
+      "none";
+
+    imagemDicomOriginalAtual =
+      null;
+
+    atualizarLegendasComparacao();
+
+    // O lado direito pode estar mostrando qualquer etapa durante
+    // a comparação. Ao sair, restaura a visualização normal da imagem.
+    await openFile(
+      imagemAtualSelecionada
+    );
 
     desenharFluxograma();
 
@@ -10483,99 +11355,78 @@ async function toggleComparativo() {
 
     atualizarCanvasRecorte();
 
-    statusText.innerText = "Modo comparativo desativado.";
+    statusText.innerText =
+      "Modo comparativo desativado.";
   }
 }
+
 
 async function atualizarImagemComparativa() {
 
   if (!modoComparativoAtivo) return;
   if (!imagemAtualSelecionada) return;
 
-  const item = imagemAtualSelecionada;
+  atualizarOpcoesSeletoresComparacao();
+  atualizarLegendasComparacao();
 
-  // O comparativo não inicia processamento automaticamente.
-  // A imagem original pode ser visualizada sem executar o fluxo.
+  const esquerdaDisponivel =
+    await renderizarSelecaoComparacao(
+      "esquerda",
+      etapaComparativoSelecionada
+    );
+
+  const direitaDisponivel =
+    await renderizarSelecaoComparacao(
+      "direita",
+      selecaoComparacaoDireita
+    );
+
+  reajustarVisualizacaoAoEspacoDisponivel();
+
+  const nomeEsquerda =
+    obterNomeSelecaoComparacao(
+      etapaComparativoSelecionada
+    );
+
+  const nomeDireita =
+    obterNomeSelecaoComparacao(
+      selecaoComparacaoDireita
+    );
+
   if (
-    imagemPrecisaProcessar(item) &&
-    etapaComparativoSelecionada !== "original"
+    !esquerdaDisponivel ||
+    !direitaDisponivel
   ) {
 
     statusText.innerText =
-      "Processe o fluxo antes de visualizar uma etapa processada no comparativo.";
+      "Uma das visualizações selecionadas ainda não possui resultado. Clique em Processar fluxo para gerar as etapas necessárias.";
 
     return;
   }
 
-  if (!item.cacheEtapas) {
-    item.cacheEtapas = {};
-  }
-
-  if (etapaComparativoSelecionada === "original") {
-
-    const cacheOriginal = item.cacheEtapas["original"];
-
-    if (cacheOriginal && cacheOriginal.tipo === "image") {
-      await mostrarImagemNormalNoComparativo(cacheOriginal.dataURL);
-      statusText.innerText = "Comparativo mostrando: Original.";
-      return;
-    }
-
-    if (cacheOriginal && cacheOriginal.tipo === "dicom") {
-      await mostrarDicomNoComparativo(cacheOriginal.imagem);
-      statusText.innerText = "Comparativo mostrando: Original.";
-      return;
-    }
-
-    await abrirImagemOriginalNoComparativo(item);
-
-    statusText.innerText = "Comparativo mostrando: Original.";
-
-    return;
-  }
-
-  const etapa = pipelineFerramentas.find(function(etapa) {
-    return etapa.id === etapaComparativoSelecionada;
-  });
-
-  if (!etapa) return;
-
-  const cache = item.cacheEtapas[etapa.id];
-
-  if (!cache) {
-
-    statusText.innerText =
-      "Essa etapa ainda não possui resultado. Clique em Processar fluxo.";
-
-    return;
-  }
-
-  statusText.innerText = "Carregando etapa salva no comparativo: " + etapa.nome + "...";
-
-  await esperarAtualizacaoTela();
-
-  if (cache.tipo === "image") {
-
-    await mostrarImagemNormalNoComparativo(cache.dataURL);
-
-    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
-
-    return;
-  }
-
-  if (cache.tipo === "dicom") {
-
-    await mostrarDicomNoComparativo(cache.imagem);
-
-    statusText.innerText = "Comparativo mostrando: " + etapa.nome;
-
-    return;
-  }
+  statusText.innerText =
+    "Comparando: " +
+    nomeEsquerda +
+    " × " +
+    nomeDireita +
+    ".";
 }
 
-async function selecionarEtapaComparativo(etapaId) {
 
-  etapaComparativoSelecionada = etapaId;
+async function selecionarEtapaComparativo(
+  etapaId
+) {
+
+  if (ladoComparacaoAtivo === "direita") {
+    selecaoComparacaoDireita =
+      etapaId;
+  } else {
+    etapaComparativoSelecionada =
+      etapaId;
+  }
+
+  atualizarOpcoesSeletoresComparacao();
+  atualizarLegendasComparacao();
 
   desenharFluxograma();
 
@@ -10583,6 +11434,102 @@ async function selecionarEtapaComparativo(etapaId) {
     await atualizarImagemComparativa();
   }
 }
+
+
+function atualizarControleLadoComparacao() {
+
+  const esquerdaAtiva =
+    ladoComparacaoAtivo !== "direita";
+
+  if (botaoComparacaoEsquerda) {
+
+    botaoComparacaoEsquerda.classList.toggle(
+      "ativo",
+      esquerdaAtiva
+    );
+
+    botaoComparacaoEsquerda.setAttribute(
+      "aria-pressed",
+      esquerdaAtiva
+        ? "true"
+        : "false"
+    );
+  }
+
+  if (botaoComparacaoDireita) {
+
+    botaoComparacaoDireita.classList.toggle(
+      "ativo",
+      !esquerdaAtiva
+    );
+
+    botaoComparacaoDireita.setAttribute(
+      "aria-pressed",
+      esquerdaAtiva
+        ? "false"
+        : "true"
+    );
+  }
+}
+
+
+function configurarComparacaoPeloFluxograma() {
+
+  if (
+    botaoComparacaoEsquerda &&
+    botaoComparacaoEsquerda.dataset.listenerComparacao !==
+      "true"
+  ) {
+
+    botaoComparacaoEsquerda.addEventListener(
+      "click",
+      function() {
+
+        ladoComparacaoAtivo =
+          "esquerda";
+
+        atualizarControleLadoComparacao();
+
+        if (modoComparativoAtivo) {
+          desenharFluxograma();
+        }
+      }
+    );
+
+    botaoComparacaoEsquerda.dataset.listenerComparacao =
+      "true";
+  }
+
+  if (
+    botaoComparacaoDireita &&
+    botaoComparacaoDireita.dataset.listenerComparacao !==
+      "true"
+  ) {
+
+    botaoComparacaoDireita.addEventListener(
+      "click",
+      function() {
+
+        ladoComparacaoAtivo =
+          "direita";
+
+        atualizarControleLadoComparacao();
+
+        if (modoComparativoAtivo) {
+          desenharFluxograma();
+        }
+      }
+    );
+
+    botaoComparacaoDireita.dataset.listenerComparacao =
+      "true";
+  }
+
+  atualizarOpcoesSeletoresComparacao();
+  atualizarLegendasComparacao();
+  atualizarControleLadoComparacao();
+}
+
 
 async function abrirImagemOriginalNoComparativo(item) {
 
@@ -11093,8 +12040,18 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
 function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
 
-  const limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
-  const limiteAltura = visualizacaoBox.clientHeight - 30;
+  const larguraAreaOriginal =
+    areaImagemOriginal && areaImagemOriginal.clientWidth > 0
+      ? areaImagemOriginal.clientWidth
+      : visualizacaoBox.clientWidth / 2;
+
+  const alturaAreaOriginal =
+    areaImagemOriginal && areaImagemOriginal.clientHeight > 0
+      ? areaImagemOriginal.clientHeight
+      : visualizacaoBox.clientHeight - 42;
+
+  const limiteLargura = larguraAreaOriginal - 28;
+  const limiteAltura = alturaAreaOriginal - 20;
 
   const escalaLargura = limiteLargura / larguraImagem;
   const escalaAltura = limiteAltura / alturaImagem;
@@ -11103,6 +12060,149 @@ function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
 
   return escala;
 
+}
+
+// Atualiza as pequenas legendas exibidas somente no modo comparativo.
+// A legenda da esquerda acompanha a seleção azul do fluxograma.
+// A legenda da direita acompanha a seleção roxa do fluxograma.
+// O resultado final continua sendo a seleção inicial do lado direito.
+function atualizarLegendasComparacao() {
+
+  if (legendaComparacaoOriginal) {
+    legendaComparacaoOriginal.innerText =
+      obterNomeSelecaoComparacao(
+        etapaComparativoSelecionada
+      );
+  }
+
+  if (legendaComparacaoProcessada) {
+    legendaComparacaoProcessada.innerText =
+      obterNomeSelecaoComparacao(
+        selecaoComparacaoDireita
+      );
+  }
+
+  atualizarControleLadoComparacao();
+
+}
+
+// Recalcula a escala usando o espaço CENTRAL que realmente ficou
+// disponível depois de abrir/fechar os painéis laterais.
+// Mantém a proporção da imagem e preserva o fator de zoom atual.
+function reajustarVisualizacaoAoEspacoDisponivel() {
+
+  if (
+    !visualizacaoBox ||
+    !imagemAtualSelecionada ||
+    !larguraOriginalAtual ||
+    !alturaOriginalAtual
+  ) {
+    return;
+  }
+
+  const novaEscalaBase =
+    modoComparativoAtivo
+      ? calcularEscalaAutomatica(
+          larguraOriginalAtual,
+          alturaOriginalAtual
+        )
+      : calcularEscalaAutomatica(
+          larguraOriginalAtual,
+          alturaOriginalAtual
+        );
+
+  if (
+    !Number.isFinite(novaEscalaBase) ||
+    novaEscalaBase <= 0
+  ) {
+    return;
+  }
+
+  escalaBaseAtual = novaEscalaBase;
+
+  // Redimensiona a imagem principal usando a nova área disponível.
+  atualizarTamanhoImagemAtual();
+
+  // No comparativo, a imagem da esquerda pode ter dimensões próprias
+  // (por exemplo, quando o fluxo contém recorte). Por isso ela recebe
+  // sua própria escala, calculada dentro da metade que realmente ocupa.
+  if (modoComparativoAtivo) {
+
+    if (
+      imagemOriginalNormal &&
+      imagemOriginalNormal.style.display === "block" &&
+      imagemOriginalNormal.naturalWidth > 0 &&
+      imagemOriginalNormal.naturalHeight > 0
+    ) {
+
+      const escalaOriginal =
+        calcularEscalaAutomaticaComparacao(
+          imagemOriginalNormal.naturalWidth,
+          imagemOriginalNormal.naturalHeight
+        );
+
+      imagemOriginalNormal.style.width =
+        imagemOriginalNormal.naturalWidth *
+        escalaOriginal *
+        zoomAtual +
+        "px";
+
+      imagemOriginalNormal.style.height =
+        imagemOriginalNormal.naturalHeight *
+        escalaOriginal *
+        zoomAtual +
+        "px";
+    }
+
+    if (
+      visualizadorDicomOriginal &&
+      visualizadorDicomOriginal.style.display === "block" &&
+      imagemDicomOriginalAtual
+    ) {
+
+      const escalaOriginalDicom =
+        calcularEscalaAutomaticaComparacao(
+          imagemDicomOriginalAtual.width,
+          imagemDicomOriginalAtual.height
+        );
+
+      visualizadorDicomOriginal.style.width =
+        imagemDicomOriginalAtual.width *
+        escalaOriginalDicom *
+        zoomAtual +
+        "px";
+
+      visualizadorDicomOriginal.style.height =
+        imagemDicomOriginalAtual.height *
+        escalaOriginalDicom *
+        zoomAtual +
+        "px";
+
+      cornerstone.resize(visualizadorDicomOriginal, true);
+    }
+  }
+
+  atualizarLegendasComparacao();
+  atualizarCanvasRecorte();
+}
+
+let quadroReajusteVisualizacao = null;
+
+// Agrupa vários eventos de resize/transition no mesmo frame para evitar
+// cálculos repetidos durante a animação dos painéis laterais.
+function agendarReajusteVisualizacaoResponsiva() {
+
+  if (quadroReajusteVisualizacao !== null) {
+    cancelAnimationFrame(quadroReajusteVisualizacao);
+  }
+
+  quadroReajusteVisualizacao =
+    requestAnimationFrame(function() {
+
+      quadroReajusteVisualizacao = null;
+      reajustarVisualizacaoAoEspacoDisponivel();
+
+    });
 }
 
 /* EVENTOS DO ZOOM COM SCROLL */
@@ -12784,8 +13884,47 @@ if (canvasRecorte) {
 }
 
 window.addEventListener("resize", function() {
+  agendarReajusteVisualizacaoResponsiva();
   atualizarCanvasRecorte();
 });
+
+// O tamanho da área central também muda sem que a janela mude
+// (por exemplo, ao recolher Ferramentas ou Fluxograma).
+// O ResizeObserver garante que a imagem acompanhe esse espaço novo.
+if (
+  typeof ResizeObserver !== "undefined" &&
+  visualizacaoBox
+) {
+
+  const observadorVisualizacaoResponsiva =
+    new ResizeObserver(function() {
+      agendarReajusteVisualizacaoResponsiva();
+    });
+
+  observadorVisualizacaoResponsiva.observe(visualizacaoBox);
+
+  const linhaVisualizacao =
+    document.querySelector(".linha_visualizacao");
+
+  if (linhaVisualizacao) {
+    observadorVisualizacaoResponsiva.observe(
+      linhaVisualizacao
+    );
+  }
+
+  if (areaImagemOriginal) {
+    observadorVisualizacaoResponsiva.observe(
+      areaImagemOriginal
+    );
+  }
+
+  if (areaImagemProcessada) {
+    observadorVisualizacaoResponsiva.observe(
+      areaImagemProcessada
+    );
+  }
+}
+
 
 
 // =============================================================
@@ -17432,6 +18571,7 @@ configurarModalPerguntaSalvarFluxograma();
 configurarParadaSalvamentoAutomatico();
 configurarVinculoImagensProjeto();
 configurarRedimensionamentoMiniaturas();
+configurarComparacaoPeloFluxograma();
 configurarAplicacaoBrilhoContrasteFluxograma();
 configurarExportacaoImagens();
 configurarExportacaoImportacaoFluxo();

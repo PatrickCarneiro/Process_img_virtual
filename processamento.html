@@ -1416,39 +1416,6 @@
       border: 2px solid rgba(56,189,248,0.9);
       box-shadow: 0 0 14px rgba(56,189,248,0.35);
     }
-
-    /* =========================================================
-       SELEÇÃO DOS DOIS LADOS DA COMPARAÇÃO PELO FLUXOGRAMA
-       ========================================================= */
-
-    /* Azul identifica a etapa exibida no lado esquerdo. */
-    .bloco_fluxo.selecionado_comparacao_esquerda {
-      background: rgba(56,189,248,0.22);
-      border: 2px solid rgba(56,189,248,0.92);
-      box-shadow: 0 0 14px rgba(56,189,248,0.34);
-    }
-
-    /* Roxo identifica a etapa exibida no lado direito. */
-    .bloco_fluxo.selecionado_comparacao_direita {
-      background: rgba(192,132,252,0.22);
-      border: 2px solid rgba(192,132,252,0.92);
-      box-shadow: 0 0 14px rgba(192,132,252,0.34);
-    }
-
-    /* Se a mesma etapa estiver nos dois lados, mostra as duas referências. */
-    .bloco_fluxo.selecionado_comparacao_esquerda.selecionado_comparacao_direita {
-      background: linear-gradient(
-        90deg,
-        rgba(56,189,248,0.24) 0%,
-        rgba(56,189,248,0.24) 50%,
-        rgba(192,132,252,0.24) 50%,
-        rgba(192,132,252,0.24) 100%
-      );
-      border-color: rgba(216,180,254,0.92);
-      box-shadow:
-        -5px 0 12px rgba(56,189,248,0.24),
-         5px 0 12px rgba(192,132,252,0.24);
-    }
     .bloco_parametros {
       margin-top: 6px;
       font-size: 12px;
@@ -2260,38 +2227,31 @@
 
     /* =========================================================
        AJUSTE RESPONSIVO DA VISUALIZAÇÃO
-       + COMPARAÇÃO SELECIONADA PELO FLUXOGRAMA
+       + LEGENDAS DO MODO DE COMPARAÇÃO
        ========================================================= */
 
     /*
-      A linha da imagem passa a ocupar toda a altura que sobra na
-      área central. Assim, quando as laterais são recolhidas ou a
-      faixa das miniaturas é empurrada para baixo, a visualização
-      realmente recebe o novo espaço disponível.
+      A área central já aumenta quando Ferramentas e/ou Fluxograma
+      são recolhidos. Estas regras deixam a linha e a caixa da imagem
+      livres para ocupar todo o novo espaço disponível.
     */
     .linha_visualizacao {
       min-width: 0;
-      min-height: 0;
-      flex: 1 1 auto;
-      align-items: stretch;
     }
 
     .visualizacao_box {
       min-width: 0;
-      min-height: 0;
-      height: 100%;
       box-sizing: border-box;
-      transition: width 0.3s ease, height 0.3s ease;
+      transition: width 0.3s ease;
     }
 
     /*
-      No modo comparação, os dois lados dividem a largura e usam toda
-      a altura disponível. O JavaScript continua responsável por
-      dimensionar a imagem preservando sua proporção.
+      No comparativo, os dois lados podem crescer e encolher juntos
+      conforme a largura disponível na área de processamento.
     */
     .visualizacao_box:has(#areaImagemOriginal.ativo) {
       align-items: stretch;
-      padding-top: 44px;
+      padding-top: 42px;
     }
 
     .visualizacao_box:has(#areaImagemOriginal.ativo)
@@ -2300,12 +2260,7 @@
     .area_imagem_processada {
       flex: 1 1 0;
       min-width: 0;
-      min-height: 0;
-      width: 50%;
       max-width: 50%;
-      height: 100%;
-      align-items: center;
-      justify-content: center;
     }
 
     .visualizacao_box:has(#areaImagemOriginal.ativo)
@@ -2318,12 +2273,11 @@
       padding-left: 14px;
     }
 
-    /* Referência para posicionar a legenda acima de cada lado. */
+    /* Referência para posicionar a legenda acima de cada imagem. */
     .area_imagem_original,
     .area_imagem_processada {
       position: relative;
       min-width: 0;
-      min-height: 0;
     }
 
     .legenda_imagem_comparacao {
@@ -2337,20 +2291,11 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       text-align: center;
-      font-size: 13px;
-      font-weight: 700;
+      color: rgba(255,255,255,0.84);
+      font-size: 12px;
+      font-weight: 600;
       line-height: 1.2;
       pointer-events: none;
-    }
-
-    /* Azul = conteúdo mostrado à esquerda. */
-    #legendaComparacaoOriginal {
-      color: rgba(125,211,252,0.98);
-    }
-
-    /* Roxo = conteúdo mostrado à direita. */
-    #legendaComparacaoProcessada {
-      color: rgba(216,180,254,0.98);
     }
 
     /* As legendas aparecem somente quando o comparativo está ativo. */
@@ -2363,8 +2308,8 @@
     }
 
     /*
-      Permite ao JavaScript ampliar cada visualização conforme o espaço
-      real disponível, sem um limite artificial criado pelo contêiner.
+      Permite ao JavaScript redimensionar a visualização para a nova
+      largura sem que o próprio contêiner limite artificialmente o espaço.
     */
     .visualizacao_box:has(#areaImagemOriginal.ativo)
     #imagemOriginalNormal,
@@ -2377,9 +2322,152 @@
       flex-shrink: 1;
     }
 
+    /* =========================================================
+       ESCOLHA DO LADO DA COMPARAÇÃO PELO PRÓPRIO FLUXOGRAMA
+       ========================================================= */
+
     /*
-      Mantém a possibilidade já criada de empurrar a região das
-      miniaturas praticamente até o limite inferior da tela.
+      No modo comparativo o usuário escolhe primeiro qual lado deseja
+      alterar e, em seguida, clica diretamente em uma etapa do fluxograma.
+      Azul identifica o lado esquerdo e roxo identifica o lado direito.
+    */
+    .controle_lado_comparacao {
+      display: none;
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      right: 10px;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    #areaImagemOriginal.ativo
+    .controle_lado_comparacao,
+    #areaImagemOriginal.ativo
+    + #areaImagemProcessada
+    .controle_lado_comparacao {
+      display: flex;
+    }
+
+    .controle_lado_comparacao
+    .legenda_imagem_comparacao {
+      display: block;
+      position: static;
+      left: auto;
+      right: auto;
+      bottom: auto;
+      width: auto;
+      max-width: calc(100% - 110px);
+      pointer-events: none;
+      text-align: left;
+    }
+
+    .botao_lado_comparacao {
+      flex: 0 0 auto;
+      min-width: 88px;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 9px;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      pointer-events: auto;
+      transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.18s ease;
+    }
+
+    .botao_lado_comparacao:hover {
+      transform: translateY(-1px);
+    }
+
+    .botao_lado_comparacao.esquerdo {
+      border: 1px solid rgba(56,189,248,0.72);
+      background: rgba(56,189,248,0.16);
+    }
+
+    .botao_lado_comparacao.esquerdo.ativo,
+    .botao_lado_comparacao.esquerdo[aria-pressed="true"] {
+      border-color: rgba(56,189,248,0.98);
+      background: rgba(56,189,248,0.30);
+      box-shadow: 0 0 0 2px rgba(56,189,248,0.12), 0 0 14px rgba(56,189,248,0.22);
+    }
+
+    .botao_lado_comparacao.direito {
+      border: 1px solid rgba(192,132,252,0.72);
+      background: rgba(192,132,252,0.16);
+    }
+
+    .botao_lado_comparacao.direito.ativo,
+    .botao_lado_comparacao.direito[aria-pressed="true"] {
+      border-color: rgba(216,180,254,0.98);
+      background: rgba(192,132,252,0.30);
+      box-shadow: 0 0 0 2px rgba(192,132,252,0.12), 0 0 14px rgba(192,132,252,0.24);
+    }
+
+    /*
+      O fluxograma poderá usar estas classes para mostrar de qual lado
+      cada etapa está sendo exibida.
+    */
+    .bloco_fluxo.selecionado_comparacao_esquerda {
+      border: 2px solid rgba(56,189,248,0.95);
+      background: rgba(56,189,248,0.20);
+      box-shadow: 0 0 14px rgba(56,189,248,0.30);
+    }
+
+    .bloco_fluxo.selecionado_comparacao_direita {
+      border: 2px solid rgba(192,132,252,0.95);
+      background: rgba(192,132,252,0.20);
+      box-shadow: 0 0 14px rgba(192,132,252,0.30);
+    }
+
+    .bloco_fluxo.selecionado_comparacao_esquerda.selecionado_comparacao_direita {
+      border-color: rgba(125,211,252,0.98);
+      background: linear-gradient(
+        90deg,
+        rgba(56,189,248,0.20) 0%,
+        rgba(56,189,248,0.20) 50%,
+        rgba(192,132,252,0.20) 50%,
+        rgba(192,132,252,0.20) 100%
+      );
+      box-shadow:
+        -4px 0 12px rgba(56,189,248,0.24),
+        4px 0 12px rgba(192,132,252,0.24);
+    }
+
+    /*
+      O controle fica dentro de cada metade da comparação. Assim deixa de
+      existir a faixa vazia grande acima das imagens e sobra mais altura
+      útil para a própria visualização.
+    */
+    .visualizacao_box:has(#areaImagemOriginal.ativo) {
+      padding-top: 12px;
+      align-items: stretch;
+    }
+
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    .area_imagem_original,
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    .area_imagem_processada {
+      height: 100%;
+      box-sizing: border-box;
+      padding-top: 48px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /*
+      A faixa inferior pode ser reduzida até uma pequena região visível.
+      O limite efetivo durante o arraste continua sendo controlado pelo JS
+      a partir de data-altura-minima do redimensionador.
     */
     .imagens_trabalho {
       min-height: 0;
@@ -3130,11 +3218,25 @@
           <!-- Área da imagem original no comparativo -->
           <div id="areaImagemOriginal" class="area_imagem_original">
 
-            <div
-              class="legenda_imagem_comparacao"
-              id="legendaComparacaoOriginal"
-            >
-              Original
+            <div class="controle_lado_comparacao">
+
+              <button
+                type="button"
+                id="botaoComparacaoEsquerda"
+                class="botao_lado_comparacao esquerdo ativo"
+                aria-pressed="true"
+                title="Selecionar o lado esquerdo para alterar pelo fluxograma"
+              >
+                Esquerda
+              </button>
+
+              <div
+                class="legenda_imagem_comparacao"
+                id="legendaComparacaoOriginal"
+              >
+                Original
+              </div>
+
             </div>
 
             <div id="visualizadorDicomOriginal"></div>
@@ -3146,11 +3248,25 @@
           <!-- Área da imagem processada -->
           <div id="areaImagemProcessada" class="area_imagem_processada">
 
-            <div
-              class="legenda_imagem_comparacao"
-              id="legendaComparacaoProcessada"
-            >
-              Resultado final
+            <div class="controle_lado_comparacao">
+
+              <button
+                type="button"
+                id="botaoComparacaoDireita"
+                class="botao_lado_comparacao direito"
+                aria-pressed="false"
+                title="Selecionar o lado direito para alterar pelo fluxograma"
+              >
+                Direita
+              </button>
+
+              <div
+                class="legenda_imagem_comparacao"
+                id="legendaComparacaoProcessada"
+              >
+                Resultado final
+              </div>
+
             </div>
 
             <div id="visualizadorDicom"></div>
