@@ -1316,9 +1316,181 @@ function garantirEstadoSalvamentoAutomaticoImagem(item) {
 }
 
 
-// Atualiza somente o nome do projeto exibido ao lado do título
-// "Área de processamento". O nome vem do mesmo vínculo de projeto
-// já utilizado pelo salvamento automático da imagem atual.
+// Localiza o projeto que pertence à sessão de processamento atual.
+// O cabeçalho não depende somente da miniatura selecionada: se outra
+// imagem da mesma sessão já estiver vinculada a um projeto, o nome
+// permanece disponível ao trocar de imagem.
+function obterProjetoAtualDaSessaoProcessamento() {
+
+  const idGlobal =
+    projetoSalvamentoAutomaticoId === null ||
+    projetoSalvamentoAutomaticoId === undefined
+      ? ""
+      : String(
+          projetoSalvamentoAutomaticoId
+        ).trim();
+
+  const nomeGlobal =
+    projetoSalvamentoAutomaticoNome
+      ? String(
+          projetoSalvamentoAutomaticoNome
+        ).trim()
+      : "";
+
+
+  if (idGlobal || nomeGlobal) {
+
+    return {
+      id: idGlobal || null,
+      nome: nomeGlobal,
+      salvamentoAutomaticoAtivo:
+        Boolean(
+          salvamentoAutomaticoAtivo &&
+          idGlobal
+        )
+    };
+
+  }
+
+
+  if (imagemAtualSelecionada) {
+
+    garantirEstadoSalvamentoAutomaticoImagem(
+      imagemAtualSelecionada
+    );
+
+    const idImagemAtual =
+      imagemAtualSelecionada
+        .projetoSalvamentoAutomaticoId === null ||
+      imagemAtualSelecionada
+        .projetoSalvamentoAutomaticoId === undefined
+        ? ""
+        : String(
+            imagemAtualSelecionada
+              .projetoSalvamentoAutomaticoId
+          ).trim();
+
+    const nomeImagemAtual =
+      imagemAtualSelecionada
+        .projetoSalvamentoAutomaticoNome
+        ? String(
+            imagemAtualSelecionada
+              .projetoSalvamentoAutomaticoNome
+          ).trim()
+        : "";
+
+
+    if (idImagemAtual || nomeImagemAtual) {
+
+      return {
+        id: idImagemAtual || null,
+        nome: nomeImagemAtual,
+        salvamentoAutomaticoAtivo:
+          Boolean(
+            imagemAtualSelecionada
+              .salvamentoAutomaticoAtivo &&
+            idImagemAtual
+          )
+      };
+
+    }
+
+  }
+
+
+  const imagemComProjeto =
+    Array.isArray(imagensProcessamento)
+      ? imagensProcessamento.find(
+          function(item) {
+
+            if (!item) {
+              return false;
+            }
+
+            garantirEstadoSalvamentoAutomaticoImagem(
+              item
+            );
+
+            return Boolean(
+              item.projetoSalvamentoAutomaticoId ||
+              item.projetoSalvamentoAutomaticoNome
+            );
+
+          }
+        )
+      : null;
+
+
+  if (imagemComProjeto) {
+
+    const idImagem =
+      imagemComProjeto
+        .projetoSalvamentoAutomaticoId === null ||
+      imagemComProjeto
+        .projetoSalvamentoAutomaticoId === undefined
+        ? ""
+        : String(
+            imagemComProjeto
+              .projetoSalvamentoAutomaticoId
+          ).trim();
+
+    const nomeImagem =
+      imagemComProjeto
+        .projetoSalvamentoAutomaticoNome
+        ? String(
+            imagemComProjeto
+              .projetoSalvamentoAutomaticoNome
+          ).trim()
+        : "";
+
+
+    return {
+      id: idImagem || null,
+      nome: nomeImagem,
+      salvamentoAutomaticoAtivo:
+        Boolean(
+          imagemComProjeto
+            .salvamentoAutomaticoAtivo &&
+          idImagem
+        )
+    };
+
+  }
+
+
+  if (projetoSalvamentoAutomaticoPendente) {
+
+    return {
+      id:
+        projetoSalvamentoAutomaticoPendente.id ||
+        null,
+      nome:
+        projetoSalvamentoAutomaticoPendente.nome
+          ? String(
+              projetoSalvamentoAutomaticoPendente.nome
+            ).trim()
+          : "",
+      salvamentoAutomaticoAtivo:
+        Boolean(
+          projetoSalvamentoAutomaticoPendente.id
+        )
+    };
+
+  }
+
+
+  return {
+    id: null,
+    nome: "",
+    salvamentoAutomaticoAtivo: false
+  };
+
+}
+
+
+// Mantém o nome do projeto sempre ao lado de "Área de processamento"
+// enquanto existir um projeto associado à sessão. O título da área fica
+// menor e o nome do projeto recebe maior destaque visual.
 function atualizarNomeProjetoProcessamento() {
 
   const elementoNomeProjeto =
@@ -1334,10 +1506,13 @@ function atualizarNomeProjetoProcessamento() {
   }
 
 
+  const projetoAtual =
+    obterProjetoAtualDaSessaoProcessamento();
+
   const nomeProjeto =
-    projetoSalvamentoAutomaticoNome
+    projetoAtual.nome
       ? String(
-          projetoSalvamentoAutomaticoNome
+          projetoAtual.nome
         ).trim()
       : "";
 
@@ -1352,6 +1527,70 @@ function atualizarNomeProjetoProcessamento() {
     nomeProjeto
       ? "Projeto: " + nomeProjeto
       : "";
+
+
+  // O próprio JavaScript ajusta somente este cabeçalho para não exigir
+  // outra mudança no processamento.html.
+  const tituloArea =
+    document.querySelector(
+      ".titulo_area_processamento h1"
+    ) ||
+    document.querySelector(
+      ".cabecalho_area_processamento h1"
+    );
+
+  const containerTitulo =
+    elementoNomeProjeto.closest(
+      ".titulo_area_processamento"
+    );
+
+
+  if (containerTitulo) {
+
+    containerTitulo.style.display =
+      "flex";
+    containerTitulo.style.alignItems =
+      "baseline";
+    containerTitulo.style.gap =
+      "14px";
+    containerTitulo.style.minWidth =
+      "0";
+
+  }
+
+
+  if (tituloArea) {
+
+    tituloArea.style.fontSize =
+      "clamp(16px, 1.35vw, 21px)";
+    tituloArea.style.fontWeight =
+      "500";
+    tituloArea.style.opacity =
+      "0.72";
+    tituloArea.style.whiteSpace =
+      "nowrap";
+
+  }
+
+
+  elementoNomeProjeto.style.fontSize =
+    "clamp(20px, 2vw, 30px)";
+  elementoNomeProjeto.style.fontWeight =
+    "600";
+  elementoNomeProjeto.style.color =
+    "#ffffff";
+  elementoNomeProjeto.style.opacity =
+    "1";
+  elementoNomeProjeto.style.lineHeight =
+    "1.1";
+  elementoNomeProjeto.style.overflow =
+    "hidden";
+  elementoNomeProjeto.style.textOverflow =
+    "ellipsis";
+  elementoNomeProjeto.style.whiteSpace =
+    "nowrap";
+  elementoNomeProjeto.style.minWidth =
+    "0";
 
 }
 
@@ -3542,6 +3781,8 @@ function obterProximoIdProcessamentoImagem() {
 
 // Adiciona novas imagens à sessão atual sem remover as imagens que já existem
 // e sem copiar automaticamente nenhum fluxograma para os novos arquivos.
+// Se a sessão já estiver vinculada a um projeto com salvamento automático,
+// as novas imagens herdam esse mesmo vínculo para que o autosave não pare.
 async function adicionarMaisImagensAoProcessamento(
   arquivos
 ) {
@@ -3563,6 +3804,19 @@ async function adicionarMaisImagensAoProcessamento(
 
   let proximoIdProcessamento =
     obterProximoIdProcessamentoImagem();
+
+
+  // Captura o vínculo atual uma única vez antes de criar as novas imagens.
+  // Assim, adicionar arquivos não interrompe o projeto/autosave em andamento.
+  const projetoAtualDaSessao =
+    obterProjetoAtualDaSessaoProcessamento();
+
+  const herdarSalvamentoAutomatico =
+    Boolean(
+      projetoAtualDaSessao.id &&
+      projetoAtualDaSessao
+        .salvamentoAutomaticoAtivo
+    );
 
 
   try {
@@ -3646,16 +3900,20 @@ async function adicionarMaisImagensAoProcessamento(
           [],
 
         salvamentoAutomaticoAtivo:
-          false,
+          herdarSalvamentoAutomatico,
 
         salvamentoAutomaticoPerguntado:
-          false,
+          herdarSalvamentoAutomatico,
 
         projetoSalvamentoAutomaticoId:
-          null,
+          herdarSalvamentoAutomatico
+            ? projetoAtualDaSessao.id
+            : null,
 
         projetoSalvamentoAutomaticoNome:
-          ""
+          herdarSalvamentoAutomatico
+            ? projetoAtualDaSessao.nome
+            : ""
 
       };
 
@@ -3669,6 +3927,7 @@ async function adicionarMaisImagensAoProcessamento(
 
     redesenharCardsImagens();
     salvarUltimaSessaoProcessamento();
+    atualizarNomeProjetoProcessamento();
 
 
     statusText.innerText =
