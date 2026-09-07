@@ -2224,6 +2224,104 @@
       max-height: none;
     }
 
+
+    /* =========================================================
+       AJUSTE RESPONSIVO DA VISUALIZAÇÃO
+       + LEGENDAS DO MODO DE COMPARAÇÃO
+       ========================================================= */
+
+    /*
+      A área central já aumenta quando Ferramentas e/ou Fluxograma
+      são recolhidos. Estas regras deixam a linha e a caixa da imagem
+      livres para ocupar todo o novo espaço disponível.
+    */
+    .linha_visualizacao {
+      min-width: 0;
+    }
+
+    .visualizacao_box {
+      min-width: 0;
+      box-sizing: border-box;
+      transition: width 0.3s ease;
+    }
+
+    /*
+      No comparativo, os dois lados podem crescer e encolher juntos
+      conforme a largura disponível na área de processamento.
+    */
+    .visualizacao_box:has(#areaImagemOriginal.ativo) {
+      align-items: stretch;
+      padding-top: 42px;
+    }
+
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    .area_imagem_original,
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    .area_imagem_processada {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 50%;
+    }
+
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    .area_imagem_original {
+      padding-right: 14px;
+    }
+
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    .area_imagem_processada {
+      padding-left: 14px;
+    }
+
+    /* Referência para posicionar a legenda acima de cada imagem. */
+    .area_imagem_original,
+    .area_imagem_processada {
+      position: relative;
+      min-width: 0;
+    }
+
+    .legenda_imagem_comparacao {
+      display: none;
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: calc(100% + 10px);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+      color: rgba(255,255,255,0.84);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+      pointer-events: none;
+    }
+
+    /* As legendas aparecem somente quando o comparativo está ativo. */
+    #areaImagemOriginal.ativo
+    .legenda_imagem_comparacao,
+    #areaImagemOriginal.ativo
+    + #areaImagemProcessada
+    .legenda_imagem_comparacao {
+      display: block;
+    }
+
+    /*
+      Permite ao JavaScript redimensionar a visualização para a nova
+      largura sem que o próprio contêiner limite artificialmente o espaço.
+    */
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    #imagemOriginalNormal,
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    #imagemNormal,
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    #visualizadorDicomOriginal,
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    #visualizadorDicom {
+      flex-shrink: 1;
+    }
+
   </style>
 
 </head>
@@ -2969,6 +3067,13 @@
           <!-- Área da imagem original no comparativo -->
           <div id="areaImagemOriginal" class="area_imagem_original">
 
+            <div
+              class="legenda_imagem_comparacao"
+              id="legendaComparacaoOriginal"
+            >
+              Original
+            </div>
+
             <div id="visualizadorDicomOriginal"></div>
 
             <img id="imagemOriginalNormal">
@@ -2977,6 +3082,13 @@
 
           <!-- Área da imagem processada -->
           <div id="areaImagemProcessada" class="area_imagem_processada">
+
+            <div
+              class="legenda_imagem_comparacao"
+              id="legendaComparacaoProcessada"
+            >
+              Processada
+            </div>
 
             <div id="visualizadorDicom"></div>
 

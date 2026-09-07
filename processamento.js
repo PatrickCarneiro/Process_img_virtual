@@ -76,6 +76,8 @@ let etapaComparativoSelecionada = "original";
 let imagemDicomOriginalAtual = null;
 
 const areaImagemProcessada = document.getElementById("areaImagemProcessada");
+const legendaComparacaoOriginal = document.getElementById("legendaComparacaoOriginal");
+const legendaComparacaoProcessada = document.getElementById("legendaComparacaoProcessada");
 const botaoRecorte = document.getElementById("botaoRecorte");
 const opcoesRecorte = document.getElementById("opcoesRecorte");
 const botaoRecorteRetangular = document.getElementById("botaoRecorteRetangular");
@@ -8715,10 +8717,22 @@ function resetarZoom() {
 function calcularEscalaAutomatica(larguraImagem, alturaImagem) {
 
   let limiteLargura = visualizacaoBox.clientWidth - 30;
-  const limiteAltura = visualizacaoBox.clientHeight - 30;
+  let limiteAltura = visualizacaoBox.clientHeight - 30;
 
   if (modoComparativoAtivo) {
-    limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
+
+    const larguraAreaProcessada =
+      areaImagemProcessada && areaImagemProcessada.clientWidth > 0
+        ? areaImagemProcessada.clientWidth
+        : visualizacaoBox.clientWidth / 2;
+
+    const alturaAreaProcessada =
+      areaImagemProcessada && areaImagemProcessada.clientHeight > 0
+        ? areaImagemProcessada.clientHeight
+        : visualizacaoBox.clientHeight - 42;
+
+    limiteLargura = larguraAreaProcessada - 28;
+    limiteAltura = alturaAreaProcessada - 20;
   }
 
   const escalaLargura = limiteLargura / larguraImagem;
@@ -10784,6 +10798,8 @@ async function toggleComparativo() {
 
     etapaComparativoSelecionada = "original";
 
+    atualizarLegendasComparacao();
+
     await atualizarImagemComparativa();
 
     desenharFluxograma();
@@ -10804,6 +10820,8 @@ async function toggleComparativo() {
     visualizadorDicomOriginal.style.display = "none";
 
     imagemDicomOriginalAtual = null;
+
+    atualizarLegendasComparacao();
 
     escalaBaseAtual = calcularEscalaAutomatica(
       larguraOriginalAtual,
@@ -10828,6 +10846,8 @@ async function atualizarImagemComparativa() {
 
   if (!modoComparativoAtivo) return;
   if (!imagemAtualSelecionada) return;
+
+  atualizarLegendasComparacao();
 
   const item = imagemAtualSelecionada;
 
@@ -10913,6 +10933,8 @@ async function atualizarImagemComparativa() {
 async function selecionarEtapaComparativo(etapaId) {
 
   etapaComparativoSelecionada = etapaId;
+
+  atualizarLegendasComparacao();
 
   desenharFluxograma();
 
@@ -11430,8 +11452,18 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
 function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
 
-  const limiteLargura = (visualizacaoBox.clientWidth / 2) - 35;
-  const limiteAltura = visualizacaoBox.clientHeight - 30;
+  const larguraAreaOriginal =
+    areaImagemOriginal && areaImagemOriginal.clientWidth > 0
+      ? areaImagemOriginal.clientWidth
+      : visualizacaoBox.clientWidth / 2;
+
+  const alturaAreaOriginal =
+    areaImagemOriginal && areaImagemOriginal.clientHeight > 0
+      ? areaImagemOriginal.clientHeight
+      : visualizacaoBox.clientHeight - 42;
+
+  const limiteLargura = larguraAreaOriginal - 28;
+  const limiteAltura = alturaAreaOriginal - 20;
 
   const escalaLargura = limiteLargura / larguraImagem;
   const escalaAltura = limiteAltura / alturaImagem;
@@ -11440,6 +11472,187 @@ function calcularEscalaAutomaticaComparacao(larguraImagem, alturaImagem) {
 
   return escala;
 
+}
+
+// Atualiza as pequenas legendas exibidas somente no modo comparativo.
+// A legenda da esquerda acompanha exatamente o conteúdo selecionado
+// no fluxograma para comparação. A legenda da direita identifica
+// a imagem principal atualmente exibida.
+function atualizarLegendasComparacao() {
+
+  if (legendaComparacaoOriginal) {
+
+    let textoComparado = "Original";
+
+    if (
+      modoComparativoAtivo &&
+      etapaComparativoSelecionada !== "original"
+    ) {
+
+      const etapaComparada =
+        pipelineFerramentas.find(function(etapa) {
+          return etapa.id === etapaComparativoSelecionada;
+        });
+
+      if (etapaComparada && etapaComparada.nome) {
+        textoComparado = etapaComparada.nome;
+      }
+    }
+
+    legendaComparacaoOriginal.innerText = textoComparado;
+  }
+
+  if (legendaComparacaoProcessada) {
+
+    let textoPrincipal = "Original";
+
+    if (
+      imagemAtualSelecionada &&
+      imagemAtualSelecionada.resultado
+    ) {
+
+      const fluxoAtual =
+        Array.isArray(imagemAtualSelecionada.pipelineFerramentas)
+          ? imagemAtualSelecionada.pipelineFerramentas
+          : pipelineFerramentas;
+
+      if (
+        Array.isArray(fluxoAtual) &&
+        fluxoAtual.length > 0
+      ) {
+
+        const ultimaEtapa = fluxoAtual[fluxoAtual.length - 1];
+
+        textoPrincipal =
+          ultimaEtapa && ultimaEtapa.nome
+            ? ultimaEtapa.nome
+            : "Processada";
+      } else {
+        textoPrincipal = "Processada";
+      }
+    }
+
+    legendaComparacaoProcessada.innerText = textoPrincipal;
+  }
+}
+
+// Recalcula a escala usando o espaço CENTRAL que realmente ficou
+// disponível depois de abrir/fechar os painéis laterais.
+// Mantém a proporção da imagem e preserva o fator de zoom atual.
+function reajustarVisualizacaoAoEspacoDisponivel() {
+
+  if (
+    !visualizacaoBox ||
+    !imagemAtualSelecionada ||
+    !larguraOriginalAtual ||
+    !alturaOriginalAtual
+  ) {
+    return;
+  }
+
+  const novaEscalaBase =
+    modoComparativoAtivo
+      ? calcularEscalaAutomatica(
+          larguraOriginalAtual,
+          alturaOriginalAtual
+        )
+      : calcularEscalaAutomatica(
+          larguraOriginalAtual,
+          alturaOriginalAtual
+        );
+
+  if (
+    !Number.isFinite(novaEscalaBase) ||
+    novaEscalaBase <= 0
+  ) {
+    return;
+  }
+
+  escalaBaseAtual = novaEscalaBase;
+
+  // Redimensiona a imagem principal usando a nova área disponível.
+  atualizarTamanhoImagemAtual();
+
+  // No comparativo, a imagem da esquerda pode ter dimensões próprias
+  // (por exemplo, quando o fluxo contém recorte). Por isso ela recebe
+  // sua própria escala, calculada dentro da metade que realmente ocupa.
+  if (modoComparativoAtivo) {
+
+    if (
+      imagemOriginalNormal &&
+      imagemOriginalNormal.style.display === "block" &&
+      imagemOriginalNormal.naturalWidth > 0 &&
+      imagemOriginalNormal.naturalHeight > 0
+    ) {
+
+      const escalaOriginal =
+        calcularEscalaAutomaticaComparacao(
+          imagemOriginalNormal.naturalWidth,
+          imagemOriginalNormal.naturalHeight
+        );
+
+      imagemOriginalNormal.style.width =
+        imagemOriginalNormal.naturalWidth *
+        escalaOriginal *
+        zoomAtual +
+        "px";
+
+      imagemOriginalNormal.style.height =
+        imagemOriginalNormal.naturalHeight *
+        escalaOriginal *
+        zoomAtual +
+        "px";
+    }
+
+    if (
+      visualizadorDicomOriginal &&
+      visualizadorDicomOriginal.style.display === "block" &&
+      imagemDicomOriginalAtual
+    ) {
+
+      const escalaOriginalDicom =
+        calcularEscalaAutomaticaComparacao(
+          imagemDicomOriginalAtual.width,
+          imagemDicomOriginalAtual.height
+        );
+
+      visualizadorDicomOriginal.style.width =
+        imagemDicomOriginalAtual.width *
+        escalaOriginalDicom *
+        zoomAtual +
+        "px";
+
+      visualizadorDicomOriginal.style.height =
+        imagemDicomOriginalAtual.height *
+        escalaOriginalDicom *
+        zoomAtual +
+        "px";
+
+      cornerstone.resize(visualizadorDicomOriginal, true);
+    }
+  }
+
+  atualizarLegendasComparacao();
+  atualizarCanvasRecorte();
+}
+
+let quadroReajusteVisualizacao = null;
+
+// Agrupa vários eventos de resize/transition no mesmo frame para evitar
+// cálculos repetidos durante a animação dos painéis laterais.
+function agendarReajusteVisualizacaoResponsiva() {
+
+  if (quadroReajusteVisualizacao !== null) {
+    cancelAnimationFrame(quadroReajusteVisualizacao);
+  }
+
+  quadroReajusteVisualizacao =
+    requestAnimationFrame(function() {
+
+      quadroReajusteVisualizacao = null;
+      reajustarVisualizacaoAoEspacoDisponivel();
+
+    });
 }
 
 /* EVENTOS DO ZOOM COM SCROLL */
@@ -13121,8 +13334,26 @@ if (canvasRecorte) {
 }
 
 window.addEventListener("resize", function() {
+  agendarReajusteVisualizacaoResponsiva();
   atualizarCanvasRecorte();
 });
+
+// O tamanho da área central também muda sem que a janela mude
+// (por exemplo, ao recolher Ferramentas ou Fluxograma).
+// O ResizeObserver garante que a imagem acompanhe esse espaço novo.
+if (
+  typeof ResizeObserver !== "undefined" &&
+  visualizacaoBox
+) {
+
+  const observadorVisualizacaoResponsiva =
+    new ResizeObserver(function() {
+      agendarReajusteVisualizacaoResponsiva();
+    });
+
+  observadorVisualizacaoResponsiva.observe(visualizacaoBox);
+}
+
 
 
 // =============================================================
