@@ -1416,6 +1416,39 @@
       border: 2px solid rgba(56,189,248,0.9);
       box-shadow: 0 0 14px rgba(56,189,248,0.35);
     }
+
+    /* =========================================================
+       SELEÇÃO DOS DOIS LADOS DA COMPARAÇÃO PELO FLUXOGRAMA
+       ========================================================= */
+
+    /* Azul identifica a etapa exibida no lado esquerdo. */
+    .bloco_fluxo.selecionado_comparacao_esquerda {
+      background: rgba(56,189,248,0.22);
+      border: 2px solid rgba(56,189,248,0.92);
+      box-shadow: 0 0 14px rgba(56,189,248,0.34);
+    }
+
+    /* Roxo identifica a etapa exibida no lado direito. */
+    .bloco_fluxo.selecionado_comparacao_direita {
+      background: rgba(192,132,252,0.22);
+      border: 2px solid rgba(192,132,252,0.92);
+      box-shadow: 0 0 14px rgba(192,132,252,0.34);
+    }
+
+    /* Se a mesma etapa estiver nos dois lados, mostra as duas referências. */
+    .bloco_fluxo.selecionado_comparacao_esquerda.selecionado_comparacao_direita {
+      background: linear-gradient(
+        90deg,
+        rgba(56,189,248,0.24) 0%,
+        rgba(56,189,248,0.24) 50%,
+        rgba(192,132,252,0.24) 50%,
+        rgba(192,132,252,0.24) 100%
+      );
+      border-color: rgba(216,180,254,0.92);
+      box-shadow:
+        -5px 0 12px rgba(56,189,248,0.24),
+         5px 0 12px rgba(192,132,252,0.24);
+    }
     .bloco_parametros {
       margin-top: 6px;
       font-size: 12px;
@@ -2227,31 +2260,38 @@
 
     /* =========================================================
        AJUSTE RESPONSIVO DA VISUALIZAÇÃO
-       + LEGENDAS DO MODO DE COMPARAÇÃO
+       + COMPARAÇÃO SELECIONADA PELO FLUXOGRAMA
        ========================================================= */
 
     /*
-      A área central já aumenta quando Ferramentas e/ou Fluxograma
-      são recolhidos. Estas regras deixam a linha e a caixa da imagem
-      livres para ocupar todo o novo espaço disponível.
+      A linha da imagem passa a ocupar toda a altura que sobra na
+      área central. Assim, quando as laterais são recolhidas ou a
+      faixa das miniaturas é empurrada para baixo, a visualização
+      realmente recebe o novo espaço disponível.
     */
     .linha_visualizacao {
       min-width: 0;
+      min-height: 0;
+      flex: 1 1 auto;
+      align-items: stretch;
     }
 
     .visualizacao_box {
       min-width: 0;
+      min-height: 0;
+      height: 100%;
       box-sizing: border-box;
-      transition: width 0.3s ease;
+      transition: width 0.3s ease, height 0.3s ease;
     }
 
     /*
-      No comparativo, os dois lados podem crescer e encolher juntos
-      conforme a largura disponível na área de processamento.
+      No modo comparação, os dois lados dividem a largura e usam toda
+      a altura disponível. O JavaScript continua responsável por
+      dimensionar a imagem preservando sua proporção.
     */
     .visualizacao_box:has(#areaImagemOriginal.ativo) {
       align-items: stretch;
-      padding-top: 42px;
+      padding-top: 44px;
     }
 
     .visualizacao_box:has(#areaImagemOriginal.ativo)
@@ -2260,7 +2300,12 @@
     .area_imagem_processada {
       flex: 1 1 0;
       min-width: 0;
+      min-height: 0;
+      width: 50%;
       max-width: 50%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
     }
 
     .visualizacao_box:has(#areaImagemOriginal.ativo)
@@ -2273,11 +2318,12 @@
       padding-left: 14px;
     }
 
-    /* Referência para posicionar a legenda acima de cada imagem. */
+    /* Referência para posicionar a legenda acima de cada lado. */
     .area_imagem_original,
     .area_imagem_processada {
       position: relative;
       min-width: 0;
+      min-height: 0;
     }
 
     .legenda_imagem_comparacao {
@@ -2291,11 +2337,20 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       text-align: center;
-      color: rgba(255,255,255,0.84);
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 13px;
+      font-weight: 700;
       line-height: 1.2;
       pointer-events: none;
+    }
+
+    /* Azul = conteúdo mostrado à esquerda. */
+    #legendaComparacaoOriginal {
+      color: rgba(125,211,252,0.98);
+    }
+
+    /* Roxo = conteúdo mostrado à direita. */
+    #legendaComparacaoProcessada {
+      color: rgba(216,180,254,0.98);
     }
 
     /* As legendas aparecem somente quando o comparativo está ativo. */
@@ -2308,8 +2363,8 @@
     }
 
     /*
-      Permite ao JavaScript redimensionar a visualização para a nova
-      largura sem que o próprio contêiner limite artificialmente o espaço.
+      Permite ao JavaScript ampliar cada visualização conforme o espaço
+      real disponível, sem um limite artificial criado pelo contêiner.
     */
     .visualizacao_box:has(#areaImagemOriginal.ativo)
     #imagemOriginalNormal,
@@ -2322,89 +2377,9 @@
       flex-shrink: 1;
     }
 
-    /* =========================================================
-       SELEÇÃO INDEPENDENTE DOS DOIS LADOS DA COMPARAÇÃO
-       ========================================================= */
-
     /*
-      Cada lado passa a possuir seu próprio seletor de visualização.
-      Os controles continuam ocultos no modo normal e aparecem somente
-      quando o comparativo estiver ativo.
-    */
-    .controle_selecao_comparacao {
-      display: none;
-      position: absolute;
-      left: 8px;
-      right: 8px;
-      bottom: calc(100% + 8px);
-      min-width: 0;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 6px;
-      z-index: 6;
-    }
-
-    #areaImagemOriginal.ativo
-    .controle_selecao_comparacao,
-    #areaImagemOriginal.ativo
-    + #areaImagemProcessada
-    .controle_selecao_comparacao {
-      display: flex;
-    }
-
-    /*
-      A legenda já existente continua identificando o conteúdo exibido,
-      mas agora fica acima do seletor correspondente.
-    */
-    .controle_selecao_comparacao
-    .legenda_imagem_comparacao {
-      display: block;
-      position: static;
-      left: auto;
-      right: auto;
-      bottom: auto;
-      width: 100%;
-      pointer-events: none;
-    }
-
-    .seletor_comparacao {
-      width: 100%;
-      min-width: 0;
-      height: 34px;
-      padding: 0 34px 0 10px;
-      border: 1px solid rgba(192,132,252,0.42);
-      border-radius: 9px;
-      outline: none;
-      background: rgba(24,18,38,0.96);
-      color: rgba(255,255,255,0.92);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .seletor_comparacao:hover,
-    .seletor_comparacao:focus {
-      border-color: rgba(216,180,254,0.82);
-      box-shadow: 0 0 0 2px rgba(192,132,252,0.10);
-    }
-
-    .seletor_comparacao option {
-      background: #181226;
-      color: #ffffff;
-    }
-
-    /*
-      Abre espaço para a legenda e para o seletor acima de cada lado
-      sem interferir no tamanho calculado para as imagens.
-    */
-    .visualizacao_box:has(#areaImagemOriginal.ativo) {
-      padding-top: 82px;
-    }
-
-    /*
-      A faixa inferior pode ser reduzida até uma pequena região visível.
-      O limite efetivo durante o arraste continua sendo controlado pelo JS
-      a partir de data-altura-minima do redimensionador.
+      Mantém a possibilidade já criada de empurrar a região das
+      miniaturas praticamente até o limite inferior da tela.
     */
     .imagens_trabalho {
       min-height: 0;
@@ -3155,24 +3130,11 @@
           <!-- Área da imagem original no comparativo -->
           <div id="areaImagemOriginal" class="area_imagem_original">
 
-            <div class="controle_selecao_comparacao">
-
-              <div
-                class="legenda_imagem_comparacao"
-                id="legendaComparacaoOriginal"
-              >
-                Original
-              </div>
-
-              <select
-                id="seletorComparacaoEsquerda"
-                class="seletor_comparacao"
-                aria-label="Selecionar visualização do lado esquerdo da comparação"
-              >
-                <option value="original" selected>Original</option>
-                <option value="resultado">Resultado final</option>
-              </select>
-
+            <div
+              class="legenda_imagem_comparacao"
+              id="legendaComparacaoOriginal"
+            >
+              Original
             </div>
 
             <div id="visualizadorDicomOriginal"></div>
@@ -3184,24 +3146,11 @@
           <!-- Área da imagem processada -->
           <div id="areaImagemProcessada" class="area_imagem_processada">
 
-            <div class="controle_selecao_comparacao">
-
-              <div
-                class="legenda_imagem_comparacao"
-                id="legendaComparacaoProcessada"
-              >
-                Resultado final
-              </div>
-
-              <select
-                id="seletorComparacaoDireita"
-                class="seletor_comparacao"
-                aria-label="Selecionar visualização do lado direito da comparação"
-              >
-                <option value="original">Original</option>
-                <option value="resultado" selected>Resultado final</option>
-              </select>
-
+            <div
+              class="legenda_imagem_comparacao"
+              id="legendaComparacaoProcessada"
+            >
+              Resultado final
             </div>
 
             <div id="visualizadorDicom"></div>
