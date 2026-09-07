@@ -2333,14 +2333,15 @@
     */
     .controle_lado_comparacao {
       display: none;
-      position: absolute;
-      top: 8px;
-      left: 10px;
-      right: 10px;
+      position: static;
+      width: 100%;
       min-width: 0;
+      flex: 0 0 auto;
+      box-sizing: border-box;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      padding: 4px 10px 8px;
       z-index: 6;
       pointer-events: none;
     }
@@ -2459,9 +2460,19 @@
     .area_imagem_processada {
       height: 100%;
       box-sizing: border-box;
-      padding-top: 48px;
+      padding-top: 0;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
+    }
+
+    /*
+      O botão do lado e o nome da etapa ocupam uma linha própria acima
+      da imagem. Assim o cabeçalho nunca fica sobre a visualização.
+    */
+    .visualizacao_box:has(#areaImagemOriginal.ativo)
+    .controle_lado_comparacao {
+      min-height: 44px;
     }
 
     /*
