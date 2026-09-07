@@ -7027,9 +7027,8 @@ async function processarFluxoPeloBotao() {
 }
 
 
-// Retira o processamento da imagem atual e restaura explicitamente
-// o arquivo original. Este passa a ser o comando responsável por
-// voltar à imagem original e também limpa o fluxograma dessa imagem.
+// Retira somente o processamento da imagem atual e restaura explicitamente
+// o arquivo original. O fluxograma da imagem permanece exatamente como está.
 async function retirarProcessamentoImagemAtual() {
 
   if (!imagemAtualSelecionada) {
@@ -7038,11 +7037,9 @@ async function retirarProcessamentoImagemAtual() {
     return;
   }
 
-  pipelineFerramentas = [];
-  proximoIdEtapa = 1;
-
-  imagemAtualSelecionada.pipelineFerramentas = [];
-
+  // Remove somente o resultado já aplicado à imagem.
+  // O pipelineFerramentas e imagemAtualSelecionada.pipelineFerramentas
+  // permanecem intactos para que o mesmo fluxo possa ser processado novamente.
   invalidarProcessamentoDaImagem(
     imagemAtualSelecionada
   );
@@ -7072,14 +7069,12 @@ async function retirarProcessamentoImagemAtual() {
     await atualizarAnaliseDaImagemAtual();
   }
 
+  // A última sessão registra que a imagem voltou ao original,
+  // mas mantém o mesmo fluxograma associado à imagem.
   salvarUltimaSessaoProcessamento();
 
-  // Se esta imagem estiver vinculada a um projeto com salvamento
-  // automático, a retirada do fluxo também é refletida nesse projeto.
-  await salvarFluxogramaAutomaticamenteSeAtivo();
-
   statusText.innerText =
-    "Processamento retirado. Imagem original restaurada e fluxograma removido.";
+    "Processamento retirado. Imagem original restaurada. O fluxograma foi mantido.";
 }
 
 
