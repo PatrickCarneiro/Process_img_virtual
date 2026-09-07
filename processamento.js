@@ -1488,9 +1488,10 @@ function obterProjetoAtualDaSessaoProcessamento() {
 }
 
 
-// Mantém o nome do projeto sempre ao lado de "Área de processamento"
-// enquanto existir um projeto associado à sessão. O título da área fica
-// menor e o nome do projeto recebe maior destaque visual.
+// Atualiza o próprio título da área de processamento conforme exista
+// ou não um projeto associado à sessão. Sem projeto, mantém exatamente
+// "Área de processamento". Com projeto, o mesmo título passa a mostrar
+// "Projeto: Nome do projeto", preservando a aparência original do h1.
 function atualizarNomeProjetoProcessamento() {
 
   const elementoNomeProjeto =
@@ -1499,7 +1500,16 @@ function atualizarNomeProjetoProcessamento() {
     );
 
 
-  if (!elementoNomeProjeto) {
+  const tituloArea =
+    document.querySelector(
+      ".titulo_area_processamento h1"
+    ) ||
+    document.querySelector(
+      ".cabecalho_area_processamento h1"
+    );
+
+
+  if (!tituloArea) {
 
     return;
 
@@ -1517,80 +1527,27 @@ function atualizarNomeProjetoProcessamento() {
       : "";
 
 
-  elementoNomeProjeto.innerText =
+  tituloArea.innerText =
     nomeProjeto
       ? "Projeto: " + nomeProjeto
-      : "";
+      : "Área de processamento";
 
 
-  elementoNomeProjeto.title =
+  tituloArea.title =
     nomeProjeto
       ? "Projeto: " + nomeProjeto
-      : "";
+      : "Área de processamento";
 
 
-  // O próprio JavaScript ajusta somente este cabeçalho para não exigir
-  // outra mudança no processamento.html.
-  const tituloArea =
-    document.querySelector(
-      ".titulo_area_processamento h1"
-    ) ||
-    document.querySelector(
-      ".cabecalho_area_processamento h1"
-    );
+  // O elemento auxiliar criado anteriormente deixa de ser necessário
+  // visualmente, pois o próprio h1 passa a exibir o nome do projeto.
+  if (elementoNomeProjeto) {
 
-  const containerTitulo =
-    elementoNomeProjeto.closest(
-      ".titulo_area_processamento"
-    );
-
-
-  if (containerTitulo) {
-
-    containerTitulo.style.display =
-      "flex";
-    containerTitulo.style.alignItems =
-      "baseline";
-    containerTitulo.style.gap =
-      "14px";
-    containerTitulo.style.minWidth =
-      "0";
+    elementoNomeProjeto.innerText = "";
+    elementoNomeProjeto.title = "";
+    elementoNomeProjeto.style.display = "none";
 
   }
-
-
-  if (tituloArea) {
-
-    tituloArea.style.fontSize =
-      "clamp(16px, 1.35vw, 21px)";
-    tituloArea.style.fontWeight =
-      "500";
-    tituloArea.style.opacity =
-      "0.72";
-    tituloArea.style.whiteSpace =
-      "nowrap";
-
-  }
-
-
-  elementoNomeProjeto.style.fontSize =
-    "clamp(20px, 2vw, 30px)";
-  elementoNomeProjeto.style.fontWeight =
-    "600";
-  elementoNomeProjeto.style.color =
-    "#ffffff";
-  elementoNomeProjeto.style.opacity =
-    "1";
-  elementoNomeProjeto.style.lineHeight =
-    "1.1";
-  elementoNomeProjeto.style.overflow =
-    "hidden";
-  elementoNomeProjeto.style.textOverflow =
-    "ellipsis";
-  elementoNomeProjeto.style.whiteSpace =
-    "nowrap";
-  elementoNomeProjeto.style.minWidth =
-    "0";
 
 }
 
