@@ -1367,6 +1367,50 @@
       margin-bottom: 8px;
       text-align: center;
     }
+
+    /* REORDENAÇÃO DAS ETAPAS DO FLUXOGRAMA */
+
+    .bloco_fluxo[draggable="true"] {
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: opacity 0.15s ease, transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .bloco_fluxo[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    .bloco_fluxo.arrastando {
+      opacity: 0.45;
+      transform: scale(0.98);
+    }
+
+    .bloco_fluxo.destino_arraste_antes,
+    .bloco_fluxo.destino_arraste_depois {
+      position: relative;
+    }
+
+    .bloco_fluxo.destino_arraste_antes::before,
+    .bloco_fluxo.destino_arraste_depois::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(216,180,254,0.95);
+      box-shadow: 0 0 10px rgba(192,132,252,0.75);
+      pointer-events: none;
+    }
+
+    .bloco_fluxo.destino_arraste_antes::before {
+      top: -6px;
+    }
+
+    .bloco_fluxo.destino_arraste_depois::after {
+      bottom: -6px;
+    }
     .bloco_fluxo.selecionado_comparativo {
       background: rgba(56,189,248,0.25);
       border: 2px solid rgba(56,189,248,0.9);

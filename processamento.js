@@ -7163,6 +7163,336 @@ async function aplicarFerramenta(nome) {
   alert("Ferramenta ainda não implementada no pipeline.");
 }
 
+// =============================================================
+// REORDENAÇÃO DAS ETAPAS DO FLUXOGRAMA POR ARRASTAR E SOLTAR
+// =============================================================
+//
+// A reordenação altera somente a ordem das etapas do pipeline.
+// O último resultado processado permanece visível até o usuário clicar
+// novamente em "Processar fluxo". Se a imagem pertencer a um projeto,
+// a nova ordem é refletida automaticamente em todas as imagens vinculadas.
+
+let indiceEtapaArrastadaFluxograma = null;
+let idEtapaArrastadaFluxograma = null;
+let blocoDestinoArrasteFluxograma = null;
+let posicaoDestinoArrasteFluxograma = null;
+
+
+// Remove somente os destaques visuais usados durante o arraste.
+function limparDestinoArrasteFluxograma() {
+
+  const blocos =
+    areaFluxograma.querySelectorAll(
+      ".bloco_fluxo.destino_arraste_antes, .bloco_fluxo.destino_arraste_depois"
+    );
+
+  blocos.forEach(function(bloco) {
+    bloco.classList.remove("destino_arraste_antes");
+    bloco.classList.remove("destino_arraste_depois");
+  });
+
+  blocoDestinoArrasteFluxograma = null;
+  posicaoDestinoArrasteFluxograma = null;
+
+}
+
+
+// Finaliza o estado visual e as variáveis temporárias do arraste.
+function limparEstadoArrasteFluxograma() {
+
+  limparDestinoArrasteFluxograma();
+
+  const blocosArrastando =
+    areaFluxograma.querySelectorAll(
+      ".bloco_fluxo.arrastando"
+    );
+
+  blocosArrastando.forEach(function(bloco) {
+    bloco.classList.remove("arrastando");
+  });
+
+  indiceEtapaArrastadaFluxograma = null;
+  idEtapaArrastadaFluxograma = null;
+
+}
+
+
+// Move uma etapa de uma posição para outra sem executar processamento.
+async function reordenarEtapaFluxograma(
+  indiceOrigem,
+  indiceDestino,
+  posicaoDestino
+) {
+
+  if (
+    !Number.isInteger(indiceOrigem) ||
+    !Number.isInteger(indiceDestino) ||
+    indiceOrigem < 0 ||
+    indiceDestino < 0 ||
+    indiceOrigem >= pipelineFerramentas.length ||
+    indiceDestino >= pipelineFerramentas.length
+  ) {
+    return false;
+  }
+
+  if (
+    posicaoDestino !== "antes" &&
+    posicaoDestino !== "depois"
+  ) {
+    return false;
+  }
+
+  const ordemAnterior =
+    pipelineFerramentas.map(function(etapa) {
+      return etapa && etapa.id;
+    });
+
+  const etapaMovida =
+    pipelineFerramentas.splice(
+      indiceOrigem,
+      1
+    )[0];
+
+  if (!etapaMovida) {
+    return false;
+  }
+
+  // Depois que a etapa de origem é removida, os índices localizados
+  // depois dela recuam uma posição.
+  let indiceDestinoAjustado =
+    indiceDestino;
+
+  if (indiceOrigem < indiceDestino) {
+    indiceDestinoAjustado -= 1;
+  }
+
+  let indiceInsercao =
+    posicaoDestino === "depois"
+      ? indiceDestinoAjustado + 1
+      : indiceDestinoAjustado;
+
+  indiceInsercao = Math.max(
+    0,
+    Math.min(
+      indiceInsercao,
+      pipelineFerramentas.length
+    )
+  );
+
+  pipelineFerramentas.splice(
+    indiceInsercao,
+    0,
+    etapaMovida
+  );
+
+  const ordemNova =
+    pipelineFerramentas.map(function(etapa) {
+      return etapa && etapa.id;
+    });
+
+  const ordemMudou =
+    ordemAnterior.length === ordemNova.length &&
+    ordemAnterior.some(function(idEtapa, indice) {
+      return idEtapa !== ordemNova[indice];
+    });
+
+  if (!ordemMudou) {
+    desenharFluxograma();
+    return false;
+  }
+
+  // Salva a nova ordem na imagem atual e, quando existir projeto,
+  // sincroniza automaticamente o mesmo fluxo nas demais imagens dele.
+  sincronizarPipelineAtualNaImagem();
+
+  // A imagem atual também fica marcada como desatualizada. As demais
+  // imagens do mesmo projeto são marcadas pela própria sincronização.
+  marcarProcessamentoDaImagemComoDesatualizado(
+    imagemAtualSelecionada
+  );
+
+  desenharFluxograma();
+
+  statusText.innerText =
+    "Ordem do fluxograma alterada. O resultado anterior foi mantido. Clique em Processar fluxo para executar na nova ordem.";
+
+  // Se houver projeto vinculado e autosave ativo, grava a nova ordem.
+  await salvarFluxogramaAutomaticamenteSeAtivo();
+
+  return true;
+
+}
+
+
+// Torna somente os blocos de etapas arrastáveis. O bloco Original não
+// recebe esta configuração e permanece fixo no início do fluxograma.
+function configurarArrasteEtapaFluxograma(
+  bloco,
+  etapa,
+  index
+) {
+
+  if (!bloco || !etapa) {
+    return;
+  }
+
+  bloco.draggable = true;
+  bloco.dataset.indicePipeline = String(index);
+  bloco.dataset.idEtapaPipeline = String(etapa.id);
+
+  // O cursor visual acompanha o CSS criado especificamente para
+  // a reordenação do fluxograma.
+  bloco.style.cursor = "grab";
+
+  bloco.addEventListener(
+    "dragstart",
+    function(event) {
+
+      // O botão Remover continua executando apenas a remoção da etapa.
+      if (
+        event.target &&
+        event.target.closest &&
+        event.target.closest(".remover")
+      ) {
+        event.preventDefault();
+        return;
+      }
+
+      indiceEtapaArrastadaFluxograma = index;
+      idEtapaArrastadaFluxograma = etapa.id;
+
+      bloco.classList.add("arrastando");
+
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(
+          "text/plain",
+          String(etapa.id)
+        );
+      }
+
+    }
+  );
+
+  bloco.addEventListener(
+    "dragover",
+    function(event) {
+
+      if (
+        indiceEtapaArrastadaFluxograma === null
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+
+      limparDestinoArrasteFluxograma();
+
+      const retangulo =
+        bloco.getBoundingClientRect();
+
+      const metadeVertical =
+        retangulo.top +
+        (retangulo.height / 2);
+
+      const posicao =
+        event.clientY < metadeVertical
+          ? "antes"
+          : "depois";
+
+      bloco.classList.add(
+        posicao === "antes"
+          ? "destino_arraste_antes"
+          : "destino_arraste_depois"
+      );
+
+      blocoDestinoArrasteFluxograma = bloco;
+      posicaoDestinoArrasteFluxograma = posicao;
+
+    }
+  );
+
+  bloco.addEventListener(
+    "dragleave",
+    function(event) {
+
+      if (
+        event.relatedTarget &&
+        bloco.contains(event.relatedTarget)
+      ) {
+        return;
+      }
+
+      bloco.classList.remove(
+        "destino_arraste_antes"
+      );
+      bloco.classList.remove(
+        "destino_arraste_depois"
+      );
+
+      if (
+        blocoDestinoArrasteFluxograma === bloco
+      ) {
+        blocoDestinoArrasteFluxograma = null;
+        posicaoDestinoArrasteFluxograma = null;
+      }
+
+    }
+  );
+
+  bloco.addEventListener(
+    "drop",
+    async function(event) {
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const indiceOrigem =
+        indiceEtapaArrastadaFluxograma;
+
+      const indiceDestinoAtual =
+        Number(
+          bloco.dataset.indicePipeline
+        );
+
+      const retangulo =
+        bloco.getBoundingClientRect();
+
+      const posicao =
+        event.clientY <
+        retangulo.top +
+        (retangulo.height / 2)
+          ? "antes"
+          : "depois";
+
+      limparDestinoArrasteFluxograma();
+
+      await reordenarEtapaFluxograma(
+        indiceOrigem,
+        indiceDestinoAtual,
+        posicao
+      );
+
+      indiceEtapaArrastadaFluxograma = null;
+      idEtapaArrastadaFluxograma = null;
+
+    }
+  );
+
+  bloco.addEventListener(
+    "dragend",
+    function() {
+      limparEstadoArrasteFluxograma();
+    }
+  );
+
+}
+
+
 // Desenha o fluxograma com as etapas do pipeline
 function desenharFluxograma() {
 
@@ -7521,6 +7851,13 @@ function desenharFluxograma() {
         Remover
       </button>
     `;
+
+    // Permite mover esta etapa para outra posição do fluxograma.
+    configurarArrasteEtapaFluxograma(
+      bloco,
+      etapa,
+      index
+    );
 
     areaFluxograma.appendChild(bloco);
   });
