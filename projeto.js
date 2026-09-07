@@ -36,6 +36,12 @@ const mensagemModalExcluirProjeto = document.getElementById("mensagemModalExclui
 const botaoCancelarExclusaoProjeto = document.getElementById("botaoCancelarExclusaoProjeto");
 const botaoConfirmarExclusaoProjeto = document.getElementById("botaoConfirmarExclusaoProjeto");
 
+// Modal visual para renomear um projeto salvo.
+const modalRenomearProjeto = document.getElementById("modalRenomearProjeto");
+const inputRenomearProjeto = document.getElementById("inputRenomearProjeto");
+const botaoCancelarRenomearProjeto = document.getElementById("botaoCancelarRenomearProjeto");
+const botaoConfirmarRenomearProjeto = document.getElementById("botaoConfirmarRenomearProjeto");
+
 
 // =============================================================
 // CONTROLE DO PROJETO QUE ESTÁ AGUARDANDO SELEÇÃO DE IMAGENS
@@ -46,6 +52,9 @@ let projetoAguardandoImagens = null;
 // Projeto que está aguardando confirmação no modal de exclusão.
 // Ele só é removido do Supabase após o usuário clicar em "Excluir".
 let projetoAguardandoExclusao = null;
+
+// Projeto que está aguardando a confirmação de um novo nome.
+let projetoAguardandoRenomeacao = null;
 
 // Lista completa dos projetos carregados do banco.
 // A pesquisa e a ordenação trabalham sobre esta cópia em memória.
@@ -1002,6 +1011,433 @@ inputImagensProjeto.addEventListener(
 
 
 // =============================================================
+// RENOMEAR PROJETO
+// =============================================================
+
+// Atualiza somente o nome do projeto no Supabase.
+// O fluxograma atual é enviado novamente sem qualquer alteração.
+async function renomearProjetoBanco(
+  projeto,
+  novoNome
+) {
+
+  if (
+    !window.SupabaseAplicacao ||
+    typeof window.SupabaseAplicacao.atualizarProjeto !== "function"
+  ) {
+
+    throw new Error(
+      "A integração com o Supabase não foi carregada."
+    );
+
+  }
+
+
+  if (
+    !projeto ||
+    !projeto.id
+  ) {
+
+    throw new Error(
+      "ID do projeto não informado."
+    );
+
+  }
+
+
+  await window.SupabaseAplicacao.atualizarProjeto(
+    String(projeto.id),
+    {
+      nome: novoNome,
+      fluxograma: obterPipelineProjeto(projeto)
+    }
+  );
+
+}
+
+
+// Se existir uma última sessão de processamento vinculada a esse projeto,
+// atualiza somente o nome armazenado localmente. O fluxo e as imagens não mudam.
+function sincronizarNomeProjetoNaUltimaSessao(
+  idProjeto,
+  novoNome
+) {
+
+  try {
+
+    const chaveSessao =
+      "ultimaSessaoProcessamento";
+
+    const textoSessao =
+      localStorage.getItem(
+        chaveSessao
+      );
+
+    if (!textoSessao) {
+      return;
+    }
+
+
+    const sessao =
+      JSON.parse(
+        textoSessao
+      );
+
+    const idNormalizado =
+      String(idProjeto);
+
+    let alterou =
+      false;
+
+
+    if (
+      sessao &&
+      Array.isArray(sessao.imagens)
+    ) {
+
+      sessao.imagens.forEach(
+        function(item) {
+
+          if (
+            item &&
+            item.salvamentoAutomatico &&
+            item.salvamentoAutomatico.projetoId !== null &&
+            item.salvamentoAutomatico.projetoId !== undefined &&
+            String(
+              item.salvamentoAutomatico.projetoId
+            ) === idNormalizado
+          ) {
+
+            item.salvamentoAutomatico.projetoNome =
+              novoNome;
+
+            alterou =
+              true;
+
+          }
+
+        }
+      );
+
+    }
+
+
+    // Mantém também o campo legado sincronizado.
+    if (
+      sessao &&
+      sessao.salvamentoAutomatico &&
+      sessao.salvamentoAutomatico.projetoId !== null &&
+      sessao.salvamentoAutomatico.projetoId !== undefined &&
+      String(
+        sessao.salvamentoAutomatico.projetoId
+      ) === idNormalizado
+    ) {
+
+      sessao.salvamentoAutomatico.projetoNome =
+        novoNome;
+
+      alterou =
+        true;
+
+    }
+
+
+    if (alterou) {
+
+      localStorage.setItem(
+        chaveSessao,
+        JSON.stringify(sessao)
+      );
+
+    }
+
+  } catch (error) {
+
+    console.warn(
+      "Não foi possível sincronizar o novo nome na última sessão:",
+      error
+    );
+
+  }
+
+}
+
+
+// Abre o modal já preenchido com o nome atual.
+function abrirModalRenomearProjeto(
+  projeto
+) {
+
+  if (
+    !projeto ||
+    !projeto.id ||
+    !modalRenomearProjeto ||
+    !inputRenomearProjeto
+  ) {
+
+    return;
+
+  }
+
+
+  projetoAguardandoRenomeacao =
+    projeto;
+
+
+  inputRenomearProjeto.value =
+    projeto.nome ||
+    "Projeto sem nome";
+
+
+  modalRenomearProjeto.classList.add(
+    "ativo"
+  );
+
+
+  setTimeout(
+    function() {
+
+      inputRenomearProjeto.focus();
+      inputRenomearProjeto.select();
+
+    },
+    0
+  );
+
+}
+
+
+// Fecha o modal sem alterar o projeto.
+function fecharModalRenomearProjeto() {
+
+  projetoAguardandoRenomeacao =
+    null;
+
+
+  if (modalRenomearProjeto) {
+
+    modalRenomearProjeto.classList.remove(
+      "ativo"
+    );
+
+  }
+
+}
+
+
+// Confirma e salva o novo nome.
+async function confirmarRenomeacaoProjeto() {
+
+  if (
+    !projetoAguardandoRenomeacao ||
+    !inputRenomearProjeto
+  ) {
+
+    fecharModalRenomearProjeto();
+
+    return;
+
+  }
+
+
+  const projeto =
+    projetoAguardandoRenomeacao;
+
+  const novoNome =
+    String(
+      inputRenomearProjeto.value ||
+      ""
+    ).trim();
+
+
+  if (!novoNome) {
+
+    alert(
+      "Digite um nome para o projeto."
+    );
+
+    inputRenomearProjeto.focus();
+
+    return;
+
+  }
+
+
+  const nomeAtual =
+    String(
+      projeto.nome ||
+      "Projeto sem nome"
+    ).trim();
+
+
+  if (novoNome === nomeAtual) {
+
+    fecharModalRenomearProjeto();
+
+    return;
+
+  }
+
+
+  if (botaoConfirmarRenomearProjeto) {
+
+    botaoConfirmarRenomearProjeto.disabled =
+      true;
+
+    botaoConfirmarRenomearProjeto.innerText =
+      "Salvando...";
+
+  }
+
+
+  try {
+
+    await renomearProjetoBanco(
+      projeto,
+      novoNome
+    );
+
+
+    sincronizarNomeProjetoNaUltimaSessao(
+      projeto.id,
+      novoNome
+    );
+
+
+    fecharModalRenomearProjeto();
+
+    await carregarProjetos();
+
+
+    statusProjetos.innerText =
+      'Projeto renomeado para "' +
+      novoNome +
+      '".';
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao renomear projeto:",
+      error
+    );
+
+
+    alert(
+      "Não foi possível renomear o projeto."
+    );
+
+  } finally {
+
+    if (botaoConfirmarRenomearProjeto) {
+
+      botaoConfirmarRenomearProjeto.disabled =
+        false;
+
+      botaoConfirmarRenomearProjeto.innerText =
+        "Salvar";
+
+    }
+
+  }
+
+}
+
+
+// -------------------------------------------------------------
+// EVENTOS DO MODAL DE RENOMEAR
+// -------------------------------------------------------------
+
+if (botaoCancelarRenomearProjeto) {
+
+  botaoCancelarRenomearProjeto.addEventListener(
+    "click",
+    function() {
+
+      fecharModalRenomearProjeto();
+
+    }
+  );
+
+}
+
+
+if (botaoConfirmarRenomearProjeto) {
+
+  botaoConfirmarRenomearProjeto.addEventListener(
+    "click",
+    function() {
+
+      confirmarRenomeacaoProjeto();
+
+    }
+  );
+
+}
+
+
+if (inputRenomearProjeto) {
+
+  inputRenomearProjeto.addEventListener(
+    "keydown",
+    function(event) {
+
+      if (event.key === "Enter") {
+
+        event.preventDefault();
+
+        confirmarRenomeacaoProjeto();
+
+      }
+
+    }
+  );
+
+}
+
+
+if (modalRenomearProjeto) {
+
+  modalRenomearProjeto.addEventListener(
+    "click",
+    function(event) {
+
+      if (
+        event.target ===
+        modalRenomearProjeto
+      ) {
+
+        fecharModalRenomearProjeto();
+
+      }
+
+    }
+  );
+
+}
+
+
+// Escape também fecha o modal de renomear sem salvar.
+document.addEventListener(
+  "keydown",
+  function(event) {
+
+    if (
+      event.key === "Escape" &&
+      modalRenomearProjeto &&
+      modalRenomearProjeto.classList.contains(
+        "ativo"
+      )
+    ) {
+
+      fecharModalRenomearProjeto();
+
+    }
+
+  }
+);
+
+
+// =============================================================
 // EXCLUIR PROJETO
 // =============================================================
 
@@ -1278,8 +1714,59 @@ function criarCardProjeto(projeto) {
     "Projeto sem nome";
 
 
-  informacoes.appendChild(
+  const linhaNome =
+    document.createElement(
+      "div"
+    );
+
+
+  linhaNome.className =
+    "linha_nome_projeto";
+
+
+  linhaNome.appendChild(
     nome
+  );
+
+
+  const botaoRenomear =
+    document.createElement(
+      "button"
+    );
+
+
+  botaoRenomear.type =
+    "button";
+
+
+  botaoRenomear.className =
+    "botao_renomear_projeto";
+
+
+  botaoRenomear.innerText =
+    "Renomear";
+
+
+  botaoRenomear.onclick =
+    function(event) {
+
+      event.stopPropagation();
+
+
+      abrirModalRenomearProjeto(
+        projeto
+      );
+
+    };
+
+
+  linhaNome.appendChild(
+    botaoRenomear
+  );
+
+
+  informacoes.appendChild(
+    linhaNome
   );
 
 

@@ -474,9 +474,58 @@
 
       font-weight: 600;
 
-      margin-bottom: 7px;
-
       word-break: break-word;
+
+      min-width: 0;
+
+      flex: 1;
+    }
+
+
+    .linha_nome_projeto {
+      display: flex;
+
+      align-items: flex-start;
+
+      gap: 8px;
+
+      margin-bottom: 7px;
+    }
+
+
+    .botao_renomear_projeto {
+      flex-shrink: 0;
+
+      padding: 4px 8px;
+
+      border-radius: 7px;
+
+      border:
+        1px solid rgba(192,132,252,0.35);
+
+      background:
+        rgba(192,132,252,0.12);
+
+      color:
+        rgba(255,255,255,0.78);
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      font-size: 10px;
+
+      cursor: pointer;
+
+      transition: 0.2s;
+    }
+
+
+    .botao_renomear_projeto:hover {
+      background:
+        rgba(192,132,252,0.28);
+
+      color: white;
     }
 
     .detalhes_projeto {
@@ -620,6 +669,171 @@
       font-size: 12px;
 
       opacity: 0.55;
+    }
+
+
+    /* =========================================================
+       MODAL PARA RENOMEAR PROJETO
+       ========================================================= */
+
+    .modal_renomear_projeto {
+      display: none;
+
+      position: fixed;
+      inset: 0;
+
+      z-index: 6100;
+
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      background:
+        rgba(2,7,18,0.76);
+
+      backdrop-filter:
+        blur(4px);
+    }
+
+
+    .modal_renomear_projeto.ativo {
+      display: flex;
+    }
+
+
+    .caixa_renomear_projeto {
+      width: min(430px, 100%);
+
+      padding: 22px;
+
+      border-radius: 18px;
+
+      background: #0b162c;
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.45);
+    }
+
+
+    .caixa_renomear_projeto h3 {
+      margin-bottom: 8px;
+
+      color: #ffffff;
+    }
+
+
+    .caixa_renomear_projeto p {
+      margin-bottom: 14px;
+
+      color:
+        rgba(255,255,255,0.70);
+
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+
+    .input_renomear_projeto {
+      width: 100%;
+
+      height: 42px;
+
+      padding: 0 12px;
+
+      border-radius: 10px;
+
+      border:
+        1px solid rgba(255,255,255,0.12);
+
+      background:
+        rgba(255,255,255,0.055);
+
+      color: #ffffff;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      font-size: 13px;
+
+      outline: none;
+    }
+
+
+    .input_renomear_projeto:focus {
+      border-color:
+        rgba(192,132,252,0.65);
+
+      box-shadow:
+        0 0 0 3px rgba(192,132,252,0.08);
+    }
+
+
+    .acoes_renomear_projeto {
+      display: flex;
+      justify-content: flex-end;
+
+      gap: 8px;
+
+      margin-top: 16px;
+    }
+
+
+    .botao_modal_renomear_projeto {
+      padding: 10px 14px;
+
+      border-radius: 9px;
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      background:
+        rgba(192,132,252,0.20);
+
+      color: #ffffff;
+
+      font-family: inherit;
+      font-size: 13px;
+
+      cursor: pointer;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+    }
+
+
+    .botao_modal_renomear_projeto:hover {
+      background:
+        rgba(192,132,252,0.35);
+
+      border-color:
+        rgba(192,132,252,0.65);
+    }
+
+
+    .botao_modal_renomear_projeto.cancelar {
+      background:
+        rgba(255,255,255,0.055);
+
+      border-color:
+        rgba(255,255,255,0.12);
+    }
+
+
+    .botao_modal_renomear_projeto.cancelar:hover {
+      background:
+        rgba(255,255,255,0.10);
+    }
+
+
+    .botao_modal_renomear_projeto:disabled {
+      opacity: 0.55;
+      cursor: default;
     }
 
 
@@ -1052,6 +1266,63 @@
 
 
   </main>
+
+
+
+  <!-- =======================================================
+       MODAL PARA RENOMEAR PROJETO
+       ======================================================= -->
+
+  <div
+    class="modal_renomear_projeto"
+    id="modalRenomearProjeto"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tituloModalRenomearProjeto"
+  >
+
+    <div class="caixa_renomear_projeto">
+
+      <h3 id="tituloModalRenomearProjeto">
+        Renomear projeto
+      </h3>
+
+      <p>
+        Digite o novo nome do projeto.
+      </p>
+
+      <input
+        type="text"
+        id="inputRenomearProjeto"
+        class="input_renomear_projeto"
+        maxlength="100"
+        autocomplete="off"
+        placeholder="Nome do projeto"
+      >
+
+      <div class="acoes_renomear_projeto">
+
+        <button
+          type="button"
+          class="botao_modal_renomear_projeto cancelar"
+          id="botaoCancelarRenomearProjeto"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="botao_modal_renomear_projeto"
+          id="botaoConfirmarRenomearProjeto"
+        >
+          Salvar
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
 
 
 
