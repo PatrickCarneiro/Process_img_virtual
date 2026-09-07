@@ -1316,6 +1316,46 @@ function garantirEstadoSalvamentoAutomaticoImagem(item) {
 }
 
 
+// Atualiza somente o nome do projeto exibido ao lado do título
+// "Área de processamento". O nome vem do mesmo vínculo de projeto
+// já utilizado pelo salvamento automático da imagem atual.
+function atualizarNomeProjetoProcessamento() {
+
+  const elementoNomeProjeto =
+    document.getElementById(
+      "nomeProjetoProcessamento"
+    );
+
+
+  if (!elementoNomeProjeto) {
+
+    return;
+
+  }
+
+
+  const nomeProjeto =
+    projetoSalvamentoAutomaticoNome
+      ? String(
+          projetoSalvamentoAutomaticoNome
+        ).trim()
+      : "";
+
+
+  elementoNomeProjeto.innerText =
+    nomeProjeto
+      ? "Projeto: " + nomeProjeto
+      : "";
+
+
+  elementoNomeProjeto.title =
+    nomeProjeto
+      ? "Projeto: " + nomeProjeto
+      : "";
+
+}
+
+
 // Atualiza as variáveis globais e a chavinha usando SOMENTE
 // o estado da imagem que está sendo exibida.
 function carregarSalvamentoAutomaticoDaImagem(
@@ -1339,6 +1379,8 @@ function carregarSalvamentoAutomaticoDaImagem(
     atualizarIndicadorSalvamentoAutomatico(
       "desativado"
     );
+
+    atualizarNomeProjetoProcessamento();
 
     return;
 
@@ -1372,6 +1414,8 @@ function carregarSalvamentoAutomaticoDaImagem(
       ? "ativo"
       : "desativado"
   );
+
+  atualizarNomeProjetoProcessamento();
 
 }
 
@@ -3228,6 +3272,8 @@ async function loadFiles() {
       criarCardImagem(item);
     });
 
+    criarBotaoAdicionarMaisImagens();
+
     // Se a página foi aberta a partir de um projeto salvo,
     // o fluxograma é restaurado, mas NÃO é processado automaticamente.
     // A primeira imagem permanece sem processamento até o usuário
@@ -3412,6 +3458,301 @@ function criarCardImagem(item) {
 
   imagensTrabalho.appendChild(card);
 }
+
+// Cria o botão que permanece sempre depois da última miniatura.
+function criarBotaoAdicionarMaisImagens() {
+
+  if (!imagensTrabalho) {
+
+    return;
+  }
+
+
+  const botaoAdicionar =
+    document.createElement("button");
+
+  botaoAdicionar.type = "button";
+  botaoAdicionar.className =
+    "card_adicionar_imagens";
+
+  botaoAdicionar.innerHTML = `
+    <span class="icone_adicionar_imagens">+</span>
+    <span>Adicionar mais imagens</span>
+  `;
+
+
+  botaoAdicionar.addEventListener(
+    "click",
+    function() {
+
+      const inputAdicionar =
+        document.getElementById(
+          "inputAdicionarMaisImagens"
+        );
+
+
+      if (!inputAdicionar) {
+
+        return;
+
+      }
+
+
+      inputAdicionar.value = "";
+      inputAdicionar.click();
+
+    }
+  );
+
+
+  imagensTrabalho.appendChild(
+    botaoAdicionar
+  );
+
+}
+
+
+// Retorna um identificador visual novo sem alterar os ids já existentes.
+function obterProximoIdProcessamentoImagem() {
+
+  const maiorId =
+    imagensProcessamento.reduce(
+      function(maior, item) {
+
+        const id =
+          Number(
+            item &&
+            item.idProcessamento
+          );
+
+
+        return Number.isFinite(id)
+          ? Math.max(maior, id)
+          : maior;
+
+      },
+      0
+    );
+
+
+  return maiorId + 1;
+
+}
+
+
+// Adiciona novas imagens à sessão atual sem remover as imagens que já existem
+// e sem copiar automaticamente nenhum fluxograma para os novos arquivos.
+async function adicionarMaisImagensAoProcessamento(
+  arquivos
+) {
+
+  const listaArquivos =
+    Array.from(
+      arquivos || []
+    );
+
+
+  if (
+    listaArquivos.length === 0
+  ) {
+
+    return;
+
+  }
+
+
+  let proximoIdProcessamento =
+    obterProximoIdProcessamentoImagem();
+
+
+  try {
+
+    statusText.innerText =
+      "Adicionando novas imagens...";
+
+
+    for (
+      const file of listaArquivos
+    ) {
+
+      const nomeArquivo =
+        file.name.toLowerCase();
+
+
+      const type =
+        nomeArquivo.endsWith(".dcm") ||
+        nomeArquivo.endsWith(".dicom") ||
+        file.type === "application/dicom"
+          ? "dicom"
+          : "image";
+
+
+      const registro = {
+
+        name:
+          file.name,
+
+        type:
+          type,
+
+        file:
+          file,
+
+        createdAt:
+          Date.now()
+
+      };
+
+
+      const idBanco =
+        await adicionarRegistroArquivoNoBanco(
+          registro
+        );
+
+
+      const novoItem = {
+
+        idProcessamento:
+          proximoIdProcessamento++,
+
+        id:
+          idBanco,
+
+        name:
+          file.name,
+
+        type:
+          type,
+
+        file:
+          file,
+
+        resultado:
+          null,
+
+        processado:
+          false,
+
+        assinaturaPipeline:
+          "",
+
+        cacheEtapas:
+          {},
+
+        pipelineProcessado:
+          [],
+
+        pipelineFerramentas:
+          [],
+
+        salvamentoAutomaticoAtivo:
+          false,
+
+        salvamentoAutomaticoPerguntado:
+          false,
+
+        projetoSalvamentoAutomaticoId:
+          null,
+
+        projetoSalvamentoAutomaticoNome:
+          ""
+
+      };
+
+
+      imagensProcessamento.push(
+        novoItem
+      );
+
+    }
+
+
+    redesenharCardsImagens();
+    salvarUltimaSessaoProcessamento();
+
+
+    statusText.innerText =
+      listaArquivos.length === 1
+        ? "1 imagem adicionada à área de processamento."
+        : (
+            listaArquivos.length +
+            " imagens adicionadas à área de processamento."
+          );
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao adicionar novas imagens:",
+      error
+    );
+
+
+    alert(
+      "Não foi possível adicionar as novas imagens: " +
+      (error.message || String(error))
+    );
+
+  }
+
+}
+
+
+// Liga o input oculto existente no processamento.html ao processo
+// de inclusão de novas imagens na sessão atual.
+function configurarAdicaoMaisImagens() {
+
+  const inputAdicionar =
+    document.getElementById(
+      "inputAdicionarMaisImagens"
+    );
+
+
+  if (
+    !inputAdicionar ||
+    inputAdicionar.dataset.listenerAdicionarImagens ===
+      "true"
+  ) {
+
+    return;
+
+  }
+
+
+  inputAdicionar.addEventListener(
+    "change",
+    async function() {
+
+      const arquivos =
+        Array.from(
+          inputAdicionar.files || []
+        );
+
+
+      if (
+        arquivos.length === 0
+      ) {
+
+        return;
+
+      }
+
+
+      await adicionarMaisImagensAoProcessamento(
+        arquivos
+      );
+
+
+      inputAdicionar.value = "";
+
+    }
+  );
+
+
+  inputAdicionar.dataset.listenerAdicionarImagens =
+    "true";
+
+}
+
 
 // Função para atualizar a marcação visual do card da imagem selecionada
 function atualizarCardSelecionado() {
@@ -11767,6 +12108,8 @@ function redesenharCardsImagens() {
     criarCardImagem(item);
   });
 
+  criarBotaoAdicionarMaisImagens();
+
   atualizarCardSelecionado();
 }
 
@@ -16655,5 +16998,7 @@ configurarRedimensionamentoMiniaturas();
 configurarAplicacaoBrilhoContrasteFluxograma();
 configurarExportacaoImagens();
 configurarExportacaoImportacaoFluxo();
+configurarAdicaoMaisImagens();
 atualizarControleSalvarFluxoProjeto();
 atualizarIndicadorSalvamentoAutomatico("desativado");
+atualizarNomeProjetoProcessamento();

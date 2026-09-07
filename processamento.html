@@ -416,10 +416,32 @@
       flex-shrink: 0;
     }
 
+    .titulo_area_processamento {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
     .cabecalho_area_processamento h1 {
       width: auto;
-      flex: 1;
+      flex: 0 0 auto;
       margin: 0;
+    }
+
+    .nome_projeto_processamento {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.62);
+    }
+
+    .nome_projeto_processamento:empty {
+      display: none;
     }
 
     .controle_salvamento_automatico {
@@ -1811,6 +1833,48 @@
       box-shadow: 0 0 14px rgba(192,132,252,0.35);
     }
 
+    /* BOTÃO PARA ADICIONAR MAIS IMAGENS AO FINAL DAS MINIATURAS */
+
+    .card_adicionar_imagens {
+      min-width: 180px;
+      max-width: 180px;
+      min-height: 160px;
+      flex: 0 0 180px;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+
+      padding: 12px;
+      border: 1px dashed rgba(192,132,252,0.55);
+      border-radius: 18px;
+      background: rgba(192,132,252,0.07);
+      color: rgba(255,255,255,0.88);
+
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .card_adicionar_imagens:hover {
+      background: rgba(192,132,252,0.18);
+      border-color: rgba(192,132,252,0.85);
+      transform: translateY(-3px);
+    }
+
+    .icone_adicionar_imagens {
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 300;
+      color: #c084fc;
+    }
+
     /* DESIGN DA MINIATURA DO CARD */
 
     .card_imagem img,
@@ -2416,7 +2480,16 @@
       <!-- Cabeçalho da área central + estado do salvamento automático -->
       <div class="cabecalho_area_processamento">
 
-        <h1>Área de processamento</h1>
+        <div class="titulo_area_processamento">
+
+          <h1>Área de processamento</h1>
+
+          <span
+            class="nome_projeto_processamento"
+            id="nomeProjetoProcessamento"
+          ></span>
+
+        </div>
 
         <div
           class="controle_salvamento_automatico desativado"
@@ -2985,6 +3058,14 @@
     ></div>
 
     <div class="painel imagens_trabalho" id="imagensTrabalho"></div>
+
+    <input
+      type="file"
+      id="inputAdicionarMaisImagens"
+      accept=".png,.jpg,.jpeg,.tif,.tiff,.dcm,.dicom"
+      multiple
+      hidden
+    >
 
   </div>
 
