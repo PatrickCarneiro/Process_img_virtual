@@ -66,9 +66,19 @@
     /* DESIGN DO LOGO DO MENU */
 
     .logo {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 25px;
+      width: 100%;
+      margin-bottom: 32px; /* Espaço abaixo da logo e antes dos botões do menu */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .logo img {
+      display: block;
+      width: 100%;
+      max-width: 210px; /* Aproveita a largura disponível da barra lateral */
+      height: auto;
+      object-fit: contain;
     }
     .menulateral.fechado .logo,
     .menulateral.fechado .texto-menu {
@@ -2504,7 +2514,9 @@
     <button class="botao-menu" onclick="toggleMenu()">☰</button>
 
     <!-- Nome do sistema -->
-    <div class="logo">Processamento Imagem Médica</div>
+    <div class="logo">
+      <img src="Imagens/logo_vertical.png" alt="IProFlow">
+    </div>
 
     <!-- Botão para voltar ao início -->
     <div class="menu-item" onclick="window.location.href='index.html'">
