@@ -341,6 +341,23 @@
     }
 
 
+    .logo_iproflow {
+      display: block;
+
+      width:
+        clamp(
+          220px,
+          26vw,
+          320px
+        );
+
+      max-width: 100%;
+      height: auto;
+
+      object-fit: contain;
+    }
+
+
     .simbolo_marca {
       width: 44px;
       height: 44px;
@@ -1293,65 +1310,11 @@
 
         <div class="marca">
 
-          <div class="simbolo_marca">
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-
-              <path
-                d="M4 17V7"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M8 14V10"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M12 18V6"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M16 15V9"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M20 17V7"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-            </svg>
-
-          </div>
-
-
-          <div class="nome_marca">
-
-            <strong>
-              Processamento de Imagens
-            </strong>
-
-            <span>
-              Plataforma de análise
-            </span>
-
-          </div>
+          <img
+            src="Imagens/logo_horizontal.png"
+            alt="IProFlow"
+            class="logo_iproflow"
+          >
 
         </div>
 
