@@ -234,13 +234,19 @@ async function loadRecentImages() { // Função para carregar as imagens recente
   });
 }
 
-// UPLOAD NORMAL
+// UPLOAD NORMAL E ARRASTAR/SOLTAR
 
-fileInput.addEventListener("change", async function() { // Evento que roda quando o usuário seleciona arquivos usando o input de arquivos
+// Faz o mesmo processamento tanto para arquivos escolhidos pelo botão
+// quanto para arquivos arrastados e soltos sobre a caixa de upload.
+async function enviarArquivosParaProcessamento(arquivos) {
 
-  const files = Array.from(fileInput.files); // Converte a lista de arquivos selecionados em um array para facilitar o uso
+  const files = Array.from(arquivos || []);
 
-  const db = await openDatabase(); 
+  if (files.length === 0) {
+    return;
+  }
+
+  const db = await openDatabase();
   await clearStore(db, "files");
 
   for (const file of files) {
@@ -257,17 +263,105 @@ fileInput.addEventListener("change", async function() { // Evento que roda quand
 
     const data = { // Cria um objeto com as informações do arquivo para armazenar no banco
       name: file.name,
-      type: type, 
+      type: type,
       file: file, // Armazena o arquivo em si para poder acessar os dados posteriormente
       createdAt: Date.now()
     };
 
-    await addToStore(db, "files", data); 
+    await addToStore(db, "files", data);
     await addToStore(db, "recent", data);
   }
 
+  db.close();
+
   window.location.href = "processamento.html";
+}
+
+
+fileInput.addEventListener("change", async function() { // Evento que roda quando o usuário seleciona arquivos usando o input de arquivos
+
+  await enviarArquivosParaProcessamento(
+    fileInput.files
+  );
+
 });
+
+
+// Permite arrastar imagens do computador e soltá-las diretamente
+// sobre a caixa "Escolher imagens ou arquivos DICOM".
+const uploadBox = document.querySelector(".upload-box");
+
+if (uploadBox) {
+
+  uploadBox.addEventListener("dragenter", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    uploadBox.classList.add("arrastando-arquivo");
+  });
+
+  uploadBox.addEventListener("dragover", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    uploadBox.classList.add("arrastando-arquivo");
+  });
+
+  uploadBox.addEventListener("dragleave", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (
+      !event.relatedTarget ||
+      !uploadBox.contains(event.relatedTarget)
+    ) {
+      uploadBox.classList.remove("arrastando-arquivo");
+    }
+  });
+
+  uploadBox.addEventListener("drop", async function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    uploadBox.classList.remove("arrastando-arquivo");
+
+    const arquivosSoltos =
+      Array.from(event.dataTransfer.files || []);
+
+    const extensoesAceitas = [
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".tif",
+      ".tiff",
+      ".dcm",
+      ".dicom"
+    ];
+
+    const arquivosValidos =
+      arquivosSoltos.filter(function(file) {
+
+        const nomeArquivo =
+          String(file.name || "").toLowerCase();
+
+        return extensoesAceitas.some(function(extensao) {
+          return nomeArquivo.endsWith(extensao);
+        });
+
+      });
+
+    if (arquivosValidos.length === 0) {
+      statusText.innerText =
+        "Solte arquivos PNG, JPG, JPEG, TIF, TIFF, DCM ou DICOM.";
+      return;
+    }
+
+    await enviarArquivosParaProcessamento(
+      arquivosValidos
+    );
+
+  });
+
+}
 
 // INICIAR
 loadRecentImages();
