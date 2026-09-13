@@ -3848,6 +3848,312 @@ function toggleCategoria(id) {
 
 // FUNÇÕES DO CARD DE IMAGEM
 
+// Remove somente o registro da imagem da store "files".
+// A lista de imagens recentes e os projetos salvos não são alterados.
+function removerRegistroImagemDoProcessamento(idArquivo) {
+
+  return new Promise(async function(resolve, reject) {
+
+    let db = null;
+
+    try {
+
+      db = await openDatabase();
+
+      const transaction =
+        db.transaction(
+          "files",
+          "readwrite"
+        );
+
+      const store =
+        transaction.objectStore(
+          "files"
+        );
+
+      const request =
+        store.delete(
+          idArquivo
+        );
+
+      request.onsuccess =
+        function() {
+
+          resolve();
+
+        };
+
+      request.onerror =
+        function() {
+
+          reject(
+            request.error
+          );
+
+        };
+
+      transaction.oncomplete =
+        function() {
+
+          if (db) {
+            db.close();
+          }
+
+        };
+
+    } catch (error) {
+
+      if (db) {
+
+        try {
+          db.close();
+        } catch (_) {
+        }
+
+      }
+
+      reject(error);
+
+    }
+
+  });
+
+}
+
+
+// Remove uma imagem da área de processamento.
+// Se a imagem removida for a atual, seleciona automaticamente
+// outra miniatura disponível. Se não restar nenhuma, limpa
+// somente a visualização da sessão atual.
+async function removerImagemDaAreaProcessamento(itemRemover) {
+
+  if (!itemRemover) {
+    return;
+  }
+
+
+  const indiceRemover =
+    imagensProcessamento.findIndex(
+      function(item) {
+
+        return (
+          Number(item.idProcessamento) ===
+          Number(itemRemover.idProcessamento)
+        );
+
+      }
+    );
+
+
+  if (indiceRemover < 0) {
+    return;
+  }
+
+
+  const removendoImagemAtual =
+    Boolean(
+      imagemAtualSelecionada &&
+      Number(
+        imagemAtualSelecionada.idProcessamento
+      ) ===
+      Number(
+        itemRemover.idProcessamento
+      )
+    );
+
+
+  try {
+
+    // Antes de remover a imagem atual, preserva na memória
+    // qualquer alteração já feita no fluxograma dela.
+    if (removendoImagemAtual) {
+
+      sincronizarPipelineAtualNaImagem();
+
+    }
+
+
+    await removerRegistroImagemDoProcessamento(
+      itemRemover.id
+    );
+
+
+    imagensProcessamento.splice(
+      indiceRemover,
+      1
+    );
+
+
+    // --------------------------------------------------------
+    // A IMAGEM REMOVIDA NÃO ERA A IMAGEM ATUAL
+    // --------------------------------------------------------
+
+    if (!removendoImagemAtual) {
+
+      redesenharCardsImagens();
+      salvarUltimaSessaoProcessamento();
+
+      statusText.innerText =
+        "Imagem removida da área de processamento.";
+
+      return;
+
+    }
+
+
+    // --------------------------------------------------------
+    // AINDA EXISTEM OUTRAS IMAGENS
+    // --------------------------------------------------------
+
+    if (
+      imagensProcessamento.length > 0
+    ) {
+
+      const novoIndice =
+        Math.min(
+          indiceRemover,
+          imagensProcessamento.length - 1
+        );
+
+
+      const novaImagemAtual =
+        imagensProcessamento[
+          novoIndice
+        ];
+
+
+      imagemAtualSelecionada =
+        novaImagemAtual;
+
+
+      carregarPipelineDaImagem(
+        novaImagemAtual
+      );
+
+
+      redesenharCardsImagens();
+
+      salvarUltimaSessaoProcessamento();
+
+
+      await openFile(
+        novaImagemAtual
+      );
+
+
+      atualizarCardSelecionado();
+
+
+      if (
+        analiseCarregada &&
+        typeof atualizarAnaliseDaImagemAtual ===
+          "function"
+      ) {
+
+        await atualizarAnaliseDaImagemAtual();
+
+      }
+
+
+      statusText.innerText =
+        "Imagem removida da área de processamento.";
+
+      return;
+
+    }
+
+
+    // --------------------------------------------------------
+    // NÃO RESTOU NENHUMA IMAGEM
+    // --------------------------------------------------------
+
+    imagemAtualSelecionada =
+      null;
+
+    pipelineFerramentas =
+      [];
+
+    recalcularProximoIdEtapaPipelineAtual();
+
+    etapaComparativoSelecionada =
+      "original";
+
+
+    desenharFluxograma();
+
+    atualizarControleSalvarFluxoProjeto();
+
+    atualizarIndicadorSalvamentoAutomatico(
+      "desativado"
+    );
+
+
+    imagensTrabalho.innerHTML =
+      "";
+
+    criarBotaoAdicionarMaisImagens();
+
+
+    imagemNormal.style.display =
+      "none";
+
+    imagemNormal.style.visibility =
+      "hidden";
+
+    imagemNormal.removeAttribute(
+      "src"
+    );
+
+
+    visualizadorDicom.style.display =
+      "none";
+
+    imagemDicomAtual =
+      null;
+
+
+    const arquivoAtual =
+      document.getElementById(
+        "arquivoAtual"
+      );
+
+    if (arquivoAtual) {
+
+      arquivoAtual.innerText =
+        "Nenhuma imagem selecionada";
+
+    }
+
+
+    limparUltimaSessaoProcessamento();
+
+    atualizarNomeProjetoProcessamento();
+
+
+    statusText.innerText =
+      "Nenhuma imagem na área de processamento.";
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao remover imagem da área de processamento:",
+      error
+    );
+
+
+    alert(
+      "Não foi possível remover a imagem da área de processamento: " +
+      (
+        error.message ||
+        String(error)
+      )
+    );
+
+  }
+
+}
+
+
 // Função para criar um card de imagem
 function criarCardImagem(item) {
 
@@ -3890,6 +4196,163 @@ function criarCardImagem(item) {
   nome.innerText = item.name;
 
   card.appendChild(nome);
+
+
+  // Botão exibido somente quando o mouse passa sobre a miniatura.
+  // Remove apenas esta imagem da área de processamento.
+  card.style.position =
+    "relative";
+
+
+  const botaoRemoverImagem =
+    document.createElement(
+      "button"
+    );
+
+
+  botaoRemoverImagem.type =
+    "button";
+
+  botaoRemoverImagem.innerText =
+    "−";
+
+  botaoRemoverImagem.title =
+    "Remover imagem da área de processamento";
+
+  botaoRemoverImagem.setAttribute(
+    "aria-label",
+    "Remover imagem da área de processamento"
+  );
+
+
+  botaoRemoverImagem.style.position =
+    "absolute";
+
+  botaoRemoverImagem.style.top =
+    "8px";
+
+  botaoRemoverImagem.style.right =
+    "8px";
+
+  botaoRemoverImagem.style.width =
+    "28px";
+
+  botaoRemoverImagem.style.height =
+    "28px";
+
+  botaoRemoverImagem.style.padding =
+    "0";
+
+  botaoRemoverImagem.style.border =
+    "1px solid rgba(255,255,255,0.22)";
+
+  botaoRemoverImagem.style.borderRadius =
+    "50%";
+
+  botaoRemoverImagem.style.background =
+    "rgba(10,20,40,0.88)";
+
+  botaoRemoverImagem.style.color =
+    "white";
+
+  botaoRemoverImagem.style.fontSize =
+    "20px";
+
+  botaoRemoverImagem.style.fontWeight =
+    "600";
+
+  botaoRemoverImagem.style.lineHeight =
+    "24px";
+
+  botaoRemoverImagem.style.textAlign =
+    "center";
+
+  botaoRemoverImagem.style.cursor =
+    "pointer";
+
+  botaoRemoverImagem.style.zIndex =
+    "10";
+
+  botaoRemoverImagem.style.opacity =
+    "0";
+
+  botaoRemoverImagem.style.pointerEvents =
+    "none";
+
+  botaoRemoverImagem.style.transition =
+    "opacity 0.2s ease, background 0.2s ease";
+
+
+  botaoRemoverImagem.addEventListener(
+    "mouseenter",
+    function() {
+
+      botaoRemoverImagem.style.background =
+        "rgba(192,132,252,0.92)";
+
+    }
+  );
+
+
+  botaoRemoverImagem.addEventListener(
+    "mouseleave",
+    function() {
+
+      botaoRemoverImagem.style.background =
+        "rgba(10,20,40,0.88)";
+
+    }
+  );
+
+
+  card.addEventListener(
+    "mouseenter",
+    function() {
+
+      botaoRemoverImagem.style.opacity =
+        "1";
+
+      botaoRemoverImagem.style.pointerEvents =
+        "auto";
+
+    }
+  );
+
+
+  card.addEventListener(
+    "mouseleave",
+    function() {
+
+      botaoRemoverImagem.style.opacity =
+        "0";
+
+      botaoRemoverImagem.style.pointerEvents =
+        "none";
+
+    }
+  );
+
+
+  botaoRemoverImagem.addEventListener(
+    "click",
+    async function(event) {
+
+      event.preventDefault();
+      event.stopPropagation();
+
+
+      await removerImagemDaAreaProcessamento(
+        item
+      );
+
+    }
+  );
+
+
+  card.appendChild(
+    botaoRemoverImagem
+  );
+
 
   card.onclick = async function() { // Adiciona evento de clique
 
