@@ -60,9 +60,19 @@
     /* DESIGN DO LOGO/TÍTULO DO MENU */
 
     .logo {
-      font-size: 25px; /* Tamanho do texto */
-      font-weight: 600; /* Deixa o texto mais forte */
-      margin-bottom: 50px; /* Espaço abaixo do logo */
+      width: 100%;
+      margin-bottom: 32px; /* Espaço abaixo da logo e antes dos botões do menu */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .logo img {
+      display: block;
+      width: 100%;
+      max-width: 210px; /* Aproveita a largura disponível da barra lateral */
+      height: auto;
+      object-fit: contain;
     }
 
     /* DESIGN DA LISTA DO MENU */
@@ -332,7 +342,9 @@
   <div class="menulateral">
 
     <!-- Nome/logo do sistema -->
-    <div class="logo">Processamento Imagem Médica</div>
+    <div class="logo">
+      <img src="Imagens/logo_vertical.png" alt="IProFlow">
+    </div>
 
     <!-- Itens do menu -->
     <ul class="menu">
