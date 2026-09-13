@@ -278,64 +278,34 @@
       align-items: center;
 
       gap: 13px;
+
+      height: 90px;
+
+      flex-shrink: 0;
     }
 
-    .simbolo_marca {
-      width: 44px;
-      height: 44px;
+    .logo_iproflow {
+      position: absolute;
 
-      display: flex;
+      left: 0;
+      top: 50%;
 
-      align-items: center;
-      justify-content: center;
+      transform:
+        translateY(-50%);
 
-      border-radius: 13px;
+      display: block;
 
-      background:
-        linear-gradient(
-          145deg,
-          rgba(192,132,252,0.28),
-          rgba(126,87,194,0.14)
+      width:
+        clamp(
+          300px,
+          36vw,
+          480px
         );
 
-      border:
-        1px solid rgba(192,132,252,0.45);
+      max-width: 100%;
+      height: auto;
 
-      box-shadow:
-        0 10px 28px rgba(0,0,0,0.20),
-        inset 0 1px 0 rgba(255,255,255,0.08);
-    }
-
-    .simbolo_marca svg {
-      width: 23px;
-      height: 23px;
-    }
-
-    .nome_marca {
-      display: flex;
-
-      flex-direction: column;
-
-      line-height: 1.15;
-    }
-
-    .nome_marca strong {
-      font-size: 16px;
-
-      font-weight: 600;
-    }
-
-    .nome_marca span {
-      margin-top: 4px;
-
-      font-size: 10px;
-
-      letter-spacing: 1.5px;
-
-      text-transform: uppercase;
-
-      color:
-        rgba(255,255,255,0.46);
+      object-fit: contain;
     }
 
     .texto_apresentacao {
@@ -1346,65 +1316,11 @@
 
         <div class="marca">
 
-          <div class="simbolo_marca">
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-
-              <path
-                d="M4 17V7"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M8 14V10"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M12 18V6"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M16 15V9"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-              <path
-                d="M20 17V7"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              />
-
-            </svg>
-
-          </div>
-
-
-          <div class="nome_marca">
-
-            <strong>
-              Processamento de Imagens
-            </strong>
-
-            <span>
-              Plataforma de análise
-            </span>
-
-          </div>
+          <img
+            src="Imagens/logo_horizontal.png"
+            alt="IProFlow"
+            class="logo_iproflow"
+          >
 
         </div>
 
