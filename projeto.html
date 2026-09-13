@@ -70,9 +70,19 @@
        ========================================================= */
 
     .logo {
-      font-size: 25px;
-      font-weight: 600;
-      margin-bottom: 50px;
+      width: 100%;
+      margin-bottom: 32px; /* Espaço abaixo da logo e antes dos botões do menu */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .logo img {
+      display: block;
+      width: 100%;
+      max-width: 210px; /* Aproveita a largura disponível da barra lateral */
+      height: auto;
+      object-fit: contain;
     }
 
 
@@ -1009,10 +1019,6 @@
         flex-shrink: 0;
       }
 
-      .logo {
-        margin-bottom: 20px;
-      }
-
       .menu {
         display: flex;
         gap: 8px;
@@ -1080,9 +1086,7 @@
     <!-- Nome do sistema -->
 
     <div class="logo">
-
-      Processamento Imagem Médica
-
+      <img src="Imagens/logo_vertical.png" alt="IProFlow">
     </div>
 
 
