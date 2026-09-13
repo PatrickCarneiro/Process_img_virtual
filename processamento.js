@@ -5469,18 +5469,36 @@ function formatarOperadorLimiarizacaoManual(
 }
 
 // =============================================================
-// FUNÇÕES AUXILIARES DA INTERFACE DE RUÍDOS
+// FUNÇÕES AUXILIARES DA INTERFACE DE ADIÇÃO DE RUÍDO
 // =============================================================
 
-function nomeEhFerramentaRuido(nome) {
+function atualizarCamposAdicionarRuido() {
 
-  return (
-    nome === "Ruído Gaussiano" ||
-    nome === "Ruído Salt & Pepper" ||
-    nome === "Ruído Speckle" ||
-    nome === "Ruído Poisson" ||
-    nome === "Ruído Localvar"
-  );
+  const seletorTipo =
+    document.getElementById("paramTipoRuido");
+
+  if (!seletorTipo) return;
+
+  const tipo = seletorTipo.value;
+
+  const campos = {
+    gaussian: document.getElementById("campoParametrosRuidoGaussian"),
+    "salt & pepper": document.getElementById("campoParametrosRuidoSaltPepper"),
+    speckle: document.getElementById("campoParametrosRuidoSpeckle"),
+    poisson: document.getElementById("campoParametrosRuidoPoisson"),
+    localvar: document.getElementById("campoParametrosRuidoLocalvar")
+  };
+
+  Object.keys(campos).forEach(function(chave) {
+    if (campos[chave]) {
+      campos[chave].style.display =
+        chave === tipo ? "block" : "none";
+    }
+  });
+
+  if (tipo === "localvar") {
+    atualizarCamposRuidoLocalvar();
+  }
 }
 
 
@@ -5547,9 +5565,17 @@ function interpretarListaNumericaRuidoInterface(texto, nomeCampo) {
 }
 
 
-function obterConfiguracaoRuidoDaInterface(nome) {
+function obterConfiguracaoRuidoDaInterface() {
 
-  if (nome === "Ruído Gaussiano") {
+  const seletorTipo =
+    document.getElementById("paramTipoRuido");
+
+  const tipo =
+    seletorTipo
+      ? seletorTipo.value
+      : "gaussian";
+
+  if (tipo === "gaussian") {
 
     const entradaMedia =
       document.getElementById("paramMediaRuidoGaussiano");
@@ -5570,7 +5596,7 @@ function obterConfiguracaoRuidoDaInterface(nome) {
     );
   }
 
-  if (nome === "Ruído Salt & Pepper") {
+  if (tipo === "salt & pepper") {
 
     const entradaDensidade =
       document.getElementById("paramDensidadeRuidoSaltPepper");
@@ -5586,7 +5612,7 @@ function obterConfiguracaoRuidoDaInterface(nome) {
     );
   }
 
-  if (nome === "Ruído Speckle") {
+  if (tipo === "speckle") {
 
     const entradaVariancia =
       document.getElementById("paramVarianciaRuidoSpeckle");
@@ -5602,11 +5628,11 @@ function obterConfiguracaoRuidoDaInterface(nome) {
     );
   }
 
-  if (nome === "Ruído Poisson") {
+  if (tipo === "poisson") {
     return criarConfiguracaoRuido("poisson");
   }
 
-  if (nome === "Ruído Localvar") {
+  if (tipo === "localvar") {
 
     const seletorModo =
       document.getElementById("paramModoRuidoLocalvar");
@@ -5669,7 +5695,7 @@ function formatarParametrosRuidoFluxograma(configuracaoEntrada) {
 
   if (configuracao.tipo === "gaussian") {
     return `
-      Tipo: Gaussian<br>
+      Tipo: Gaussiano<br>
       Média: ${configuracao.media}<br>
       Variância: ${configuracao.variancia}
     `;
@@ -6114,151 +6140,197 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
-  if (nome === "Ruído Gaussiano") {
+  if (nome === "Adicionar Ruído") {
 
     parametrosDiv.innerHTML = `
-      <h4>Ruído Gaussiano</h4>
+      <h4>Adicionar Ruído</h4>
 
       <div class="campo_parametro_info">
-        <label>Média</label>
-        <input type="number" id="paramMediaRuidoGaussiano" step="any" placeholder="Padrão: 0">
+        <label>Tipo de ruído</label>
+
+        <select
+          id="paramTipoRuido"
+          onchange="atualizarCamposAdicionarRuido()"
+        >
+          <option value="gaussian">Gaussiano</option>
+          <option value="salt & pepper">Salt & Pepper</option>
+          <option value="speckle">Speckle</option>
+          <option value="poisson">Poisson</option>
+          <option value="localvar">Localvar</option>
+        </select>
+
         <div class="caixa_info_parametro">
-          Se o campo ficar vazio, será usada média 0.
+          Selecione o tipo de ruído que será adicionado à imagem.
         </div>
       </div>
 
-      <div class="campo_parametro_info">
+      <div
+        class="campo_parametro_info"
+        id="campoParametrosRuidoGaussian"
+      >
+        <label>Média</label>
+
+        <input
+          type="number"
+          id="paramMediaRuidoGaussiano"
+          step="any"
+          placeholder="Padrão: 0"
+        >
+
+        <div class="caixa_info_parametro">
+          Se o campo ficar vazio, será usada média 0.
+        </div>
+
         <label>Variância</label>
-        <input type="number" id="paramVarianciaRuidoGaussiano" min="0" step="any" placeholder="Padrão: 0.01">
+
+        <input
+          type="number"
+          id="paramVarianciaRuidoGaussiano"
+          min="0"
+          step="any"
+          placeholder="Padrão: 0.01"
+        >
+
         <div class="caixa_info_parametro">
           Se o campo ficar vazio, será usada variância 0.01.
         </div>
       </div>
 
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Ruído Gaussiano')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
-
-  if (nome === "Ruído Salt & Pepper") {
-
-    parametrosDiv.innerHTML = `
-      <h4>Ruído Salt & Pepper</h4>
-
-      <div class="campo_parametro_info">
+      <div
+        class="campo_parametro_info"
+        id="campoParametrosRuidoSaltPepper"
+        style="display:none;"
+      >
         <label>Densidade</label>
-        <input type="number" id="paramDensidadeRuidoSaltPepper" min="0" max="1" step="any" placeholder="Padrão: 0.05">
+
+        <input
+          type="number"
+          id="paramDensidadeRuidoSaltPepper"
+          min="0"
+          max="1"
+          step="any"
+          placeholder="Padrão: 0.05"
+        >
+
         <div class="caixa_info_parametro">
           Valor entre 0 e 1. Se o campo ficar vazio, será usada densidade 0.05.
         </div>
       </div>
 
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Ruído Salt & Pepper')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
-
-  if (nome === "Ruído Speckle") {
-
-    parametrosDiv.innerHTML = `
-      <h4>Ruído Speckle</h4>
-
-      <div class="campo_parametro_info">
+      <div
+        class="campo_parametro_info"
+        id="campoParametrosRuidoSpeckle"
+        style="display:none;"
+      >
         <label>Variância</label>
-        <input type="number" id="paramVarianciaRuidoSpeckle" min="0" step="any" placeholder="Padrão: 0.05">
+
+        <input
+          type="number"
+          id="paramVarianciaRuidoSpeckle"
+          min="0"
+          step="any"
+          placeholder="Padrão: 0.05"
+        >
+
         <div class="caixa_info_parametro">
           Se o campo ficar vazio, será usada variância 0.05.
         </div>
       </div>
 
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Ruído Speckle')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
-
-  if (nome === "Ruído Poisson") {
-
-    parametrosDiv.innerHTML = `
-      <h4>Ruído Poisson</h4>
-
-      <div class="campo_parametro_info">
+      <div
+        class="campo_parametro_info"
+        id="campoParametrosRuidoPoisson"
+        style="display:none;"
+      >
         <label>Parâmetros</label>
+
         <div class="caixa_info_parametro">
-          O ruído Poisson não recebe parâmetros adicionais, seguindo imnoise(I, 'poisson').
+          O ruído Poisson não recebe parâmetros adicionais.
         </div>
       </div>
 
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Ruído Poisson')">
-        Aplicar
-      </button>
-    `;
-
-    return;
-  }
-
-  if (nome === "Ruído Localvar") {
-
-    parametrosDiv.innerHTML = `
-      <h4>Ruído Localvar</h4>
-
-      <div class="campo_parametro_info">
+      <div
+        class="campo_parametro_info"
+        id="campoParametrosRuidoLocalvar"
+        style="display:none;"
+      >
         <label>Forma de entrada</label>
-        <select id="paramModoRuidoLocalvar" onchange="atualizarCamposRuidoLocalvar()">
+
+        <select
+          id="paramModoRuidoLocalvar"
+          onchange="atualizarCamposRuidoLocalvar()"
+        >
           <option value="mapa">Mapa de variância</option>
           <option value="curva">Intensidade e variância</option>
         </select>
+
         <div class="caixa_info_parametro">
-          O Localvar não possui parâmetros padrão no MATLAB. É necessário informar uma das duas formas disponíveis.
+          O Localvar não possui parâmetros padrão. Informe uma das duas formas disponíveis.
+        </div>
+
+        <div
+          class="campo_parametro_info"
+          id="campoMapaRuidoLocalvar"
+        >
+          <label>Mapa de variância</label>
+
+          <textarea
+            id="paramMapaVarianciaRuidoLocalvar"
+            rows="5"
+            style="width:100%; margin-top:4px; padding:8px; border-radius:8px; border:none; outline:none; resize:vertical;"
+            placeholder="Uma variância por pixel, separada por espaço, vírgula ou ponto e vírgula"
+          ></textarea>
+
+          <div class="caixa_info_parametro">
+            A quantidade de valores deve ser compatível com a quantidade de pixels da imagem.
+          </div>
+        </div>
+
+        <div
+          class="campo_parametro_info"
+          id="campoCurvaRuidoLocalvar"
+          style="display:none;"
+        >
+          <label>Intensidades da imagem</label>
+
+          <input
+            type="text"
+            id="paramIntensidadesRuidoLocalvar"
+            placeholder="Ex: 0 0.25 0.5 0.75 1"
+          >
+
+          <div class="caixa_info_parametro">
+            Informe valores de intensidade entre 0 e 1.
+          </div>
+
+          <label>Variâncias do ruído</label>
+
+          <input
+            type="text"
+            id="paramVarianciasRuidoLocalvar"
+            placeholder="Ex: 0.01 0.02 0.03 0.04 0.05"
+          >
+
+          <div class="caixa_info_parametro">
+            Deve existir uma variância não negativa para cada intensidade informada.
+          </div>
         </div>
       </div>
 
-      <div class="campo_parametro_info" id="campoMapaRuidoLocalvar">
-        <label>Mapa de variância</label>
-        <textarea
-          id="paramMapaVarianciaRuidoLocalvar"
-          rows="5"
-          style="width:100%; margin-top:4px; padding:8px; border-radius:8px; border:none; outline:none; resize:vertical;"
-          placeholder="Uma variância por pixel, separada por espaço, vírgula ou ponto e vírgula"
-        ></textarea>
-        <div class="caixa_info_parametro">
-          Corresponde a imnoise(I, 'localvar', V). A quantidade de valores deve ser compatível com a imagem.
-        </div>
-      </div>
-
-      <div class="campo_parametro_info" id="campoCurvaRuidoLocalvar" style="display:none;">
-        <label>Intensidades da imagem</label>
-        <input type="text" id="paramIntensidadesRuidoLocalvar" placeholder="Ex: 0 0.25 0.5 0.75 1">
-        <div class="caixa_info_parametro">
-          Valores de intensidade entre 0 e 1.
-        </div>
-
-        <label>Variâncias do ruído</label>
-        <input type="text" id="paramVarianciasRuidoLocalvar" placeholder="Ex: 0.01 0.02 0.03 0.04 0.05">
-        <div class="caixa_info_parametro">
-          Deve existir uma variância não negativa para cada intensidade informada.
-        </div>
-      </div>
-
-      <button class="botao-aplicar" onclick="aplicarFerramenta('Ruído Localvar')">
+      <button
+        class="botao-aplicar"
+        onclick="aplicarFerramenta('Adicionar Ruído')"
+      >
         Aplicar
       </button>
     `;
 
-    atualizarCamposRuidoLocalvar();
+    atualizarCamposAdicionarRuido();
 
     return;
   }
 
-  if (nome === "Filtro Gaussiano") {
+  if (nome.includes("Gaussiano")) {
 
     parametrosDiv.innerHTML = `
       <h4>Parâmetros</h4>
@@ -7758,12 +7830,13 @@ async function aplicarFerramenta(nome) {
     return;
   }
 
-  if (nomeEhFerramentaRuido(nome)) {
+  if (nome === "Adicionar Ruído") {
 
     let configuracao;
 
     try {
-      configuracao = obterConfiguracaoRuidoDaInterface(nome);
+      configuracao =
+        obterConfiguracaoRuidoDaInterface();
     } catch (error) {
       alert(
         error && error.message
@@ -7775,7 +7848,7 @@ async function aplicarFerramenta(nome) {
 
     const etapa = {
       id: proximoIdEtapa++,
-      nome: nome,
+      nome: "Adicionar Ruído",
       parametros: {
         configuracao: configuracao
       }
@@ -7784,14 +7857,14 @@ async function aplicarFerramenta(nome) {
     pipelineFerramentas.push(etapa);
 
     await aplicarPipelineAposAdicionarEtapa(
-      nome + " adicionado à imagem selecionada.",
-      nome + " adicionado a todas as imagens."
+      "Ruído adicionado à imagem selecionada.",
+      "Ruído adicionado a todas as imagens."
     );
 
     return;
   }
 
-  if (nome === "Filtro Gaussiano") {
+  if (nome.includes("Gaussiano")) {
 
     if (typeof cv === "undefined") {
       alert("OpenCV.js ainda não foi carregado.");
@@ -8728,7 +8801,7 @@ function desenharFluxograma() {
       `;
     }
 
-    if (nomeEhFerramentaRuido(etapa.nome)) {
+    if (etapa.nome === "Adicionar Ruído") {
 
       try {
         textoParametros =
@@ -8736,11 +8809,12 @@ function desenharFluxograma() {
             etapa.parametros.configuracao
           );
       } catch (error) {
-        textoParametros = "Parâmetros de ruído inválidos.";
+        textoParametros =
+          "Parâmetros de ruído inválidos.";
       }
     }
 
-    if (etapa.nome === "Filtro Gaussiano") {
+    if (etapa.nome.includes("Gaussiano")) {
 
       const parametrosGaussiano =
         obterParametrosGaussianoEtapa(etapa);
@@ -10661,7 +10735,7 @@ async function processarImagemNormalPeloPipeline(item) {
 
   for (const etapa of etapasParaProcessar) {
 
-    if (nomeEhFerramentaRuido(etapa.nome)) {
+    if (etapa.nome === "Adicionar Ruído") {
 
       canvasAtual = await aplicarRuidoEmCanvas(
         canvasAtual,
@@ -10670,7 +10744,7 @@ async function processarImagemNormalPeloPipeline(item) {
       );
     }
 
-    if (etapa.nome === "Filtro Gaussiano") { 
+    if (etapa.nome.includes("Gaussiano")) { 
 
       const parametrosGaussiano =
         obterParametrosGaussianoEtapa(etapa);
@@ -10997,7 +11071,7 @@ async function processarDicomPeloPipeline(item) {
 
   for (const etapa of etapasParaProcessar) {
 
-    if (nomeEhFerramentaRuido(etapa.nome)) {
+    if (etapa.nome === "Adicionar Ruído") {
 
       imagemAtual = await aplicarRuidoEmDicom(
         imagemAtual,
@@ -11006,7 +11080,7 @@ async function processarDicomPeloPipeline(item) {
       );
     }
 
-    if (etapa.nome === "Filtro Gaussiano") {
+    if (etapa.nome.includes("Gaussiano")) {
 
       const parametrosGaussiano =
         obterParametrosGaussianoEtapa(etapa);
@@ -12695,7 +12769,7 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
         );
     }
 
-    if (nomeEhFerramentaRuido(etapa.nome)) {
+    if (etapa.nome === "Adicionar Ruído") {
 
       canvasAtual = await aplicarRuidoEmCanvas(
         canvasAtual,
@@ -12704,7 +12778,7 @@ async function processarImagemNormalAteEtapa(item, indiceEtapaFinal) {
       );
     }
 
-    if (etapa.nome === "Filtro Gaussiano") {
+    if (etapa.nome.includes("Gaussiano")) {
 
       const parametrosGaussiano =
         obterParametrosGaussianoEtapa(etapa);
@@ -12880,7 +12954,7 @@ async function processarDicomAteEtapa(item, indiceEtapaFinal) {
 
     const etapa = pipelineFerramentas[i];
 
-    if (nomeEhFerramentaRuido(etapa.nome)) {
+    if (etapa.nome === "Adicionar Ruído") {
 
       imagemAtual = await aplicarRuidoEmDicom(
         imagemAtual,
