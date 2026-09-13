@@ -338,17 +338,29 @@
       align-items: center;
 
       gap: 13px;
+
+      height: 78px;
+
+      flex-shrink: 0;
     }
 
 
     .logo_iproflow {
+      position: absolute;
+
+      left: 0;
+      top: 50%;
+
+      transform:
+        translateY(-50%);
+
       display: block;
 
       width:
         clamp(
-          220px,
-          26vw,
-          320px
+          280px,
+          32vw,
+          400px
         );
 
       max-width: 100%;
