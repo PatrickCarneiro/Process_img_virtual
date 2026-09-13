@@ -179,6 +179,12 @@ function iniciarAnalise() {
         botaoMapaPixel.addEventListener("click", exportarMapaPixelAtual); // Ao clicar, baixa o mapa de pixels
       }
 
+      const botaoBaixarHistograma = document.getElementById("botaoBaixarHistograma");
+
+      if (botaoBaixarHistograma) {
+        botaoBaixarHistograma.addEventListener("click", baixarHistogramaPNG);
+      }
+
       criarControleIgnorarPixelZero();
 
       atualizarNomeArquivoAtualAnalise();
@@ -1016,6 +1022,51 @@ function desenharHistogramaAtual() {
 
 function redesenharHistogramaAtual() {
   desenharHistogramaAtual();
+}
+
+function baixarHistogramaPNG() {
+
+  const canvas = document.getElementById("histograma");
+
+  if (!canvas || !histogramaAtual || histogramaAtual.length === 0) {
+    alert("Nenhum histograma disponível para baixar.");
+    return;
+  }
+
+  let nomeCanal = "cinza";
+
+  if (canalHistogramaAtual === "r") {
+    nomeCanal = "vermelho";
+  } else if (canalHistogramaAtual === "g") {
+    nomeCanal = "verde";
+  } else if (canalHistogramaAtual === "b") {
+    nomeCanal = "azul";
+  } else if (canalHistogramaAtual === "media") {
+    nomeCanal = "media_rgb";
+  }
+
+  let nomeBase = "imagem";
+
+  if (
+    typeof imagemAtualSelecionada !== "undefined" &&
+    imagemAtualSelecionada &&
+    imagemAtualSelecionada.name
+  ) {
+    nomeBase = imagemAtualSelecionada.name;
+  }
+
+  nomeBase = nomeBase.replace(/\.[^/.]+$/, "");
+  nomeBase = nomeBase.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  const link = document.createElement("a");
+
+  link.href = canvas.toDataURL("image/png");
+  link.download = "histograma_" + nomeCanal + "_" + nomeBase + ".png";
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
 }
 
 function desenharHistograma(ctx, canvas) {
