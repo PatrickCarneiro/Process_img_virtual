@@ -11,6 +11,27 @@ const recentImages = document.getElementById("recentImages");
 // Array que guarda as imagens selecionadas pelo usuário
 let selectedItems = [];
 
+
+// IMAGENS PADRÃO DA ÁREA DE RECENTES
+// Elas aparecem somente quando ainda existem espaços disponíveis entre os 10 itens recentes.
+// Conforme imagens reais são adicionadas, estas imagens padrão vão saindo da lista.
+const IMAGENS_PADRAO_RECENTES = [
+  {
+    id: -1,
+    name: "Exemplo_Dicom.dcm",
+    type: "dicom",
+    caminho: "Imagens/Exemplo_Dicom.dcm",
+    mimeType: "application/dicom"
+  },
+  {
+    id: -2,
+    name: "Exemplo_RGB.jpeg",
+    type: "image",
+    caminho: "Imagens/Exemplo_RGB.jpeg",
+    mimeType: "image/jpeg"
+  }
+];
+
 // CONFIGURAÇÃO DICOM
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
@@ -184,18 +205,144 @@ async function renderDicomThumbnail(item, container) { // Função para renderiz
   }
 }
 
+async function carregarImagemPadraoRecente(configuracao) {
+
+  try {
+
+    const resposta =
+      await fetch(configuracao.caminho);
+
+    if (!resposta.ok) {
+
+      throw new Error(
+        "Não foi possível carregar " +
+        configuracao.caminho
+      );
+    }
+
+    const blob =
+      await resposta.blob();
+
+    const arquivo =
+      new File(
+        [blob],
+        configuracao.name,
+        {
+          type:
+            configuracao.mimeType ||
+            blob.type ||
+            ""
+        }
+      );
+
+    return {
+      id:
+        configuracao.id,
+      name:
+        configuracao.name,
+      type:
+        configuracao.type,
+      file:
+        arquivo,
+      createdAt:
+        0,
+      imagemPadrao:
+        true
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao carregar imagem padrão recente:",
+      configuracao.caminho,
+      error
+    );
+
+    return null;
+  }
+}
+
+
 async function loadRecentImages() { // Função para carregar as imagens recentes da tabela "recent" do banco e exibi-las na tela
 
-  const db = await openDatabase(); 
-  const files = await getAllFromStore(db, "recent");
+  let files = [];
+
+  try {
+
+    const db =
+      await openDatabase();
+
+    files =
+      await getAllFromStore(
+        db,
+        "recent"
+      );
+
+    db.close();
+
+  } catch (error) {
+
+    // Caso o histórico não possa ser recuperado, a área de recentes
+    // continua funcionando usando somente as imagens padrão.
+    console.error(
+      "Não foi possível carregar as imagens recentes:",
+      error
+    );
+
+    files = [];
+  }
 
   recentImages.innerHTML = "";
   selectedItems = [];
 
-  files
-  .sort((a, b) => b.createdAt - a.createdAt) // ordena do mais novo
-  .slice(0, 10) // pega só 10
-  .forEach(item => {  // Para cada item encontrado na tabela "recent", cria um card para exibir a miniatura e o nome do arquivo
+  // Mantém exatamente a lógica já existente:
+  // imagens reais mais novas aparecem primeiro e a área mostra no máximo 10 itens.
+  const imagensRecentesReais =
+    files
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 10);
+
+  // As imagens padrão ocupam somente os espaços que ainda estiverem livres.
+  // Exemplo:
+  // 0 imagens reais  -> 2 imagens padrão
+  // 8 imagens reais  -> 2 imagens padrão
+  // 9 imagens reais  -> 1 imagem padrão
+  // 10 imagens reais -> nenhuma imagem padrão
+  const quantidadeEspacosLivres =
+    Math.max(
+      0,
+      10 - imagensRecentesReais.length
+    );
+
+  const quantidadeImagensPadrao =
+    Math.min(
+      IMAGENS_PADRAO_RECENTES.length,
+      quantidadeEspacosLivres
+    );
+
+  const imagensPadrao =
+    (
+      await Promise.all(
+        IMAGENS_PADRAO_RECENTES
+          .slice(
+            0,
+            quantidadeImagensPadrao
+          )
+          .map(
+            carregarImagemPadraoRecente
+          )
+      )
+    ).filter(Boolean);
+
+  // As imagens reais vêm primeiro.
+  // As imagens padrão ficam sempre no final e vão sendo retiradas
+  // conforme o histórico real ocupa as 10 posições disponíveis.
+  const itensParaMostrar = [
+    ...imagensRecentesReais,
+    ...imagensPadrao
+  ];
+
+  itensParaMostrar.forEach(item => {  // Para cada item encontrado, cria um card para exibir a miniatura e o nome do arquivo
 
     const card = document.createElement("div");
 

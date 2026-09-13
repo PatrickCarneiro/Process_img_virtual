@@ -696,7 +696,7 @@ function validarFormularioCadastro() {
     nomeUsuarioCadastro.focus();
 
     throw new Error(
-      "Informe um nome de usuário."
+      "Informe seu nome"
     );
 
   }
