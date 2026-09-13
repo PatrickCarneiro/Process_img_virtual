@@ -2594,6 +2594,56 @@
         </div>
       </div>
 
+      <!-- Categoria de ruídos -->
+      <div class="categoria-titulo" onclick="toggleCategoria('ruidos')">
+        Ruídos
+      </div>
+
+      <!-- Conteúdo da categoria ruídos -->
+      <div class="categoria-conteudo" id="ruidos">
+
+        <div
+          class="ferramenta"
+          id="botaoFerramentaRuidoGaussiano"
+          onclick="selecionarFerramenta('Ruído Gaussiano', this)"
+        >
+          Ruído Gaussiano
+        </div>
+
+        <div
+          class="ferramenta"
+          id="botaoFerramentaRuidoSaltPepper"
+          onclick="selecionarFerramenta('Ruído Salt & Pepper', this)"
+        >
+          Ruído Salt & Pepper
+        </div>
+
+        <div
+          class="ferramenta"
+          id="botaoFerramentaRuidoSpeckle"
+          onclick="selecionarFerramenta('Ruído Speckle', this)"
+        >
+          Ruído Speckle
+        </div>
+
+        <div
+          class="ferramenta"
+          id="botaoFerramentaRuidoPoisson"
+          onclick="selecionarFerramenta('Ruído Poisson', this)"
+        >
+          Ruído Poisson
+        </div>
+
+        <div
+          class="ferramenta"
+          id="botaoFerramentaRuidoLocalvar"
+          onclick="selecionarFerramenta('Ruído Localvar', this)"
+        >
+          Ruído Localvar
+        </div>
+
+      </div>
+
       <!-- Categoria de transformações de intensidade -->
       <div
         class="categoria-titulo"
@@ -3926,6 +3976,7 @@
   <script src="analise.js"></script>
   <script src="gaussiano.js"></script>
   <script src="media.js"></script>
+  <script src="ruido.js"></script>
   <script src="mediana.js"></script>
   <script src="morfologia.js"></script>
   <script src="limiarizacao.js"></script>
