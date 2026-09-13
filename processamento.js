@@ -3964,6 +3964,83 @@ function criarBotaoAdicionarMaisImagens() {
   );
 
 
+  // Permite arrastar arquivos do computador diretamente
+  // sobre o card "Adicionar mais imagens".
+  botaoAdicionar.addEventListener(
+    "dragover",
+    function(event) {
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.dataTransfer) {
+
+        event.dataTransfer.dropEffect =
+          "copy";
+
+      }
+
+    }
+  );
+
+
+  botaoAdicionar.addEventListener(
+    "drop",
+    async function(event) {
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const arquivosSoltos =
+        Array.from(
+          event.dataTransfer &&
+          event.dataTransfer.files
+            ? event.dataTransfer.files
+            : []
+        );
+
+
+      const arquivosPermitidos =
+        arquivosSoltos.filter(
+          function(file) {
+
+            const nomeArquivo =
+              String(
+                file && file.name
+                  ? file.name
+                  : ""
+              ).toLowerCase();
+
+
+            return (
+              nomeArquivo.endsWith(".png") ||
+              nomeArquivo.endsWith(".jpg") ||
+              nomeArquivo.endsWith(".jpeg") ||
+              nomeArquivo.endsWith(".tif") ||
+              nomeArquivo.endsWith(".tiff") ||
+              nomeArquivo.endsWith(".dcm") ||
+              nomeArquivo.endsWith(".dicom")
+            );
+
+          }
+        );
+
+
+      if (arquivosPermitidos.length === 0) {
+
+        return;
+
+      }
+
+
+      await adicionarMaisImagensAoProcessamento(
+        arquivosPermitidos
+      );
+
+    }
+  );
+
+
   imagensTrabalho.appendChild(
     botaoAdicionar
   );
