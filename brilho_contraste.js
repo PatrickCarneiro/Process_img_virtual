@@ -1,41 +1,51 @@
 /*
  * =========================================================
- * AJUSTES DE BRILHO E CONTRASTE EM TEMPO REAL
+ * BRILHO E CONTRASTE - PREVIEW E FLUXO COM A MESMA MATEMÁTICA
  * =========================================================
  *
  * Este arquivo trabalha junto com processamento.js.
  *
+ * REGRA ÚNICA USADA TANTO NA PRÉ-VISUALIZAÇÃO QUANTO NO FLUXO
+ *
  * BRILHO
- * - Todos os pixels ou somente uma faixa de intensidades.
- * - Na faixa, limite vazio usa o mínimo/máximo real da imagem ou do canal.
- * - O controle varia de -1 a +1.
- * - O valor do controle é convertido em uma soma:
- *
- *     delta = posicao * faixaDeIntensidade
- *
- * - Em imagens comuns RGB, para "Todos os pixels", cada canal
- *   usa sua própria faixa real: Rmax-Rmin, Gmax-Gmin e Bmax-Bmin.
- * - Em imagens comuns RGB, para "Faixa de pixel", a faixa
- *   digitada é avaliada separadamente em R, G e B.
- * - Em DICOM, permanece a lógica de uma única faixa de intensidade.
+ *   s = r + Δ
  *
  * CONTRASTE
- * - Todos os pixels ou somente uma faixa de intensidades.
- * - Na faixa, limite vazio usa o mínimo/máximo real da imagem ou do canal.
- * - Mantém a multiplicação direta solicitada:
+ *   s = r * Δ
  *
- *     pixelSaida = pixelEntrada * fator
+ * Para imagens comuns (RGB ou tons de cinza carregados em Canvas):
+ *   Δ = 255 * p
  *
- * - O controle varia de 0x até 2x, com 1x no centro.
+ * Para imagens DICOM:
+ *   Δ = p * (rmax - rmin)
  *
- * IMPORTANTE
- * - Os ajustes são sempre recalculados a partir da imagem-base.
- * - Portanto, arrastar várias vezes não acumula erro.
- * - A seleção por faixa considera a intensidade ORIGINAL do pixel.
+ * onde:
+ *   r     = intensidade de entrada;
+ *   s     = intensidade de saída;
+ *   p     = parâmetro do controle;
+ *   rmax  = maior valor real da imagem DICOM de entrada da etapa;
+ *   rmin  = menor valor real da imagem DICOM de entrada da etapa.
+ *
+ * IMPORTANTE SOBRE O CONTROLE DE CONTRASTE
+ * - A interface continua mostrando uma faixa de contraste equivalente a
+ *   0,5x até 2,0x, com 1,0x como neutro.
+ * - Internamente, porém, o slider armazena p para obedecer exatamente às
+ *   fórmulas acima:
+ *       RGB/cinza: p = Δ / 255
+ *       DICOM:     p = Δ / (rmax - rmin)
+ * - Portanto, a multiplicação continua intuitiva para o usuário e a
+ *   implementação permanece matematicamente s = r * Δ.
+ *
+ * GARANTIA DE CONSISTÊNCIA
+ * - O preview aplica somente a ferramenta atualmente manipulada.
+ * - O preview e o fluxo chamam os mesmos núcleos de transformação.
+ * - Assim, para a mesma imagem de entrada, mesmos parâmetros e mesma faixa,
+ *   o resultado visualizado antes de aplicar é o mesmo resultado produzido
+ *   quando a etapa é executada pelo fluxograma.
+ * - A seleção por faixa usa o valor ORIGINAL do pixel/canal da entrada.
  * - A opção global "Sem contabilizar pixels 0" é respeitada.
- * - Funciona com imagens comuns (Canvas) e DICOM (Cornerstone).
- * - No DICOM, respeita Rescale Slope/Intercept, Window Center e invert.
- * - O DICOM é saturado na faixa REAL da imagem-base, não no limite teórico do tipo.
+ * - RGB/cinza são saturados em [0, 255].
+ * - DICOM é saturado em [rmin, rmax] da imagem de entrada da etapa.
  */
 
 
@@ -70,9 +80,17 @@ const estadoBrilhoContraste = {
 
   // Configuração de contraste
   modoContraste: "todos",
-  fatorContraste: 1,
+  // p do contraste. O delta multiplicativo é calculado por:
+  // RGB/cinza: delta = 255 * p
+  // DICOM: delta = p * (rmax - rmin)
+  posicaoContraste: 1 / 255,
   contrasteMinimo: null,
   contrasteMaximo: null,
+
+  // Qual ferramenta está sendo pré-visualizada no momento.
+  // O preview mostra somente uma etapa por vez para corresponder
+  // exatamente à etapa que será inserida no fluxograma.
+  operacaoPreviewAtiva: null,
 
   // Controle de atualização em tempo real
   framePendente: null,
@@ -97,6 +115,524 @@ function limitarValorBrilhoContraste(
     )
   );
 }
+
+
+// =========================================================
+// NÚCLEO MATEMÁTICO ÚNICO DO BRILHO E DO CONTRASTE
+// =========================================================
+
+const VERSAO_FORMULA_BRILHO_CONTRASTE = "p_delta_v1";
+
+
+function obterPConfiguracaoBrilhoContraste(
+  configuracao,
+  operacao,
+  amplitudeDominio
+) {
+  if (
+    configuracao &&
+    Number.isFinite(Number(configuracao.p))
+  ) {
+    return Number(configuracao.p);
+  }
+
+  const valorLegado =
+    configuracao
+      ? Number(configuracao.valor)
+      : NaN;
+
+  if (!Number.isFinite(valorLegado)) {
+    return operacao === "contraste"
+      ? 1 / Math.max(1, Number(amplitudeDominio) || 1)
+      : 0;
+  }
+
+  /*
+   * Compatibilidade com fluxos antigos:
+   * - Brilho já armazenava a posição p em [-1, 1].
+   * - Contraste armazenava diretamente o fator multiplicativo.
+   *   Para reproduzi-lo com a nova formulação, convertemos:
+   *       p = fator / amplitudeDominio
+   *   e então delta = p * amplitudeDominio = fator.
+   */
+  if (
+    operacao === "contraste" &&
+    (!configuracao ||
+      configuracao.formulaVersao !==
+        VERSAO_FORMULA_BRILHO_CONTRASTE)
+  ) {
+    const amplitude =
+      Math.max(
+        Number.EPSILON,
+        Number(amplitudeDominio) || 1
+      );
+
+    return valorLegado / amplitude;
+  }
+
+  return valorLegado;
+}
+
+
+function calcularDeltaRgbCinzaBrilhoContraste(p) {
+  return 255 * Number(p || 0);
+}
+
+
+function calcularDeltaDicomBrilhoContraste(
+  p,
+  minimoReal,
+  maximoReal
+) {
+  const amplitude =
+    Number(maximoReal) -
+    Number(minimoReal);
+
+  if (
+    !Number.isFinite(amplitude) ||
+    amplitude <= 0
+  ) {
+    return 0;
+  }
+
+  return Number(p || 0) * amplitude;
+}
+
+
+function obterAmplitudeDominioContrasteAtual() {
+  if (
+    estadoBrilhoContraste.tipo === "dicom"
+  ) {
+    const amplitude =
+      Number(
+        estadoBrilhoContraste.intensidadeMaximaBase
+      ) -
+      Number(
+        estadoBrilhoContraste.intensidadeMinimaBase
+      );
+
+    if (
+      Number.isFinite(amplitude) &&
+      amplitude > 0
+    ) {
+      return amplitude;
+    }
+
+    return 1;
+  }
+
+  return 255;
+}
+
+
+function calcularDeltaContrasteAtual() {
+  const amplitude =
+    obterAmplitudeDominioContrasteAtual();
+
+  if (
+    estadoBrilhoContraste.tipo === "dicom"
+  ) {
+    return calcularDeltaDicomBrilhoContraste(
+      estadoBrilhoContraste.posicaoContraste,
+      estadoBrilhoContraste.intensidadeMinimaBase,
+      estadoBrilhoContraste.intensidadeMaximaBase
+    );
+  }
+
+  return calcularDeltaRgbCinzaBrilhoContraste(
+    estadoBrilhoContraste.posicaoContraste
+  );
+}
+
+
+function configurarSliderContrasteParaImagemAtual() {
+  const slider =
+    document.getElementById("sliderContraste");
+
+  const amplitude =
+    Math.max(
+      Number.EPSILON,
+      obterAmplitudeDominioContrasteAtual()
+    );
+
+  // Mantém a experiência visual equivalente a 0,5x .. 2,0x.
+  // O slider, porém, armazena p; delta é calculado pela fórmula exigida.
+  const pMinimo = 0.5 / amplitude;
+  const pMaximo = 2 / amplitude;
+  const pNeutro = 1 / amplitude;
+  const passo = 0.01 / amplitude;
+
+  estadoBrilhoContraste.posicaoContraste =
+    pNeutro;
+
+  if (slider) {
+    slider.min = String(pMinimo);
+    slider.max = String(pMaximo);
+    slider.step = String(passo);
+    slider.value = String(pNeutro);
+  }
+}
+
+
+function criarConfiguracaoAtualBrilhoContraste(
+  operacao
+) {
+  const ehBrilho =
+    operacao === "brilho";
+
+  return {
+    modo:
+      ehBrilho
+        ? estadoBrilhoContraste.modoBrilho
+        : estadoBrilhoContraste.modoContraste,
+
+    p:
+      ehBrilho
+        ? limitarValorBrilhoContraste(
+            Number(
+              estadoBrilhoContraste.posicaoBrilho
+            ) || 0,
+            -1,
+            1
+          )
+        : Number(
+            estadoBrilhoContraste.posicaoContraste
+          ),
+
+    // Mantido também em valor para compatibilidade com a estrutura
+    // já usada por processamento.js e projetos existentes.
+    valor:
+      ehBrilho
+        ? limitarValorBrilhoContraste(
+            Number(
+              estadoBrilhoContraste.posicaoBrilho
+            ) || 0,
+            -1,
+            1
+          )
+        : Number(
+            estadoBrilhoContraste.posicaoContraste
+          ),
+
+    minimo:
+      ehBrilho
+        ? estadoBrilhoContraste.brilhoMinimo
+        : estadoBrilhoContraste.contrasteMinimo,
+
+    maximo:
+      ehBrilho
+        ? estadoBrilhoContraste.brilhoMaximo
+        : estadoBrilhoContraste.contrasteMaximo,
+
+    ignorarZero:
+      obterIgnorarZeroBrilhoContraste(),
+
+    formulaVersao:
+      VERSAO_FORMULA_BRILHO_CONTRASTE
+  };
+}
+
+
+function processarImageDataOperacaoLinearBrilhoContraste(
+  imageDataEntrada,
+  operacao,
+  configuracao
+) {
+  const largura = imageDataEntrada.width;
+  const altura = imageDataEntrada.height;
+
+  const dadosEntrada =
+    imageDataEntrada.data;
+
+  const dadosSaida =
+    new Uint8ClampedArray(
+      dadosEntrada.length
+    );
+
+  const faixasCanais =
+    calcularFaixasCanaisImagemComumBrilhoContraste(
+      imageDataEntrada
+    );
+
+  const faixaR =
+    resolverFaixaEfetivaBrilhoContraste(
+      configuracao.minimo,
+      configuracao.maximo,
+      faixasCanais.r.minimo,
+      faixasCanais.r.maximo
+    );
+
+  const faixaG =
+    resolverFaixaEfetivaBrilhoContraste(
+      configuracao.minimo,
+      configuracao.maximo,
+      faixasCanais.g.minimo,
+      faixasCanais.g.maximo
+    );
+
+  const faixaB =
+    resolverFaixaEfetivaBrilhoContraste(
+      configuracao.minimo,
+      configuracao.maximo,
+      faixasCanais.b.minimo,
+      faixasCanais.b.maximo
+    );
+
+  const p =
+    obterPConfiguracaoBrilhoContraste(
+      configuracao,
+      operacao,
+      255
+    );
+
+  // EXATAMENTE: delta = 255 * p
+  const delta =
+    calcularDeltaRgbCinzaBrilhoContraste(p);
+
+  const ignorarZero =
+    Boolean(configuracao.ignorarZero);
+
+  for (
+    let i = 0;
+    i < dadosEntrada.length;
+    i += 4
+  ) {
+    const rOriginal = Number(dadosEntrada[i]);
+    const gOriginal = Number(dadosEntrada[i + 1]);
+    const bOriginal = Number(dadosEntrada[i + 2]);
+    const alfa = dadosEntrada[i + 3];
+
+    const pixelEhZero =
+      rOriginal === 0 &&
+      gOriginal === 0 &&
+      bOriginal === 0;
+
+    if (
+      ignorarZero &&
+      pixelEhZero
+    ) {
+      dadosSaida[i] = rOriginal;
+      dadosSaida[i + 1] = gOriginal;
+      dadosSaida[i + 2] = bOriginal;
+      dadosSaida[i + 3] = alfa;
+      continue;
+    }
+
+    const aplicarR =
+      pixelPertenceFaixaBrilhoContraste(
+        rOriginal,
+        configuracao.modo,
+        faixaR.valido ? faixaR.minimo : NaN,
+        faixaR.valido ? faixaR.maximo : NaN
+      );
+
+    const aplicarG =
+      pixelPertenceFaixaBrilhoContraste(
+        gOriginal,
+        configuracao.modo,
+        faixaG.valido ? faixaG.minimo : NaN,
+        faixaG.valido ? faixaG.maximo : NaN
+      );
+
+    const aplicarB =
+      pixelPertenceFaixaBrilhoContraste(
+        bOriginal,
+        configuracao.modo,
+        faixaB.valido ? faixaB.minimo : NaN,
+        faixaB.valido ? faixaB.maximo : NaN
+      );
+
+    const transformar = function(valorOriginal, aplicar) {
+      if (!aplicar) {
+        return valorOriginal;
+      }
+
+      // BRILHO:   s = r + delta
+      // CONTRASTE: s = r * delta
+      const valorTransformado =
+        operacao === "brilho"
+          ? valorOriginal + delta
+          : valorOriginal * delta;
+
+      return Math.round(
+        limitarValorBrilhoContraste(
+          valorTransformado,
+          0,
+          255
+        )
+      );
+    };
+
+    dadosSaida[i] =
+      transformar(rOriginal, aplicarR);
+
+    dadosSaida[i + 1] =
+      transformar(gOriginal, aplicarG);
+
+    dadosSaida[i + 2] =
+      transformar(bOriginal, aplicarB);
+
+    dadosSaida[i + 3] = alfa;
+  }
+
+  return {
+    imageData:
+      new ImageData(
+        dadosSaida,
+        largura,
+        altura
+      ),
+    delta,
+    p
+  };
+}
+
+
+function processarPixelsDicomOperacaoLinearBrilhoContraste(
+  pixelsEntrada,
+  operacao,
+  configuracao
+) {
+  const pixelsSaida =
+    criarArrayPixelsBrilhoContraste(
+      pixelsEntrada,
+      pixelsEntrada.length
+    );
+
+  const infoTipo =
+    obterInformacoesTipoDicomBrilhoContraste(
+      pixelsEntrada
+    );
+
+  const faixaBase =
+    calcularFaixaArrayBrilhoContraste(
+      pixelsEntrada
+    );
+
+  let minimoReal = Number(faixaBase.minimo);
+  let maximoReal = Number(faixaBase.maximo);
+
+  if (!Number.isFinite(minimoReal)) {
+    minimoReal =
+      Number.isFinite(infoTipo.minimo)
+        ? Number(infoTipo.minimo)
+        : 0;
+  }
+
+  if (!Number.isFinite(maximoReal)) {
+    maximoReal =
+      Number.isFinite(infoTipo.maximo)
+        ? Number(infoTipo.maximo)
+        : minimoReal + 1;
+  }
+
+  if (minimoReal > maximoReal) {
+    const temporario = minimoReal;
+    minimoReal = maximoReal;
+    maximoReal = temporario;
+  }
+
+  const amplitude =
+    maximoReal - minimoReal;
+
+  const p =
+    obterPConfiguracaoBrilhoContraste(
+      configuracao,
+      operacao,
+      amplitude > 0 ? amplitude : 1
+    );
+
+  // EXATAMENTE: delta = p * (rmax - rmin)
+  const delta =
+    calcularDeltaDicomBrilhoContraste(
+      p,
+      minimoReal,
+      maximoReal
+    );
+
+  const faixaEfetiva =
+    resolverFaixaEfetivaBrilhoContraste(
+      configuracao.minimo,
+      configuracao.maximo,
+      minimoReal,
+      maximoReal
+    );
+
+  const ignorarZero =
+    Boolean(configuracao.ignorarZero);
+
+  for (
+    let i = 0;
+    i < pixelsEntrada.length;
+    i++
+  ) {
+    const original =
+      Number(pixelsEntrada[i]);
+
+    if (
+      ignorarZero &&
+      original === 0
+    ) {
+      pixelsSaida[i] =
+        converterValorParaTipoDicomBrilhoContraste(
+          original,
+          {
+            minimo: minimoReal,
+            maximo: maximoReal,
+            inteiro: infoTipo.inteiro
+          }
+        );
+      continue;
+    }
+
+    const aplicar =
+      pixelPertenceFaixaBrilhoContraste(
+        original,
+        configuracao.modo,
+        faixaEfetiva.valido
+          ? faixaEfetiva.minimo
+          : NaN,
+        faixaEfetiva.valido
+          ? faixaEfetiva.maximo
+          : NaN
+      );
+
+    let valor = original;
+
+    if (aplicar) {
+      // BRILHO:   s = r + delta
+      // CONTRASTE: s = r * delta
+      valor =
+        operacao === "brilho"
+          ? original + delta
+          : original * delta;
+    }
+
+    pixelsSaida[i] =
+      converterValorParaTipoDicomBrilhoContraste(
+        limitarValorBrilhoContraste(
+          valor,
+          minimoReal,
+          maximoReal
+        ),
+        {
+          minimo: minimoReal,
+          maximo: maximoReal,
+          inteiro: infoTipo.inteiro
+        }
+      );
+  }
+
+  return {
+    pixelsSaida,
+    minimoReal,
+    maximoReal,
+    infoTipo,
+    delta,
+    p
+  };
+}
+
 
 
 function obterIgnorarZeroBrilhoContraste() {
@@ -295,72 +831,9 @@ function formatarNumeroBrilhoContraste(valor) {
 // FAIXA UTILIZADA PARA CALCULAR O BRILHO
 // =========================================================
 
-function obterAmplitudeBrilhoAtual() {
-  let amplitude;
-
-  if (
-    estadoBrilhoContraste.modoBrilho === "faixa"
-  ) {
-    const faixaEfetiva =
-      resolverFaixaEfetivaBrilhoContraste(
-        estadoBrilhoContraste.brilhoMinimo,
-        estadoBrilhoContraste.brilhoMaximo,
-        estadoBrilhoContraste.intensidadeMinimaBase,
-        estadoBrilhoContraste.intensidadeMaximaBase
-      );
-
-    if (!faixaEfetiva.valido) {
-      return 0;
-    }
-
-    amplitude =
-      faixaEfetiva.maximo -
-      faixaEfetiva.minimo;
-
-  } else {
-    amplitude =
-      estadoBrilhoContraste.intensidadeMaximaBase -
-      estadoBrilhoContraste.intensidadeMinimaBase;
-  }
-
-  /*
-   * Se a imagem ou a faixa for totalmente constante,
-   * usa uma amplitude de segurança para o controle não ficar
-   * obrigatoriamente parado em zero.
-   */
-  if (
-    !Number.isFinite(amplitude) ||
-    amplitude <= 0
-  ) {
-    if (
-      estadoBrilhoContraste.tipo === "image"
-    ) {
-      return 255;
-    }
-
-    const info =
-      estadoBrilhoContraste.informacoesTipoDicom;
-
-    if (
-      info &&
-      Number.isFinite(info.minimo) &&
-      Number.isFinite(info.maximo)
-    ) {
-      return (
-        info.maximo -
-        info.minimo
-      );
-    }
-
-    return 1;
-  }
-
-  return amplitude;
-}
-
 
 function calcularDeltaBrilhoAtual() {
-  const posicao =
+  const p =
     limitarValorBrilhoContraste(
       Number(
         estadoBrilhoContraste.posicaoBrilho
@@ -369,68 +842,23 @@ function calcularDeltaBrilhoAtual() {
       1
     );
 
-  const amplitude =
-    obterAmplitudeBrilhoAtual();
+  if (
+    estadoBrilhoContraste.tipo === "dicom"
+  ) {
+    return calcularDeltaDicomBrilhoContraste(
+      p,
+      estadoBrilhoContraste.intensidadeMinimaBase,
+      estadoBrilhoContraste.intensidadeMaximaBase
+    );
+  }
 
-  return (
-    posicao *
-    amplitude
-  );
+  return calcularDeltaRgbCinzaBrilhoContraste(p);
 }
 
-
-function obterAmplitudeBrilhoCanalAtual(canal) {
-  const faixas =
-    estadoBrilhoContraste.faixasCanaisBase;
-
-  const faixaCanal =
-    faixas && faixas[canal]
-      ? faixas[canal]
-      : null;
-
-  if (!faixaCanal) {
-    return 255;
-  }
-
-  let amplitude;
-
-  if (
-    estadoBrilhoContraste.modoBrilho === "faixa"
-  ) {
-    const faixaEfetiva =
-      resolverFaixaEfetivaBrilhoContraste(
-        estadoBrilhoContraste.brilhoMinimo,
-        estadoBrilhoContraste.brilhoMaximo,
-        Number(faixaCanal.minimo),
-        Number(faixaCanal.maximo)
-      );
-
-    if (!faixaEfetiva.valido) {
-      return 0;
-    }
-
-    amplitude =
-      faixaEfetiva.maximo -
-      faixaEfetiva.minimo;
-  } else {
-    amplitude =
-      Number(faixaCanal.maximo) -
-      Number(faixaCanal.minimo);
-  }
-
-  if (
-    !Number.isFinite(amplitude) ||
-    amplitude <= 0
-  ) {
-    return 255;
-  }
-
-  return amplitude;
-}
 
 
 function calcularDeltasBrilhoRgbAtual() {
-  const posicao =
+  const p =
     limitarValorBrilhoContraste(
       Number(
         estadoBrilhoContraste.posicaoBrilho
@@ -439,16 +867,13 @@ function calcularDeltasBrilhoRgbAtual() {
       1
     );
 
+  const delta =
+    calcularDeltaRgbCinzaBrilhoContraste(p);
+
   return {
-    r:
-      posicao *
-      obterAmplitudeBrilhoCanalAtual("r"),
-    g:
-      posicao *
-      obterAmplitudeBrilhoCanalAtual("g"),
-    b:
-      posicao *
-      obterAmplitudeBrilhoCanalAtual("b")
+    r: delta,
+    g: delta,
+    b: delta
   };
 }
 
@@ -487,7 +912,6 @@ function toggleControleBrilho() {
     vaiAbrir
   );
 
-  // Mantém somente um dos dois painéis aberto por vez.
   if (painelContraste) {
     painelContraste.classList.remove("ativo");
   }
@@ -495,6 +919,11 @@ function toggleControleBrilho() {
   if (botaoContraste) {
     botaoContraste.classList.remove("ativo");
   }
+
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    vaiAbrir ? "brilho" : null;
+
+  agendarAplicacaoBrilhoContraste();
 }
 
 
@@ -535,6 +964,11 @@ function toggleControleContraste() {
   if (botaoBrilho) {
     botaoBrilho.classList.remove("ativo");
   }
+
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    vaiAbrir ? "contraste" : null;
+
+  agendarAplicacaoBrilhoContraste();
 }
 
 
@@ -550,6 +984,9 @@ function selecionarModoBrilho(modo) {
 
   estadoBrilhoContraste.modoBrilho =
     modoNormalizado;
+
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    "brilho";
 
   const botaoTodos =
     document.getElementById(
@@ -604,6 +1041,9 @@ function selecionarModoContraste(modo) {
   estadoBrilhoContraste.modoContraste =
     modoNormalizado;
 
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    "contraste";
+
   const botaoTodos =
     document.getElementById(
       "contrasteTodosPixels"
@@ -649,6 +1089,9 @@ function selecionarModoContraste(modo) {
 // =========================================================
 
 function atualizarFaixaBrilhoTempoReal() {
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    "brilho";
+
   const faixa =
     interpretarFaixaDigitadaBrilhoContraste(
       "brilhoIntensidadeMinima",
@@ -662,11 +1105,8 @@ function atualizarFaixaBrilhoTempoReal() {
     estadoBrilhoContraste.brilhoMaximo =
       faixa.maximo;
   } else {
-    estadoBrilhoContraste.brilhoMinimo =
-      NaN;
-
-    estadoBrilhoContraste.brilhoMaximo =
-      NaN;
+    estadoBrilhoContraste.brilhoMinimo = NaN;
+    estadoBrilhoContraste.brilhoMaximo = NaN;
   }
 
   atualizarTextoBrilhoTempoReal();
@@ -675,6 +1115,9 @@ function atualizarFaixaBrilhoTempoReal() {
 
 
 function atualizarFaixaContrasteTempoReal() {
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    "contraste";
+
   const faixa =
     interpretarFaixaDigitadaBrilhoContraste(
       "contrasteIntensidadeMinima",
@@ -688,11 +1131,8 @@ function atualizarFaixaContrasteTempoReal() {
     estadoBrilhoContraste.contrasteMaximo =
       faixa.maximo;
   } else {
-    estadoBrilhoContraste.contrasteMinimo =
-      NaN;
-
-    estadoBrilhoContraste.contrasteMaximo =
-      NaN;
+    estadoBrilhoContraste.contrasteMinimo = NaN;
+    estadoBrilhoContraste.contrasteMaximo = NaN;
   }
 
   atualizarTextoContrasteTempoReal();
@@ -705,8 +1145,7 @@ function atualizarFaixaContrasteTempoReal() {
 // =========================================================
 
 function atualizarBrilhoTempoReal(valor) {
-  const numero =
-    Number(valor);
+  const numero = Number(valor);
 
   estadoBrilhoContraste.posicaoBrilho =
     Number.isFinite(numero)
@@ -717,23 +1156,45 @@ function atualizarBrilhoTempoReal(valor) {
         )
       : 0;
 
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    "brilho";
+
   atualizarTextoBrilhoTempoReal();
   agendarAplicacaoBrilhoContraste();
 }
 
 
 function atualizarContrasteTempoReal(valor) {
-  const numero =
-    Number(valor);
+  const numero = Number(valor);
 
-  estadoBrilhoContraste.fatorContraste =
+  const slider =
+    document.getElementById("sliderContraste");
+
+  const minimo =
+    slider && Number.isFinite(Number(slider.min))
+      ? Number(slider.min)
+      : -Infinity;
+
+  const maximo =
+    slider && Number.isFinite(Number(slider.max))
+      ? Number(slider.max)
+      : Infinity;
+
+  estadoBrilhoContraste.posicaoContraste =
     Number.isFinite(numero)
       ? limitarValorBrilhoContraste(
           numero,
-          0,
-          2
+          minimo,
+          maximo
         )
-      : 1;
+      : 1 /
+        Math.max(
+          Number.EPSILON,
+          obterAmplitudeDominioContrasteAtual()
+        );
+
+  estadoBrilhoContraste.operacaoPreviewAtiva =
+    "contraste";
 
   atualizarTextoContrasteTempoReal();
   agendarAplicacaoBrilhoContraste();
@@ -762,16 +1223,27 @@ function atualizarTextoBrilhoTempoReal() {
     if (!faixa.valido) {
       elemento.innerText =
         "Informe uma faixa válida";
-
       return;
     }
   }
 
-  elemento.innerText =
-    "Valor: " +
+  const p =
     Number(
       estadoBrilhoContraste.posicaoBrilho
-    ).toFixed(2);
+    ) || 0;
+
+  const delta =
+    estadoBrilhoContraste.tipo === "dicom"
+      ? calcularDeltaDicomBrilhoContraste(
+          p,
+          estadoBrilhoContraste.intensidadeMinimaBase,
+          estadoBrilhoContraste.intensidadeMaximaBase
+        )
+      : calcularDeltaRgbCinzaBrilhoContraste(p);
+
+  elemento.innerText =
+    "p: " + p.toFixed(4) +
+    " | Δ: " + formatarNumeroBrilhoContraste(delta);
 }
 
 
@@ -797,16 +1269,24 @@ function atualizarTextoContrasteTempoReal() {
     if (!faixa.valido) {
       elemento.innerText =
         "Informe uma faixa válida";
-
       return;
     }
   }
 
-  elemento.innerText =
-    "Valor: " +
+  const p =
     Number(
-      estadoBrilhoContraste.fatorContraste
-    ).toFixed(2);
+      estadoBrilhoContraste.posicaoContraste
+    );
+
+  const delta =
+    calcularDeltaContrasteAtual();
+
+  elemento.innerText =
+    "p: " +
+    (Number.isFinite(p) ? p.toPrecision(5) : "---") +
+    " | Δ: " +
+    (Number.isFinite(delta) ? delta.toFixed(2) : "---") +
+    "x";
 }
 
 
@@ -867,6 +1347,9 @@ async function prepararBrilhoContrasteParaImagemAtual(
   if (item.type === "dicom") {
     prepararImagemDicomBrilhoContraste();
   }
+
+  // Agora que rmin e rmax já são conhecidos, configura p do contraste.
+  configurarSliderContrasteParaImagemAtual();
 
   instalarListenerIgnorarZeroBrilhoContraste();
 
@@ -1013,9 +1496,11 @@ function resetarInterfaceBrilhoContraste() {
   estadoBrilhoContraste.brilhoMaximo = null;
 
   estadoBrilhoContraste.modoContraste = "todos";
-  estadoBrilhoContraste.fatorContraste = 1;
+  estadoBrilhoContraste.posicaoContraste = 1 / 255;
   estadoBrilhoContraste.contrasteMinimo = null;
   estadoBrilhoContraste.contrasteMaximo = null;
+
+  estadoBrilhoContraste.operacaoPreviewAtiva = null;
 
   const sliderBrilho =
     document.getElementById("sliderBrilho");
@@ -1024,13 +1509,18 @@ function resetarInterfaceBrilhoContraste() {
     document.getElementById("sliderContraste");
 
   if (sliderBrilho) {
+    sliderBrilho.min = "-1";
+    sliderBrilho.max = "1";
+    sliderBrilho.step = "0.01";
     sliderBrilho.value = "0";
   }
 
   if (sliderContraste) {
-    sliderContraste.min = "0";
-    sliderContraste.max = "2";
-    sliderContraste.value = "1";
+    // Valor provisório para RGB. Em DICOM será recalculado após rmin/rmax.
+    sliderContraste.min = String(0.5 / 255);
+    sliderContraste.max = String(2 / 255);
+    sliderContraste.step = String(0.01 / 255);
+    sliderContraste.value = String(1 / 255);
   }
 
   const idsCampos = [
@@ -1261,14 +1751,11 @@ function aplicarBrilhoContrasteImagemComum() {
     return;
   }
 
-  const largura = base.width;
-  const altura = base.height;
-
   const canvas =
     document.createElement("canvas");
 
-  canvas.width = largura;
-  canvas.height = altura;
+  canvas.width = base.width;
+  canvas.height = base.height;
 
   const contexto =
     canvas.getContext("2d");
@@ -1277,244 +1764,34 @@ function aplicarBrilhoContrasteImagemComum() {
     return;
   }
 
-  const saida =
-    contexto.createImageData(
-      largura,
-      altura
-    );
+  const operacao =
+    estadoBrilhoContraste.operacaoPreviewAtiva;
 
-  const entradaDados = base.data;
-  const saidaDados = saida.data;
-
-  const ignorarZero =
-    obterIgnorarZeroBrilhoContraste();
-
-  const deltasBrilhoRgb =
-    calcularDeltasBrilhoRgbAtual();
-
-  const fatorContraste =
-    Number(
-      estadoBrilhoContraste.fatorContraste
-    );
-
-  const faixasCanais =
-    estadoBrilhoContraste.faixasCanaisBase;
-
-  const faixaR =
-    faixasCanais && faixasCanais.r
-      ? faixasCanais.r
-      : { minimo: 0, maximo: 255 };
-
-  const faixaG =
-    faixasCanais && faixasCanais.g
-      ? faixasCanais.g
-      : { minimo: 0, maximo: 255 };
-
-  const faixaB =
-    faixasCanais && faixasCanais.b
-      ? faixasCanais.b
-      : { minimo: 0, maximo: 255 };
-
-  const faixaBrilhoR =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.brilhoMinimo,
-      estadoBrilhoContraste.brilhoMaximo,
-      faixaR.minimo,
-      faixaR.maximo
-    );
-
-  const faixaBrilhoG =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.brilhoMinimo,
-      estadoBrilhoContraste.brilhoMaximo,
-      faixaG.minimo,
-      faixaG.maximo
-    );
-
-  const faixaBrilhoB =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.brilhoMinimo,
-      estadoBrilhoContraste.brilhoMaximo,
-      faixaB.minimo,
-      faixaB.maximo
-    );
-
-  const faixaContrasteR =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.contrasteMinimo,
-      estadoBrilhoContraste.contrasteMaximo,
-      faixaR.minimo,
-      faixaR.maximo
-    );
-
-  const faixaContrasteG =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.contrasteMinimo,
-      estadoBrilhoContraste.contrasteMaximo,
-      faixaG.minimo,
-      faixaG.maximo
-    );
-
-  const faixaContrasteB =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.contrasteMinimo,
-      estadoBrilhoContraste.contrasteMaximo,
-      faixaB.minimo,
-      faixaB.maximo
-    );
-
-  for (
-    let indice = 0;
-    indice < entradaDados.length;
-    indice += 4
+  if (
+    operacao !== "brilho" &&
+    operacao !== "contraste"
   ) {
-    const rOriginal =
-      entradaDados[indice];
-
-    const gOriginal =
-      entradaDados[indice + 1];
-
-    const bOriginal =
-      entradaDados[indice + 2];
-
-    const alfa =
-      entradaDados[indice + 3];
-
-    const pixelEhZero =
-      rOriginal === 0 &&
-      gOriginal === 0 &&
-      bOriginal === 0;
-
-    if (
-      ignorarZero &&
-      pixelEhZero
-    ) {
-      saidaDados[indice] = 0;
-      saidaDados[indice + 1] = 0;
-      saidaDados[indice + 2] = 0;
-      saidaDados[indice + 3] = alfa;
-      continue;
-    }
-
-    const aplicarBrilhoR =
-      pixelPertenceFaixaBrilhoContraste(
-        rOriginal,
-        estadoBrilhoContraste.modoBrilho,
-        faixaBrilhoR.valido ? faixaBrilhoR.minimo : NaN,
-        faixaBrilhoR.valido ? faixaBrilhoR.maximo : NaN
+    contexto.putImageData(base, 0, 0);
+  } else {
+    const configuracao =
+      criarConfiguracaoAtualBrilhoContraste(
+        operacao
       );
 
-    const aplicarBrilhoG =
-      pixelPertenceFaixaBrilhoContraste(
-        gOriginal,
-        estadoBrilhoContraste.modoBrilho,
-        faixaBrilhoG.valido ? faixaBrilhoG.minimo : NaN,
-        faixaBrilhoG.valido ? faixaBrilhoG.maximo : NaN
+    const resultado =
+      processarImageDataOperacaoLinearBrilhoContraste(
+        base,
+        operacao,
+        configuracao
       );
 
-    const aplicarBrilhoB =
-      pixelPertenceFaixaBrilhoContraste(
-        bOriginal,
-        estadoBrilhoContraste.modoBrilho,
-        faixaBrilhoB.valido ? faixaBrilhoB.minimo : NaN,
-        faixaBrilhoB.valido ? faixaBrilhoB.maximo : NaN
-      );
-
-    const aplicarContrasteR =
-      pixelPertenceFaixaBrilhoContraste(
-        rOriginal,
-        estadoBrilhoContraste.modoContraste,
-        faixaContrasteR.valido ? faixaContrasteR.minimo : NaN,
-        faixaContrasteR.valido ? faixaContrasteR.maximo : NaN
-      );
-
-    const aplicarContrasteG =
-      pixelPertenceFaixaBrilhoContraste(
-        gOriginal,
-        estadoBrilhoContraste.modoContraste,
-        faixaContrasteG.valido ? faixaContrasteG.minimo : NaN,
-        faixaContrasteG.valido ? faixaContrasteG.maximo : NaN
-      );
-
-    const aplicarContrasteB =
-      pixelPertenceFaixaBrilhoContraste(
-        bOriginal,
-        estadoBrilhoContraste.modoContraste,
-        faixaContrasteB.valido ? faixaContrasteB.minimo : NaN,
-        faixaContrasteB.valido ? faixaContrasteB.maximo : NaN
-      );
-
-    let r = Number(rOriginal);
-    let g = Number(gOriginal);
-    let b = Number(bOriginal);
-
-    // Primeiro soma o brilho separadamente em cada canal RGB.
-    if (aplicarBrilhoR) {
-      r += deltasBrilhoRgb.r;
-    }
-
-    if (aplicarBrilhoG) {
-      g += deltasBrilhoRgb.g;
-    }
-
-    if (aplicarBrilhoB) {
-      b += deltasBrilhoRgb.b;
-    }
-
-    // Depois aplica o contraste separadamente em cada canal RGB.
-    // Na opção por faixa, cada canal é testado pelo seu próprio valor.
-    if (aplicarContrasteR) {
-      r *= fatorContraste;
-    }
-
-    if (aplicarContrasteG) {
-      g *= fatorContraste;
-    }
-
-    if (aplicarContrasteB) {
-      b *= fatorContraste;
-    }
-
-    saidaDados[indice] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          r,
-          0,
-          255
-        )
-      );
-
-    saidaDados[indice + 1] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          g,
-          0,
-          255
-        )
-      );
-
-    saidaDados[indice + 2] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          b,
-          0,
-          255
-        )
-      );
-
-    saidaDados[indice + 3] = alfa;
+    contexto.putImageData(
+      resultado.imageData,
+      0,
+      0
+    );
   }
 
-  contexto.putImageData(
-    saida,
-    0,
-    0
-  );
-
-  /*
-   * O HTML atual usa <img>, portanto a saída do Canvas é
-   * atualizada no src da imagem para aparecer em tempo real.
-   */
   if (
     typeof imagemNormal !== "undefined" &&
     imagemNormal
@@ -1998,61 +2275,6 @@ function converterIntensidadeVisualParaPixelDicomBrilhoContraste(
 }
 
 
-function obterFaixaVisualRealDicomBrilhoContraste(
-  imagem
-) {
-  const minimoArmazenado = Number(
-    estadoBrilhoContraste.intensidadeMinimaBase
-  );
-
-  const maximoArmazenado = Number(
-    estadoBrilhoContraste.intensidadeMaximaBase
-  );
-
-  const visualA =
-    converterPixelParaIntensidadeVisualDicomBrilhoContraste(
-      minimoArmazenado,
-      imagem
-    );
-
-  const visualB =
-    converterPixelParaIntensidadeVisualDicomBrilhoContraste(
-      maximoArmazenado,
-      imagem
-    );
-
-  if (
-    !Number.isFinite(visualA) ||
-    !Number.isFinite(visualB)
-  ) {
-    return {
-      minimo: minimoArmazenado,
-      maximo: maximoArmazenado
-    };
-  }
-
-  return {
-    minimo: Math.min(visualA, visualB),
-    maximo: Math.max(visualA, visualB)
-  };
-}
-
-
-function converterDeltaBrilhoParaDominioVisualDicomBrilhoContraste(
-  delta,
-  imagem
-) {
-  /*
-   * O slider calcula delta usando a faixa dos pixels armazenados.
-   * Como o domínio visual está em unidades de modalidade, convertemos
-   * somente a amplitude pelo módulo do Rescale Slope.
-   */
-  const slope = Math.abs(
-    obterSlopeDicomBrilhoContraste(imagem)
-  );
-
-  return Number(delta) * slope;
-}
 
 // =========================================================
 // DICOM - APLICAÇÃO
@@ -2065,155 +2287,15 @@ function aplicarBrilhoContrasteDicom() {
   const pixelsBase =
     estadoBrilhoContraste.pixelsDicomBase;
 
-  const informacoesTipo =
-    estadoBrilhoContraste.informacoesTipoDicom;
-
   if (
     !imagemBase ||
-    !pixelsBase ||
-    !informacoesTipo
+    !pixelsBase
   ) {
     return;
   }
 
-  const pixelsSaida =
-    criarArrayPixelsBrilhoContraste(
-      pixelsBase,
-      pixelsBase.length
-    );
-
-  const ignorarZero =
-    obterIgnorarZeroBrilhoContraste();
-
-  const deltaBrilho =
-    calcularDeltaBrilhoAtual();
-
-  const fatorContraste =
-    Number(
-      estadoBrilhoContraste.fatorContraste
-    );
-
-  let minimoReal = Number(
-    estadoBrilhoContraste.intensidadeMinimaBase
-  );
-
-  let maximoReal = Number(
-    estadoBrilhoContraste.intensidadeMaximaBase
-  );
-
-  if (!Number.isFinite(minimoReal)) {
-    minimoReal = Number(informacoesTipo.minimo);
-  }
-
-  if (!Number.isFinite(maximoReal)) {
-    maximoReal = Number(informacoesTipo.maximo);
-  }
-
-  if (!Number.isFinite(minimoReal)) {
-    minimoReal = 0;
-  }
-
-  if (!Number.isFinite(maximoReal)) {
-    maximoReal = 1;
-  }
-
-  if (minimoReal > maximoReal) {
-    const temporario = minimoReal;
-    minimoReal = maximoReal;
-    maximoReal = temporario;
-  }
-
-  const faixaBrilho =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.brilhoMinimo,
-      estadoBrilhoContraste.brilhoMaximo,
-      minimoReal,
-      maximoReal
-    );
-
-  const faixaContraste =
-    resolverFaixaEfetivaBrilhoContraste(
-      estadoBrilhoContraste.contrasteMinimo,
-      estadoBrilhoContraste.contrasteMaximo,
-      minimoReal,
-      maximoReal
-    );
-
-  for (
-    let i = 0;
-    i < pixelsBase.length;
-    i++
-  ) {
-    const original =
-      Number(pixelsBase[i]);
-
-    if (
-      ignorarZero &&
-      original === 0
-    ) {
-      pixelsSaida[i] =
-        converterValorParaTipoDicomBrilhoContraste(
-          original,
-          {
-            minimo: minimoReal,
-            maximo: maximoReal,
-            inteiro: informacoesTipo.inteiro
-          }
-        );
-      continue;
-    }
-
-    const aplicarBrilho =
-      pixelPertenceFaixaBrilhoContraste(
-        original,
-        estadoBrilhoContraste.modoBrilho,
-        faixaBrilho.valido ? faixaBrilho.minimo : NaN,
-        faixaBrilho.valido ? faixaBrilho.maximo : NaN
-      );
-
-    const aplicarContraste =
-      pixelPertenceFaixaBrilhoContraste(
-        original,
-        estadoBrilhoContraste.modoContraste,
-        faixaContraste.valido ? faixaContraste.minimo : NaN,
-        faixaContraste.valido ? faixaContraste.maximo : NaN
-      );
-
-    let valor = original;
-
-    if (aplicarBrilho) {
-      valor += deltaBrilho;
-    }
-
-    if (aplicarContraste) {
-      valor *= fatorContraste;
-    }
-
-    valor =
-      limitarValorBrilhoContraste(
-        valor,
-        minimoReal,
-        maximoReal
-      );
-
-    pixelsSaida[i] =
-      converterValorParaTipoDicomBrilhoContraste(
-        valor,
-        {
-          minimo: minimoReal,
-          maximo: maximoReal,
-          inteiro: informacoesTipo.inteiro
-        }
-      );
-  }
-
-  const imagemSaida =
-    criarImagemDicomBrilhoContraste(
-      pixelsSaida,
-      imagemBase,
-      minimoReal,
-      maximoReal
-    );
+  const operacao =
+    estadoBrilhoContraste.operacaoPreviewAtiva;
 
   if (
     typeof visualizadorDicom === "undefined" ||
@@ -2222,6 +2304,39 @@ function aplicarBrilhoContrasteDicom() {
   ) {
     return;
   }
+
+  if (
+    operacao !== "brilho" &&
+    operacao !== "contraste"
+  ) {
+    cornerstone.displayImage(
+      visualizadorDicom,
+      imagemBase
+    );
+
+    imagemDicomAtual = imagemBase;
+    return;
+  }
+
+  const configuracao =
+    criarConfiguracaoAtualBrilhoContraste(
+      operacao
+    );
+
+  const resultado =
+    processarPixelsDicomOperacaoLinearBrilhoContraste(
+      pixelsBase,
+      operacao,
+      configuracao
+    );
+
+  const imagemSaida =
+    criarImagemDicomBrilhoContraste(
+      resultado.pixelsSaida,
+      imagemBase,
+      resultado.minimoReal,
+      resultado.maximoReal
+    );
 
   let viewportAtual = null;
 
@@ -2239,18 +2354,17 @@ function aplicarBrilhoContrasteDicom() {
     imagemSaida
   );
 
-  const larguraJanela = Math.max(
-    1,
-    maximoReal - minimoReal
-  );
-
-  const centroJanela =
-    (minimoReal + maximoReal) / 2;
-
   if (viewportAtual) {
     viewportAtual.voi = {
-      windowCenter: centroJanela,
-      windowWidth: larguraJanela
+      windowCenter:
+        (resultado.minimoReal +
+         resultado.maximoReal) / 2,
+      windowWidth:
+        Math.max(
+          1,
+          resultado.maximoReal -
+          resultado.minimoReal
+        )
     };
 
     cornerstone.setViewport(
@@ -2391,21 +2505,12 @@ function obterConfiguracaoBrilhoParaFluxograma() {
       ? "faixa"
       : "todos";
 
-  const configuracao = {
-    modo,
-    valor:
-      limitarValorBrilhoContraste(
-        Number(
-          estadoBrilhoContraste.posicaoBrilho
-        ) || 0,
-        -1,
-        1
-      ),
-    minimo: null,
-    maximo: null,
-    ignorarZero:
-      obterIgnorarZeroBrilhoContraste()
-  };
+  const configuracao =
+    criarConfiguracaoAtualBrilhoContraste(
+      "brilho"
+    );
+
+  configuracao.modo = modo;
 
   if (modo === "faixa") {
     const faixa =
@@ -2439,26 +2544,24 @@ function obterConfiguracaoContrasteParaFluxograma() {
       ? "faixa"
       : "todos";
 
-  const configuracao = {
-    modo,
-    valor: (() => {
-      const numero = Number(
-        estadoBrilhoContraste.fatorContraste
-      );
+  const configuracao =
+    criarConfiguracaoAtualBrilhoContraste(
+      "contraste"
+    );
 
-      return Number.isFinite(numero)
-        ? limitarValorBrilhoContraste(
-            numero,
-            0,
-            2
-          )
-        : 1;
-    })(),
-    minimo: null,
-    maximo: null,
-    ignorarZero:
-      obterIgnorarZeroBrilhoContraste()
-  };
+  configuracao.modo = modo;
+
+  if (
+    !Number.isFinite(
+      Number(configuracao.p)
+    )
+  ) {
+    return {
+      valido: false,
+      mensagem:
+        "Valor de contraste inválido."
+    };
+  }
 
   if (modo === "faixa") {
     const faixa =
@@ -2570,93 +2673,25 @@ async function aplicarContrasteAoFluxograma() {
 }
 
 
-function calcularFaixaCanvasParaFluxograma(
-  imageData
-) {
-  return calcularFaixaImagemComumBrilhoContraste(
-    imageData
-  );
-}
 
 
-function calcularFaixasCanaisCanvasParaFluxograma(
-  imageData
-) {
-  return calcularFaixasCanaisImagemComumBrilhoContraste(
-    imageData
-  );
-}
 
-
-function obterAmplitudeBrilhoConfiguracaoFluxo(
-  configuracao,
-  minimoBase,
-  maximoBase,
-  amplitudeSeguranca
-) {
-  let amplitude;
-
-  if (
-    configuracao &&
-    configuracao.modo === "faixa"
-  ) {
-    const faixaEfetiva =
-      resolverFaixaEfetivaBrilhoContraste(
-        configuracao.minimo,
-        configuracao.maximo,
-        minimoBase,
-        maximoBase
-      );
-
-    if (!faixaEfetiva.valido) {
-      return 0;
-    }
-
-    amplitude =
-      faixaEfetiva.maximo -
-      faixaEfetiva.minimo;
-  } else {
-    amplitude =
-      Number(maximoBase) -
-      Number(minimoBase);
-  }
-
-  if (
-    !Number.isFinite(amplitude) ||
-    amplitude <= 0
-  ) {
-    return amplitudeSeguranca;
-  }
-
-  return amplitude;
-}
-
-
-// Executa a etapa Brilho RGB no fluxo usando a MESMA regra do preview:
-// deltaCanal = posição * (máximoCanal - mínimoCanal).
+// Executa Brilho em RGB/cinza no fluxo com o MESMO núcleo do preview:
+// s = r + delta, com delta = 255 * p.
 async function aplicarBrilhoFluxoEmCanvas(
   canvasEntrada,
   configuracao,
   callbackProgresso
 ) {
-  const canvasSaida =
-    document.createElement("canvas");
-
-  canvasSaida.width = canvasEntrada.width;
-  canvasSaida.height = canvasEntrada.height;
-
   const contextoEntrada =
     canvasEntrada.getContext(
       "2d",
       { willReadFrequently: true }
     );
 
-  const contextoSaida =
-    canvasSaida.getContext("2d");
-
-  if (!contextoEntrada || !contextoSaida) {
+  if (!contextoEntrada) {
     throw new Error(
-      "Não foi possível criar o Canvas para aplicar Brilho no fluxo."
+      "Não foi possível ler o Canvas para aplicar Brilho no fluxo."
     );
   }
 
@@ -2668,186 +2703,31 @@ async function aplicarBrilhoFluxoEmCanvas(
       canvasEntrada.height
     );
 
-  const saida =
-    contextoSaida.createImageData(
-      entrada.width,
-      entrada.height
+  // MESMO núcleo usado no preview.
+  const resultado =
+    processarImageDataOperacaoLinearBrilhoContraste(
+      entrada,
+      "brilho",
+      configuracao
     );
 
-  const faixasCanais =
-    calcularFaixasCanaisCanvasParaFluxograma(
-      entrada
+  const canvasSaida =
+    document.createElement("canvas");
+
+  canvasSaida.width = canvasEntrada.width;
+  canvasSaida.height = canvasEntrada.height;
+
+  const contextoSaida =
+    canvasSaida.getContext("2d");
+
+  if (!contextoSaida) {
+    throw new Error(
+      "Não foi possível criar o Canvas de saída do Brilho."
     );
-
-  const faixaEfetivaR =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      faixasCanais.r.minimo,
-      faixasCanais.r.maximo
-    );
-
-  const faixaEfetivaG =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      faixasCanais.g.minimo,
-      faixasCanais.g.maximo
-    );
-
-  const faixaEfetivaB =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      faixasCanais.b.minimo,
-      faixasCanais.b.maximo
-    );
-
-  const amplitudeR =
-    obterAmplitudeBrilhoConfiguracaoFluxo(
-      configuracao,
-      faixasCanais.r.minimo,
-      faixasCanais.r.maximo,
-      255
-    );
-
-  const amplitudeG =
-    obterAmplitudeBrilhoConfiguracaoFluxo(
-      configuracao,
-      faixasCanais.g.minimo,
-      faixasCanais.g.maximo,
-      255
-    );
-
-  const amplitudeB =
-    obterAmplitudeBrilhoConfiguracaoFluxo(
-      configuracao,
-      faixasCanais.b.minimo,
-      faixasCanais.b.maximo,
-      255
-    );
-
-  const posicao =
-    limitarValorBrilhoContraste(
-      Number(configuracao.valor) || 0,
-      -1,
-      1
-    );
-
-  const deltaR =
-    posicao *
-    amplitudeR;
-
-  const deltaG =
-    posicao *
-    amplitudeG;
-
-  const deltaB =
-    posicao *
-    amplitudeB;
-
-  const ignorarZero =
-    Boolean(
-      configuracao.ignorarZero
-    );
-
-  for (
-    let i = 0;
-    i < entrada.data.length;
-    i += 4
-  ) {
-    const rOriginal = entrada.data[i];
-    const gOriginal = entrada.data[i + 1];
-    const bOriginal = entrada.data[i + 2];
-    const alfa = entrada.data[i + 3];
-
-    const pixelEhZero =
-      rOriginal === 0 &&
-      gOriginal === 0 &&
-      bOriginal === 0;
-
-    if (
-      ignorarZero &&
-      pixelEhZero
-    ) {
-      saida.data[i] = 0;
-      saida.data[i + 1] = 0;
-      saida.data[i + 2] = 0;
-      saida.data[i + 3] = alfa;
-      continue;
-    }
-
-    const aplicarR =
-      pixelPertenceFaixaBrilhoContraste(
-        rOriginal,
-        configuracao.modo,
-        faixaEfetivaR.valido ? faixaEfetivaR.minimo : NaN,
-        faixaEfetivaR.valido ? faixaEfetivaR.maximo : NaN
-      );
-
-    const aplicarG =
-      pixelPertenceFaixaBrilhoContraste(
-        gOriginal,
-        configuracao.modo,
-        faixaEfetivaG.valido ? faixaEfetivaG.minimo : NaN,
-        faixaEfetivaG.valido ? faixaEfetivaG.maximo : NaN
-      );
-
-    const aplicarB =
-      pixelPertenceFaixaBrilhoContraste(
-        bOriginal,
-        configuracao.modo,
-        faixaEfetivaB.valido ? faixaEfetivaB.minimo : NaN,
-        faixaEfetivaB.valido ? faixaEfetivaB.maximo : NaN
-      );
-
-    const r =
-      aplicarR
-        ? rOriginal + deltaR
-        : rOriginal;
-
-    const g =
-      aplicarG
-        ? gOriginal + deltaG
-        : gOriginal;
-
-    const b =
-      aplicarB
-        ? bOriginal + deltaB
-        : bOriginal;
-
-    saida.data[i] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          r,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 1] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          g,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 2] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          b,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 3] = alfa;
   }
 
   contextoSaida.putImageData(
-    saida,
+    resultado.imageData,
     0,
     0
   );
@@ -2860,31 +2740,22 @@ async function aplicarBrilhoFluxoEmCanvas(
 }
 
 
-// Executa Contraste no fluxo usando a mesma multiplicação direta
-// mostrada no ajuste em tempo real: pixelSaida = pixelEntrada * fator.
+// Executa Contraste em RGB/cinza no fluxo com o MESMO núcleo do preview:
+// s = r * delta, com delta = 255 * p.
 async function aplicarContrasteFluxoEmCanvas(
   canvasEntrada,
   configuracao,
   callbackProgresso
 ) {
-  const canvasSaida =
-    document.createElement("canvas");
-
-  canvasSaida.width = canvasEntrada.width;
-  canvasSaida.height = canvasEntrada.height;
-
   const contextoEntrada =
     canvasEntrada.getContext(
       "2d",
       { willReadFrequently: true }
     );
 
-  const contextoSaida =
-    canvasSaida.getContext("2d");
-
-  if (!contextoEntrada || !contextoSaida) {
+  if (!contextoEntrada) {
     throw new Error(
-      "Não foi possível criar o Canvas para aplicar Contraste no fluxo."
+      "Não foi possível ler o Canvas para aplicar Contraste no fluxo."
     );
   }
 
@@ -2896,155 +2767,31 @@ async function aplicarContrasteFluxoEmCanvas(
       canvasEntrada.height
     );
 
-  const saida =
-    contextoSaida.createImageData(
-      entrada.width,
-      entrada.height
+  // MESMO núcleo usado no preview.
+  const resultado =
+    processarImageDataOperacaoLinearBrilhoContraste(
+      entrada,
+      "contraste",
+      configuracao
     );
 
-  const numeroFator =
-    Number(configuracao.valor);
+  const canvasSaida =
+    document.createElement("canvas");
 
-  const fator =
-    Number.isFinite(numeroFator)
-      ? limitarValorBrilhoContraste(
-          numeroFator,
-          0,
-          2
-        )
-      : 1;
+  canvasSaida.width = canvasEntrada.width;
+  canvasSaida.height = canvasEntrada.height;
 
-  const ignorarZero =
-    Boolean(
-      configuracao.ignorarZero
+  const contextoSaida =
+    canvasSaida.getContext("2d");
+
+  if (!contextoSaida) {
+    throw new Error(
+      "Não foi possível criar o Canvas de saída do Contraste."
     );
-
-  const faixasCanais =
-    calcularFaixasCanaisCanvasParaFluxograma(
-      entrada
-    );
-
-  const faixaEfetivaR =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      faixasCanais.r.minimo,
-      faixasCanais.r.maximo
-    );
-
-  const faixaEfetivaG =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      faixasCanais.g.minimo,
-      faixasCanais.g.maximo
-    );
-
-  const faixaEfetivaB =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      faixasCanais.b.minimo,
-      faixasCanais.b.maximo
-    );
-
-  for (
-    let i = 0;
-    i < entrada.data.length;
-    i += 4
-  ) {
-    const rOriginal = entrada.data[i];
-    const gOriginal = entrada.data[i + 1];
-    const bOriginal = entrada.data[i + 2];
-    const alfa = entrada.data[i + 3];
-
-    const pixelEhZero =
-      rOriginal === 0 &&
-      gOriginal === 0 &&
-      bOriginal === 0;
-
-    if (
-      ignorarZero &&
-      pixelEhZero
-    ) {
-      saida.data[i] = 0;
-      saida.data[i + 1] = 0;
-      saida.data[i + 2] = 0;
-      saida.data[i + 3] = alfa;
-      continue;
-    }
-
-    const aplicarR =
-      pixelPertenceFaixaBrilhoContraste(
-        rOriginal,
-        configuracao.modo,
-        faixaEfetivaR.valido ? faixaEfetivaR.minimo : NaN,
-        faixaEfetivaR.valido ? faixaEfetivaR.maximo : NaN
-      );
-
-    const aplicarG =
-      pixelPertenceFaixaBrilhoContraste(
-        gOriginal,
-        configuracao.modo,
-        faixaEfetivaG.valido ? faixaEfetivaG.minimo : NaN,
-        faixaEfetivaG.valido ? faixaEfetivaG.maximo : NaN
-      );
-
-    const aplicarB =
-      pixelPertenceFaixaBrilhoContraste(
-        bOriginal,
-        configuracao.modo,
-        faixaEfetivaB.valido ? faixaEfetivaB.minimo : NaN,
-        faixaEfetivaB.valido ? faixaEfetivaB.maximo : NaN
-      );
-
-    const r =
-      aplicarR
-        ? rOriginal * fator
-        : rOriginal;
-
-    const g =
-      aplicarG
-        ? gOriginal * fator
-        : gOriginal;
-
-    const b =
-      aplicarB
-        ? bOriginal * fator
-        : bOriginal;
-
-    saida.data[i] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          r,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 1] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          g,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 2] =
-      Math.round(
-        limitarValorBrilhoContraste(
-          b,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 3] = alfa;
   }
 
   contextoSaida.putImageData(
-    saida,
+    resultado.imageData,
     0,
     0
   );
@@ -3066,8 +2813,8 @@ function obterFaixaRealDicomFluxograma(
 }
 
 
-// Brilho DICOM no fluxo: usa a mesma soma do preview e satura
-// na faixa REAL da imagem de entrada da etapa.
+// Brilho DICOM no fluxo com o MESMO núcleo do preview:
+// s = r + delta, com delta = p * (rmax - rmin).
 async function aplicarBrilhoFluxoEmDicom(
   imagemEntrada,
   configuracao,
@@ -3085,144 +2832,29 @@ async function aplicarBrilhoFluxoEmDicom(
   const pixelsEntrada =
     imagemEntrada.getPixelData();
 
-  const pixelsSaida =
-    criarArrayPixelsBrilhoContraste(
+  // MESMO núcleo usado no preview.
+  const resultado =
+    processarPixelsDicomOperacaoLinearBrilhoContraste(
       pixelsEntrada,
-      pixelsEntrada.length
+      "brilho",
+      configuracao
     );
-
-  const infoTipo =
-    obterInformacoesTipoDicomBrilhoContraste(
-      pixelsEntrada
-    );
-
-  const faixaBase =
-    obterFaixaRealDicomFluxograma(
-      pixelsEntrada
-    );
-
-  let minimoReal = Number(faixaBase.minimo);
-  let maximoReal = Number(faixaBase.maximo);
-
-  if (!Number.isFinite(minimoReal)) {
-    minimoReal =
-      Number.isFinite(infoTipo.minimo)
-        ? Number(infoTipo.minimo)
-        : 0;
-  }
-
-  if (!Number.isFinite(maximoReal)) {
-    maximoReal =
-      Number.isFinite(infoTipo.maximo)
-        ? Number(infoTipo.maximo)
-        : minimoReal + 1;
-  }
-
-  const faixaEfetiva =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      minimoReal,
-      maximoReal
-    );
-
-  const amplitudeSeguranca =
-    Number.isFinite(infoTipo.minimo) &&
-    Number.isFinite(infoTipo.maximo)
-      ? infoTipo.maximo - infoTipo.minimo
-      : 1;
-
-  const amplitude =
-    obterAmplitudeBrilhoConfiguracaoFluxo(
-      configuracao,
-      minimoReal,
-      maximoReal,
-      amplitudeSeguranca
-    );
-
-  const posicao =
-    limitarValorBrilhoContraste(
-      Number(configuracao.valor) || 0,
-      -1,
-      1
-    );
-
-  const delta =
-    posicao *
-    amplitude;
-
-  const ignorarZero =
-    Boolean(
-      configuracao.ignorarZero
-    );
-
-  for (
-    let i = 0;
-    i < pixelsEntrada.length;
-    i++
-  ) {
-    const original =
-      Number(pixelsEntrada[i]);
-
-    if (
-      ignorarZero &&
-      original === 0
-    ) {
-      pixelsSaida[i] =
-        converterValorParaTipoDicomBrilhoContraste(
-          original,
-          {
-            minimo: minimoReal,
-            maximo: maximoReal,
-            inteiro: infoTipo.inteiro
-          }
-        );
-      continue;
-    }
-
-    const aplicar =
-      pixelPertenceFaixaBrilhoContraste(
-        original,
-        configuracao.modo,
-        faixaEfetiva.valido ? faixaEfetiva.minimo : NaN,
-        faixaEfetiva.valido ? faixaEfetiva.maximo : NaN
-      );
-
-    const valor =
-      aplicar
-        ? original + delta
-        : original;
-
-    pixelsSaida[i] =
-      converterValorParaTipoDicomBrilhoContraste(
-        limitarValorBrilhoContraste(
-          valor,
-          minimoReal,
-          maximoReal
-        ),
-        {
-          minimo: minimoReal,
-          maximo: maximoReal,
-          inteiro: infoTipo.inteiro
-        }
-      );
-  }
 
   if (callbackProgresso) {
     callbackProgresso(100);
   }
 
   return criarImagemDicomBrilhoContraste(
-    pixelsSaida,
+    resultado.pixelsSaida,
     imagemEntrada,
-    minimoReal,
-    maximoReal
+    resultado.minimoReal,
+    resultado.maximoReal
   );
 }
 
 
-// Contraste DICOM no fluxo: multiplicação direta e saturação
-// na faixa REAL da imagem de entrada da etapa.
+// Contraste DICOM no fluxo com o MESMO núcleo do preview:
+// s = r * delta, com delta = p * (rmax - rmin).
 async function aplicarContrasteFluxoEmDicom(
   imagemEntrada,
   configuracao,
@@ -3240,125 +2872,23 @@ async function aplicarContrasteFluxoEmDicom(
   const pixelsEntrada =
     imagemEntrada.getPixelData();
 
-  const pixelsSaida =
-    criarArrayPixelsBrilhoContraste(
+  // MESMO núcleo usado no preview.
+  const resultado =
+    processarPixelsDicomOperacaoLinearBrilhoContraste(
       pixelsEntrada,
-      pixelsEntrada.length
+      "contraste",
+      configuracao
     );
-
-  const infoTipo =
-    obterInformacoesTipoDicomBrilhoContraste(
-      pixelsEntrada
-    );
-
-  const faixaBase =
-    obterFaixaRealDicomFluxograma(
-      pixelsEntrada
-    );
-
-  let minimoReal = Number(faixaBase.minimo);
-  let maximoReal = Number(faixaBase.maximo);
-
-  if (!Number.isFinite(minimoReal)) {
-    minimoReal =
-      Number.isFinite(infoTipo.minimo)
-        ? Number(infoTipo.minimo)
-        : 0;
-  }
-
-  if (!Number.isFinite(maximoReal)) {
-    maximoReal =
-      Number.isFinite(infoTipo.maximo)
-        ? Number(infoTipo.maximo)
-        : minimoReal + 1;
-  }
-
-  const faixaEfetiva =
-    resolverFaixaEfetivaBrilhoContraste(
-      configuracao.minimo,
-      configuracao.maximo,
-      minimoReal,
-      maximoReal
-    );
-
-  const numeroFator =
-    Number(configuracao.valor);
-
-  const fator =
-    Number.isFinite(numeroFator)
-      ? limitarValorBrilhoContraste(
-          numeroFator,
-          0,
-          2
-        )
-      : 1;
-
-  const ignorarZero =
-    Boolean(
-      configuracao.ignorarZero
-    );
-
-  for (
-    let i = 0;
-    i < pixelsEntrada.length;
-    i++
-  ) {
-    const original =
-      Number(pixelsEntrada[i]);
-
-    if (
-      ignorarZero &&
-      original === 0
-    ) {
-      pixelsSaida[i] =
-        converterValorParaTipoDicomBrilhoContraste(
-          original,
-          {
-            minimo: minimoReal,
-            maximo: maximoReal,
-            inteiro: infoTipo.inteiro
-          }
-        );
-      continue;
-    }
-
-    const aplicar =
-      pixelPertenceFaixaBrilhoContraste(
-        original,
-        configuracao.modo,
-        faixaEfetiva.valido ? faixaEfetiva.minimo : NaN,
-        faixaEfetiva.valido ? faixaEfetiva.maximo : NaN
-      );
-
-    const valor =
-      aplicar
-        ? original * fator
-        : original;
-
-    pixelsSaida[i] =
-      converterValorParaTipoDicomBrilhoContraste(
-        limitarValorBrilhoContraste(
-          valor,
-          minimoReal,
-          maximoReal
-        ),
-        {
-          minimo: minimoReal,
-          maximo: maximoReal,
-          inteiro: infoTipo.inteiro
-        }
-      );
-  }
 
   if (callbackProgresso) {
     callbackProgresso(100);
   }
 
   return criarImagemDicomBrilhoContraste(
-    pixelsSaida,
+    resultado.pixelsSaida,
     imagemEntrada,
-    minimoReal,
-    maximoReal
+    resultado.minimoReal,
+    resultado.maximoReal
   );
 }
 
