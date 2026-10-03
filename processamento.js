@@ -6971,47 +6971,32 @@ function obterFaixaAjusteFluxo(
     );
 
 
-  const textoMinimo =
-    campoMinimo
-      ? String(campoMinimo.value).trim()
-      : "";
-
-  const textoMaximo =
-    campoMaximo
-      ? String(campoMaximo.value).trim()
-      : "";
-
-
   const minimo =
-    textoMinimo === ""
-      ? null
-      : Number(textoMinimo);
+    campoMinimo
+      ? Number(campoMinimo.value)
+      : NaN;
 
   const maximo =
-    textoMaximo === ""
-      ? null
-      : Number(textoMaximo);
+    campoMaximo
+      ? Number(campoMaximo.value)
+      : NaN;
 
 
   if (
-    (textoMinimo !== "" && !Number.isFinite(minimo)) ||
-    (textoMaximo !== "" && !Number.isFinite(maximo))
+    !Number.isFinite(minimo) ||
+    !Number.isFinite(maximo)
   ) {
 
     return {
       valido: false,
       mensagem:
-        "Informe uma faixa de pixels válida."
+        "Informe os valores mínimo e máximo da faixa de pixels."
     };
 
   }
 
 
-  if (
-    Number.isFinite(minimo) &&
-    Number.isFinite(maximo) &&
-    minimo > maximo
-  ) {
+  if (minimo > maximo) {
 
     return {
       valido: false,
@@ -7069,13 +7054,13 @@ async function aplicarBrilhoAoFluxograma() {
       "sliderBrilho"
     );
 
-  const p =
+  const valor =
     slider
       ? Number(slider.value)
       : NaN;
 
 
-  if (!Number.isFinite(p)) {
+  if (!Number.isFinite(valor)) {
 
     alert(
       "Valor de brilho inválido."
@@ -7088,15 +7073,9 @@ async function aplicarBrilhoAoFluxograma() {
 
   const configuracao = {
     modo: modo,
-    p: p,
-    valor: p,
+    valor: valor,
     minimo: null,
-    maximo: null,
-    ignorarZero:
-      typeof deveIgnorarPixelZeroFerramentas === "function"
-        ? deveIgnorarPixelZeroFerramentas()
-        : false,
-    formulaVersao: "p_delta_v1"
+    maximo: null
   };
 
 
@@ -7189,13 +7168,16 @@ async function aplicarContrasteAoFluxograma() {
       "sliderContraste"
     );
 
-  const p =
+  const valor =
     slider
       ? Number(slider.value)
       : NaN;
 
 
-  if (!Number.isFinite(p)) {
+  if (
+    !Number.isFinite(valor) ||
+    valor <= 0
+  ) {
 
     alert(
       "Valor de contraste inválido."
@@ -7208,15 +7190,9 @@ async function aplicarContrasteAoFluxograma() {
 
   const configuracao = {
     modo: modo,
-    p: p,
-    valor: p,
+    valor: valor,
     minimo: null,
-    maximo: null,
-    ignorarZero:
-      typeof deveIgnorarPixelZeroFerramentas === "function"
-        ? deveIgnorarPixelZeroFerramentas()
-        : false,
-    formulaVersao: "p_delta_v1"
+    maximo: null
   };
 
 
@@ -10128,9 +10104,7 @@ function limitarValorNumerico(
 
 function valorPertenceFaixaAjuste(
   valor,
-  configuracao,
-  minimoBase,
-  maximoBase
+  configuracao
 ) {
 
   if (
@@ -10143,152 +10117,12 @@ function valorPertenceFaixaAjuste(
   }
 
 
-  const minimo =
-    configuracao.minimo === null ||
-    configuracao.minimo === undefined
-      ? Number(minimoBase)
-      : Number(configuracao.minimo);
-
-  const maximo =
-    configuracao.maximo === null ||
-    configuracao.maximo === undefined
-      ? Number(maximoBase)
-      : Number(configuracao.maximo);
-
-
-  if (
-    !Number.isFinite(minimo) ||
-    !Number.isFinite(maximo) ||
-    minimo > maximo
-  ) {
-
-    return false;
-
-  }
-
-
   return (
-    Number(valor) >= minimo &&
-    Number(valor) <= maximo
+    valor >= configuracao.minimo &&
+    valor <= configuracao.maximo
   );
 
 }
-
-
-// Obtém p da configuração nova e mantém compatibilidade com fluxos antigos.
-function obterPBrilhoContrasteProcessamento(
-  configuracao,
-  operacao,
-  amplitudeDominio
-) {
-
-  if (
-    configuracao &&
-    Number.isFinite(
-      Number(configuracao.p)
-    )
-  ) {
-
-    return Number(configuracao.p);
-
-  }
-
-
-  const valor =
-    configuracao
-      ? Number(configuracao.valor)
-      : NaN;
-
-
-  if (!Number.isFinite(valor)) {
-
-    return operacao === "contraste"
-      ? 1 / Math.max(
-          Number.EPSILON,
-          Number(amplitudeDominio) || 1
-        )
-      : 0;
-
-  }
-
-
-  // Fluxos antigos armazenavam o fator do contraste diretamente em "valor".
-  if (
-    operacao === "contraste" &&
-    (!configuracao ||
-      configuracao.formulaVersao !== "p_delta_v1")
-  ) {
-
-    return valor /
-      Math.max(
-        Number.EPSILON,
-        Number(amplitudeDominio) || 1
-      );
-
-  }
-
-
-  return valor;
-
-}
-
-
-function calcularFaixasCanaisCanvasProcessamento(
-  imageData
-) {
-
-  let minimoR = Infinity;
-  let maximoR = -Infinity;
-  let minimoG = Infinity;
-  let maximoG = -Infinity;
-  let minimoB = Infinity;
-  let maximoB = -Infinity;
-
-
-  for (
-    let i = 0;
-    i < imageData.data.length;
-    i += 4
-  ) {
-
-    const r = Number(imageData.data[i]);
-    const g = Number(imageData.data[i + 1]);
-    const b = Number(imageData.data[i + 2]);
-
-    if (r < minimoR) minimoR = r;
-    if (r > maximoR) maximoR = r;
-    if (g < minimoG) minimoG = g;
-    if (g > maximoG) maximoG = g;
-    if (b < minimoB) minimoB = b;
-    if (b > maximoB) maximoB = b;
-
-  }
-
-
-  if (minimoR === Infinity) {
-    minimoR = 0;
-    maximoR = 255;
-  }
-
-  if (minimoG === Infinity) {
-    minimoG = 0;
-    maximoG = 255;
-  }
-
-  if (minimoB === Infinity) {
-    minimoB = 0;
-    maximoB = 255;
-  }
-
-
-  return {
-    r: { minimo: minimoR, maximo: maximoR },
-    g: { minimo: minimoG, maximo: maximoG },
-    b: { minimo: minimoB, maximo: maximoB }
-  };
-
-}
-
 
 
 // Brilho em imagem comum: o slider -1..1 corresponde a
@@ -10313,26 +10147,13 @@ async function aplicarBrilhoFluxoEmCanvas(
 
   const contextoEntrada =
     canvasEntrada.getContext(
-      "2d",
-      { willReadFrequently: true }
+      "2d"
     );
 
   const contextoSaida =
     canvasSaida.getContext(
       "2d"
     );
-
-
-  if (
-    !contextoEntrada ||
-    !contextoSaida
-  ) {
-
-    throw new Error(
-      "Não foi possível criar o Canvas para aplicar Brilho no fluxo."
-    );
-
-  }
 
 
   const imagem =
@@ -10343,149 +10164,69 @@ async function aplicarBrilhoFluxoEmCanvas(
       canvasEntrada.height
     );
 
-  const saida =
-    contextoSaida.createImageData(
-      imagem.width,
-      imagem.height
-    );
+  const dados =
+    imagem.data;
 
-  const faixas =
-    calcularFaixasCanaisCanvasProcessamento(
-      imagem
-    );
-
-  const p =
-    obterPBrilhoContrasteProcessamento(
-      configuracao,
-      "brilho",
-      255
-    );
-
-  // RGB/cinza: Δ = 255p
-  const delta =
-    255 * p;
-
-  const ignorarZero =
-    Boolean(
-      configuracao &&
-      configuracao.ignorarZero
-    );
+  const deslocamento =
+    Number(configuracao.valor) * 255;
 
 
   for (
     let i = 0;
-    i < imagem.data.length;
+    i < dados.length;
     i += 4
   ) {
 
-    const rOriginal = Number(imagem.data[i]);
-    const gOriginal = Number(imagem.data[i + 1]);
-    const bOriginal = Number(imagem.data[i + 2]);
-    const alfa = imagem.data[i + 3];
-
-    const pixelEhZero =
-      rOriginal === 0 &&
-      gOriginal === 0 &&
-      bOriginal === 0;
-
-
-    if (
-      ignorarZero &&
-      pixelEhZero
+    for (
+      let canal = 0;
+      canal < 3;
+      canal++
     ) {
 
-      saida.data[i] = rOriginal;
-      saida.data[i + 1] = gOriginal;
-      saida.data[i + 2] = bOriginal;
-      saida.data[i + 3] = alfa;
-      continue;
+      const indice =
+        i + canal;
+
+      const valorOriginal =
+        dados[indice];
+
+
+      if (
+        !valorPertenceFaixaAjuste(
+          valorOriginal,
+          configuracao
+        )
+      ) {
+
+        continue;
+
+      }
+
+
+      dados[indice] =
+        Math.round(
+          limitarValorNumerico(
+            valorOriginal + deslocamento,
+            0,
+            255
+          )
+        );
 
     }
-
-
-    const aplicarR =
-      valorPertenceFaixaAjuste(
-        rOriginal,
-        configuracao,
-        faixas.r.minimo,
-        faixas.r.maximo
-      );
-
-    const aplicarG =
-      valorPertenceFaixaAjuste(
-        gOriginal,
-        configuracao,
-        faixas.g.minimo,
-        faixas.g.maximo
-      );
-
-    const aplicarB =
-      valorPertenceFaixaAjuste(
-        bOriginal,
-        configuracao,
-        faixas.b.minimo,
-        faixas.b.maximo
-      );
-
-
-    // Brilho: s = r + Δ
-    const r =
-      aplicarR
-        ? rOriginal + delta
-        : rOriginal;
-
-    const g =
-      aplicarG
-        ? gOriginal + delta
-        : gOriginal;
-
-    const b =
-      aplicarB
-        ? bOriginal + delta
-        : bOriginal;
-
-
-    saida.data[i] =
-      Math.round(
-        limitarValorNumerico(
-          r,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 1] =
-      Math.round(
-        limitarValorNumerico(
-          g,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 2] =
-      Math.round(
-        limitarValorNumerico(
-          b,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 3] = alfa;
 
   }
 
 
   contextoSaida.putImageData(
-    saida,
+    imagem,
     0,
     0
   );
 
 
   if (callbackProgresso) {
+
     callbackProgresso(100);
+
   }
 
 
@@ -10516,26 +10257,13 @@ async function aplicarContrasteFluxoEmCanvas(
 
   const contextoEntrada =
     canvasEntrada.getContext(
-      "2d",
-      { willReadFrequently: true }
+      "2d"
     );
 
   const contextoSaida =
     canvasSaida.getContext(
       "2d"
     );
-
-
-  if (
-    !contextoEntrada ||
-    !contextoSaida
-  ) {
-
-    throw new Error(
-      "Não foi possível criar o Canvas para aplicar Contraste no fluxo."
-    );
-
-  }
 
 
   const imagem =
@@ -10546,149 +10274,84 @@ async function aplicarContrasteFluxoEmCanvas(
       canvasEntrada.height
     );
 
-  const saida =
-    contextoSaida.createImageData(
-      imagem.width,
-      imagem.height
-    );
+  const dados =
+    imagem.data;
 
-  const faixas =
-    calcularFaixasCanaisCanvasProcessamento(
-      imagem
-    );
+  const fator =
+    Number(configuracao.valor);
 
-  const p =
-    obterPBrilhoContrasteProcessamento(
-      configuracao,
-      "contraste",
-      255
-    );
-
-  // RGB/cinza: Δ = 255p
-  const delta =
-    255 * p;
-
-  const ignorarZero =
-    Boolean(
-      configuracao &&
-      configuracao.ignorarZero
-    );
+  const centro =
+    configuracao.modo === "faixa"
+      ? (
+          Number(configuracao.minimo) +
+          Number(configuracao.maximo)
+        ) / 2
+      : 127.5;
 
 
   for (
     let i = 0;
-    i < imagem.data.length;
+    i < dados.length;
     i += 4
   ) {
 
-    const rOriginal = Number(imagem.data[i]);
-    const gOriginal = Number(imagem.data[i + 1]);
-    const bOriginal = Number(imagem.data[i + 2]);
-    const alfa = imagem.data[i + 3];
-
-    const pixelEhZero =
-      rOriginal === 0 &&
-      gOriginal === 0 &&
-      bOriginal === 0;
-
-
-    if (
-      ignorarZero &&
-      pixelEhZero
+    for (
+      let canal = 0;
+      canal < 3;
+      canal++
     ) {
 
-      saida.data[i] = rOriginal;
-      saida.data[i + 1] = gOriginal;
-      saida.data[i + 2] = bOriginal;
-      saida.data[i + 3] = alfa;
-      continue;
+      const indice =
+        i + canal;
+
+      const valorOriginal =
+        dados[indice];
+
+
+      if (
+        !valorPertenceFaixaAjuste(
+          valorOriginal,
+          configuracao
+        )
+      ) {
+
+        continue;
+
+      }
+
+
+      const ajustado =
+        centro +
+        (
+          valorOriginal - centro
+        ) * fator;
+
+
+      dados[indice] =
+        Math.round(
+          limitarValorNumerico(
+            ajustado,
+            0,
+            255
+          )
+        );
 
     }
-
-
-    const aplicarR =
-      valorPertenceFaixaAjuste(
-        rOriginal,
-        configuracao,
-        faixas.r.minimo,
-        faixas.r.maximo
-      );
-
-    const aplicarG =
-      valorPertenceFaixaAjuste(
-        gOriginal,
-        configuracao,
-        faixas.g.minimo,
-        faixas.g.maximo
-      );
-
-    const aplicarB =
-      valorPertenceFaixaAjuste(
-        bOriginal,
-        configuracao,
-        faixas.b.minimo,
-        faixas.b.maximo
-      );
-
-
-    // Contraste: s = r * Δ
-    const r =
-      aplicarR
-        ? rOriginal * delta
-        : rOriginal;
-
-    const g =
-      aplicarG
-        ? gOriginal * delta
-        : gOriginal;
-
-    const b =
-      aplicarB
-        ? bOriginal * delta
-        : bOriginal;
-
-
-    saida.data[i] =
-      Math.round(
-        limitarValorNumerico(
-          r,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 1] =
-      Math.round(
-        limitarValorNumerico(
-          g,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 2] =
-      Math.round(
-        limitarValorNumerico(
-          b,
-          0,
-          255
-        )
-      );
-
-    saida.data[i + 3] = alfa;
 
   }
 
 
   contextoSaida.putImageData(
-    saida,
+    imagem,
     0,
     0
   );
 
 
   if (callbackProgresso) {
+
     callbackProgresso(100);
+
   }
 
 
@@ -10785,40 +10448,13 @@ function calcularMinimoMaximoPixels(
 
 function criarDicomComPixelsAjustados(
   imagemOriginal,
-  pixelsNovos,
-  minimoReal,
-  maximoReal
+  pixelsNovos
 ) {
 
-  const limitesSaida =
+  const limites =
     calcularMinimoMaximoPixels(
       pixelsNovos
     );
-
-
-  let minimoFaixa =
-    Number(minimoReal);
-
-  let maximoFaixa =
-    Number(maximoReal);
-
-
-  if (!Number.isFinite(minimoFaixa)) {
-    minimoFaixa = limitesSaida.minimo;
-  }
-
-  if (!Number.isFinite(maximoFaixa)) {
-    maximoFaixa = limitesSaida.maximo;
-  }
-
-
-  if (minimoFaixa > maximoFaixa) {
-
-    const temporario = minimoFaixa;
-    minimoFaixa = maximoFaixa;
-    maximoFaixa = temporario;
-
-  }
 
 
   const imagemNova =
@@ -10837,23 +10473,25 @@ function criarDicomComPixelsAjustados(
 
 
   imagemNova.minPixelValue =
-    minimoFaixa;
+    limites.minimo;
 
   imagemNova.maxPixelValue =
-    maximoFaixa;
+    limites.maximo;
 
 
+  // Atualiza a janela apenas para representar corretamente
+  // a nova faixa produzida pelo pipeline.
   imagemNova.windowCenter =
     (
-      minimoFaixa +
-      maximoFaixa
+      limites.minimo +
+      limites.maximo
     ) / 2;
 
   imagemNova.windowWidth =
     Math.max(
       1,
-      maximoFaixa -
-      minimoFaixa
+      limites.maximo -
+      limites.minimo
     );
 
 
@@ -10882,33 +10520,20 @@ async function aplicarBrilhoFluxoEmDicom(
       pixelsEntrada
     );
 
-  const minimoReal =
-    Number(faixaAtual.minimo);
-
-  const maximoReal =
-    Number(faixaAtual.maximo);
-
   const amplitude =
-    maximoReal -
-    minimoReal;
-
-  const p =
-    obterPBrilhoContrasteProcessamento(
-      configuracao,
-      "brilho",
-      amplitude > 0
-        ? amplitude
-        : 1
+    Math.max(
+      1,
+      faixaAtual.maximo -
+      faixaAtual.minimo
     );
 
-  // DICOM: Δ = p(rmax - rmin)
-  const delta =
-    p * amplitude;
+  const deslocamento =
+    Number(configuracao.valor) *
+    amplitude;
 
-  const ignorarZero =
-    Boolean(
-      configuracao &&
-      configuracao.ignorarZero
+  const limitesTipo =
+    obterLimitesTipoArrayPixels(
+      pixelsEntrada
     );
 
 
@@ -10923,8 +10548,10 @@ async function aplicarBrilhoFluxoEmDicom(
 
 
     if (
-      ignorarZero &&
-      valorOriginal === 0
+      !valorPertenceFaixaAjuste(
+        valorOriginal,
+        configuracao
+      )
     ) {
 
       pixelsSaida[i] =
@@ -10935,36 +10562,16 @@ async function aplicarBrilhoFluxoEmDicom(
     }
 
 
-    const aplicar =
-      valorPertenceFaixaAjuste(
-        valorOriginal,
-        configuracao,
-        minimoReal,
-        maximoReal
-      );
-
-
-    // Brilho: s = r + Δ
     const ajustado =
-      aplicar
-        ? valorOriginal + delta
-        : valorOriginal;
-
-
-    const valorLimitado =
       limitarValorNumerico(
-        ajustado,
-        minimoReal,
-        maximoReal
+        valorOriginal + deslocamento,
+        limitesTipo.minimo,
+        limitesTipo.maximo
       );
+
 
     pixelsSaida[i] =
-      (
-        pixelsEntrada instanceof Float32Array ||
-        pixelsEntrada instanceof Float64Array
-      )
-        ? valorLimitado
-        : Math.round(valorLimitado);
+      Math.round(ajustado);
 
   }
 
@@ -10976,9 +10583,7 @@ async function aplicarBrilhoFluxoEmDicom(
 
   return criarDicomComPixelsAjustados(
     imagemEntrada,
-    pixelsSaida,
-    minimoReal,
-    maximoReal
+    pixelsSaida
   );
 
 }
@@ -11004,33 +10609,23 @@ async function aplicarContrasteFluxoEmDicom(
       pixelsEntrada
     );
 
-  const minimoReal =
-    Number(faixaAtual.minimo);
+  const centro =
+    configuracao.modo === "faixa"
+      ? (
+          Number(configuracao.minimo) +
+          Number(configuracao.maximo)
+        ) / 2
+      : (
+          faixaAtual.minimo +
+          faixaAtual.maximo
+        ) / 2;
 
-  const maximoReal =
-    Number(faixaAtual.maximo);
+  const fator =
+    Number(configuracao.valor);
 
-  const amplitude =
-    maximoReal -
-    minimoReal;
-
-  const p =
-    obterPBrilhoContrasteProcessamento(
-      configuracao,
-      "contraste",
-      amplitude > 0
-        ? amplitude
-        : 1
-    );
-
-  // DICOM: Δ = p(rmax - rmin)
-  const delta =
-    p * amplitude;
-
-  const ignorarZero =
-    Boolean(
-      configuracao &&
-      configuracao.ignorarZero
+  const limitesTipo =
+    obterLimitesTipoArrayPixels(
+      pixelsEntrada
     );
 
 
@@ -11045,8 +10640,10 @@ async function aplicarContrasteFluxoEmDicom(
 
 
     if (
-      ignorarZero &&
-      valorOriginal === 0
+      !valorPertenceFaixaAjuste(
+        valorOriginal,
+        configuracao
+      )
     ) {
 
       pixelsSaida[i] =
@@ -11057,36 +10654,21 @@ async function aplicarContrasteFluxoEmDicom(
     }
 
 
-    const aplicar =
-      valorPertenceFaixaAjuste(
-        valorOriginal,
-        configuracao,
-        minimoReal,
-        maximoReal
-      );
-
-
-    // Contraste: s = r * Δ
     const ajustado =
-      aplicar
-        ? valorOriginal * delta
-        : valorOriginal;
+      centro +
+      (
+        valorOriginal - centro
+      ) * fator;
 
-
-    const valorLimitado =
-      limitarValorNumerico(
-        ajustado,
-        minimoReal,
-        maximoReal
-      );
 
     pixelsSaida[i] =
-      (
-        pixelsEntrada instanceof Float32Array ||
-        pixelsEntrada instanceof Float64Array
-      )
-        ? valorLimitado
-        : Math.round(valorLimitado);
+      Math.round(
+        limitarValorNumerico(
+          ajustado,
+          limitesTipo.minimo,
+          limitesTipo.maximo
+        )
+      );
 
   }
 
@@ -11098,9 +10680,7 @@ async function aplicarContrasteFluxoEmDicom(
 
   return criarDicomComPixelsAjustados(
     imagemEntrada,
-    pixelsSaida,
-    minimoReal,
-    maximoReal
+    pixelsSaida
   );
 
 }
