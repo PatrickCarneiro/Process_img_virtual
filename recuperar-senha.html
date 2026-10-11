@@ -1108,6 +1108,87 @@
 
     }
 
+
+    /* =========================================================
+       MESMO COMPORTAMENTO DE TELA E ROLAGEM DO CADASTRO
+       - A pagina fica limitada a altura da janela
+       - Se necessario, apenas o cartao central rola
+       ========================================================= */
+
+    html,
+    body {
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    body {
+      height: 100vh;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .pagina_recuperacao {
+      height: 100vh;
+      min-height: 0;
+      padding: clamp(10px, 2.2vh, 24px);
+      overflow: hidden;
+    }
+
+    .container_recuperacao {
+      max-height: 100%;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .container_recuperacao::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
+    /* Compacta os espacamentos em monitores com menor altura. */
+    @media (min-width: 851px) and (max-height: 900px) {
+      .area_apresentacao {
+        padding: 30px 36px;
+      }
+
+      .texto_apresentacao {
+        margin: 24px 0 18px;
+      }
+
+      .area_formulario {
+        padding: 22px 34px;
+      }
+
+      .icone_recuperacao {
+        margin-bottom: 16px;
+      }
+
+      .cabecalho_formulario {
+        margin-bottom: 18px;
+      }
+
+      .cabecalho_formulario h2 {
+        font-size: 24px;
+      }
+
+      .grupo_campo {
+        margin-bottom: 14px;
+      }
+
+      .campo_recuperacao input {
+        height: 44px;
+      }
+
+      .botao_principal {
+        height: 46px;
+      }
+    }
+
   </style>
 
 </head>
@@ -1210,6 +1291,8 @@
           </div>
 
         </div>
+
+      </div>
 
       <div class="area_formulario">
 
