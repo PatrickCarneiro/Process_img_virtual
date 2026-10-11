@@ -2,1080 +2,1737 @@
 <html lang="pt-BR">
 
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meu Perfil - Processamento de Imagens Médicas</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Login</title>
+
+
+  <!-- =========================================================
+       FONTE
+       ========================================================= -->
 
   <link
-    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   >
 
+
   <style>
+
+    /* =========================================================
+       RESET GERAL
+       ========================================================= */
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
+
     html,
     body {
       width: 100%;
       height: 100%;
-    }
-
-    html {
+      min-height: 0;
       overflow: hidden;
     }
+
 
     body {
-      min-height: 100vh;
-      display: flex;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+
+      font-family:
+        'Poppins',
+        sans-serif;
+
+      color: white;
+
+      background:
+        linear-gradient(
+          135deg,
+          #0b1d3a 0%,
+          #071429 45%,
+          #050c1a 100%
+        );
+
       overflow: hidden;
-      color: #ffffff;
-      background: linear-gradient(135deg, #0b1d3a, #050c1a);
-      font-family: 'Poppins', sans-serif;
     }
+
 
     button,
     input {
-      font: inherit;
+      font-family:
+        'Poppins',
+        sans-serif;
     }
+
 
     button {
-      border: 0;
+      border: none;
     }
+
 
     /* =========================================================
-       MENU LATERAL
+       FUNDO DECORATIVO
        ========================================================= */
 
-    .menulateral {
-      width: 250px;
-      height: 100vh;
-      flex: 0 0 250px;
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      overflow: hidden;
-      background: rgba(10, 20, 40, 0.9);
-      border-right: 1px solid rgba(255,255,255,0.05);
-    }
+    .fundo_login {
+      position: fixed;
 
-    .logo {
-      margin-bottom: 50px;
-      color: #ffffff;
-      font-size: 25px;
-      font-weight: 600;
-      line-height: 1.25;
-    }
-
-    .menu {
-      list-style: none;
-    }
-
-    .menu li {
-      margin-bottom: 10px;
-      padding: 12px;
-      border-radius: 10px;
-      color: rgba(255,255,255,0.86);
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    .menu li:hover {
-      color: #c084fc;
-      background: rgba(192,132,252,0.15);
-    }
-
-    .menu li.active {
-      color: #c084fc;
-      background: rgba(192,132,252,0.20);
-    }
-
-    /* =========================================================
-       CONTEÚDO PRINCIPAL
-       ========================================================= */
-
-    .main {
-      flex: 1;
-      min-width: 0;
-      min-height: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      padding: clamp(22px, 4vh, 40px);
-    }
-
-    .cabecalho_pagina {
-      flex-shrink: 0;
-      margin-bottom: clamp(18px, 3vh, 30px);
-    }
-
-    .cabecalho_pagina h1 {
-      margin: 0 0 7px;
-      color: #ffffff;
-      font-size: clamp(30px, 3vw, 44px);
-      font-weight: 600;
-      line-height: 1.08;
-    }
-
-    .cabecalho_pagina p {
-      margin: 0;
-      color: rgba(255,255,255,0.52);
-      font-size: 13px;
-    }
-
-    .area_perfil {
-      position: relative;
-      flex: 1;
-      min-height: 0;
-      display: grid;
-      grid-template-columns: minmax(240px, 310px) minmax(0, 1fr);
-      gap: clamp(18px, 2.2vw, 30px);
-      overflow: hidden;
-    }
-
-    /* =========================================================
-       CARTÃO DE RESUMO
-       ========================================================= */
-
-    .cartao_resumo_perfil,
-    .cartao_formulario_perfil {
-      min-height: 0;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 22px;
-      background: rgba(255,255,255,0.035);
-      box-shadow: 0 20px 55px rgba(0,0,0,0.18);
-    }
-
-    .cartao_resumo_perfil {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: clamp(22px, 3vh, 32px) 22px;
-      text-align: center;
-      overflow: hidden;
-    }
-
-    .foto_perfil_usuario {
-      position: relative;
-      width: 108px;
-      height: 108px;
-      flex: 0 0 108px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      border-radius: 50%;
-      color: #ead7ff;
-      background: linear-gradient(145deg, rgba(192,132,252,0.27), rgba(139,92,246,0.12));
-      border: 1px solid rgba(192,132,252,0.34);
-      box-shadow: 0 16px 35px rgba(88,28,135,0.18);
-    }
-
-    .foto_perfil_usuario img {
-      position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
-      display: none;
-      object-fit: cover;
-    }
 
-    .foto_perfil_usuario.com_foto img {
-      display: block;
-    }
-
-    .foto_perfil_usuario.com_foto .iniciais_foto_usuario {
-      display: none;
-    }
-
-    .iniciais_foto_usuario {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
-
-    .nome_card_usuario {
-      width: 100%;
-      margin-top: 18px;
       overflow: hidden;
-      color: rgba(255,255,255,0.94);
-      font-size: 17px;
-      font-weight: 500;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+
+      pointer-events: none;
+
+      z-index: 0;
     }
 
-    .email_card_usuario {
-      width: 100%;
-      margin-top: 5px;
-      overflow: hidden;
-      color: rgba(255,255,255,0.42);
-      font-size: 10px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+
+    .luz_fundo {
+      position: absolute;
+
+      border-radius: 50%;
+
+      filter: blur(10px);
+
+      opacity: 0.75;
     }
 
-    .linha_resumo {
-      width: 100%;
-      height: 1px;
-      margin: 24px 0 20px;
-      background: rgba(255,255,255,0.065);
+
+    .luz_fundo.um {
+      width: 520px;
+      height: 520px;
+
+      left: -180px;
+      top: -190px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.19) 0%,
+          rgba(192,132,252,0.06) 48%,
+          transparent 72%
+        );
     }
 
-    .texto_resumo {
-      color: rgba(255,255,255,0.43);
-      font-size: 10px;
-      line-height: 1.65;
+
+    .luz_fundo.dois {
+      width: 620px;
+      height: 620px;
+
+      right: -240px;
+      bottom: -300px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.18) 0%,
+          rgba(126,87,194,0.05) 50%,
+          transparent 74%
+        );
     }
 
-    .acoes_resumo {
-      width: 100%;
-      margin-top: auto;
-      padding-top: 22px;
+
+    .grade_fundo {
+      position: absolute;
+
+      inset: 0;
+
+      opacity: 0.12;
+
+      background-image:
+        linear-gradient(
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255,255,255,0.025) 1px,
+          transparent 1px
+        );
+
+      background-size:
+        48px 48px;
+
+      mask-image:
+        linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.8),
+          transparent
+        );
     }
 
-    .botao_alterar_senha {
-      width: 100%;
-      min-height: 42px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 0 14px;
-      border: 1px solid rgba(192,132,252,0.20);
-      border-radius: 10px;
-      color: #d8b4fe;
-      background: rgba(192,132,252,0.07);
-      font-size: 10px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .botao_alterar_senha:hover {
-      color: #ffffff;
-      border-color: rgba(192,132,252,0.38);
-      background: rgba(192,132,252,0.13);
-    }
-
-    .botao_alterar_senha svg {
-      width: 15px;
-      height: 15px;
-    }
 
     /* =========================================================
-       FORMULÁRIO
+       CONTAINER PRINCIPAL
        ========================================================= */
 
-    .cartao_formulario_perfil {
-      height: 100%;
-      overflow: hidden;
-    }
+    .pagina_login {
+      position: relative;
 
-    .formulario_perfil {
+      z-index: 1;
+
       width: 100%;
-      height: 100%;
+      height: 100vh;
+      height: 100dvh;
       min-height: 0;
+
       display: flex;
-      flex-direction: column;
-      padding: clamp(20px, 3vh, 30px);
+
+      align-items: center;
+      justify-content: center;
+
+      padding:
+        clamp(12px, 2vh, 24px);
+
       overflow: hidden;
     }
 
-    .cabecalho_formulario_perfil {
-      flex-shrink: 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: clamp(16px, 2.3vh, 24px);
+
+    /* =========================================================
+       CARD PRINCIPAL
+       ========================================================= */
+
+    .container_login {
+      width: min(
+        1060px,
+        100%
+      );
+
+      height:
+        min(
+          650px,
+          calc(100dvh - 48px)
+        );
+
+      min-height: 0;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(0, 1.08fr)
+        minmax(390px, 0.92fr);
+
+      background:
+        rgba(8,18,37,0.80);
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 30px;
+
+      overflow-y: auto;
+      overflow-x: hidden;
+
+      scrollbar-width: none;
+
+      box-shadow:
+        0 30px 90px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.025);
+
+      backdrop-filter:
+        blur(16px);
     }
 
-    .cabecalho_formulario_perfil h2 {
-      margin: 0;
-      color: rgba(255,255,255,0.94);
-      font-size: 18px;
-      font-weight: 500;
-    }
 
-    .cabecalho_formulario_perfil p {
-      margin: 5px 0 0;
-      color: rgba(255,255,255,0.42);
-      font-size: 10px;
-      line-height: 1.55;
-    }
-
-    .status_salvamento_perfil {
-      flex-shrink: 0;
+    .container_login::-webkit-scrollbar {
       display: none;
-      align-items: center;
-      gap: 6px;
-      margin-top: 3px;
-      color: #86efac;
-      font-size: 9px;
-      white-space: nowrap;
     }
 
-    .status_salvamento_perfil.ativo {
+
+    /* =========================================================
+       ÁREA ESQUERDA
+       ========================================================= */
+
+    .area_apresentacao {
+      position: relative;
+
+      min-width: 0;
+
+      padding:
+        58px 62px;
+
       display: flex;
+
+      flex-direction: column;
+
+      justify-content: space-between;
+
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.10),
+          rgba(10,20,40,0.20) 42%,
+          rgba(10,20,40,0.08)
+        );
     }
 
-    .ponto_status_salvo {
+
+    .area_apresentacao::before {
+      content: "";
+
+      position: absolute;
+
+      width: 500px;
+      height: 500px;
+
+      border-radius: 50%;
+
+      right: -250px;
+      top: -220px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(192,132,252,0.20),
+          transparent 68%
+        );
+    }
+
+
+    .area_apresentacao::after {
+      content: "";
+
+      position: absolute;
+
+      width: 320px;
+      height: 320px;
+
+      border-radius: 50%;
+
+      left: -160px;
+      bottom: -160px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(126,87,194,0.14),
+          transparent 70%
+        );
+    }
+
+
+    /* =========================================================
+       MARCA
+       ========================================================= */
+
+    .marca {
+      position: relative;
+
+      z-index: 1;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 13px;
+
+      height: 78px;
+
+      flex-shrink: 0;
+    }
+
+
+    .logo_iproflow {
+      position: absolute;
+
+      left: 0;
+      top: 50%;
+
+      transform:
+        translateY(-50%);
+
+      display: block;
+
+      width:
+        clamp(
+          280px,
+          32vw,
+          500px
+        );
+
+      max-width: 100%;
+      height: auto;
+
+      object-fit: contain;
+    }
+
+
+    .simbolo_marca {
+      width: 44px;
+      height: 44px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 13px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(192,132,252,0.28),
+          rgba(126,87,194,0.14)
+        );
+
+      border:
+        1px solid rgba(192,132,252,0.45);
+
+      box-shadow:
+        0 10px 28px rgba(0,0,0,0.20),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+
+    .simbolo_marca svg {
+      width: 23px;
+      height: 23px;
+    }
+
+
+    .nome_marca {
+      display: flex;
+
+      flex-direction: column;
+
+      line-height: 1.15;
+    }
+
+
+    .nome_marca strong {
+      font-size: 16px;
+
+      font-weight: 600;
+
+      letter-spacing: 0.1px;
+    }
+
+
+    .nome_marca span {
+      margin-top: 4px;
+
+      font-size: 10px;
+
+      letter-spacing: 1.5px;
+
+      text-transform: uppercase;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+
+    /* =========================================================
+       TEXTO DA APRESENTAÇÃO
+       ========================================================= */
+
+    .apresentacao_centro {
+      position: relative;
+
+      z-index: 1;
+
+      max-width: 520px;
+
+      margin:
+        50px 0;
+    }
+
+
+    .etiqueta_apresentacao {
+      width: fit-content;
+
+      margin-bottom: 18px;
+
+      padding:
+        7px 12px;
+
+      border-radius: 999px;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      letter-spacing: 0.4px;
+
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.10);
+
+      border:
+        1px solid rgba(192,132,252,0.26);
+    }
+
+
+    /* Logo vertical na apresentacao, sem alterar o formulario */
+    .logo_vertical_apresentacao {
+      display: block;
+      width: clamp(105px, 12vw, 145px);
+      height: clamp(110px, 15vh, 150px);
+      max-width: 100%;
+      object-fit: contain;
+      object-position: left center;
+      margin-bottom: 18px;
+    }
+
+
+    .apresentacao_centro h1 {
+      max-width: 520px;
+
+      font-size:
+        clamp(
+          37px,
+          4vw,
+          57px
+        );
+
+      font-weight: 600;
+
+      line-height: 1.08;
+
+      letter-spacing: -1.8px;
+    }
+
+
+    .apresentacao_centro h1 span {
+      color:
+        #c084fc;
+    }
+
+
+    .apresentacao_centro p {
+      max-width: 490px;
+
+      margin-top: 22px;
+
+      font-size: 14px;
+
+      font-weight: 300;
+
+      line-height: 1.8;
+
+      color:
+        rgba(255,255,255,0.60);
+    }
+
+
+    /* =========================================================
+       RECURSOS VISUAIS
+       ========================================================= */
+
+    .recursos_login {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 10px;
+
+      margin-top: 28px;
+    }
+
+
+    .recurso_login {
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding:
+        8px 11px;
+
+      border-radius: 10px;
+
+      background:
+        rgba(255,255,255,0.035);
+
+      border:
+        1px solid rgba(255,255,255,0.06);
+
+      font-size: 11px;
+
+      color:
+        rgba(255,255,255,0.68);
+    }
+
+
+    .ponto_recurso {
       width: 6px;
       height: 6px;
+
+      flex-shrink: 0;
+
       border-radius: 50%;
-      background: #4ade80;
-      box-shadow: 0 0 9px rgba(74,222,128,0.55);
+
+      background:
+        #c084fc;
+
+      box-shadow:
+        0 0 9px rgba(192,132,252,0.65);
     }
 
-    .area_foto_edicao {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      gap: 13px;
-      margin-bottom: clamp(15px, 2.1vh, 22px);
-      padding: 14px;
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 13px;
-      background: rgba(255,255,255,0.022);
-    }
 
-    .informacoes_foto {
-      min-width: 0;
-      flex: 1;
-    }
+    /* =========================================================
+       RODAPÉ ESQUERDO
+       ========================================================= */
 
-    .informacoes_foto strong {
-      display: block;
-      margin-bottom: 3px;
-      color: rgba(255,255,255,0.80);
-      font-size: 10px;
-      font-weight: 500;
-    }
-
-    .informacoes_foto p {
-      margin: 0;
-      color: rgba(255,255,255,0.35);
-      font-size: 8px;
-      line-height: 1.45;
-    }
-
-    .botoes_foto_perfil {
-      flex-shrink: 0;
-      display: flex;
-      gap: 7px;
-    }
-
-    .botao_foto_perfil {
-      min-height: 34px;
-      padding: 0 11px;
-      border-radius: 8px;
-      font-size: 8px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .botao_alterar_foto {
-      color: #d8b4fe;
-      border: 1px solid rgba(192,132,252,0.18);
-      background: rgba(192,132,252,0.08);
-    }
-
-    .botao_alterar_foto:hover {
-      color: #ffffff;
-      background: rgba(192,132,252,0.14);
-    }
-
-    .botao_remover_foto {
-      color: rgba(248,113,113,0.78);
-      border: 1px solid rgba(239,68,68,0.12);
-      background: rgba(239,68,68,0.045);
-    }
-
-    .botao_remover_foto:hover {
-      color: #fecaca;
-      background: rgba(239,68,68,0.09);
-    }
-
-    #inputFotoPerfil {
-      display: none;
-    }
-
-    .grid_campos_perfil {
-      flex: 1;
-      min-height: 0;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-content: start;
-      gap: clamp(12px, 1.8vh, 17px) 16px;
-      overflow: hidden;
-    }
-
-    .grupo_campo_perfil {
-      min-width: 0;
-    }
-
-    .grupo_campo_perfil.campo_largo {
-      grid-column: 1 / -1;
-    }
-
-    .grupo_campo_perfil label {
-      display: block;
-      margin-bottom: 6px;
-      color: rgba(255,255,255,0.58);
-      font-size: 9px;
-    }
-
-    .campo_perfil {
+    .rodape_apresentacao {
       position: relative;
-      width: 100%;
-    }
 
-    .campo_perfil input {
-      width: 100%;
-      height: 43px;
-      padding: 0 13px;
-      border: 1px solid rgba(255,255,255,0.075);
-      border-radius: 10px;
-      outline: none;
-      color: rgba(255,255,255,0.90);
-      background: rgba(255,255,255,0.033);
+      z-index: 1;
+
       font-size: 10px;
-      transition: 0.2s;
+
+      color:
+        rgba(255,255,255,0.30);
     }
 
-    .campo_perfil input::placeholder {
-      color: rgba(255,255,255,0.24);
-    }
 
-    .campo_perfil input:focus {
-      border-color: rgba(192,132,252,0.52);
-      box-shadow: 0 0 0 3px rgba(192,132,252,0.055);
-      background: rgba(255,255,255,0.045);
-    }
+    /* =========================================================
+       ÁREA DIREITA / LOGIN
+       ========================================================= */
 
-    .campo_perfil input[readonly] {
-      color: rgba(255,255,255,0.42);
-      cursor: default;
-      background: rgba(255,255,255,0.018);
-    }
+    .area_formulario {
+      position: relative;
 
-    .texto_campo_bloqueado {
-      margin-top: 5px;
-      color: rgba(255,255,255,0.25);
-      font-size: 7px;
-    }
+      min-width: 0;
 
-    .mensagem_perfil {
-      flex-shrink: 0;
-      display: none;
-      margin-top: 14px;
-      padding: 9px 12px;
-      border-radius: 9px;
-      font-size: 9px;
-      line-height: 1.45;
-      text-align: center;
-    }
+      padding:
+        58px 50px;
 
-    .mensagem_perfil.ativo {
-      display: block;
-    }
-
-    .mensagem_perfil.erro {
-      color: #fecaca;
-      border: 1px solid rgba(239,68,68,0.16);
-      background: rgba(239,68,68,0.07);
-    }
-
-    .mensagem_perfil.sucesso {
-      color: #bbf7d0;
-      border: 1px solid rgba(34,197,94,0.16);
-      background: rgba(34,197,94,0.07);
-    }
-
-    .mensagem_perfil.informacao {
-      color: #ddd6fe;
-      border: 1px solid rgba(167,139,250,0.16);
-      background: rgba(139,92,246,0.07);
-    }
-
-    .acoes_formulario_perfil {
-      flex-shrink: 0;
       display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      background:
+        rgba(5,13,28,0.56);
+
+      border-left:
+        1px solid rgba(255,255,255,0.06);
+    }
+
+
+    .formulario_login {
+      width: 100%;
+
+      max-width: 380px;
+    }
+
+
+    /* =========================================================
+       CABEÇALHO DO FORMULÁRIO
+       ========================================================= */
+
+    .cabecalho_formulario {
+      margin-bottom: 34px;
+    }
+
+
+    .cabecalho_formulario h2 {
+      font-size: 29px;
+
+      font-weight: 600;
+
+      letter-spacing: -0.6px;
+    }
+
+
+    .cabecalho_formulario p {
+      margin-top: 8px;
+
+      font-size: 12px;
+
+      line-height: 1.6;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+
+    /* =========================================================
+       CAMPOS
+       ========================================================= */
+
+    .grupo_campo {
+      margin-bottom: 18px;
+    }
+
+
+    .grupo_campo label {
+      display: block;
+
+      margin-bottom: 8px;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      color:
+        rgba(255,255,255,0.70);
+    }
+
+
+    .campo_login {
+      position: relative;
+
+      width: 100%;
+    }
+
+
+    .campo_login input {
+      width: 100%;
+
+      height: 51px;
+
+      padding:
+        0 15px 0 45px;
+
+      border:
+        1px solid rgba(255,255,255,0.09);
+
+      border-radius: 13px;
+
+      outline: none;
+
+      font-size: 12px;
+
+      color: white;
+
+      background:
+        rgba(255,255,255,0.045);
+
+      transition:
+        border-color 0.20s ease,
+        background 0.20s ease,
+        box-shadow 0.20s ease;
+    }
+
+
+    .campo_login input:hover {
+      border-color:
+        rgba(192,132,252,0.26);
+    }
+
+
+    .campo_login input:focus {
+      border-color:
+        rgba(192,132,252,0.65);
+
+      background:
+        rgba(192,132,252,0.055);
+
+      box-shadow:
+        0 0 0 3px rgba(192,132,252,0.075);
+    }
+
+
+    .campo_login input::placeholder {
+      color:
+        rgba(255,255,255,0.25);
+    }
+
+
+    .icone_campo {
+      position: absolute;
+
+      left: 15px;
+      top: 50%;
+
+      width: 18px;
+      height: 18px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      color:
+        rgba(255,255,255,0.42);
+
+      pointer-events: none;
+    }
+
+
+    .icone_campo svg {
+      width: 17px;
+      height: 17px;
+    }
+
+
+    /* =========================================================
+       BOTÃO MOSTRAR SENHA
+       ========================================================= */
+
+    .campo_senha input {
+      padding-right: 48px;
+    }
+
+
+    .botao_mostrar_senha {
+      position: absolute;
+
+      right: 9px;
+      top: 50%;
+
+      width: 34px;
+      height: 34px;
+
+      transform:
+        translateY(-50%);
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 8px;
+
+      color:
+        rgba(255,255,255,0.42);
+
+      background:
+        transparent;
+
+      cursor: pointer;
+
+      transition:
+        color 0.2s ease,
+        background 0.2s ease;
+    }
+
+
+    .botao_mostrar_senha:hover {
+      color:
+        #d8b4fe;
+
+      background:
+        rgba(192,132,252,0.09);
+    }
+
+
+    .botao_mostrar_senha svg {
+      width: 17px;
+      height: 17px;
+    }
+
+
+    /* =========================================================
+       ESQUECEU SENHA
+       ========================================================= */
+
+    .linha_auxiliar {
+      display: flex;
+
       align-items: center;
       justify-content: flex-end;
-      gap: 9px;
-      margin-top: clamp(15px, 2.2vh, 22px);
+
+      margin:
+        -3px 0 24px;
     }
 
-    .botao_cancelar_perfil,
-    .botao_salvar_perfil {
-      min-height: 40px;
-      padding: 0 16px;
-      border-radius: 9px;
-      font-size: 9px;
+
+    .link_esqueci_senha {
+      border: none;
+
+      padding: 0;
+
+      background:
+        transparent;
+
+      color:
+        #cfa1ff;
+
+      font-size: 11px;
+
       cursor: pointer;
-      transition: 0.2s;
+
+      text-decoration: none;
+
+      transition:
+        color 0.2s ease;
     }
 
-    .botao_cancelar_perfil {
-      color: rgba(255,255,255,0.56);
-      border: 1px solid rgba(255,255,255,0.07);
-      background: rgba(255,255,255,0.025);
+
+    .link_esqueci_senha:hover {
+      color:
+        #e2c4ff;
     }
 
-    .botao_cancelar_perfil:hover {
-      color: #ffffff;
-      background: rgba(255,255,255,0.055);
+
+    /* =========================================================
+       BOTÃO ENTRAR
+       ========================================================= */
+
+    .botao_entrar {
+      position: relative;
+
+      width: 100%;
+
+      height: 52px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      gap: 9px;
+
+      border-radius: 13px;
+
+      color:
+        #ffffff;
+
+      font-size: 12px;
+
+      font-weight: 600;
+
+      background:
+        linear-gradient(
+          135deg,
+          #a855f7,
+          #8b5cf6
+        );
+
+      cursor: pointer;
+
+      box-shadow:
+        0 12px 28px rgba(139,92,246,0.23);
+
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
     }
 
-    .botao_salvar_perfil {
-      min-width: 145px;
-      color: #ffffff;
-      background: linear-gradient(135deg, #a855f7, #8b5cf6);
-      box-shadow: 0 9px 24px rgba(139,92,246,0.18);
+
+    .botao_entrar:hover {
+      transform:
+        translateY(-1px);
+
+      filter:
+        brightness(1.08);
+
+      box-shadow:
+        0 15px 34px rgba(139,92,246,0.30);
     }
 
-    .botao_salvar_perfil:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 28px rgba(139,92,246,0.25);
+
+    .botao_entrar:active {
+      transform:
+        translateY(0);
     }
 
-    .botao_salvar_perfil:disabled {
-      opacity: 0.55;
+
+    .botao_entrar:disabled {
+      opacity: 0.60;
+
       cursor: wait;
+
       transform: none;
+
+      filter: none;
     }
+
+
+    .botao_entrar svg {
+      width: 16px;
+      height: 16px;
+    }
+
 
     /* =========================================================
        CARREGAMENTO
        ========================================================= */
 
-    .carregando_pagina_perfil {
-      position: absolute;
-      inset: 0;
-      z-index: 50;
+    .carregando_login {
+      width: 17px;
+      height: 17px;
+
+      display: none;
+
+      border:
+        2px solid rgba(255,255,255,0.32);
+
+      border-top-color:
+        white;
+
+      border-radius: 50%;
+
+      animation:
+        girar_login 0.7s linear infinite;
+    }
+
+
+    .botao_entrar.carregando .carregando_login {
+      display: block;
+    }
+
+
+    .botao_entrar.carregando .icone_entrar {
+      display: none;
+    }
+
+
+    @keyframes girar_login {
+
+      to {
+        transform:
+          rotate(360deg);
+      }
+
+    }
+
+
+    /* =========================================================
+       MENSAGEM DE STATUS
+       ========================================================= */
+
+    .mensagem_login {
+      display: none;
+
+      width: 100%;
+
+      margin-top: 15px;
+
+      padding:
+        11px 13px;
+
+      border-radius: 10px;
+
+      font-size: 11px;
+
+      line-height: 1.55;
+
+      text-align: center;
+    }
+
+
+    .mensagem_login.ativo {
+      display: block;
+    }
+
+
+    .mensagem_login.erro {
+      color:
+        #fecaca;
+
+      background:
+        rgba(239,68,68,0.08);
+
+      border:
+        1px solid rgba(239,68,68,0.20);
+    }
+
+
+    .mensagem_login.sucesso {
+      color:
+        #bbf7d0;
+
+      background:
+        rgba(34,197,94,0.08);
+
+      border:
+        1px solid rgba(34,197,94,0.20);
+    }
+
+
+    .mensagem_login.informacao {
+      color:
+        #e7d6ff;
+
+      background:
+        rgba(192,132,252,0.08);
+
+      border:
+        1px solid rgba(192,132,252,0.20);
+    }
+
+
+    /* =========================================================
+       DIVISOR
+       ========================================================= */
+
+    .divisor_login {
       display: flex;
+
+      align-items: center;
+
+      gap: 12px;
+
+      margin:
+        27px 0 23px;
+    }
+
+
+    .divisor_login::before,
+    .divisor_login::after {
+      content: "";
+
+      flex: 1;
+
+      height: 1px;
+
+      background:
+        rgba(255,255,255,0.07);
+    }
+
+
+    .divisor_login span {
+      font-size: 10px;
+
+      color:
+        rgba(255,255,255,0.30);
+    }
+
+
+    /* =========================================================
+       CADASTRO
+       ========================================================= */
+
+    .area_cadastro {
+      text-align: center;
+    }
+
+
+    .area_cadastro p {
+      font-size: 11px;
+
+      color:
+        rgba(255,255,255,0.46);
+    }
+
+
+    .botao_cadastro {
+      width: 100%;
+
+      height: 48px;
+
+      margin-top: 11px;
+
+      display: flex;
+
       align-items: center;
       justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-      border-radius: 22px;
-      color: rgba(255,255,255,0.55);
-      background: rgba(5,12,26,0.88);
-      backdrop-filter: blur(7px);
-      font-size: 10px;
-      transition: opacity 0.2s ease, visibility 0.2s ease;
+
+      border:
+        1px solid rgba(192,132,252,0.28);
+
+      border-radius: 12px;
+
+      color:
+        #d8b4fe;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      text-decoration: none;
+
+      background:
+        rgba(192,132,252,0.055);
+
+      cursor: pointer;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
     }
 
-    .carregando_pagina_perfil.oculto {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
+
+    .botao_cadastro:hover {
+      color:
+        white;
+
+      background:
+        rgba(192,132,252,0.12);
+
+      border-color:
+        rgba(192,132,252,0.48);
     }
 
-    .spinner_perfil {
-      width: 28px;
-      height: 28px;
-      border: 2px solid rgba(255,255,255,0.10);
-      border-top-color: #c084fc;
-      border-radius: 50%;
-      animation: girar_perfil 0.8s linear infinite;
-    }
-
-    @keyframes girar_perfil {
-      to {
-        transform: rotate(360deg);
-      }
-    }
 
     /* =========================================================
        RESPONSIVIDADE
        ========================================================= */
 
-    @media (max-width: 980px) {
-      .menulateral {
-        width: 220px;
-        flex-basis: 220px;
+    @media (
+      max-width: 900px
+    ) {
+
+      .pagina_login {
+        padding:
+          22px;
       }
 
-      .area_perfil {
-        grid-template-columns: 230px minmax(0, 1fr);
+
+      .container_login {
+        max-width: 520px;
+
+        height:
+          calc(100dvh - 44px);
+
+        min-height: 0;
+
+        grid-template-columns:
+          1fr;
       }
 
-      .botoes_foto_perfil {
-        flex-direction: column;
+
+      .area_apresentacao {
+        padding:
+          36px 36px 38px;
       }
+
+
+      .apresentacao_centro {
+        margin:
+          38px 0 20px;
+      }
+
+
+      .apresentacao_centro h1 {
+        font-size: 37px;
+      }
+
+
+      .apresentacao_centro p {
+        font-size: 12px;
+      }
+
+
+      .recursos_login,
+      .rodape_apresentacao {
+        display: none;
+      }
+
+
+      .area_formulario {
+        padding:
+          42px 36px 46px;
+
+        border-left:
+          none;
+
+        border-top:
+          1px solid rgba(255,255,255,0.06);
+      }
+
     }
 
-    @media (max-width: 760px) {
-      html,
-      body {
-        overflow: auto;
+
+    @media (
+      max-width: 520px
+    ) {
+
+      .pagina_login {
+        padding:
+          12px;
       }
 
-      body {
-        min-height: 100vh;
-        height: auto;
-        display: block;
+
+      .container_login {
+        border-radius: 22px;
       }
 
-      .menulateral {
-        width: 100%;
-        height: auto;
-        min-height: auto;
-        display: block;
-        padding: 16px;
-        border-right: 0;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+
+      .area_apresentacao {
+        padding:
+          28px 24px 30px;
       }
 
-      .logo {
-        margin-bottom: 15px;
-        font-size: 20px;
+
+      .apresentacao_centro {
+        margin:
+          30px 0 0;
       }
 
-      .menu {
-        display: flex;
-        gap: 7px;
-        overflow-x: auto;
+
+      .apresentacao_centro h1 {
+        font-size: 31px;
+
+        letter-spacing: -1px;
       }
 
-      .menu li {
-        flex: 0 0 auto;
-        margin-bottom: 0;
+
+      .apresentacao_centro p {
+        margin-top: 15px;
       }
 
-      .main {
-        height: auto;
-        min-height: calc(100vh - 120px);
-        overflow: visible;
+
+      .area_formulario {
+        padding:
+          35px 24px 38px;
       }
 
-      .area_perfil {
-        display: flex;
-        flex-direction: column;
-        overflow: visible;
+
+      .cabecalho_formulario h2 {
+        font-size: 25px;
       }
 
-      .cartao_resumo_perfil,
-      .cartao_formulario_perfil {
-        height: auto;
-      }
-
-      .grid_campos_perfil {
-        grid-template-columns: 1fr;
-        overflow: visible;
-      }
-
-      .grupo_campo_perfil.campo_largo {
-        grid-column: auto;
-      }
     }
 
-    @media (max-height: 720px) and (min-width: 761px) {
-      .main {
-        padding-top: 18px;
-        padding-bottom: 18px;
-      }
-
-      .cabecalho_pagina {
-        margin-bottom: 14px;
-      }
-
-      .cabecalho_pagina h1 {
-        font-size: 30px;
-      }
-
-      .cartao_resumo_perfil {
-        padding-top: 18px;
-        padding-bottom: 18px;
-      }
-
-      .foto_perfil_usuario {
-        width: 84px;
-        height: 84px;
-        flex-basis: 84px;
-      }
-
-      .linha_resumo {
-        margin-top: 17px;
-        margin-bottom: 15px;
-      }
-
-      .formulario_perfil {
-        padding-top: 18px;
-        padding-bottom: 18px;
-      }
-
-      .area_foto_edicao {
-        margin-bottom: 12px;
-        padding: 10px 12px;
-      }
-
-      .campo_perfil input {
-        height: 38px;
-      }
-
-      .grid_campos_perfil {
-        gap: 10px 14px;
-      }
-
-      .acoes_formulario_perfil {
-        margin-top: 12px;
-      }
-    }
   </style>
+
 </head>
+
 
 <body>
 
+
   <!-- =========================================================
-       MENU LATERAL
+       FUNDO
        ========================================================= -->
-  <aside class="menulateral">
 
-    <div class="logo">
-      Processamento Imagem Médica
-    </div>
+  <div class="fundo_login">
 
-    <ul class="menu">
-      <li onclick="window.location.href='index.html'">
-        Início
-      </li>
+    <div class="luz_fundo um"></div>
 
-      <li onclick="window.location.href='processamento.html'">
-        Processamento
-      </li>
+    <div class="luz_fundo dois"></div>
 
-      <li onclick="window.location.href='projeto.html'">
-        Projetos
-      </li>
+    <div class="grade_fundo"></div>
 
-      <li class="active">
-        Meu perfil
-      </li>
-    </ul>
-
-    <!-- O cartão do usuário é inserido aqui automaticamente pelo usuario.js -->
-
-  </aside>
+  </div>
 
 
   <!-- =========================================================
-       CONTEÚDO PRINCIPAL
+       PÁGINA
        ========================================================= -->
-  <main class="main">
 
-    <header class="cabecalho_pagina">
-      <h1>Meu perfil</h1>
-      <p>
-        Visualize e atualize as informações da sua conta.
-      </p>
-    </header>
+  <main class="pagina_login">
 
 
-    <section class="area_perfil">
+    <section class="container_login">
 
-      <!-- Carregamento inicial -->
-      <div
-        class="carregando_pagina_perfil"
-        id="carregandoPaginaPerfil"
-      >
-        <div class="spinner_perfil"></div>
-        <span>Carregando perfil...</span>
+
+      <!-- =====================================================
+           APRESENTAÇÃO
+           ===================================================== -->
+
+      <div class="area_apresentacao">
+
+
+        <!-- MARCA -->
+
+        <div class="marca">
+
+          <img
+            src="Imagens/logo_horizontal.png"
+            alt="IProFlow"
+            class="logo_iproflow"
+          >
+
+        </div>
+
+
+        <!-- TEXTO CENTRAL -->
+
+        <div class="apresentacao_centro">
+
+          <!-- Logo vertical substitui a etiqueta da apresentacao -->
+          <img
+            src="Imagens/logo_vertical.png"
+            alt="IProFlow"
+            class="logo_vertical_apresentacao"
+          >
+
+
+          <h1>
+
+            Transforme imagens em
+
+            <span>
+              resultados.
+            </span>
+
+          </h1>
+
+
+          <p>
+
+            Organize seus projetos, construa fluxogramas de
+            processamento e analise suas imagens em um ambiente
+            único e integrado.
+
+          </p>
+
+
+          <div class="recursos_login">
+
+
+            <div class="recurso_login">
+
+              <span class="ponto_recurso"></span>
+
+              Projetos personalizados
+
+            </div>
+
+
+            <div class="recurso_login">
+
+              <span class="ponto_recurso"></span>
+
+              Fluxogramas salvos
+
+            </div>
+
+
+            <div class="recurso_login">
+
+              <span class="ponto_recurso"></span>
+
+              Análise de imagens
+
+            </div>
+
+
+          </div>
+
+        </div>
+
+
       </div>
 
 
       <!-- =====================================================
-           RESUMO DO USUÁRIO
+           FORMULÁRIO DE LOGIN
            ===================================================== -->
-      <aside class="cartao_resumo_perfil">
 
-        <div
-          class="foto_perfil_usuario"
-          id="fotoPerfilUsuario"
-        >
-          <span
-            class="iniciais_foto_usuario"
-            id="iniciaisFotoUsuario"
-          >
-            U
-          </span>
+      <div class="area_formulario">
 
-          <img
-            id="imagemFotoUsuario"
-            alt="Foto de perfil"
-          >
-        </div>
-
-        <div
-          class="nome_card_usuario"
-          id="nomeCardUsuario"
-        >
-          Usuário
-        </div>
-
-        <div
-          class="email_card_usuario"
-          id="emailCardUsuario"
-        >
-          Carregando e-mail...
-        </div>
-
-        <div class="linha_resumo"></div>
-
-        <p class="texto_resumo">
-          Mantenha seus dados atualizados para identificar corretamente sua conta e seus projetos dentro da plataforma.
-        </p>
-
-        <div class="acoes_resumo">
-          <button
-            type="button"
-            class="botao_alterar_senha"
-            id="botaoAlterarSenhaPerfil"
-          >
-            <svg viewBox="0 0 24 24" fill="none">
-              <rect
-                x="5"
-                y="10"
-                width="14"
-                height="10"
-                rx="2.5"
-                stroke="currentColor"
-                stroke-width="1.6"
-              />
-              <path
-                d="M8.5 10V7.5C8.5 5.57 10.07 4 12 4C13.93 4 15.5 5.57 15.5 7.5V10"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-              />
-            </svg>
-
-            Alterar senha
-          </button>
-        </div>
-
-      </aside>
-
-
-      <!-- =====================================================
-           FORMULÁRIO DE PERFIL
-           ===================================================== -->
-      <section class="cartao_formulario_perfil">
 
         <form
-          class="formulario_perfil"
-          id="formularioPerfilUsuario"
+          class="formulario_login"
+          id="formularioLogin"
           autocomplete="on"
         >
 
-          <div class="cabecalho_formulario_perfil">
-            <div>
-              <h2>Informações da conta</h2>
-              <p>
-                Altere os dados abaixo e salve quando terminar.
-              </p>
-            </div>
 
-            <div
-              class="status_salvamento_perfil"
-              id="statusSalvamentoPerfil"
-            >
-              <span class="ponto_status_salvo"></span>
-              Alterações salvas
-            </div>
+          <!-- CABEÇALHO -->
+
+          <div class="cabecalho_formulario">
+
+            <h2>
+              Bem-vindo
+            </h2>
+
+            <p>
+              Entre na sua conta para acessar seus projetos e continuar seu trabalho.
+            </p>
+
           </div>
 
 
-          <!-- FOTO -->
-          <div class="area_foto_edicao">
+          <!-- E-MAIL -->
 
-            <div class="informacoes_foto">
-              <strong>Foto de perfil</strong>
-              <p>
-                JPG, PNG ou WEBP com até 5 MB.
-              </p>
+          <div class="grupo_campo">
+
+            <label for="emailLogin">
+              E-mail
+            </label>
+
+
+            <div class="campo_login">
+
+
+              <span class="icone_campo">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+
+                  <path
+                    d="M4 6.5L12 12.5L20 6.5"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+
+                  <rect
+                    x="3.5"
+                    y="5"
+                    width="17"
+                    height="14"
+                    rx="3"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                </svg>
+
+              </span>
+
+
+              <input
+                type="email"
+                id="emailLogin"
+                name="email"
+                placeholder="Digite seu e-mail"
+                autocomplete="email"
+                required
+              >
+
+
             </div>
 
-            <div class="botoes_foto_perfil">
+          </div>
+
+
+          <!-- SENHA -->
+
+          <div class="grupo_campo">
+
+            <label for="senhaLogin">
+              Senha
+            </label>
+
+
+            <div class="campo_login campo_senha">
+
+
+              <span class="icone_campo">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+
+                  <rect
+                    x="5"
+                    y="10"
+                    width="14"
+                    height="10"
+                    rx="2.5"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                  <path
+                    d="M8 10V7.5C8 5.29 9.79 3.5 12 3.5C14.21 3.5 16 5.29 16 7.5V10"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                  />
+
+                </svg>
+
+              </span>
+
+
+              <input
+                type="password"
+                id="senhaLogin"
+                name="senha"
+                placeholder="Digite sua senha"
+                autocomplete="current-password"
+                required
+              >
+
+
               <button
                 type="button"
-                class="botao_foto_perfil botao_alterar_foto"
-                id="botaoAlterarFoto"
+                class="botao_mostrar_senha"
+                id="botaoMostrarSenha"
+                aria-label="Mostrar senha"
+                title="Mostrar senha"
               >
-                Alterar foto
+
+                <svg
+                  id="iconeMostrarSenha"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+
+                  <path
+                    d="M2.5 12C4.6 8.3 7.8 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C19.4 15.7 16.2 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12Z"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="2.7"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+
+                </svg>
+
               </button>
 
-              <button
-                type="button"
-                class="botao_foto_perfil botao_remover_foto"
-                id="botaoRemoverFotoUsuario"
-              >
-                Remover
-              </button>
+
             </div>
 
-            <input
-              type="file"
-              id="inputFotoPerfil"
-              accept="image/jpeg,image/png,image/webp"
+          </div>
+
+
+          <!-- ESQUECEU SENHA -->
+
+          <div class="linha_auxiliar">
+
+            <a
+              href="recuperar-senha.html"
+              class="link_esqueci_senha"
+              id="linkEsqueciSenha"
+            >
+              Esqueceu sua senha?
+            </a>
+
+          </div>
+
+
+          <!-- BOTÃO ENTRAR -->
+
+          <button
+            type="submit"
+            class="botao_entrar"
+            id="botaoEntrar"
+          >
+
+
+            <span
+              class="carregando_login"
+              id="carregandoLogin"
+            ></span>
+
+
+            <svg
+              class="icone_entrar"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
 
-          </div>
+              <path
+                d="M5 12H19"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+
+              <path
+                d="M14 7L19 12L14 17"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+
+            </svg>
 
 
-          <!-- CAMPOS -->
-          <div class="grid_campos_perfil">
-
-            <div class="grupo_campo_perfil">
-              <label for="nomeUsuarioPerfil">
-                Usuário
-              </label>
-
-              <div class="campo_perfil">
-                <input
-                  type="text"
-                  id="nomeUsuarioPerfil"
-                  name="nome_usuario"
-                  placeholder="Seu nome de usuário"
-                  minlength="3"
-                  maxlength="80"
-                  autocomplete="username"
-                  required
-                >
-              </div>
-            </div>
+            <span id="textoBotaoEntrar">
+              Entrar
+            </span>
 
 
-            <div class="grupo_campo_perfil">
-              <label for="dataNascimentoPerfil">
-                Data de nascimento
-              </label>
-
-              <div class="campo_perfil">
-                <input
-                  type="date"
-                  id="dataNascimentoPerfil"
-                  name="data_nascimento"
-                  autocomplete="bday"
-                  required
-                >
-              </div>
-            </div>
+          </button>
 
 
-            <div class="grupo_campo_perfil campo_largo">
-              <label for="emailPerfil">
-                E-mail
-              </label>
+          <!-- MENSAGEM -->
 
-              <div class="campo_perfil">
-                <input
-                  type="email"
-                  id="emailPerfil"
-                  name="email"
-                  autocomplete="email"
-                  readonly
-                >
-              </div>
-
-              <div class="texto_campo_bloqueado">
-                O e-mail exibido corresponde à conta autenticada.
-              </div>
-            </div>
-
-
-            <div class="grupo_campo_perfil">
-              <label for="universidadeEmpresaPerfil">
-                Universidade ou empresa
-              </label>
-
-              <div class="campo_perfil">
-                <input
-                  type="text"
-                  id="universidadeEmpresaPerfil"
-                  name="universidade_empresa"
-                  placeholder="Ex.: UFU ou Empresa"
-                  maxlength="120"
-                  autocomplete="organization"
-                >
-              </div>
-            </div>
-
-
-            <div class="grupo_campo_perfil">
-              <label for="profissaoPerfil">
-                Profissão
-              </label>
-
-              <div class="campo_perfil">
-                <input
-                  type="text"
-                  id="profissaoPerfil"
-                  name="profissao"
-                  placeholder="Ex.: Engenheiro Biomédico"
-                  maxlength="100"
-                >
-              </div>
-            </div>
-
-          </div>
-
-
-          <!-- MENSAGENS -->
           <div
-            class="mensagem_perfil"
-            id="mensagemPerfil"
+            class="mensagem_login"
+            id="mensagemLogin"
             role="status"
             aria-live="polite"
           ></div>
 
 
-          <!-- AÇÕES -->
-          <div class="acoes_formulario_perfil">
+          <!-- DIVISOR -->
 
-            <button
-              type="button"
-              class="botao_cancelar_perfil"
-              id="botaoCancelarAlteracoes"
-            >
-              Cancelar alterações
-            </button>
+          <div class="divisor_login">
 
-            <button
-              type="submit"
-              class="botao_salvar_perfil"
-              id="botaoSalvarPerfil"
-            >
-              <span id="textoBotaoSalvarPerfil">
-                Salvar alterações
-              </span>
-            </button>
+            <span>
+              ou
+            </span>
 
           </div>
 
+
+          <!-- CADASTRO -->
+
+          <div class="area_cadastro">
+
+            <p>
+              Ainda não possui uma conta?
+            </p>
+
+
+            <a
+              href="cadastro.html"
+              class="botao_cadastro"
+              id="botaoCadastro"
+            >
+              Criar uma conta
+            </a>
+
+          </div>
+
+
         </form>
 
-      </section>
+
+      </div>
+
 
     </section>
+
 
   </main>
 
 
   <!-- =========================================================
-       SUPABASE E USUÁRIO
-       A ordem é importante: biblioteca -> supabase.js -> usuario.js
+       SUPABASE
        ========================================================= -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
-  <script src="usuario.js"></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+
+  <!-- =========================================================
+       CONFIGURAÇÃO DO SUPABASE
+       ========================================================= -->
+
+  <script
+    src="supabase.js"
+  ></script>
+
+
+  <!-- =========================================================
+       LÓGICA DO LOGIN
+       ========================================================= -->
+
+  <script
+    src="login.js"
+  ></script>
+
 
 </body>
 
