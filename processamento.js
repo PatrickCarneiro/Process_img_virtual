@@ -15033,9 +15033,10 @@ if (
 // - "Salvar todas" exporta todas as imagens carregadas.
 // - Se a imagem possui resultado processado, exporta esse resultado.
 // - Se ainda não foi processada, exporta o arquivo original.
-// - Resultados processados são exportados em PNG.
-// - DICOM processado é convertido para PNG mantendo a resolução
-//   espacial real da matriz DICOM.
+// - Imagens raster processadas são exportadas em PNG.
+// - DICOM processado é exportado em DICOM (.dcm), com os
+//   pixels resultantes e os bits representados corretamente.
+// - O arquivo original é a base de metadados para um novo DICOM.
 // - Nenhum processamento é executado automaticamente durante a
 //   exportação.
 // =============================================================
@@ -15196,10 +15197,9 @@ function separarNomeExtensaoExportacao(
 }
 
 
-// O resultado processado do sistema é uma imagem raster.
-// Por isso ele é exportado em PNG.
-// Arquivos que ainda não possuem resultado são preservados
-// exatamente no formato original.
+// Mantém a extensão DICOM para os resultados DICOM.
+// PNG continua sendo usado apenas para resultados raster.
+// Arquivos sem processamento preservam o nome original.
 function obterNomeArquivoExportacao(
   item
 ) {
@@ -15224,7 +15224,9 @@ function obterNomeArquivoExportacao(
 
     return (
       partes.base +
-      ".png"
+      (item.resultado.tipo === "dicom"
+        ? ".dcm"
+        : ".png")
     );
 
   }
@@ -15265,528 +15267,405 @@ async function converterDataURLParaBlobExportacao(
 }
 
 
-function converterCanvasParaBlobExportacao(
-  canvas
-) {
-
-  return new Promise(
-    function(
-      resolve,
-      reject
-    ) {
-
-      canvas.toBlob(
-        function(blob) {
-
-          if (!blob) {
-
-            reject(
-              new Error(
-                "Não foi possível converter a imagem para PNG."
-              )
-            );
-
-            return;
-          }
-
-
-          resolve(
-            blob
-          );
-
-        },
-        "image/png"
-      );
-
-    }
-  );
-
-}
-
-
 // -------------------------------------------------------------
-// DICOM PROCESSADO -> PNG EM RESOLUÇÃO REAL
+// DICOM PROCESSADO -> DICOM COM OS PIXELS REAIS (SEM CANVAS)
 // -------------------------------------------------------------
+// Usa a matriz final de getPixelData() e preserva os metadados
+// existentes no arquivo de origem, substituindo apenas os
+// campos necessários para um novo objeto DICOM derivado.
+//
+// O arquivo é gravado em DICOM Part 10, conservando o tipo
+// numérico e a profundidade de armazenamento do resultado.
+// Caso Bits Stored original não comporte os novos valores,
+// ele é ajustado dentro de Bits Allocated, sem cortar pixels.
+//
+// Transfer syntaxes aceitas: Implicit VR Little Endian,
+// Explicit VR Little Endian, Explicit VR Big Endian e sintaxes
+// encapsuladas decodificadas pelo Cornerstone (gravadas como
+// Explicit VR Little Endian, sem compressão).
+// Arquivos deflated, multiquadro ou cujos pixels não possam
+// ser armazenados fielmente geram erro, nunca um DICOM inválido.
 
-function obterNumeroDicomExportacao(
-  valor,
-  padrao
-) {
+const DICOM_TS_IMPLICIT_LE_EXPORTACAO = "1.2.840.10008.1.2";
+const DICOM_TS_EXPLICIT_LE_EXPORTACAO = "1.2.840.10008.1.2.1";
+const DICOM_TS_EXPLICIT_BE_EXPORTACAO = "1.2.840.10008.1.2.2";
+const DICOM_TS_DEFLATED_EXPORTACAO = "1.2.840.10008.1.2.1.99";
 
-  if (
-    Array.isArray(valor) ||
-    ArrayBuffer.isView(valor)
-  ) {
-
-    if (valor.length > 0) {
-
-      const numero =
-        Number(
-          valor[0]
-        );
-
-
-      if (
-        Number.isFinite(numero)
-      ) {
-
-        return numero;
-
-      }
-
-    }
-
-
-    return padrao;
-
+function obterUIDDicomExportacao() {
+  if (!window.crypto || typeof window.crypto.getRandomValues !== "function") {
+    throw new Error("O navegador não disponibiliza geração segura de UID DICOM.");
   }
 
-
-  const numero =
-    Number(
-      valor
-    );
-
-
-  return Number.isFinite(numero)
-    ? numero
-    : padrao;
-
+  const valores = new Uint8Array(16);
+  window.crypto.getRandomValues(valores);
+  // UID DICOM 2.25 é o identificador UUID expresso em decimal.
+  let hexadecimal = "";
+  for (const valor of valores) {
+    hexadecimal += valor.toString(16).padStart(2, "0");
+  }
+  return "2.25." + BigInt("0x" + hexadecimal).toString(10);
 }
 
+function obterTagNumericaDicomExportacao(tag) {
+  return Number.parseInt(tag.slice(1), 16);
+}
 
-function limitarByteExportacao(
-  valor
-) {
+function montarElementoDicomExportacao(tag, vr, dados, explicito, littleEndian) {
+  const grupo = Number.parseInt(tag.slice(1, 5), 16);
+  const elemento = Number.parseInt(tag.slice(5, 9), 16);
+  const dadosPares = dados.length % 2 === 0
+    ? dados
+    : (() => {
+        const novo = new Uint8Array(dados.length + 1);
+        novo.set(dados);
+        return novo;
+      })();
 
-  return Math.max(
-    0,
-    Math.min(
-      255,
-      Math.round(
-        valor
-      )
+  const vrLongos = new Set([
+    "OB", "OD", "OF", "OL", "OV", "OW", "SQ", "UC", "UN", "UR", "UT", "UV"
+  ]);
+  const tamanhoCabecalho = !explicito ? 8 : (vrLongos.has(vr) ? 12 : 8);
+  if (explicito && tamanhoCabecalho === 8 && dadosPares.length > 65535) {
+    throw new Error("O valor do elemento DICOM excede o tamanho permitido para " + tag);
+  }
+
+  const bytes = new Uint8Array(tamanhoCabecalho + dadosPares.length);
+  const dv = new DataView(bytes.buffer);
+  dv.setUint16(0, grupo, littleEndian);
+  dv.setUint16(2, elemento, littleEndian);
+
+  if (!explicito) {
+    dv.setUint32(4, dadosPares.length, littleEndian);
+  } else {
+    bytes[4] = vr.charCodeAt(0);
+    bytes[5] = vr.charCodeAt(1);
+    if (tamanhoCabecalho === 12) {
+      dv.setUint32(8, dadosPares.length, littleEndian);
+    } else {
+      dv.setUint16(6, dadosPares.length, littleEndian);
+    }
+  }
+  bytes.set(dadosPares, tamanhoCabecalho);
+  return bytes;
+}
+
+function bytesTextoDicomExportacao(valor, vr) {
+  // UI usa NULL de preenchimento; DS, CS e LO usam espaço.
+  const texto = String(valor);
+  if (!/^[\x00-\x7F]*$/.test(texto)) {
+    throw new Error("O campo DICOM exportado contém caracteres não ASCII.");
+  }
+  const dados = new TextEncoder().encode(texto);
+  if (dados.length % 2 === 0) return dados;
+  const resultado = new Uint8Array(dados.length + 1);
+  resultado.set(dados);
+  resultado[dados.length] = vr === "UI" ? 0 : 32;
+  return resultado;
+}
+
+function bytesNumeroDicomExportacao(valor, vr, littleEndian) {
+  const tamanho = vr === "UL" ? 4 : 2;
+  const resultado = new Uint8Array(tamanho);
+  const dv = new DataView(resultado.buffer);
+  if (vr === "UL") dv.setUint32(0, valor, littleEndian);
+  else if (vr === "SS") dv.setInt16(0, valor, littleEndian);
+  else dv.setUint16(0, valor, littleEndian);
+  return resultado;
+}
+
+function textoDecimalDicomExportacao(valor) {
+  if (!Number.isFinite(valor)) return null;
+  // DS admite até 16 caracteres em notação numérica DICOM.
+  for (let precisao = 15; precisao >= 1; precisao--) {
+    const representacao = Number(valor.toPrecision(precisao)).toString();
+    if (representacao.length <= 16) return representacao;
+  }
+  return null;
+}
+
+function prepararPixelsDicomExportacao(imagemDicom, dataSet) {
+  if (!imagemDicom || typeof imagemDicom.getPixelData !== "function") {
+    throw new Error("Resultado DICOM sem matriz de pixels.");
+  }
+  const largura = Number(imagemDicom.width);
+  const altura = Number(imagemDicom.height);
+  if (!Number.isInteger(largura) || largura <= 0 ||
+      !Number.isInteger(altura) || altura <= 0 ||
+      largura > 65535 || altura > 65535) {
+    throw new Error("Dimensões DICOM inválidas para exportação.");
+  }
+
+  const total = largura * altura;
+  const pixels = imagemDicom.getPixelData();
+  if (!pixels || !Number.isInteger(pixels.length / total)) {
+    throw new Error("O resultado possui uma quantidade inesperada de pixels.");
+  }
+  const amostrasOriginais = pixels.length / total;
+  if (![1, 3, 4].includes(amostrasOriginais)) {
+    throw new Error("Exportação DICOM multiquadro ou com canais não suportados.");
+  }
+  const canais = amostrasOriginais === 4 ? 3 : amostrasOriginais;
+
+  const bitsOriginais = Number(dataSet.uint16("x00280100") || 0);
+  const armazenadosOriginais = Number(dataSet.uint16("x00280101") || 0);
+  const representacaoOriginal = Number(dataSet.uint16("x00280103") || 0);
+  let bitsAlocados = ArrayBuffer.isView(pixels) && pixels.BYTES_PER_ELEMENT
+    ? pixels.BYTES_PER_ELEMENT * 8
+    : bitsOriginais;
+  if (![8, 16, 32].includes(bitsAlocados)) {
+    throw new Error("Profundidade de bits DICOM não suportada: " + bitsAlocados);
+  }
+  const minimoMaximo = calcularMinimoMaximoPixels(pixels);
+  if (!Number.isInteger(minimoMaximo.minimo) ||
+      !Number.isInteger(minimoMaximo.maximo)) {
+    throw new Error("O DICOM possui pixels não inteiros; a exportação sem perdas foi interrompida.");
+  }
+
+  const assinado = minimoMaximo.minimo < 0 ||
+    (representacaoOriginal === 1 &&
+      !(pixels instanceof Uint8Array) && !(pixels instanceof Uint16Array) &&
+      !(pixels instanceof Uint32Array) && !(pixels instanceof Uint8ClampedArray));
+  const limiteMin = assinado ? -(2 ** (bitsAlocados - 1)) : 0;
+  const limiteMax = assinado ? 2 ** (bitsAlocados - 1) - 1 : 2 ** bitsAlocados - 1;
+  if (minimoMaximo.minimo < limiteMin || minimoMaximo.maximo > limiteMax) {
+    throw new Error("Os pixels processados não cabem na profundidade de " + bitsAlocados + " bits.");
+  }
+
+  let bitsNecessarios = 1;
+  while (bitsNecessarios < bitsAlocados &&
+    (minimoMaximo.minimo < (assinado ? -(2 ** (bitsNecessarios - 1)) : 0) ||
+     minimoMaximo.maximo > (assinado ? 2 ** (bitsNecessarios - 1) - 1 : 2 ** bitsNecessarios - 1))) {
+    bitsNecessarios++;
+  }
+  const bitsArmazenados = Math.max(
+    bitsNecessarios,
+    armazenadosOriginais >= 1 && armazenadosOriginais <= bitsAlocados
+      ? armazenadosOriginais
+      : bitsNecessarios
+  );
+
+  const bytesPorAmostra = bitsAlocados / 8;
+  const dados = new Uint8Array(total * canais * bytesPorAmostra);
+  // littleEndian é calculado no nível de dataset pelo exportador.
+  // O preenchimento ocorre ali com base nessa informação.
+  return {
+    pixels, largura, altura, total, amostrasOriginais, canais,
+    bitsAlocados, bitsArmazenados, assinado, minimoMaximo, dados,
+    bytesPorAmostra
+  };
+}
+
+function escreverPixelsDicomExportacao(info, littleEndian) {
+  const dv = new DataView(info.dados.buffer);
+  const totalAmostras = info.total * info.canais;
+  for (let i = 0; i < totalAmostras; i++) {
+    const indiceOrigem = info.amostrasOriginais === 4
+      ? Math.floor(i / 3) * 4 + i % 3
+      : i;
+    const valor = Number(info.pixels[indiceOrigem]);
+    if (!Number.isFinite(valor) || !Number.isInteger(valor)) {
+      throw new Error("O resultado DICOM contém valores não inteiros.");
+    }
+    const deslocamento = i * info.bytesPorAmostra;
+    if (info.bitsAlocados === 8) {
+      if (info.assinado) dv.setInt8(deslocamento, valor);
+      else dv.setUint8(deslocamento, valor);
+    } else if (info.bitsAlocados === 16) {
+      if (info.assinado) dv.setInt16(deslocamento, valor, littleEndian);
+      else dv.setUint16(deslocamento, valor, littleEndian);
+    } else {
+      if (info.assinado) dv.setInt32(deslocamento, valor, littleEndian);
+      else dv.setUint32(deslocamento, valor, littleEndian);
+    }
+  }
+  return info.dados;
+}
+
+function posicaoElementoDicomExportacao(elemento, tag, dados, explicito, littleEndian) {
+  if (!elemento || !Number.isInteger(elemento.dataOffset)) {
+    throw new Error("Estrutura DICOM inválida na tag " + tag);
+  }
+  const numero = obterTagNumericaDicomExportacao(tag);
+  const grupo = numero >>> 16;
+  const elementoNumero = numero & 65535;
+  const meta = grupo === 2;
+  const teste = new DataView(dados.buffer, dados.byteOffset, dados.byteLength);
+  for (const tamanho of (meta || explicito ? [8, 12] : [8])) {
+    const posicao = elemento.dataOffset - tamanho;
+    if (posicao < 0 || posicao + 4 > dados.length) continue;
+    const le = meta ? true : littleEndian;
+    if (teste.getUint16(posicao, le) === grupo &&
+        teste.getUint16(posicao + 2, le) === elementoNumero) {
+      return posicao;
+    }
+  }
+  throw new Error("Não foi possível localizar o elemento DICOM " + tag);
+}
+
+async function criarBlobDicomProcessadoExportacao(item) {
+  if (!item.file || !item.resultado || !item.resultado.imagem) {
+    throw new Error("Não foi possível localizar o arquivo DICOM original e seu resultado.");
+  }
+  if (typeof dicomParser === "undefined") {
+    throw new Error("A biblioteca dicomParser não está disponível.");
+  }
+
+  const origem = item.file instanceof Blob
+    ? item.file
+    : new Blob([item.file], { type: "application/dicom" });
+  const bytesOriginais = new Uint8Array(await origem.arrayBuffer());
+  let dataSet;
+  try {
+    dataSet = dicomParser.parseDicom(bytesOriginais);
+  } catch (erro) {
+    throw new Error("Não foi possível analisar o arquivo DICOM original: " + (erro.message || erro));
+  }
+  const tsOriginal = dataSet.string("x00020010");
+  if (!tsOriginal) {
+    throw new Error("DICOM original sem Transfer Syntax UID no cabeçalho Part 10.");
+  }
+  if (tsOriginal === DICOM_TS_DEFLATED_EXPORTACAO) {
+    throw new Error("A exportação de DICOM Deflated não é suportada sem transcodificação adicional.");
+  }
+
+  const ehImplicit = tsOriginal === DICOM_TS_IMPLICIT_LE_EXPORTACAO;
+  const ehBigEndian = tsOriginal === DICOM_TS_EXPLICIT_BE_EXPORTACAO;
+  const nativo = ehImplicit || ehBigEndian || tsOriginal === DICOM_TS_EXPLICIT_LE_EXPORTACAO;
+  // As sintaxes encapsuladas suportadas pelo Cornerstone têm
+  // estrutura de elementos Explicit VR Little Endian.
+  const explicito = !ehImplicit;
+  const littleEndian = !ehBigEndian;
+  const tsDestino = nativo ? tsOriginal : DICOM_TS_EXPLICIT_LE_EXPORTACAO;
+
+  const dicomPixels = prepararPixelsDicomExportacao(item.resultado.imagem, dataSet);
+  if (!dataSet.elements.x7fe00010) {
+    throw new Error("O DICOM original não possui Pixel Data (7FE0,0010).");
+  }
+  const frames = Number(dataSet.string("x00280008") || "1");
+  if (frames !== 1) {
+    throw new Error("Exportação DICOM multiquadro ainda não é suportada.");
+  }
+  const dadosPixels = escreverPixelsDicomExportacao(dicomPixels, littleEndian);
+  const novoUID = obterUIDDicomExportacao();
+  const trocas = new Map();
+
+  function texto(tag, vr, valor) {
+    trocas.set(tag, { vr, dados: bytesTextoDicomExportacao(valor, vr) });
+  }
+  function numero(tag, vr, valor) {
+    trocas.set(tag, { vr, dados: bytesNumeroDicomExportacao(valor, vr, littleEndian) });
+  }
+
+  texto("x00020003", "UI", novoUID);
+  texto("x00020010", "UI", tsDestino);
+  texto("x00080018", "UI", novoUID);
+  texto("x00080008", "CS", "DERIVED\\SECONDARY");
+  texto("x00082111", "ST", "Imagem derivada por processamento digital no IProFlow.");
+  numero("x00280002", "US", dicomPixels.canais);
+  texto("x00280004", "CS", dicomPixels.canais === 3
+    ? "RGB"
+    : (dataSet.string("x00280004") || "MONOCHROME2"));
+  if (dicomPixels.canais === 3) numero("x00280006", "US", 0);
+  numero("x00280010", "US", dicomPixels.altura);
+  numero("x00280011", "US", dicomPixels.largura);
+  numero("x00280100", "US", dicomPixels.bitsAlocados);
+  numero("x00280101", "US", dicomPixels.bitsArmazenados);
+  numero("x00280102", "US", dicomPixels.bitsArmazenados - 1);
+  numero("x00280103", "US", dicomPixels.assinado ? 1 : 0);
+
+  // Atualiza valores informativos e janela de exibição sem
+  // modificar a matriz final calculada pelo fluxo.
+  if (dicomPixels.bitsAlocados <= 16) {
+    const vr = dicomPixels.assinado ? "SS" : "US";
+    if (dataSet.elements.x00280106) numero("x00280106", vr, dicomPixels.minimoMaximo.minimo);
+    if (dataSet.elements.x00280107) numero("x00280107", vr, dicomPixels.minimoMaximo.maximo);
+  }
+  const imagem = item.resultado.imagem;
+  const slope = Number(imagem.slope);
+  const intercept = Number(imagem.intercept);
+  const fator = Number.isFinite(slope) ? slope : 1;
+  const deslocamento = Number.isFinite(intercept) ? intercept : 0;
+  const centro = Array.isArray(imagem.windowCenter) ? imagem.windowCenter[0] : imagem.windowCenter;
+  const largura = Array.isArray(imagem.windowWidth) ? imagem.windowWidth[0] : imagem.windowWidth;
+  const janelaCentro = textoDecimalDicomExportacao(Number(centro) * fator + deslocamento);
+  const janelaLargura = textoDecimalDicomExportacao(Math.abs(Number(largura) * fator));
+  if (janelaCentro !== null && janelaLargura !== null && Number(janelaLargura) > 0) {
+    texto("x00281050", "DS", janelaCentro);
+    texto("x00281051", "DS", janelaLargura);
+  }
+
+  trocas.set("x7fe00010", {
+    vr: dicomPixels.bitsAlocados === 8 ? "OB" : "OW",
+    dados: dadosPixels
+  });
+
+  // Reaproveita TODOS os elementos originais que não foram
+  // alterados. Isso inclui informações de aquisição, paciente,
+  // geometria, tags privadas e sequências; não utiliza Canvas.
+  const elementos = Object.entries(dataSet.elements).map(([tag, elemento]) => ({
+    tag,
+    inicio: posicaoElementoDicomExportacao(
+      elemento, tag, bytesOriginais, explicito, littleEndian
     )
+  })).sort((a, b) => a.inicio - b.inicio);
+  if (!elementos.length) throw new Error("DICOM original sem elementos.");
+  if (elementos[0].inicio < 132 ||
+      String.fromCharCode(...bytesOriginais.slice(128, 132)) !== "DICM") {
+    throw new Error("DICOM sem cabeçalho Part 10 suportado para regravação.");
+  }
+
+  // O elemento File Meta Information Group Length é recalculado.
+  trocas.set("x00020000", {
+    vr: "UL", dados: bytesNumeroDicomExportacao(0, "UL", true)
+  });
+  const secoes = [];
+  for (let i = 0; i < elementos.length; i++) {
+    const atual = elementos[i];
+    const seguinte = elementos[i + 1];
+    const fim = seguinte ? seguinte.inicio : bytesOriginais.length;
+    if (fim <= atual.inicio) {
+      throw new Error("Ordem inválida dos elementos DICOM.");
+    }
+    secoes.push({tag: atual.tag, original: bytesOriginais.slice(atual.inicio, fim)});
+  }
+
+  const jaExistentes = new Set(secoes.map(e => e.tag));
+  const tagsAdicionais = [...trocas.keys()]
+    .filter(tag => !jaExistentes.has(tag))
+    .sort((a, b) => obterTagNumericaDicomExportacao(a) - obterTagNumericaDicomExportacao(b));
+  for (const tag of tagsAdicionais) {
+    const indice = secoes.findIndex(e =>
+      obterTagNumericaDicomExportacao(e.tag) > obterTagNumericaDicomExportacao(tag));
+    const novaSecao = { tag, original: null };
+    if (indice === -1) secoes.push(novaSecao);
+    else secoes.splice(indice, 0, novaSecao);
+  }
+
+  function montarSecao(secao) {
+    const troca = trocas.get(secao.tag);
+    if (!troca) return secao.original;
+    const meta = secao.tag.startsWith("x0002");
+    return montarElementoDicomExportacao(
+      secao.tag, troca.vr, troca.dados,
+      meta ? true : explicito, meta ? true : littleEndian
+    );
+  }
+  const blocos = secoes.map(s => ({ tag: s.tag, bytes: montarSecao(s) }));
+  const indiceGroupLength = blocos.findIndex(b => b.tag === "x00020000");
+  if (indiceGroupLength < 0) throw new Error("Falha ao gerar File Meta Information.");
+  let tamanhoMeta = 0;
+  for (let i = 0; i < blocos.length; i++) {
+    if (blocos[i].tag.startsWith("x0002") && i !== indiceGroupLength) {
+      tamanhoMeta += blocos[i].bytes.length;
+    }
+  }
+  blocos[indiceGroupLength].bytes = montarElementoDicomExportacao(
+    "x00020000", "UL", bytesNumeroDicomExportacao(tamanhoMeta, "UL", true), true, true
   );
 
-}
-
-
-// Gera um Canvas usando width/height e getPixelData() do próprio
-// objeto DICOM. Assim, o tamanho da visualização na tela não altera
-// a resolução do arquivo exportado.
-function gerarCanvasDicomParaExportacao(
-  imagemDicom
-) {
-
-  if (
-    !imagemDicom ||
-    typeof imagemDicom.getPixelData !==
-      "function"
-  ) {
-
-    throw new Error(
-      "O DICOM não possui uma matriz de pixels válida para exportação."
-    );
-
-  }
-
-
-  const largura =
-    Number(
-      imagemDicom.width
-    );
-
-  const altura =
-    Number(
-      imagemDicom.height
-    );
-
-
-  if (
-    !Number.isInteger(largura) ||
-    largura <= 0 ||
-    !Number.isInteger(altura) ||
-    altura <= 0
-  ) {
-
-    throw new Error(
-      "Não foi possível identificar as dimensões reais do DICOM."
-    );
-
-  }
-
-
-  const pixels =
-    imagemDicom.getPixelData();
-
-
-  if (
-    !pixels ||
-    pixels.length === 0
-  ) {
-
-    throw new Error(
-      "O DICOM não possui pixels para exportação."
-    );
-
-  }
-
-
-  const quantidadePixels =
-    largura *
-    altura;
-
-
-  const amostrasPorPixel =
-    pixels.length /
-    quantidadePixels;
-
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  canvas.width =
-    largura;
-
-  canvas.height =
-    altura;
-
-
-  const contexto =
-    canvas.getContext(
-      "2d",
-      {
-        willReadFrequently:
-          true
-      }
-    );
-
-
-  if (!contexto) {
-
-    throw new Error(
-      "Não foi possível criar o Canvas para exportar o DICOM."
-    );
-
-  }
-
-
-  const imagemSaida =
-    contexto.createImageData(
-      largura,
-      altura
-    );
-
-
-  const dadosSaida =
-    imagemSaida.data;
-
-
-  // -----------------------------------------------------------
-  // DICOM COLORIDO
-  // -----------------------------------------------------------
-
-  if (
-    Number.isInteger(
-      amostrasPorPixel
-    ) &&
-    amostrasPorPixel >= 3
-  ) {
-
-    for (
-      let i = 0;
-      i < quantidadePixels;
-      i++
-    ) {
-
-      const origem =
-        i *
-        amostrasPorPixel;
-
-
-      const destino =
-        i *
-        4;
-
-
-      dadosSaida[
-        destino
-      ] =
-        limitarByteExportacao(
-          Number(
-            pixels[
-              origem
-            ]
-          )
-        );
-
-
-      dadosSaida[
-        destino + 1
-      ] =
-        limitarByteExportacao(
-          Number(
-            pixels[
-              origem + 1
-            ]
-          )
-        );
-
-
-      dadosSaida[
-        destino + 2
-      ] =
-        limitarByteExportacao(
-          Number(
-            pixels[
-              origem + 2
-            ]
-          )
-        );
-
-
-      dadosSaida[
-        destino + 3
-      ] =
-        255;
-
-    }
-
-
-    contexto.putImageData(
-      imagemSaida,
-      0,
-      0
-    );
-
-
-    return canvas;
-
-  }
-
-
-  // -----------------------------------------------------------
-  // DICOM MONOCROMÁTICO
-  // -----------------------------------------------------------
-
-  const slope =
-    obterNumeroDicomExportacao(
-      imagemDicom.slope,
-      1
-    );
-
-
-  const intercept =
-    obterNumeroDicomExportacao(
-      imagemDicom.intercept,
-      0
-    );
-
-
-  const centroJanela =
-    obterNumeroDicomExportacao(
-      imagemDicom.windowCenter,
-      NaN
-    );
-
-
-  const larguraJanela =
-    obterNumeroDicomExportacao(
-      imagemDicom.windowWidth,
-      NaN
-    );
-
-
-  const inverter =
-    Boolean(
-      imagemDicom.invert
-    );
-
-
-  let minimoModalidade =
-    Infinity;
-
-  let maximoModalidade =
-    -Infinity;
-
-
-  // Se o DICOM não possuir Window/Level válido,
-  // calcula a faixa a partir dos próprios pixels.
-  if (
-    !Number.isFinite(
-      centroJanela
-    ) ||
-    !Number.isFinite(
-      larguraJanela
-    ) ||
-    larguraJanela <= 0
-  ) {
-
-    for (
-      let i = 0;
-      i < quantidadePixels;
-      i++
-    ) {
-
-      const modalidade =
-        Number(
-          pixels[i]
-        ) *
-        slope +
-        intercept;
-
-
-      if (
-        modalidade <
-        minimoModalidade
-      ) {
-
-        minimoModalidade =
-          modalidade;
-
-      }
-
-
-      if (
-        modalidade >
-        maximoModalidade
-      ) {
-
-        maximoModalidade =
-          modalidade;
-
-      }
-
-    }
-
-  }
-
-
-  const minimoJanela =
-    Number.isFinite(
-      centroJanela
-    ) &&
-    Number.isFinite(
-      larguraJanela
-    ) &&
-    larguraJanela > 0
-      ? centroJanela -
-        larguraJanela /
-        2
-      : minimoModalidade;
-
-
-  const maximoJanela =
-    Number.isFinite(
-      centroJanela
-    ) &&
-    Number.isFinite(
-      larguraJanela
-    ) &&
-    larguraJanela > 0
-      ? centroJanela +
-        larguraJanela /
-        2
-      : maximoModalidade;
-
-
-  const amplitudeJanela =
-    Math.max(
-      1e-12,
-      maximoJanela -
-      minimoJanela
-    );
-
-
-  for (
-    let i = 0;
-    i < quantidadePixels;
-    i++
-  ) {
-
-    const modalidade =
-      Number(
-        pixels[i]
-      ) *
-      slope +
-      intercept;
-
-
-    let normalizado =
-      (
-        modalidade -
-        minimoJanela
-      ) /
-      amplitudeJanela;
-
-
-    normalizado =
-      Math.max(
-        0,
-        Math.min(
-          1,
-          normalizado
-        )
-      );
-
-
-    if (inverter) {
-
-      normalizado =
-        1 -
-        normalizado;
-
-    }
-
-
-    const byte =
-      limitarByteExportacao(
-        normalizado *
-        255
-      );
-
-
-    const destino =
-      i *
-      4;
-
-
-    dadosSaida[
-      destino
-    ] =
-      byte;
-
-    dadosSaida[
-      destino + 1
-    ] =
-      byte;
-
-    dadosSaida[
-      destino + 2
-    ] =
-      byte;
-
-    dadosSaida[
-      destino + 3
-    ] =
-      255;
-
-  }
-
-
-  contexto.putImageData(
-    imagemSaida,
-    0,
-    0
-  );
-
-
-  return canvas;
-
+  const partes = [bytesOriginais.slice(0, elementos[0].inicio)];
+  for (const bloco of blocos) partes.push(bloco.bytes);
+  return new Blob(partes, { type: "application/dicom" });
 }
 
 
@@ -15848,15 +15727,9 @@ async function prepararArquivoParaExportacao(
     item.resultado.imagem
   ) {
 
-    const canvas =
-      gerarCanvasDicomParaExportacao(
-        item.resultado.imagem
-      );
-
-
     const blob =
-      await converterCanvasParaBlobExportacao(
-        canvas
+      await criarBlobDicomProcessadoExportacao(
+        item
       );
 
 
