@@ -14,7 +14,7 @@
 // - Kernel ímpar, como no imboxfilt
 // - Padding: replicate, symmetric, circular, constant
 // - Normalização automática conforme o kernel: 1 / (M*N)
-// - Opção extra do site: ignorar pixel 0
+// - Opção extra do site: ignorar pixels 0 (RGB: apenas R=G=B=0)
 //
 // Para ficar igual ao MATLAB imboxfilt:
 // - Padding padrão: replicate
@@ -415,6 +415,37 @@ function obterValorVizinhoRGBAMedia(
 
 
 // =====================================================
+// VERIFICA SE O PIXEL VIZINHO RGB E TOTALMENTE ZERO
+// =====================================================
+function pixelVizinhoRGBEhZeroMedia(
+  entrada,
+  largura,
+  altura,
+  x,
+  y,
+  padding,
+  valorPadding
+) {
+
+  const coordY = coordenadaComPaddingMedia(y, altura, padding);
+  const coordX = coordenadaComPaddingMedia(x, largura, padding);
+
+  // No padding constante, os tres canais recebem o mesmo valor.
+  if (!coordY.dentro || !coordX.dentro) {
+    return valorPadding === 0;
+  }
+
+  const indice = (coordY.indice * largura + coordX.indice) * 4;
+
+  return (
+    entrada[indice] === 0 &&
+    entrada[indice + 1] === 0 &&
+    entrada[indice + 2] === 0
+  );
+}
+
+
+// =====================================================
 // PEGA VALOR DE VIZINHO EM DICOM
 // =====================================================
 function obterValorVizinhoDicomMedia(
@@ -537,14 +568,22 @@ async function aplicarMediaEmCanvas(
 
       const indiceOriginal = (y * largura + x) * 4;
 
+      // A opcao considera o pixel RGB completo, e nao cada canal isolado.
+      // Preserva o centro somente quando R = G = B = 0.
+      const centroEhZero =
+        dataEntrada[indiceOriginal] === 0 &&
+        dataEntrada[indiceOriginal + 1] === 0 &&
+        dataEntrada[indiceOriginal + 2] === 0;
+
+      if (ignorarZero && centroEhZero) {
+        dataSaida[indiceOriginal] = 0;
+        dataSaida[indiceOriginal + 1] = 0;
+        dataSaida[indiceOriginal + 2] = 0;
+        dataSaida[indiceOriginal + 3] = dataEntrada[indiceOriginal + 3];
+        continue;
+      }
+
       for (let canal = 0; canal < 3; canal++) {
-
-        const valorOriginal = Number(dataEntrada[indiceOriginal + canal]);
-
-        if (ignorarZero && valorOriginal === 0) {
-          dataSaida[indiceOriginal + canal] = 0;
-          continue;
-        }
 
         let soma = 0;
         let quantidadeValores = 0;
@@ -552,6 +591,23 @@ async function aplicarMediaEmCanvas(
         for (let ky = -antesY; ky <= depoisY; ky++) {
 
           for (let kx = -antesX; kx <= depoisX; kx++) {
+
+            // Ignora o vizinho apenas quando o pixel inteiro e preto.
+            // Um canal isolado igual a 0 continua participando da media.
+            if (
+              ignorarZero &&
+              pixelVizinhoRGBEhZeroMedia(
+                dataEntrada,
+                largura,
+                altura,
+                x + kx,
+                y + ky,
+                padding,
+                valorPadding
+              )
+            ) {
+              continue;
+            }
 
             const valor = obterValorVizinhoRGBAMedia(
               dataEntrada,
@@ -564,18 +620,8 @@ async function aplicarMediaEmCanvas(
               valorPadding
             );
 
-            if (ignorarZero) {
-
-              if (valor !== 0) {
-                soma += valor;
-                quantidadeValores++;
-              }
-
-            } else {
-
-              soma += valor;
-              quantidadeValores++;
-            }
+            soma += valor;
+            quantidadeValores++;
           }
         }
 

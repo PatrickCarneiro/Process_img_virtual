@@ -11,7 +11,8 @@
 // - Borda "zeros"
 // - Borda "symmetric"
 // - Borda "indexed"
-// - Opção extra: ignorar pixel 0
+// - Opção extra: ignorar pixel 0 (RGB: somente preto completo; DICOM: valor 0)
+// - Quando ignorarZero está ativo, preserva o pixel central zero
 //
 // Observação:
 // Para ficar igual ao MATLAB medfilt2, deixe "ignorarZero" como false.
@@ -258,6 +259,21 @@ function processarImagemNormalMediana(
       const indiceOriginal = (y * largura + x) * 4;
       const indiceSaida = ((y - inicioY) * largura + x) * 4;
 
+      // Com a opção ativada, somente o pixel totalmente preto
+      // (R = G = B = 0) é excluído e preservado na saída.
+      const centroPreto =
+        entrada[indiceOriginal] === 0 &&
+        entrada[indiceOriginal + 1] === 0 &&
+        entrada[indiceOriginal + 2] === 0;
+
+      if (ignorarZero && centroPreto) {
+        saida[indiceSaida] = 0;
+        saida[indiceSaida + 1] = 0;
+        saida[indiceSaida + 2] = 0;
+        saida[indiceSaida + 3] = entrada[indiceOriginal + 3];
+        continue;
+      }
+
       for (let canal = 0; canal < 3; canal++) {
         const vizinhos = [];
 
@@ -270,20 +286,30 @@ function processarImagemNormalMediana(
 
             if (!coordY.dentro || !coordX.dentro) {
               valor = valorPreenchimentoPadopt(padopt, tipoArray);
-            } else {
-              const indiceVizinho =
-                (coordY.indice * largura + coordX.indice) * 4 + canal;
-
-              valor = entrada[indiceVizinho];
-            }
-
-            if (ignorarZero) {
-              if (valor !== 0) {
-                vizinhos.push(valor);
+              // No padding, um valor zero representa o pixel preto.
+              if (ignorarZero && valor === 0) {
+                continue;
               }
             } else {
-              vizinhos.push(valor);
+              const indicePixelVizinho =
+                (coordY.indice * largura + coordX.indice) * 4;
+
+              // A exclusão depende do pixel RGB inteiro, NÃO do canal.
+              const vizinhoPreto =
+                entrada[indicePixelVizinho] === 0 &&
+                entrada[indicePixelVizinho + 1] === 0 &&
+                entrada[indicePixelVizinho + 2] === 0;
+
+              if (ignorarZero && vizinhoPreto) {
+                continue;
+              }
+
+              valor = entrada[indicePixelVizinho + canal];
             }
+
+            // Uma vez considerado válido, os três canais participam,
+            // inclusive os canais que individualmente têm valor zero.
+            vizinhos.push(valor);
           }
         }
 
@@ -334,6 +360,16 @@ function processarDicomMediana(
 
   for (let y = inicioY; y < fimY; y++) {
     for (let x = 0; x < largura; x++) {
+      const indiceOriginal = y * largura + x;
+      const indiceSaida = (y - inicioY) * largura + x;
+
+      // O centro originalmente zero permanece zero quando a opção
+      // estiver ativa (sem afetar a mediana convencional).
+      if (ignorarZero && Number(entrada[indiceOriginal]) === 0) {
+        saida[indiceSaida] = 0;
+        continue;
+      }
+
       const vizinhos = [];
 
       for (let ky = -antesY; ky <= depoisY; ky++) {
@@ -359,9 +395,6 @@ function processarDicomMediana(
           }
         }
       }
-
-      const indiceOriginal = y * largura + x;
-      const indiceSaida = (y - inicioY) * largura + x;
 
       let valorFinal = entrada[indiceOriginal];
 
