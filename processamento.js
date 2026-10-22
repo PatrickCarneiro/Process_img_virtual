@@ -5813,7 +5813,8 @@ function selecionarFerramenta(nome, botaoClicado) {
         >
 
         <div class="caixa_info_parametro">
-          Informe dois valores decimais entre 0 e 1, separados por espaço. Para imagens RGB, informe três valores separados por espaço, seguidos de ponto e vírgula e mais três valores, quando quiser definir faixas distintas para os canais R, G e B.
+          Informe dois valores entre 0 e 1, separados por espaço, correspondentes aos limites inferior e superior. Exemplo: 0,2 0,8
+          Para definir limites diferentes em cada canal RGB, informe os três limites inferiores (R G B), seguidos de ponto e vírgula e dos três limites superiores (R G B). Exemplo: 0,1 0,2 0,3; 0,8 0,9 1.
         </div>
       </div>
 
@@ -5827,7 +5828,8 @@ function selecionarFerramenta(nome, botaoClicado) {
         >
 
         <div class="caixa_info_parametro">
-          Informe dois valores decimais entre 0 e 1, separados por espaço. Para imagens RGB, informe três valores separados por espaço, seguidos de ponto e vírgula e mais três valores, quando quiser definir faixas distintas para os canais R, G e B.
+          Informe dois valores entre 0 e 1, separados por espaço, correspondentes aos limites inferior e superior. Exemplo: 0,2 0,8
+          Para definir limites diferentes em cada canal RGB, informe os três limites inferiores (R G B), seguidos de ponto e vírgula e dos três limites superiores (R G B). Exemplo: 0,1 0,2 0,3; 0,8 0,9 1.
         </div>
       </div>
 
