@@ -12,6 +12,9 @@
 // Ao final, os valores são limitados a [0,1] e convertidos novamente
 // para o tipo/origem da imagem.
 //
+// A opção "Sem contabilizar pixels 0" não é aplicável a ruídos:
+// quando ativada, apenas é exibido um aviso. Nenhum pixel é excluído.
+//
 // Defaults do MATLAB imnoise:
 // gaussian       -> média = 0; variância = 0.01
 // salt & pepper  -> densidade = 0.05
@@ -763,6 +766,31 @@ function obterVarianciaMapaCanvasRuido(
 
 
 // =============================================================
+// AVISO: "SEM CONTABILIZAR PIXELS 0" NÃO SE APLICA A RUÍDOS
+// - Um aviso por aplicação de ruído, apenas quando a opção estiver ativa.
+// - A opção NÃO altera os cálculos, nem preserva/exclui pixels.
+// - Após fechar o alerta, o processamento prossegue normalmente.
+// - A interface deve informar a opção em configuracaoEntrada.ignorarZero.
+// =============================================================
+function avisarIgnorarZeroNaoAplicavelRuido(configuracaoEntrada) {
+  if (
+    !configuracaoEntrada ||
+    typeof configuracaoEntrada !== "object" ||
+    configuracaoEntrada.ignorarZero !== true
+  ) {
+    return;
+  }
+
+  if (typeof alert === "function") {
+    alert(
+      'A opção "Sem contabilizar pixels 0" não é aplicável às operações de ruído. ' +
+      'Ela será desconsiderada e o ruído será aplicado normalmente em todos os pixels, inclusive os zeros.'
+    );
+  }
+}
+
+
+// =============================================================
 // PROCESSAMENTO DE RUÍDO EM CANVAS
 // =============================================================
 async function aplicarRuidoEmCanvas(
@@ -776,6 +804,9 @@ async function aplicarRuidoEmCanvas(
 
   const configuracao =
     criarConfiguracaoRuido(configuracaoEntrada);
+
+  // Aviso informativo: não altera nem impede a aplicação do ruído.
+  avisarIgnorarZeroNaoAplicavelRuido(configuracaoEntrada);
 
   const largura = canvasEntrada.width;
   const altura = canvasEntrada.height;
@@ -1074,6 +1105,9 @@ async function aplicarRuidoEmDicom(
 
   const configuracao =
     criarConfiguracaoRuido(configuracaoEntrada);
+
+  // Aviso informativo: não altera nem impede a aplicação do ruído.
+  avisarIgnorarZeroNaoAplicavelRuido(configuracaoEntrada);
 
   const pixelsOriginais = imagemEntrada.getPixelData();
   const largura = imagemEntrada.width;
