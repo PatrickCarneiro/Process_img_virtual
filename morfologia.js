@@ -2066,7 +2066,15 @@ async function aplicarMorfologiaEmCanvas(
             2
           ];
 
-        if (!ignorarZero || r !== 0) {
+        // Ignora somente o pixel RGB inteiramente preto.
+        // Pixels com algum canal diferente de zero participam
+        // normalmente do calculo nos tres canais.
+        const pixelVizinhoZero =
+          r === 0 &&
+          g === 0 &&
+          b === 0;
+
+        if (!ignorarZero || !pixelVizinhoZero) {
           encontrouPixelR = true;
 
           if (dilatar) {
@@ -2078,7 +2086,7 @@ async function aplicarMorfologiaEmCanvas(
           }
         }
 
-        if (!ignorarZero || g !== 0) {
+        if (!ignorarZero || !pixelVizinhoZero) {
           encontrouPixelG = true;
 
           if (dilatar) {
@@ -2090,7 +2098,7 @@ async function aplicarMorfologiaEmCanvas(
           }
         }
 
-        if (!ignorarZero || b !== 0) {
+        if (!ignorarZero || !pixelVizinhoZero) {
           encontrouPixelB = true;
 
           if (dilatar) {
@@ -2103,12 +2111,18 @@ async function aplicarMorfologiaEmCanvas(
         }
       }
 
+      // Preserva o centro apenas quando R = G = B = 0.
+      const pixelCentralZero =
+        possuiPixelCentral &&
+        valorCentralR === 0 &&
+        valorCentralG === 0 &&
+        valorCentralB === 0;
+
       if (ignorarZero) {
         dadosSaida[
           indiceSaida
         ] =
-          possuiPixelCentral &&
-          valorCentralR === 0
+          pixelCentralZero
             ? 0
             : encontrouPixelR
               ? valorR
@@ -2117,8 +2131,7 @@ async function aplicarMorfologiaEmCanvas(
         dadosSaida[
           indiceSaida + 1
         ] =
-          possuiPixelCentral &&
-          valorCentralG === 0
+          pixelCentralZero
             ? 0
             : encontrouPixelG
               ? valorG
@@ -2127,8 +2140,7 @@ async function aplicarMorfologiaEmCanvas(
         dadosSaida[
           indiceSaida + 2
         ] =
-          possuiPixelCentral &&
-          valorCentralB === 0
+          pixelCentralZero
             ? 0
             : encontrouPixelB
               ? valorB
