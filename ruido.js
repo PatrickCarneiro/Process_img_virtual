@@ -767,25 +767,52 @@ function obterVarianciaMapaCanvasRuido(
 
 // =============================================================
 // AVISO: "SEM CONTABILIZAR PIXELS 0" NÃO SE APLICA A RUÍDOS
-// - Um aviso por aplicação de ruído, apenas quando a opção estiver ativa.
+// - Verifica diretamente o checkbox global da interface.
+// - Aceita configuracaoEntrada.ignorarZero como alternativa quando
+//   o checkbox global não está disponível.
+// - Um alerta nativo com botão OK é mostrado por aplicação.
 // - A opção NÃO altera os cálculos, nem preserva/exclui pixels.
-// - Após fechar o alerta, o processamento prossegue normalmente.
-// - A interface deve informar a opção em configuracaoEntrada.ignorarZero.
+// - Após o usuário apertar OK, o ruído é aplicado normalmente.
 // =============================================================
-function avisarIgnorarZeroNaoAplicavelRuido(configuracaoEntrada) {
+function obterIgnorarZeroAtivoRuido(configuracaoEntrada) {
+  // Mesmo controle global usado pelas outras ferramentas do IProFlow.
+  if (typeof deveIgnorarPixelZeroFerramentas === "function") {
+    return Boolean(deveIgnorarPixelZeroFerramentas());
+  }
+
   if (
-    !configuracaoEntrada ||
-    typeof configuracaoEntrada !== "object" ||
-    configuracaoEntrada.ignorarZero !== true
+    typeof document !== "undefined" &&
+    typeof document.getElementById === "function"
   ) {
+    const checkbox = document.getElementById("checkIgnorarZeroFerramentas");
+    if (checkbox) {
+      return Boolean(checkbox.checked);
+    }
+  }
+
+  // Mantém compatibilidade com chamadas diretas que passam o parâmetro.
+  return Boolean(
+    configuracaoEntrada &&
+    typeof configuracaoEntrada === "object" &&
+    configuracaoEntrada.ignorarZero === true
+  );
+}
+
+function avisarIgnorarZeroNaoAplicavelRuido(configuracaoEntrada) {
+  if (!obterIgnorarZeroAtivoRuido(configuracaoEntrada)) {
     return;
   }
 
-  if (typeof alert === "function") {
-    alert(
-      'A opção "Sem contabilizar pixels 0" não é aplicável às operações de ruído. ' +
-      'Ela será desconsiderada e o ruído será aplicado normalmente em todos os pixels, inclusive os zeros.'
-    );
+  const mensagem =
+    'A opção "Sem contabilizar pixels 0" não é aplicável às operações de ruído.\n\n' +
+    'O ruído será aplicado normalmente em todos os pixels, inclusive os zeros.\n\n' +
+    'Clique em OK para continuar.';
+
+  // Janela nativa do navegador, com botão OK.
+  if (typeof window !== "undefined" && typeof window.alert === "function") {
+    window.alert(mensagem);
+  } else if (typeof alert === "function") {
+    alert(mensagem);
   }
 }
 
