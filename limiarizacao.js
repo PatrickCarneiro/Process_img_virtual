@@ -20,8 +20,10 @@
 //   os valores mínimo e máximo não pertencem à região selecionada.
 //
 // Quando configuracao.ignorarZero for true:
-//   pixels com intensidade 0 não participam da comparação
-//   e permanecem com valor 0 na imagem de saída.
+//   no Canvas, somente pixels RGB com R = G = B = 0
+//   não participam da comparação e permanecem com valor 0
+//   na imagem de saída; em DICOM, o mesmo vale para pixels
+//   originalmente iguais a 0.
 // =====================================================
 
 "use strict";
@@ -612,6 +614,14 @@ function calcularIntensidadePixelLimiarizacao(vermelho, verde, azul) {
   );
 }
 
+function pixelRgbEhZeroLimiarizacao(vermelho, verde, azul) {
+  return (
+    Number(vermelho) === 0 &&
+    Number(verde) === 0 &&
+    Number(azul) === 0
+  );
+}
+
 function criarCanvasSaidaLimiarizacao(largura, altura) {
   if (
     typeof document !== "undefined" &&
@@ -705,20 +715,30 @@ async function aplicarLimiarizacaoManualEmCanvas(
     for (let x = 0; x < largura; x++) {
       const indice = (y * largura + x) * 4;
 
+      const vermelho = imagemEntrada.data[indice];
+      const verde = imagemEntrada.data[indice + 1];
+      const azul = imagemEntrada.data[indice + 2];
+
       const intensidade = calcularIntensidadePixelLimiarizacao(
-        imagemEntrada.data[indice],
-        imagemEntrada.data[indice + 1],
-        imagemEntrada.data[indice + 2]
+        vermelho,
+        verde,
+        azul
+      );
+
+      const pixelEhZero = pixelRgbEhZeroLimiarizacao(
+        vermelho,
+        verde,
+        azul
       );
 
       let valorSaida = 0;
 
       /*
        * Quando "Sem contabilizar pixels 0" estiver marcado,
-       * pixels originalmente iguais a 0 não participam da
+       * somente pixels RGB com R = G = B = 0 não participam da
        * comparação e continuam iguais a 0 na imagem de saída.
        */
-      if (!(ignorarZero && intensidade === 0)) {
+      if (!(ignorarZero && pixelEhZero)) {
         valorSaida = comparar(intensidade) ? 255 : 0;
       }
 
@@ -949,8 +969,9 @@ async function aplicarLimiarManualEmDicom(
 // - level normalizado em [0,1].
 // - EM em [0,1].
 // - Binarização com comparação estrita: pixel > limiar.
-// - Se ignorarZero=true, pixels 0 não entram no histograma
-//   e continuam 0 na saída.
+// - Se ignorarZero=true, no Canvas somente pixels RGB com
+//   R = G = B = 0 não entram no histograma e continuam 0
+//   na saída; em DICOM, o mesmo vale para pixels 0.
 // =====================================================
 
 function limitarValorOtsu(valor, minimo, maximo) {
@@ -1421,11 +1442,15 @@ async function calcularGraythreshEmCanvas(
       const indice =
         (y * largura + x) * 4;
 
+      const vermelho = imagem.data[indice];
+      const verde = imagem.data[indice + 1];
+      const azul = imagem.data[indice + 2];
+
       const intensidade =
         calcularIntensidadePixelLimiarizacao(
-          imagem.data[indice],
-          imagem.data[indice + 1],
-          imagem.data[indice + 2]
+          vermelho,
+          verde,
+          azul
         );
 
       const intensidadeUint8 =
@@ -1435,12 +1460,19 @@ async function calcularGraythreshEmCanvas(
           255
         );
 
+      const pixelEhZero = pixelRgbEhZeroLimiarizacao(
+        vermelho,
+        verde,
+        azul
+      );
+
       if (
+        !(ignorarZero && pixelEhZero) &&
         adicionarValorAoHistogramaOtsu(
           histograma,
           intensidadeUint8,
           classeUint8,
-          ignorarZero
+          false
         )
       ) {
         quantidadeConsiderada++;
@@ -1531,11 +1563,15 @@ async function aplicarLimiarizacaoOtsuEmCanvas(
       const indice =
         (y * largura + x) * 4;
 
+      const vermelho = imagemEntrada.data[indice];
+      const verde = imagemEntrada.data[indice + 1];
+      const azul = imagemEntrada.data[indice + 2];
+
       const intensidade =
         calcularIntensidadePixelLimiarizacao(
-          imagemEntrada.data[indice],
-          imagemEntrada.data[indice + 1],
-          imagemEntrada.data[indice + 2]
+          vermelho,
+          verde,
+          azul
         );
 
       const intensidadeUint8 =
@@ -1545,14 +1581,22 @@ async function aplicarLimiarizacaoOtsuEmCanvas(
           255
         );
 
+      const pixelEhZero = pixelRgbEhZeroLimiarizacao(
+        vermelho,
+        verde,
+        azul
+      );
+
       const valorSaida =
-        valorAtendeLimiarOtsu(
-          intensidadeUint8,
-          resultadoOtsu.limiarOriginal,
-          resultadoOtsu.ignorarZero
-        )
-          ? 255
-          : 0;
+        resultadoOtsu.ignorarZero && pixelEhZero
+          ? 0
+          : valorAtendeLimiarOtsu(
+              intensidadeUint8,
+              resultadoOtsu.limiarOriginal,
+              false
+            )
+              ? 255
+              : 0;
 
       imagemSaida.data[indice] = valorSaida;
       imagemSaida.data[indice + 1] = valorSaida;
