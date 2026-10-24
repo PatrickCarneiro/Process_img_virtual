@@ -1,643 +1,892 @@
-// RECUPERAR-SENHA.JS
-
-const PAGINA_LOGIN =
-  "login.html";
-
-const PAGINA_RECUPERACAO =
-  "recuperar-senha.html";
-
-
-// Elementos gerais
-
-const formularioRecuperacaoSenha =
-  document.getElementById(
-    "formularioRecuperacaoSenha"
-  );
-
-const formularioNovaSenha =
-  document.getElementById(
-    "formularioNovaSenha"
-  );
-
-const estadoVerificando =
-  document.getElementById(
-    "estadoVerificando"
-  );
-
-const mensagemRecuperacao =
-  document.getElementById(
-    "mensagemRecuperacao"
-  );
-
-
-// Recuperação por e-mail
-
-const emailRecuperacao =
-  document.getElementById(
-    "emailRecuperacao"
-  );
-
-const botaoEnviarRecuperacao =
-  document.getElementById(
-    "botaoEnviarRecuperacao"
-  );
-
-const textoBotaoEnviarRecuperacao =
-  document.getElementById(
-    "textoBotaoEnviarRecuperacao"
-  );
-
-
-// Nova senha
-
-const novaSenha =
-  document.getElementById(
-    "novaSenha"
-  );
-
-const confirmarNovaSenha =
-  document.getElementById(
-    "confirmarNovaSenha"
-  );
-
-const botaoAlterarSenha =
-  document.getElementById(
-    "botaoAlterarSenha"
-  );
-
-const textoBotaoAlterarSenha =
-  document.getElementById(
-    "textoBotaoAlterarSenha"
-  );
-
-const botaoMostrarNovaSenha =
-  document.getElementById(
-    "botaoMostrarNovaSenha"
-  );
-
-const botaoMostrarConfirmarNovaSenha =
-  document.getElementById(
-    "botaoMostrarConfirmarNovaSenha"
-  );
-
-const iconeMostrarNovaSenha =
-  document.getElementById(
-    "iconeMostrarNovaSenha"
-  );
-
-const iconeMostrarConfirmarNovaSenha =
-  document.getElementById(
-    "iconeMostrarConfirmarNovaSenha"
-  );
-
-
-// Área esquerda
-
-const etiquetaRecuperacao =
-  document.getElementById(
-    "etiquetaRecuperacao"
-  );
-
-const tituloApresentacao =
-  document.getElementById(
-    "tituloApresentacao"
-  );
-
-const textoApresentacao =
-  document.getElementById(
-    "textoApresentacao"
-  );
-
-const passosRecuperacao =
-  document.getElementById(
-    "passosRecuperacao"
-  );
-
-
-// Controle
-
-let envioEmAndamento =
-  false;
-
-let alteracaoEmAndamento =
-  false;
-
-let modoNovaSenhaAtivo =
-  false;
-
-let eventoRecuperacaoDetectado =
-  false;
-
-
-// Identifica uma sessão temporária criada especificamente
-// para redefinição de senha. A marca fica somente nesta aba
-// e permite manter o formulário de nova senha após um refresh.
-const CHAVE_RECUPERACAO_ATIVA =
-  "iproflow_recuperacao_senha_ativa";
-
-
-function marcarRecuperacaoAtiva() {
-
-  try {
-
-    window.sessionStorage.setItem(
-      CHAVE_RECUPERACAO_ATIVA,
-      "1"
-    );
-
-  } catch (error) {
-
-    console.warn(
-      "Não foi possível registrar a sessão de recuperação:",
-      error
-    );
-
-  }
-
-}
-
-
-function limparMarcacaoRecuperacao() {
-
-  try {
-
-    window.sessionStorage.removeItem(
-      CHAVE_RECUPERACAO_ATIVA
-    );
-
-  } catch (error) {
-
-    console.warn(
-      "Não foi possível limpar a sessão de recuperação:",
-      error
-    );
-
-  }
-
-}
-
-
-function recuperacaoEstaMarcadaAtiva() {
-
-  try {
-
-    return (
-      window.sessionStorage.getItem(
-        CHAVE_RECUPERACAO_ATIVA
-      ) === "1"
-    );
-
-  } catch (error) {
-
-    return false;
-
-  }
-
-}
-
-
-// Mensagens
-
-function limparMensagemRecuperacao() {
-
-  if (!mensagemRecuperacao) {
-    return;
-  }
-
-  mensagemRecuperacao.innerText =
-    "";
-
-  mensagemRecuperacao.classList.remove(
-    "ativo",
-    "erro",
-    "sucesso",
-    "informacao"
-  );
-
-}
-
-
-function mostrarMensagemRecuperacao(
-  mensagem,
-  tipo = "informacao"
+// =============================================================
+// SUPABASE.JS
+//
+// Responsável pela integração do sistema com o Supabase:
+//
+// - Conexão com o Supabase
+// - Cadastro de usuários
+// - Login
+// - Logout
+// - Recuperação de senha
+// - Controle de sessão
+// - Proteção de páginas
+// - Perfil do usuário
+// - Foto de perfil
+// - Projetos / fluxogramas
+//
+// IMPORTANTE:
+// Este arquivo utiliza SOMENTE a chave pública do Supabase.
+// Nunca colocar service_role ou secret key no navegador.
+// =============================================================
+
+
+// =============================================================
+// CONFIGURAÇÃO DO SUPABASE
+// =============================================================
+
+const SUPABASE_URL =
+  "https://dnxohwvfamvijwybeirc.supabase.co";
+
+const SUPABASE_CHAVE_PUBLICA =
+  "sb_publishable_g9023vfxbfrSWsLm5GQyEw_w15SXW4r";
+
+
+// =============================================================
+// VERIFICA SE A BIBLIOTECA SUPABASE FOI CARREGADA
+// =============================================================
+
+if (
+  typeof window.supabase === "undefined" ||
+  typeof window.supabase.createClient !== "function"
 ) {
 
-  if (!mensagemRecuperacao) {
-    return;
-  }
-
-  limparMensagemRecuperacao();
-
-  mensagemRecuperacao.innerText =
-    String(
-      mensagem || ""
-    );
-
-  mensagemRecuperacao.classList.add(
-    "ativo"
+  throw new Error(
+    "A biblioteca supabase-js não foi carregada. " +
+    "Carregue o CDN do Supabase antes de supabase.js."
   );
+
+}
+
+
+// =============================================================
+// CRIA O CLIENTE SUPABASE
+// =============================================================
+
+const clienteSupabase =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_CHAVE_PUBLICA,
+    {
+      db: {
+        schema: "public"
+      },
+
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    }
+  );
+
+
+// =============================================================
+// NOMES UTILIZADOS NO BANCO
+// =============================================================
+
+const TABELA_USUARIOS =
+  "usuarios";
+
+const TABELA_PROJETOS =
+  "projetos";
+
+const BUCKET_FOTOS_PERFIL =
+  "fotos_perfil";
+
+
+// =============================================================
+// CONFIGURAÇÕES DE FOTO
+// =============================================================
+
+const TAMANHO_MAXIMO_FOTO =
+  5 * 1024 * 1024;
+
+const TIPOS_FOTO_PERMITIDOS = [
+  "image/jpeg",
+  "image/png",
+  "image/webp"
+];
+
+
+// =============================================================
+// FUNÇÕES AUXILIARES
+// =============================================================
+
+
+// Limpa espaços antes e depois de um texto
+function limparTexto(valor) {
 
   if (
-    tipo === "erro" ||
-    tipo === "sucesso" ||
-    tipo === "informacao"
+    valor === null ||
+    valor === undefined
   ) {
 
-    mensagemRecuperacao.classList.add(
-      tipo
-    );
-
-  } else {
-
-    mensagemRecuperacao.classList.add(
-      "informacao"
-    );
+    return "";
 
   }
+
+  return String(valor).trim();
 
 }
 
 
-// Carregamento do envio
+// -------------------------------------------------------------
+// NORMALIZA E-MAIL
+// -------------------------------------------------------------
 
-function definirCarregamentoEnvio(
-  carregando
-) {
+function normalizarEmail(email) {
 
-  envioEmAndamento =
-    Boolean(carregando);
-
-  if (!botaoEnviarRecuperacao) {
-    return;
-  }
-
-  botaoEnviarRecuperacao.disabled =
-    envioEmAndamento;
-
-  botaoEnviarRecuperacao.classList.toggle(
-    "carregando_ativo",
-    envioEmAndamento
-  );
-
-  if (textoBotaoEnviarRecuperacao) {
-
-    textoBotaoEnviarRecuperacao.innerText =
-      envioEmAndamento
-        ? "Enviando..."
-        : "Enviar link de recuperação";
-
-  }
+  return limparTexto(email)
+    .toLowerCase();
 
 }
 
 
-// Carregamento da nova senha
+// -------------------------------------------------------------
+// MONTA URL DE UMA PÁGINA DO SISTEMA
+// -------------------------------------------------------------
 
-function definirCarregamentoNovaSenha(
-  carregando
-) {
+function obterUrlPagina(nomePagina) {
 
-  alteracaoEmAndamento =
-    Boolean(carregando);
-
-  if (!botaoAlterarSenha) {
-    return;
-  }
-
-  botaoAlterarSenha.disabled =
-    alteracaoEmAndamento;
-
-  botaoAlterarSenha.classList.toggle(
-    "carregando_ativo",
-    alteracaoEmAndamento
-  );
-
-  if (textoBotaoAlterarSenha) {
-
-    textoBotaoAlterarSenha.innerText =
-      alteracaoEmAndamento
-        ? "Alterando senha..."
-        : "Alterar senha";
-
-  }
+  return new URL(
+    nomePagina,
+    window.location.href
+  ).href;
 
 }
 
 
-// Mostra formulário de recuperação
+// -------------------------------------------------------------
+// CONVERTE ERROS DO SUPABASE PARA MENSAGENS MAIS AMIGÁVEIS
+// -------------------------------------------------------------
 
-function mostrarFormularioEmail() {
+function traduzirErroSupabase(error) {
 
-  modoNovaSenhaAtivo =
-    false;
+  if (!error) {
 
-  if (estadoVerificando) {
+    return "Ocorreu um erro desconhecido.";
 
-    estadoVerificando.classList.remove(
-      "ativo"
+  }
+
+  const mensagem =
+    String(
+      error.message || error
+    );
+
+  const mensagemMinuscula =
+    mensagem.toLowerCase();
+
+
+  if (
+    mensagemMinuscula.includes(
+      "invalid login credentials"
+    )
+  ) {
+
+    return "E-mail ou senha incorretos.";
+
+  }
+
+
+  if (
+    mensagemMinuscula.includes(
+      "email not confirmed"
+    )
+  ) {
+
+    return "Confirme seu e-mail antes de entrar.";
+
+  }
+
+
+  if (
+    mensagemMinuscula.includes(
+      "user already registered"
+    )
+  ) {
+
+    return "Já existe uma conta cadastrada com este e-mail.";
+
+  }
+
+
+  if (
+    mensagemMinuscula.includes(
+      "password should be at least"
+    )
+  ) {
+
+    return "A senha informada é muito curta.";
+
+  }
+
+
+  if (
+    mensagemMinuscula.includes(
+      "database error saving new user"
+    )
+  ) {
+
+    return (
+      "Não foi possível criar o perfil do usuário. " +
+      "Verifique se o nome de usuário já está sendo utilizado."
     );
 
   }
 
-  if (formularioRecuperacaoSenha) {
 
-    formularioRecuperacaoSenha.classList.remove(
-      "oculto"
-    );
-
-  }
-
-  if (formularioNovaSenha) {
-
-    formularioNovaSenha.classList.remove(
-      "ativo"
-    );
-
-  }
-
-  atualizarApresentacaoRecuperacao();
+  return mensagem;
 
 }
 
 
-// Mostra verificação
+// -------------------------------------------------------------
+// VALIDA FOTO
+// -------------------------------------------------------------
 
-function mostrarEstadoVerificando() {
+function validarFotoPerfil(arquivo) {
 
-  if (formularioRecuperacaoSenha) {
+  if (!arquivo) {
 
-    formularioRecuperacaoSenha.classList.add(
-      "oculto"
-    );
-
-  }
-
-  if (formularioNovaSenha) {
-
-    formularioNovaSenha.classList.remove(
-      "ativo"
-    );
+    return true;
 
   }
 
-  if (estadoVerificando) {
 
-    estadoVerificando.classList.add(
-      "ativo"
-    );
-
-  }
-
-}
-
-
-// Mostra nova senha
-
-function mostrarFormularioNovaSenha() {
-
-  modoNovaSenhaAtivo =
-    true;
-
-  eventoRecuperacaoDetectado =
-    true;
-
-  marcarRecuperacaoAtiva();
-
-  limparMensagemRecuperacao();
-
-  if (estadoVerificando) {
-
-    estadoVerificando.classList.remove(
-      "ativo"
-    );
-
-  }
-
-  if (formularioRecuperacaoSenha) {
-
-    formularioRecuperacaoSenha.classList.add(
-      "oculto"
-    );
-
-  }
-
-  if (formularioNovaSenha) {
-
-    formularioNovaSenha.classList.add(
-      "ativo"
-    );
-
-  }
-
-  atualizarApresentacaoNovaSenha();
-
-  setTimeout(
-    function() {
-
-      if (novaSenha) {
-
-        novaSenha.focus();
-
-      }
-
-    },
-    100
-  );
-
-}
-
-
-// Texto da recuperação
-
-function atualizarApresentacaoRecuperacao() {
-
-  if (etiquetaRecuperacao) {
-
-    etiquetaRecuperacao.innerText =
-      "Recuperação de acesso";
-
-  }
-
-  if (tituloApresentacao) {
-
-    tituloApresentacao.innerHTML =
-      'Recupere sua <span>senha.</span>';
-
-  }
-
-  if (textoApresentacao) {
-
-    textoApresentacao.innerText =
-      "Informe o e-mail utilizado no cadastro. Enviaremos um link para que você possa definir uma nova senha com segurança.";
-
-  }
-
-  if (passosRecuperacao) {
-
-    passosRecuperacao.style.display =
-      "";
-
-  }
-
-}
-
-
-// Texto da redefinição
-
-function atualizarApresentacaoNovaSenha() {
-
-  if (etiquetaRecuperacao) {
-
-    etiquetaRecuperacao.innerText =
-      "Nova senha";
-
-  }
-
-  if (tituloApresentacao) {
-
-    tituloApresentacao.innerHTML =
-      'Defina sua <span>nova senha.</span>';
-
-  }
-
-  if (textoApresentacao) {
-
-    textoApresentacao.innerText =
-      "Crie uma nova senha para recuperar o acesso à sua conta.";
-
-  }
-
-  if (passosRecuperacao) {
-
-    passosRecuperacao.style.display =
-      "none";
-
-  }
-
-}
-
-
-// Validação do e-mail
-
-function validarEmailRecuperacao() {
-
-  if (!emailRecuperacao) {
+  if (!(arquivo instanceof Blob)) {
 
     throw new Error(
-      "O campo de e-mail não foi encontrado."
+      "O arquivo selecionado para a foto é inválido."
     );
 
   }
 
-  const email =
-    String(
-      emailRecuperacao.value || ""
-    ).trim();
+
+  if (
+    !TIPOS_FOTO_PERMITIDOS.includes(
+      arquivo.type
+    )
+  ) {
+
+    throw new Error(
+      "A foto deve estar nos formatos JPG, PNG ou WEBP."
+    );
+
+  }
+
+
+  if (
+    arquivo.size >
+    TAMANHO_MAXIMO_FOTO
+  ) {
+
+    throw new Error(
+      "A foto deve possuir no máximo 5 MB."
+    );
+
+  }
+
+
+  return true;
+
+}
+
+
+// -------------------------------------------------------------
+// RETORNA EXTENSÃO DA FOTO
+// -------------------------------------------------------------
+
+function obterExtensaoFoto(arquivo) {
+
+  switch (arquivo.type) {
+
+    case "image/jpeg":
+      return "jpg";
+
+    case "image/png":
+      return "png";
+
+    case "image/webp":
+      return "webp";
+
+    default:
+      return "jpg";
+
+  }
+
+}
+
+
+// =============================================================
+// SESSÃO
+// =============================================================
+
+
+// Retorna a sessão atual
+async function obterSessaoAtual() {
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase.auth.getSession();
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return data.session;
+
+}
+
+
+// -------------------------------------------------------------
+// RETORNA O USUÁRIO AUTENTICADO
+// -------------------------------------------------------------
+
+async function obterUsuarioAtual() {
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase.auth.getUser();
+
+
+  if (error) {
+
+    return null;
+
+  }
+
+
+  return data.user || null;
+
+}
+
+
+// -------------------------------------------------------------
+// VERIFICA SE EXISTE USUÁRIO LOGADO
+// -------------------------------------------------------------
+
+async function usuarioEstaLogado() {
+
+  const sessao =
+    await obterSessaoAtual();
+
+  return Boolean(
+    sessao &&
+    sessao.user
+  );
+
+}
+
+
+// =============================================================
+// PROTEÇÃO DAS PÁGINAS
+// =============================================================
+
+
+// Deve ser chamada nas páginas que exigem login.
+//
+// Exemplo:
+//
+// await protegerPagina();
+//
+// Se não existir sessão, envia para login.html.
+//
+async function protegerPagina(
+  paginaLogin = "login.html"
+) {
+
+  try {
+
+    const sessao =
+      await obterSessaoAtual();
+
+
+    if (
+      !sessao ||
+      !sessao.user
+    ) {
+
+      window.location.replace(
+        paginaLogin
+      );
+
+      return null;
+
+    }
+
+
+    return sessao.user;
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao verificar sessão:",
+      error
+    );
+
+
+    window.location.replace(
+      paginaLogin
+    );
+
+    return null;
+
+  }
+
+}
+
+
+// -------------------------------------------------------------
+// USADO NA TELA DE LOGIN
+//
+// Se o usuário já estiver conectado, não mostra o login novamente.
+// -------------------------------------------------------------
+
+async function redirecionarSeEstiverLogado(
+  paginaDestino = "projeto.html"
+) {
+
+  const sessao =
+    await obterSessaoAtual();
+
+
+  if (
+    sessao &&
+    sessao.user
+  ) {
+
+    window.location.replace(
+      paginaDestino
+    );
+
+    return true;
+
+  }
+
+
+  return false;
+
+}
+
+
+// =============================================================
+// CADASTRO
+// =============================================================
+//
+// Os campos adicionais são enviados em raw_user_meta_data.
+//
+// O gatilho que criamos no Supabase lê:
+//
+// nome_usuario
+// data_nascimento
+// universidade_empresa
+// profissao
+//
+// e cria automaticamente public.usuarios.
+// =============================================================
+
+async function cadastrarUsuario({
+  email,
+  senha,
+  nomeUsuario,
+  dataNascimento,
+  universidadeEmpresa = "",
+  profissao = "",
+  foto = null
+}) {
+
+  email =
+    normalizarEmail(email);
+
+  nomeUsuario =
+    limparTexto(nomeUsuario);
+
+  dataNascimento =
+    limparTexto(dataNascimento);
+
+  universidadeEmpresa =
+    limparTexto(universidadeEmpresa);
+
+  profissao =
+    limparTexto(profissao);
+
+
+  // -----------------------------------------------------------
+  // VALIDAÇÕES
+  // -----------------------------------------------------------
 
   if (!email) {
 
-    emailRecuperacao.focus();
-
     throw new Error(
-      "Informe seu e-mail."
+      "Informe o e-mail."
     );
 
   }
 
-  if (
-    !emailRecuperacao.validity.valid
-  ) {
 
-    emailRecuperacao.focus();
+  if (!senha) {
 
     throw new Error(
-      "Informe um e-mail válido."
+      "Informe a senha."
     );
 
   }
 
-  return email;
+
+  if (!nomeUsuario) {
+
+    throw new Error(
+      "Informe o nome de usuário."
+    );
+
+  }
+
+
+  if (!dataNascimento) {
+
+    throw new Error(
+      "Informe a data de nascimento."
+    );
+
+  }
+
+
+  if (foto) {
+
+    validarFotoPerfil(foto);
+
+  }
+
+
+  try {
+
+    // ---------------------------------------------------------
+    // CRIA A CONTA NO SUPABASE AUTH
+    // ---------------------------------------------------------
+
+    const {
+      data,
+      error
+    } =
+      await clienteSupabase.auth.signUp({
+
+        email: email,
+
+        password: senha,
+
+        options: {
+
+          data: {
+
+            nome_usuario:
+              nomeUsuario,
+
+            data_nascimento:
+              dataNascimento,
+
+            universidade_empresa:
+              universidadeEmpresa,
+
+            profissao:
+              profissao
+
+          }
+
+        }
+
+      });
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    if (!data.user) {
+
+      throw new Error(
+        "O Supabase não retornou o usuário criado."
+      );
+
+    }
+
+
+    let caminhoFoto = null;
+    let fotoAguardandoLogin = false;
+
+
+    // ---------------------------------------------------------
+    // FOTO
+    //
+    // Se a confirmação de e-mail estiver desativada,
+    // já existe uma sessão e podemos enviar imediatamente.
+    //
+    // Caso exista confirmação de e-mail, a foto é guardada
+    // localmente e enviada após o primeiro login.
+    // ---------------------------------------------------------
+
+    if (foto) {
+
+      if (data.session) {
+
+        const resultadoFoto =
+          await salvarFotoPerfil(
+            foto
+          );
+
+        caminhoFoto =
+          resultadoFoto.caminho;
+
+      } else {
+
+        await guardarFotoPendenteCadastro(
+          data.user.id,
+          foto
+        );
+
+        fotoAguardandoLogin =
+          true;
+
+      }
+
+    }
+
+
+    return {
+
+      usuario:
+        data.user,
+
+      sessao:
+        data.session,
+
+      precisaConfirmarEmail:
+        !data.session,
+
+      caminhoFoto:
+        caminhoFoto,
+
+      fotoAguardandoLogin:
+        fotoAguardandoLogin
+
+    };
+
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao cadastrar usuário:",
+      error
+    );
+
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
 
 }
 
 
-// Envia o e-mail
+// =============================================================
+// LOGIN
+// =============================================================
 
-async function enviarRecuperacaoSenha(
-  event
+async function entrar(
+  email,
+  senha
 ) {
 
-  if (event) {
+  email =
+    normalizarEmail(email);
 
-    event.preventDefault();
+
+  if (!email) {
+
+    throw new Error(
+      "Informe o e-mail."
+    );
 
   }
 
-  if (envioEmAndamento) {
-    return;
+
+  if (!senha) {
+
+    throw new Error(
+      "Informe a senha."
+    );
+
   }
 
-  limparMensagemRecuperacao();
-
-  let email;
 
   try {
 
-    email =
-      validarEmailRecuperacao();
+    const {
+      data,
+      error
+    } =
+      await clienteSupabase.auth
+        .signInWithPassword({
+
+          email: email,
+
+          password: senha
+
+        });
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    // Se uma foto foi selecionada durante o cadastro,
+    // mas precisava aguardar confirmação do e-mail,
+    // tenta enviá-la agora.
+
+    processarFotoPendenteUsuario()
+      .catch(function(errorFoto) {
+
+        console.warn(
+          "Não foi possível enviar a foto pendente:",
+          errorFoto
+        );
+
+      });
+
+
+    return {
+
+      usuario:
+        data.user,
+
+      sessao:
+        data.session
+
+    };
+
 
   } catch (error) {
 
-    mostrarMensagemRecuperacao(
-      error.message,
-      "erro"
+    console.error(
+      "Erro ao entrar:",
+      error
     );
 
-    return;
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
 
   }
 
-  definirCarregamentoEnvio(
-    true
-  );
+}
+
+
+// =============================================================
+// LOGOUT
+// =============================================================
+
+async function sair(
+  paginaLogin = "login.html"
+) {
 
   try {
 
-    if (
-      typeof window.SupabaseAplicacao ===
-      "undefined"
-    ) {
+    const {
+      error
+    } =
+      await clienteSupabase.auth
+        .signOut();
 
-      throw new Error(
-        "A conexão com o Supabase não foi carregada."
-      );
 
-    }
+    if (error) {
 
-    if (
-      typeof window
-        .SupabaseAplicacao
-        .solicitarRecuperacaoSenha !==
-      "function"
-    ) {
-
-      throw new Error(
-        "A função de recuperação de senha não está disponível."
-      );
+      throw error;
 
     }
 
-    await window
-      .SupabaseAplicacao
-      .solicitarRecuperacaoSenha(
-        email,
-        PAGINA_RECUPERACAO
-      );
 
-    mostrarMensagemRecuperacao(
-      "Se existir uma conta vinculada a este e-mail, enviaremos um link para redefinir sua senha. Verifique também a pasta de spam.",
-      "sucesso"
+    window.location.replace(
+      paginaLogin
     );
+
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao sair:",
+      error
+    );
+
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+}
+
+
+// =============================================================
+// RECUPERAÇÃO DE SENHA
+// =============================================================
+
+async function solicitarRecuperacaoSenha(
+  email,
+  paginaRedefinicao =
+    "recuperar-senha.html"
+) {
+
+  email =
+    normalizarEmail(email);
+
+
+  if (!email) {
+
+    throw new Error(
+      "Informe o e-mail."
+    );
+
+  }
+
+
+  const redirectTo =
+    obterUrlPagina(
+      paginaRedefinicao
+    );
+
+
+  try {
+
+    const {
+      error
+    } =
+      await clienteSupabase.auth
+        .resetPasswordForEmail(
+          email,
+          {
+            redirectTo:
+              redirectTo
+          }
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    return true;
+
 
   } catch (error) {
 
@@ -646,18 +895,9 @@ async function enviarRecuperacaoSenha(
       error
     );
 
-    mostrarMensagemRecuperacao(
-      error &&
-      error.message
-        ? error.message
-        : "Não foi possível enviar o link de recuperação.",
-      "erro"
-    );
 
-  } finally {
-
-    definirCarregamentoEnvio(
-      false
+    throw new Error(
+      traduzirErroSupabase(error)
     );
 
   }
@@ -665,195 +905,58 @@ async function enviarRecuperacaoSenha(
 }
 
 
-// Validação da nova senha
+// -------------------------------------------------------------
+// DEFINE NOVA SENHA
+// -------------------------------------------------------------
 
-function validarNovaSenha() {
-
-  if (
-    !novaSenha ||
-    !confirmarNovaSenha
-  ) {
-
-    throw new Error(
-      "Os campos de senha não foram encontrados."
-    );
-
-  }
-
-  const senha =
-    String(
-      novaSenha.value || ""
-    );
-
-  const confirmacao =
-    String(
-      confirmarNovaSenha.value || ""
-    );
-
-  if (!senha) {
-
-    novaSenha.focus();
-
-    throw new Error(
-      "Informe sua nova senha."
-    );
-
-  }
-
-  if (
-    senha.length < 6
-  ) {
-
-    novaSenha.focus();
-
-    throw new Error(
-      "A nova senha deve possuir pelo menos 6 caracteres."
-    );
-
-  }
-
-  if (!confirmacao) {
-
-    confirmarNovaSenha.focus();
-
-    throw new Error(
-      "Confirme sua nova senha."
-    );
-
-  }
-
-  if (
-    senha !==
-    confirmacao
-  ) {
-
-    confirmarNovaSenha.focus();
-
-    throw new Error(
-      "As senhas informadas não são iguais."
-    );
-
-  }
-
-  return senha;
-
-}
-
-
-// Altera a senha
-
-async function alterarSenha(
-  event
+async function redefinirSenha(
+  novaSenha
 ) {
 
-  if (event) {
+  if (!novaSenha) {
 
-    event.preventDefault();
-
-  }
-
-  if (alteracaoEmAndamento) {
-    return;
-  }
-
-  limparMensagemRecuperacao();
-
-  if (!modoNovaSenhaAtivo) {
-
-    mostrarMensagemRecuperacao(
-      "O link de recuperação não foi reconhecido. Solicite um novo link.",
-      "erro"
+    throw new Error(
+      "Informe a nova senha."
     );
 
-    return;
-
   }
 
-  let senha;
 
   try {
 
-    senha =
-      validarNovaSenha();
+    const {
+      data,
+      error
+    } =
+      await clienteSupabase.auth
+        .updateUser({
 
-  } catch (error) {
+          password:
+            novaSenha
 
-    mostrarMensagemRecuperacao(
-      error.message,
-      "erro"
-    );
+        });
 
-    return;
 
-  }
+    if (error) {
 
-  definirCarregamentoNovaSenha(
-    true
-  );
-
-  try {
-
-    if (
-      typeof window.SupabaseAplicacao ===
-      "undefined"
-    ) {
-
-      throw new Error(
-        "A conexão com o Supabase não foi carregada."
-      );
+      throw error;
 
     }
 
-    const sessao =
-      await window
-        .SupabaseAplicacao
-        .obterSessaoAtual();
 
-    if (
-      !sessao ||
-      !sessao.user
-    ) {
+    return data.user;
 
-      throw new Error(
-        "O link de recuperação expirou ou não é mais válido. Solicite um novo link."
-      );
-
-    }
-
-    await window
-      .SupabaseAplicacao
-      .redefinirSenha(
-        senha
-      );
-
-    mostrarMensagemRecuperacao(
-      "Senha alterada com sucesso.",
-      "sucesso"
-    );
-
-    await esperar(
-      700
-    );
-
-    await encerrarSessaoAposAlteracao();
 
   } catch (error) {
 
     console.error(
-      "Erro ao alterar senha:",
+      "Erro ao redefinir senha:",
       error
     );
 
-    mostrarMensagemRecuperacao(
-      error &&
-      error.message
-        ? error.message
-        : "Não foi possível alterar a senha.",
-      "erro"
-    );
 
-    definirCarregamentoNovaSenha(
-      false
+    throw new Error(
+      traduzirErroSupabase(error)
     );
 
   }
@@ -861,345 +964,1241 @@ async function alterarSenha(
 }
 
 
-// Encerra sessão de recuperação
+// =============================================================
+// PERFIL DO USUÁRIO
+// =============================================================
 
-async function encerrarSessaoAposAlteracao() {
+async function buscarPerfilUsuarioAtual() {
 
-  const destino =
-    PAGINA_LOGIN +
-    "?senha=alterada";
+  const usuario =
+    await obterUsuarioAtual();
 
-  limparMarcacaoRecuperacao();
+
+  if (!usuario) {
+
+    throw new Error(
+      "Nenhum usuário autenticado."
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase
+      .from(
+        TABELA_USUARIOS
+      )
+      .select("*")
+      .eq(
+        "id",
+        usuario.id
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return data;
+
+}
+
+
+// -------------------------------------------------------------
+// ATUALIZA PERFIL
+// -------------------------------------------------------------
+
+async function atualizarPerfilUsuarioAtual(
+  dados
+) {
+
+  const usuario =
+    await obterUsuarioAtual();
+
+
+  if (!usuario) {
+
+    throw new Error(
+      "Nenhum usuário autenticado."
+    );
+
+  }
+
+
+  const dadosPermitidos = {};
+
+
+  if (
+    dados.nome_usuario !== undefined
+  ) {
+
+    dadosPermitidos.nome_usuario =
+      limparTexto(
+        dados.nome_usuario
+      );
+
+  }
+
+
+  if (
+    dados.data_nascimento !== undefined
+  ) {
+
+    dadosPermitidos.data_nascimento =
+      dados.data_nascimento;
+
+  }
+
+
+  if (
+    dados.universidade_empresa !== undefined
+  ) {
+
+    dadosPermitidos.universidade_empresa =
+      limparTexto(
+        dados.universidade_empresa
+      ) || null;
+
+  }
+
+
+  if (
+    dados.profissao !== undefined
+  ) {
+
+    dadosPermitidos.profissao =
+      limparTexto(
+        dados.profissao
+      ) || null;
+
+  }
+
+
+  if (
+    dados.caminho_foto !== undefined
+  ) {
+
+    dadosPermitidos.caminho_foto =
+      dados.caminho_foto || null;
+
+  }
+
+
+  dadosPermitidos.atualizado_em =
+    new Date().toISOString();
+
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase
+      .from(
+        TABELA_USUARIOS
+      )
+      .update(
+        dadosPermitidos
+      )
+      .eq(
+        "id",
+        usuario.id
+      )
+      .select()
+      .single();
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return data;
+
+}
+
+
+// =============================================================
+// FOTO DE PERFIL
+// =============================================================
+
+async function salvarFotoPerfil(
+  arquivo
+) {
+
+  validarFotoPerfil(
+    arquivo
+  );
+
+
+  const usuario =
+    await obterUsuarioAtual();
+
+
+  if (!usuario) {
+
+    throw new Error(
+      "É necessário estar conectado para enviar a foto."
+    );
+
+  }
+
+
+  const perfilAtual =
+    await buscarPerfilUsuarioAtual();
+
+
+  const caminhoFotoAnterior =
+    perfilAtual
+      ? perfilAtual.caminho_foto
+      : null;
+
+
+  const extensao =
+    obterExtensaoFoto(
+      arquivo
+    );
+
+
+  // Nome único evita problemas de cache e substituição.
+  const nomeArquivo =
+    "foto_" +
+    Date.now() +
+    "." +
+    extensao;
+
+
+  // IMPORTANTE:
+  // A primeira pasta é exatamente o UUID do usuário.
+  //
+  // Isso corresponde às políticas RLS criadas no Storage.
+
+  const caminho =
+    usuario.id +
+    "/" +
+    nomeArquivo;
+
+
+  // -----------------------------------------------------------
+  // ENVIA NOVA FOTO
+  // -----------------------------------------------------------
+
+  const {
+    error: erroUpload
+  } =
+    await clienteSupabase
+      .storage
+      .from(
+        BUCKET_FOTOS_PERFIL
+      )
+      .upload(
+        caminho,
+        arquivo,
+        {
+          cacheControl:
+            "3600",
+
+          upsert:
+            false,
+
+          contentType:
+            arquivo.type
+        }
+      );
+
+
+  if (erroUpload) {
+
+    throw new Error(
+      traduzirErroSupabase(
+        erroUpload
+      )
+    );
+
+  }
+
 
   try {
 
+    // ---------------------------------------------------------
+    // GUARDA O CAMINHO NA TABELA usuarios
+    // ---------------------------------------------------------
+
+    await atualizarPerfilUsuarioAtual({
+      caminho_foto:
+        caminho
+    });
+
+
+    // ---------------------------------------------------------
+    // EXCLUI A FOTO ANTIGA
+    // ---------------------------------------------------------
+
     if (
-      window.SupabaseAplicacao &&
-      window.SupabaseAplicacao.cliente
+      caminhoFotoAnterior &&
+      caminhoFotoAnterior !== caminho
     ) {
 
-      await window
-        .SupabaseAplicacao
-        .cliente
-        .auth
-        .signOut();
+      const {
+        error: erroExcluir
+      } =
+        await clienteSupabase
+          .storage
+          .from(
+            BUCKET_FOTOS_PERFIL
+          )
+          .remove([
+            caminhoFotoAnterior
+          ]);
+
+
+      if (erroExcluir) {
+
+        console.warn(
+          "A nova foto foi salva, mas a foto antiga não pôde ser excluída:",
+          erroExcluir
+        );
+
+      }
 
     }
 
+
+    return {
+
+      caminho:
+        caminho,
+
+      url:
+        obterUrlFotoPerfil(
+          caminho
+        )
+
+    };
+
+
   } catch (error) {
 
-    console.warn(
-      "Não foi possível encerrar a sessão de recuperação:",
-      error
-    );
+    // Se falhar ao atualizar o banco,
+    // remove a foto recém-enviada para não deixar arquivo órfão.
+
+    await clienteSupabase
+      .storage
+      .from(
+        BUCKET_FOTOS_PERFIL
+      )
+      .remove([
+        caminho
+      ]);
+
+
+    throw error;
 
   }
-
-  window.location.replace(
-    destino
-  );
 
 }
 
 
-// Mostrar ou ocultar senha
+// -------------------------------------------------------------
+// RETORNA URL PÚBLICA DA FOTO
+// -------------------------------------------------------------
 
-function alternarVisibilidadeSenha(
-  input,
-  botao,
-  icone
+function obterUrlFotoPerfil(
+  caminhoFoto
 ) {
 
-  if (!input) {
-    return;
-  }
-
-  const vaiMostrar =
-    input.type ===
-    "password";
-
-  input.type =
-    vaiMostrar
-      ? "text"
-      : "password";
-
-  if (botao) {
-
-    botao.setAttribute(
-      "aria-label",
-      vaiMostrar
-        ? "Ocultar senha"
-        : "Mostrar senha"
-    );
-
-    botao.setAttribute(
-      "title",
-      vaiMostrar
-        ? "Ocultar senha"
-        : "Mostrar senha"
-    );
-
-  }
-
-  desenharIconeSenha(
-    icone,
-    vaiMostrar
-  );
-
-}
-
-
-// Ícone da senha
-
-function desenharIconeSenha(
-  elemento,
-  visivel
-) {
-
-  if (!elemento) {
-    return;
-  }
-
-  if (visivel) {
-
-    elemento.innerHTML = `
-
-      <path
-        d="M3 3L21 21"
-        stroke="currentColor"
-        stroke-width="1.6"
-        stroke-linecap="round"
-      />
-
-      <path
-        d="M10.7 6.4C11.12 6.33 11.55 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C20.72 13.38 19.78 14.5 18.7 15.37"
-        stroke="currentColor"
-        stroke-width="1.6"
-        stroke-linecap="round"
-      />
-
-      <path
-        d="M15.45 16.95C14.4 17.45 13.25 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12C3.3 10.58 4.28 9.42 5.4 8.53"
-        stroke="currentColor"
-        stroke-width="1.6"
-        stroke-linecap="round"
-      />
-
-      <path
-        d="M9.8 9.8C9.49 10.18 9.3 10.66 9.3 11.2C9.3 12.69 10.51 13.9 12 13.9C12.55 13.9 13.06 13.74 13.48 13.45"
-        stroke="currentColor"
-        stroke-width="1.6"
-        stroke-linecap="round"
-      />
-
-    `;
-
-  } else {
-
-    elemento.innerHTML = `
-
-      <path
-        d="M2.5 12C4.6 8.3 7.8 6.3 12 6.3C16.2 6.3 19.4 8.3 21.5 12C19.4 15.7 16.2 17.7 12 17.7C7.8 17.7 4.6 15.7 2.5 12Z"
-        stroke="currentColor"
-        stroke-width="1.6"
-      />
-
-      <circle
-        cx="12"
-        cy="12"
-        r="2.7"
-        stroke="currentColor"
-        stroke-width="1.6"
-      />
-
-    `;
-
-  }
-
-}
-
-
-// Detecta parâmetros do link
-
-function urlPareceRecuperacao() {
-
-  const query =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const hash =
-    new URLSearchParams(
-      window.location.hash
-        .replace(
-          /^#/,
-          ""
-        )
-    );
-
-  const tipoQuery =
-    query.get(
-      "type"
-    );
-
-  const tipoHash =
-    hash.get(
-      "type"
-    );
-
-  if (
-    tipoQuery === "recovery" ||
-    tipoHash === "recovery"
-  ) {
-
-    return true;
-
-  }
-
-  if (
-    query.has(
-      "token_hash"
-    )
-  ) {
-
-    return true;
-
-  }
-
-  if (
-    query.has(
-      "code"
-    )
-  ) {
-
-    return true;
-
-  }
-
-  if (
-    hash.has(
-      "access_token"
-    )
-  ) {
-
-    return true;
-
-  }
-
-  return false;
-
-}
-
-
-// Detecta erro retornado pelo Supabase
-
-function obterErroUrl() {
-
-  const query =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const hash =
-    new URLSearchParams(
-      window.location.hash
-        .replace(
-          /^#/,
-          ""
-        )
-    );
-
-  const erro =
-    query.get(
-      "error"
-    ) ||
-    hash.get(
-      "error"
-    );
-
-  const descricao =
-    query.get(
-      "error_description"
-    ) ||
-    hash.get(
-      "error_description"
-    );
-
-  if (
-    !erro &&
-    !descricao
-  ) {
+  if (!caminhoFoto) {
 
     return null;
 
   }
 
-  return (
-    descricao ||
-    "O link de recuperação é inválido ou expirou."
+
+  const {
+    data
+  } =
+    clienteSupabase
+      .storage
+      .from(
+        BUCKET_FOTOS_PERFIL
+      )
+      .getPublicUrl(
+        caminhoFoto
+      );
+
+
+  return data
+    ? data.publicUrl
+    : null;
+
+}
+
+
+// -------------------------------------------------------------
+// REMOVE FOTO DO PERFIL
+// -------------------------------------------------------------
+
+async function removerFotoPerfil() {
+
+  const perfil =
+    await buscarPerfilUsuarioAtual();
+
+
+  if (
+    !perfil ||
+    !perfil.caminho_foto
+  ) {
+
+    return true;
+
+  }
+
+
+  const {
+    error
+  } =
+    await clienteSupabase
+      .storage
+      .from(
+        BUCKET_FOTOS_PERFIL
+      )
+      .remove([
+        perfil.caminho_foto
+      ]);
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  await atualizarPerfilUsuarioAtual({
+    caminho_foto:
+      null
+  });
+
+
+  return true;
+
+}
+
+
+// =============================================================
+// FOTO PENDENTE DO CADASTRO
+//
+// Se a confirmação de e-mail estiver ativa,
+// o usuário ainda não possui sessão imediatamente após signUp.
+//
+// Por isso a foto selecionada é guardada temporariamente no
+// IndexedDB deste navegador.
+//
+// Depois do primeiro login ela é enviada ao Supabase.
+// =============================================================
+
+const DB_FOTO_PENDENTE =
+  "SistemaFotoPerfilPendente";
+
+const DB_FOTO_PENDENTE_VERSAO =
+  1;
+
+const STORE_FOTO_PENDENTE =
+  "fotos";
+
+
+// -------------------------------------------------------------
+// ABRE O INDEXEDDB DAS FOTOS PENDENTES
+// -------------------------------------------------------------
+
+function abrirBancoFotoPendente() {
+
+  return new Promise(
+    function(
+      resolve,
+      reject
+    ) {
+
+      const request =
+        indexedDB.open(
+          DB_FOTO_PENDENTE,
+          DB_FOTO_PENDENTE_VERSAO
+        );
+
+
+      request.onupgradeneeded =
+        function(event) {
+
+          const db =
+            event.target.result;
+
+
+          if (
+            !db.objectStoreNames.contains(
+              STORE_FOTO_PENDENTE
+            )
+          ) {
+
+            db.createObjectStore(
+              STORE_FOTO_PENDENTE,
+              {
+                keyPath:
+                  "usuario_id"
+              }
+            );
+
+          }
+
+        };
+
+
+      request.onsuccess =
+        function() {
+
+          resolve(
+            request.result
+          );
+
+        };
+
+
+      request.onerror =
+        function() {
+
+          reject(
+            request.error
+          );
+
+        };
+
+    }
   );
 
 }
 
 
-// Observa autenticação
+// -------------------------------------------------------------
+// GUARDA FOTO LOCALMENTE
+// -------------------------------------------------------------
 
-function configurarObservadorRecuperacao() {
+async function guardarFotoPendenteCadastro(
+  usuarioId,
+  arquivo
+) {
 
-  if (
-    typeof window.SupabaseAplicacao ===
-    "undefined"
-  ) {
+  const db =
+    await abrirBancoFotoPendente();
 
-    return;
+
+  return new Promise(
+    function(
+      resolve,
+      reject
+    ) {
+
+      const transaction =
+        db.transaction(
+          STORE_FOTO_PENDENTE,
+          "readwrite"
+        );
+
+
+      const store =
+        transaction.objectStore(
+          STORE_FOTO_PENDENTE
+        );
+
+
+      const request =
+        store.put({
+
+          usuario_id:
+            usuarioId,
+
+          arquivo:
+            arquivo,
+
+          tipo:
+            arquivo.type,
+
+          nome:
+            arquivo.name || "foto",
+
+          criado_em:
+            Date.now()
+
+        });
+
+
+      request.onsuccess =
+        function() {
+
+          db.close();
+
+          resolve(
+            true
+          );
+
+        };
+
+
+      request.onerror =
+        function() {
+
+          db.close();
+
+          reject(
+            request.error
+          );
+
+        };
+
+    }
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// BUSCA FOTO PENDENTE
+// -------------------------------------------------------------
+
+async function buscarFotoPendente(
+  usuarioId
+) {
+
+  const db =
+    await abrirBancoFotoPendente();
+
+
+  return new Promise(
+    function(
+      resolve,
+      reject
+    ) {
+
+      const transaction =
+        db.transaction(
+          STORE_FOTO_PENDENTE,
+          "readonly"
+        );
+
+
+      const store =
+        transaction.objectStore(
+          STORE_FOTO_PENDENTE
+        );
+
+
+      const request =
+        store.get(
+          usuarioId
+        );
+
+
+      request.onsuccess =
+        function() {
+
+          db.close();
+
+          resolve(
+            request.result || null
+          );
+
+        };
+
+
+      request.onerror =
+        function() {
+
+          db.close();
+
+          reject(
+            request.error
+          );
+
+        };
+
+    }
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// REMOVE FOTO PENDENTE
+// -------------------------------------------------------------
+
+async function excluirFotoPendente(
+  usuarioId
+) {
+
+  const db =
+    await abrirBancoFotoPendente();
+
+
+  return new Promise(
+    function(
+      resolve,
+      reject
+    ) {
+
+      const transaction =
+        db.transaction(
+          STORE_FOTO_PENDENTE,
+          "readwrite"
+        );
+
+
+      const store =
+        transaction.objectStore(
+          STORE_FOTO_PENDENTE
+        );
+
+
+      const request =
+        store.delete(
+          usuarioId
+        );
+
+
+      request.onsuccess =
+        function() {
+
+          db.close();
+
+          resolve(
+            true
+          );
+
+        };
+
+
+      request.onerror =
+        function() {
+
+          db.close();
+
+          reject(
+            request.error
+          );
+
+        };
+
+    }
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// ENVIA FOTO PENDENTE APÓS LOGIN
+// -------------------------------------------------------------
+
+async function processarFotoPendenteUsuario() {
+
+  const usuario =
+    await obterUsuarioAtual();
+
+
+  if (!usuario) {
+
+    return false;
 
   }
 
+
+  const pendencia =
+    await buscarFotoPendente(
+      usuario.id
+    );
+
+
   if (
-    typeof window
-      .SupabaseAplicacao
-      .observarAutenticacao !==
-    "function"
+    !pendencia ||
+    !pendencia.arquivo
   ) {
 
-    return;
+    return false;
 
   }
 
-  window
-    .SupabaseAplicacao
-    .observarAutenticacao(
+
+  await salvarFotoPerfil(
+    pendencia.arquivo
+  );
+
+
+  await excluirFotoPendente(
+    usuario.id
+  );
+
+
+  return true;
+
+}
+
+
+// =============================================================
+// PROJETOS
+// =============================================================
+
+
+// -------------------------------------------------------------
+// LISTA SOMENTE OS PROJETOS DO USUÁRIO LOGADO
+//
+// O RLS do Supabase também garante essa proteção.
+// -------------------------------------------------------------
+
+async function listarProjetos() {
+
+  const usuario =
+    await obterUsuarioAtual();
+
+
+  if (!usuario) {
+
+    throw new Error(
+      "Nenhum usuário autenticado."
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase
+      .from(
+        TABELA_PROJETOS
+      )
+      .select(
+        "id, usuario_id, nome, fluxograma, criado_em, atualizado_em"
+      )
+      .order(
+        "atualizado_em",
+        {
+          ascending:
+            false
+        }
+      );
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return data || [];
+
+}
+
+
+// -------------------------------------------------------------
+// BUSCA UM PROJETO
+// -------------------------------------------------------------
+
+async function buscarProjetoPorId(
+  idProjeto
+) {
+
+  if (!idProjeto) {
+
+    throw new Error(
+      "ID do projeto não informado."
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase
+      .from(
+        TABELA_PROJETOS
+      )
+      .select("*")
+      .eq(
+        "id",
+        idProjeto
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return data;
+
+}
+
+
+// -------------------------------------------------------------
+// CRIA PROJETO
+// -------------------------------------------------------------
+
+async function criarProjeto(
+  nome,
+  fluxograma
+) {
+
+  const usuario =
+    await obterUsuarioAtual();
+
+
+  if (!usuario) {
+
+    throw new Error(
+      "Nenhum usuário autenticado."
+    );
+
+  }
+
+
+  nome =
+    limparTexto(nome);
+
+
+  if (!nome) {
+
+    throw new Error(
+      "Informe o nome do projeto."
+    );
+
+  }
+
+
+  if (
+    !Array.isArray(fluxograma)
+  ) {
+
+    throw new Error(
+      "O fluxograma informado é inválido."
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase
+      .from(
+        TABELA_PROJETOS
+      )
+      .insert({
+
+        usuario_id:
+          usuario.id,
+
+        nome:
+          nome,
+
+        fluxograma:
+          fluxograma
+
+      })
+      .select()
+      .single();
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return data;
+
+}
+
+
+// -------------------------------------------------------------
+// ATUALIZA PROJETO
+// -------------------------------------------------------------
+
+async function atualizarProjeto(
+  idProjeto,
+  dados
+) {
+
+  if (!idProjeto) {
+
+    throw new Error(
+      "ID do projeto não informado."
+    );
+
+  }
+
+
+  const alteracoes = {};
+
+
+  if (
+    dados.nome !== undefined
+  ) {
+
+    const nome =
+      limparTexto(
+        dados.nome
+      );
+
+
+    if (!nome) {
+
+      throw new Error(
+        "O nome do projeto não pode ficar vazio."
+      );
+
+    }
+
+
+    alteracoes.nome =
+      nome;
+
+  }
+
+
+  if (
+    dados.fluxograma !== undefined
+  ) {
+
+    if (
+      !Array.isArray(
+        dados.fluxograma
+      )
+    ) {
+
+      throw new Error(
+        "O fluxograma informado é inválido."
+      );
+
+    }
+
+
+    alteracoes.fluxograma =
+      dados.fluxograma;
+
+  }
+
+
+  if (
+    Object.keys(
+      alteracoes
+    ).length === 0
+  ) {
+
+    return buscarProjetoPorId(
+      idProjeto
+    );
+
+  }
+
+
+  // atualizado_em não é enviado aqui.
+  // O trigger criado no banco atualiza automaticamente.
+
+  const {
+    data,
+    error
+  } =
+    await clienteSupabase
+      .from(
+        TABELA_PROJETOS
+      )
+      .update(
+        alteracoes
+      )
+      .eq(
+        "id",
+        idProjeto
+      )
+      .select()
+      .single();
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return data;
+
+}
+
+
+// -------------------------------------------------------------
+// SALVA PROJETO
+//
+// Se não existir ID, cria.
+// Se existir ID, atualiza.
+// -------------------------------------------------------------
+
+async function salvarProjeto({
+  id = null,
+  nome,
+  fluxograma
+}) {
+
+  if (id) {
+
+    return atualizarProjeto(
+      id,
+      {
+        nome:
+          nome,
+
+        fluxograma:
+          fluxograma
+      }
+    );
+
+  }
+
+
+  return criarProjeto(
+    nome,
+    fluxograma
+  );
+
+}
+
+
+// -------------------------------------------------------------
+// EXCLUI PROJETO
+// -------------------------------------------------------------
+
+async function excluirProjeto(
+  idProjeto
+) {
+
+  if (!idProjeto) {
+
+    throw new Error(
+      "ID do projeto não informado."
+    );
+
+  }
+
+
+  const {
+    error
+  } =
+    await clienteSupabase
+      .from(
+        TABELA_PROJETOS
+      )
+      .delete()
+      .eq(
+        "id",
+        idProjeto
+      );
+
+
+  if (error) {
+
+    throw new Error(
+      traduzirErroSupabase(error)
+    );
+
+  }
+
+
+  return true;
+
+}
+
+
+// =============================================================
+// EVENTOS DE AUTENTICAÇÃO
+// =============================================================
+
+function observarAutenticacao(
+  callback
+) {
+
+  return clienteSupabase.auth
+    .onAuthStateChange(
       function(
         evento,
         sessao
       ) {
 
-        console.log(
-          "Evento de autenticação:",
-          evento
-        );
-
         if (
-          evento ===
-          "PASSWORD_RECOVERY"
+          typeof callback ===
+          "function"
         ) {
 
-          eventoRecuperacaoDetectado =
-            true;
-
-          mostrarFormularioNovaSenha();
-
-          return;
+          callback(
+            evento,
+            sessao
+          );
 
         }
 
+
+        // Se acabou de entrar,
+        // verifica se existe foto pendente do cadastro.
+
         if (
-          urlPareceRecuperacao() &&
+          evento === "SIGNED_IN" &&
           sessao &&
           sessao.user
         ) {
 
-          mostrarFormularioNovaSenha();
+          setTimeout(
+            function() {
+
+              processarFotoPendenteUsuario()
+                .catch(
+                  function(error) {
+
+                    console.warn(
+                      "Erro ao processar foto pendente:",
+                      error
+                    );
+
+                  }
+                );
+
+            },
+            0
+          );
 
         }
 
@@ -1209,460 +2208,107 @@ function configurarObservadorRecuperacao() {
 }
 
 
-// Verifica o link
+// =============================================================
+// DISPONIBILIZA AS FUNÇÕES PARA OS OUTROS ARQUIVOS JS
+// =============================================================
+//
+// Exemplo:
+//
+// SupabaseAplicacao.entrar(email, senha);
+//
+// SupabaseAplicacao.listarProjetos();
+//
+// SupabaseAplicacao.sair();
+//
+// =============================================================
 
-async function verificarLinkRecuperacao() {
+window.SupabaseAplicacao = {
 
-  const erroUrl =
-    obterErroUrl();
+  // Cliente
+  cliente:
+    clienteSupabase,
 
-  if (erroUrl) {
 
-    limparMarcacaoRecuperacao();
+  // Sessão
+  obterSessaoAtual:
+    obterSessaoAtual,
 
-    mostrarFormularioEmail();
+  obterUsuarioAtual:
+    obterUsuarioAtual,
 
-    mostrarMensagemRecuperacao(
-      "O link de recuperação é inválido ou expirou. Solicite um novo link.",
-      "erro"
-    );
+  usuarioEstaLogado:
+    usuarioEstaLogado,
 
-    return;
+  protegerPagina:
+    protegerPagina,
 
-  }
+  redirecionarSeEstiverLogado:
+    redirecionarSeEstiverLogado,
 
 
-  const query =
-    new URLSearchParams(
-      window.location.search
-    );
+  // Autenticação
+  cadastrarUsuario:
+    cadastrarUsuario,
 
-  const tokenHash =
-    query.get(
-      "token_hash"
-    );
+  entrar:
+    entrar,
 
-  const tipo =
-    query.get(
-      "type"
-    );
+  sair:
+    sair,
 
 
-  // -----------------------------------------------------------
-  // NOVO FLUXO: TOKEN_HASH
-  //
-  // O e-mail aponta diretamente para recuperar-senha.html.
-  // A própria página valida o token e cria a sessão temporária
-  // de recuperação, evitando que o usuário caia na tela inicial.
-  // -----------------------------------------------------------
+  // Senha
+  solicitarRecuperacaoSenha:
+    solicitarRecuperacaoSenha,
 
-  if (
-    tokenHash &&
-    tipo === "recovery"
-  ) {
+  redefinirSenha:
+    redefinirSenha,
 
-    mostrarEstadoVerificando();
 
-    try {
+  // Perfil
+  buscarPerfilUsuarioAtual:
+    buscarPerfilUsuarioAtual,
 
-      const {
-        data,
-        error
-      } =
-        await window
-          .SupabaseAplicacao
-          .cliente
-          .auth
-          .verifyOtp({
-            token_hash:
-              tokenHash,
+  atualizarPerfilUsuarioAtual:
+    atualizarPerfilUsuarioAtual,
 
-            type:
-              "recovery"
-          });
 
-      if (error) {
-        throw error;
-      }
+  // Foto
+  salvarFotoPerfil:
+    salvarFotoPerfil,
 
-      if (
-        !data ||
-        !data.session ||
-        !data.user
-      ) {
+  removerFotoPerfil:
+    removerFotoPerfil,
 
-        throw new Error(
-          "Não foi possível criar a sessão de recuperação."
-        );
+  obterUrlFotoPerfil:
+    obterUrlFotoPerfil,
 
-      }
+  processarFotoPendenteUsuario:
+    processarFotoPendenteUsuario,
 
-      marcarRecuperacaoAtiva();
 
-      // Remove o token da barra de endereço depois da validação.
-      // A sessão temporária continua ativa no Supabase.
-      window.history.replaceState(
-        {},
-        document.title,
-        window.location.pathname
-      );
+  // Projetos
+  listarProjetos:
+    listarProjetos,
 
-      mostrarFormularioNovaSenha();
+  buscarProjetoPorId:
+    buscarProjetoPorId,
 
-      return;
+  criarProjeto:
+    criarProjeto,
 
-    } catch (error) {
+  atualizarProjeto:
+    atualizarProjeto,
 
-      console.error(
-        "Erro ao validar o link de recuperação:",
-        error
-      );
+  salvarProjeto:
+    salvarProjeto,
 
-      limparMarcacaoRecuperacao();
+  excluirProjeto:
+    excluirProjeto,
 
-      mostrarFormularioEmail();
 
-      mostrarMensagemRecuperacao(
-        "O link de recuperação é inválido ou expirou. Solicite um novo link.",
-        "erro"
-      );
+  // Eventos
+  observarAutenticacao:
+    observarAutenticacao
 
-      return;
-
-    }
-
-  }
-
-
-  // -----------------------------------------------------------
-  // SE A ABA FOI ATUALIZADA APÓS A VALIDAÇÃO DO TOKEN,
-  // REUTILIZA A SESSÃO TEMPORÁRIA DE RECUPERAÇÃO.
-  // -----------------------------------------------------------
-
-  if (
-    recuperacaoEstaMarcadaAtiva()
-  ) {
-
-    try {
-
-      const sessaoRecuperacao =
-        await window
-          .SupabaseAplicacao
-          .obterSessaoAtual();
-
-      if (
-        sessaoRecuperacao &&
-        sessaoRecuperacao.user
-      ) {
-
-        mostrarFormularioNovaSenha();
-
-        return;
-
-      }
-
-    } catch (error) {
-
-      console.warn(
-        "Não foi possível reutilizar a sessão de recuperação:",
-        error
-      );
-
-    }
-
-    limparMarcacaoRecuperacao();
-
-  }
-
-
-  // -----------------------------------------------------------
-  // FLUXO ANTERIOR DO SUPABASE
-  // Mantido para compatibilidade com links antigos que utilizem
-  // code, access_token ou type=recovery.
-  // -----------------------------------------------------------
-
-  const pareceRecuperacao =
-    urlPareceRecuperacao();
-
-  if (!pareceRecuperacao) {
-
-    mostrarFormularioEmail();
-
-    return;
-
-  }
-
-  mostrarEstadoVerificando();
-
-  try {
-
-    await esperar(
-      600
-    );
-
-    const sessao =
-      await window
-        .SupabaseAplicacao
-        .obterSessaoAtual();
-
-    if (
-      sessao &&
-      sessao.user
-    ) {
-
-      marcarRecuperacaoAtiva();
-      mostrarFormularioNovaSenha();
-
-      return;
-
-    }
-
-    await esperar(
-      1200
-    );
-
-    if (
-      eventoRecuperacaoDetectado
-    ) {
-
-      return;
-
-    }
-
-    const novaSessao =
-      await window
-        .SupabaseAplicacao
-        .obterSessaoAtual();
-
-    if (
-      novaSessao &&
-      novaSessao.user
-    ) {
-
-      marcarRecuperacaoAtiva();
-      mostrarFormularioNovaSenha();
-
-      return;
-
-    }
-
-    limparMarcacaoRecuperacao();
-
-    mostrarFormularioEmail();
-
-    mostrarMensagemRecuperacao(
-      "Não foi possível validar o link de recuperação. Ele pode ter expirado. Solicite um novo link.",
-      "erro"
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Erro ao verificar recuperação:",
-      error
-    );
-
-    limparMarcacaoRecuperacao();
-
-    mostrarFormularioEmail();
-
-    mostrarMensagemRecuperacao(
-      "Não foi possível validar o link de recuperação. Solicite um novo link.",
-      "erro"
-    );
-
-  }
-
-}
-
-
-// Limpeza de erros
-
-function configurarLimpezaMensagens() {
-
-  const campos = [
-    emailRecuperacao,
-    novaSenha,
-    confirmarNovaSenha
-  ];
-
-
-  campos.forEach(
-    function(campo) {
-
-      if (!campo) {
-        return;
-      }
-
-
-      campo.addEventListener(
-        "input",
-        function() {
-
-          if (
-            mensagemRecuperacao &&
-            mensagemRecuperacao
-              .classList
-              .contains(
-                "erro"
-              )
-          ) {
-
-            limparMensagemRecuperacao();
-
-          }
-
-        }
-      );
-
-    }
-  );
-
-}
-
-
-// Espera
-
-function esperar(
-  milissegundos
-) {
-
-  return new Promise(
-    function(resolve) {
-
-      setTimeout(
-        resolve,
-        milissegundos
-      );
-
-    }
-  );
-
-}
-
-
-// Eventos
-
-if (formularioRecuperacaoSenha) {
-
-  formularioRecuperacaoSenha.addEventListener(
-    "submit",
-    enviarRecuperacaoSenha
-  );
-
-}
-
-
-if (formularioNovaSenha) {
-
-  formularioNovaSenha.addEventListener(
-    "submit",
-    alterarSenha
-  );
-
-}
-
-
-if (botaoMostrarNovaSenha) {
-
-  botaoMostrarNovaSenha.addEventListener(
-    "click",
-    function() {
-
-      alternarVisibilidadeSenha(
-        novaSenha,
-        botaoMostrarNovaSenha,
-        iconeMostrarNovaSenha
-      );
-
-    }
-  );
-
-}
-
-
-if (botaoMostrarConfirmarNovaSenha) {
-
-  botaoMostrarConfirmarNovaSenha.addEventListener(
-    "click",
-    function() {
-
-      alternarVisibilidadeSenha(
-        confirmarNovaSenha,
-        botaoMostrarConfirmarNovaSenha,
-        iconeMostrarConfirmarNovaSenha
-      );
-
-    }
-  );
-
-}
-
-
-// Inicialização
-
-async function iniciarPaginaRecuperacao() {
-
-  if (
-    typeof window.SupabaseAplicacao ===
-    "undefined"
-  ) {
-
-    mostrarFormularioEmail();
-
-    mostrarMensagemRecuperacao(
-      "Não foi possível carregar a conexão com o Supabase.",
-      "erro"
-    );
-
-    return;
-
-  }
-
-
-  definirCarregamentoEnvio(
-    false
-  );
-
-  definirCarregamentoNovaSenha(
-    false
-  );
-
-  configurarLimpezaMensagens();
-
-  configurarObservadorRecuperacao();
-
-  await verificarLinkRecuperacao();
-
-
-  if (
-    !modoNovaSenhaAtivo &&
-    emailRecuperacao &&
-    document.activeElement ===
-    document.body
-  ) {
-
-    emailRecuperacao.focus();
-
-  }
-
-}
-
-
-// Inicia
-
-if (
-  document.readyState ===
-  "loading"
-) {
-
-  document.addEventListener(
-    "DOMContentLoaded",
-    iniciarPaginaRecuperacao
-  );
-
-} else {
-
-  iniciarPaginaRecuperacao();
-
-}
+};
