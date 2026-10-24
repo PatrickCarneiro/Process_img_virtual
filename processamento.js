@@ -7848,6 +7848,16 @@ async function aplicarFerramenta(nome) {
       return;
     }
 
+    // Em operações de ruído, "Sem contabilizar pixels 0" não é aplicável.
+    // O aviso é apenas informativo e não interrompe o processamento.
+    if (deveIgnorarPixelZeroFerramentas()) {
+      window.alert(
+        'A opção "Sem contabilizar pixels 0" não é aplicável às operações de ruído.\n\n' +
+        'O ruído será aplicado normalmente em todos os pixels, inclusive os zeros.\n\n' +
+        'Clique em OK para continuar.'
+      );
+    }
+
     const etapa = {
       id: proximoIdEtapa++,
       nome: "Adicionar Ruído",
