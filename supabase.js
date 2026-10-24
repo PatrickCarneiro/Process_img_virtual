@@ -856,11 +856,8 @@ async function solicitarRecuperacaoSenha(
 
   }
 
-
   const redirectTo =
-    obterUrlPagina(
-      paginaRedefinicao
-    );
+    "https://iproflow.vercel.app/recuperar-senha.html";
 
 
   try {
@@ -903,11 +900,6 @@ async function solicitarRecuperacaoSenha(
   }
 
 }
-
-
-// -------------------------------------------------------------
-// DEFINE NOVA SENHA
-// -------------------------------------------------------------
 
 async function redefinirSenha(
   novaSenha
@@ -963,11 +955,6 @@ async function redefinirSenha(
 
 }
 
-
-// =============================================================
-// PERFIL DO USUÁRIO
-// =============================================================
-
 async function buscarPerfilUsuarioAtual() {
 
   const usuario =
@@ -981,7 +968,6 @@ async function buscarPerfilUsuarioAtual() {
     );
 
   }
-
 
   const {
     data,
@@ -1012,10 +998,6 @@ async function buscarPerfilUsuarioAtual() {
 
 }
 
-
-// -------------------------------------------------------------
-// ATUALIZA PERFIL
-// -------------------------------------------------------------
 
 async function atualizarPerfilUsuarioAtual(
   dados
