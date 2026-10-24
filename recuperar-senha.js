@@ -129,6 +129,73 @@ let eventoRecuperacaoDetectado =
   false;
 
 
+// Identifica uma sessão temporária criada especificamente
+// para redefinição de senha. A marca fica somente nesta aba
+// e permite manter o formulário de nova senha após um refresh.
+const CHAVE_RECUPERACAO_ATIVA =
+  "iproflow_recuperacao_senha_ativa";
+
+
+function marcarRecuperacaoAtiva() {
+
+  try {
+
+    window.sessionStorage.setItem(
+      CHAVE_RECUPERACAO_ATIVA,
+      "1"
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "Não foi possível registrar a sessão de recuperação:",
+      error
+    );
+
+  }
+
+}
+
+
+function limparMarcacaoRecuperacao() {
+
+  try {
+
+    window.sessionStorage.removeItem(
+      CHAVE_RECUPERACAO_ATIVA
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "Não foi possível limpar a sessão de recuperação:",
+      error
+    );
+
+  }
+
+}
+
+
+function recuperacaoEstaMarcadaAtiva() {
+
+  try {
+
+    return (
+      window.sessionStorage.getItem(
+        CHAVE_RECUPERACAO_ATIVA
+      ) === "1"
+    );
+
+  } catch (error) {
+
+    return false;
+
+  }
+
+}
+
+
 // Mensagens
 
 function limparMensagemRecuperacao() {
@@ -333,6 +400,8 @@ function mostrarFormularioNovaSenha() {
 
   eventoRecuperacaoDetectado =
     true;
+
+  marcarRecuperacaoAtiva();
 
   limparMensagemRecuperacao();
 
@@ -800,6 +869,8 @@ async function encerrarSessaoAposAlteracao() {
     PAGINA_LOGIN +
     "?senha=alterada";
 
+  limparMarcacaoRecuperacao();
+
   try {
 
     if (
@@ -987,6 +1058,16 @@ function urlPareceRecuperacao() {
 
   if (
     query.has(
+      "token_hash"
+    )
+  ) {
+
+    return true;
+
+  }
+
+  if (
+    query.has(
       "code"
     )
   ) {
@@ -1137,6 +1218,8 @@ async function verificarLinkRecuperacao() {
 
   if (erroUrl) {
 
+    limparMarcacaoRecuperacao();
+
     mostrarFormularioEmail();
 
     mostrarMensagemRecuperacao(
@@ -1149,6 +1232,155 @@ async function verificarLinkRecuperacao() {
   }
 
 
+  const query =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const tokenHash =
+    query.get(
+      "token_hash"
+    );
+
+  const tipo =
+    query.get(
+      "type"
+    );
+
+
+  // -----------------------------------------------------------
+  // NOVO FLUXO: TOKEN_HASH
+  //
+  // O e-mail aponta diretamente para recuperar-senha.html.
+  // A própria página valida o token e cria a sessão temporária
+  // de recuperação, evitando que o usuário caia na tela inicial.
+  // -----------------------------------------------------------
+
+  if (
+    tokenHash &&
+    tipo === "recovery"
+  ) {
+
+    mostrarEstadoVerificando();
+
+    try {
+
+      const {
+        data,
+        error
+      } =
+        await window
+          .SupabaseAplicacao
+          .cliente
+          .auth
+          .verifyOtp({
+            token_hash:
+              tokenHash,
+
+            type:
+              "recovery"
+          });
+
+      if (error) {
+        throw error;
+      }
+
+      if (
+        !data ||
+        !data.session ||
+        !data.user
+      ) {
+
+        throw new Error(
+          "Não foi possível criar a sessão de recuperação."
+        );
+
+      }
+
+      marcarRecuperacaoAtiva();
+
+      // Remove o token da barra de endereço depois da validação.
+      // A sessão temporária continua ativa no Supabase.
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+
+      mostrarFormularioNovaSenha();
+
+      return;
+
+    } catch (error) {
+
+      console.error(
+        "Erro ao validar o link de recuperação:",
+        error
+      );
+
+      limparMarcacaoRecuperacao();
+
+      mostrarFormularioEmail();
+
+      mostrarMensagemRecuperacao(
+        "O link de recuperação é inválido ou expirou. Solicite um novo link.",
+        "erro"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  // -----------------------------------------------------------
+  // SE A ABA FOI ATUALIZADA APÓS A VALIDAÇÃO DO TOKEN,
+  // REUTILIZA A SESSÃO TEMPORÁRIA DE RECUPERAÇÃO.
+  // -----------------------------------------------------------
+
+  if (
+    recuperacaoEstaMarcadaAtiva()
+  ) {
+
+    try {
+
+      const sessaoRecuperacao =
+        await window
+          .SupabaseAplicacao
+          .obterSessaoAtual();
+
+      if (
+        sessaoRecuperacao &&
+        sessaoRecuperacao.user
+      ) {
+
+        mostrarFormularioNovaSenha();
+
+        return;
+
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "Não foi possível reutilizar a sessão de recuperação:",
+        error
+      );
+
+    }
+
+    limparMarcacaoRecuperacao();
+
+  }
+
+
+  // -----------------------------------------------------------
+  // FLUXO ANTERIOR DO SUPABASE
+  // Mantido para compatibilidade com links antigos que utilizem
+  // code, access_token ou type=recovery.
+  // -----------------------------------------------------------
+
   const pareceRecuperacao =
     urlPareceRecuperacao();
 
@@ -1160,9 +1392,7 @@ async function verificarLinkRecuperacao() {
 
   }
 
-
   mostrarEstadoVerificando();
-
 
   try {
 
@@ -1170,29 +1400,26 @@ async function verificarLinkRecuperacao() {
       600
     );
 
-
     const sessao =
       await window
         .SupabaseAplicacao
         .obterSessaoAtual();
-
 
     if (
       sessao &&
       sessao.user
     ) {
 
+      marcarRecuperacaoAtiva();
       mostrarFormularioNovaSenha();
 
       return;
 
     }
 
-
     await esperar(
       1200
     );
-
 
     if (
       eventoRecuperacaoDetectado
@@ -1202,24 +1429,24 @@ async function verificarLinkRecuperacao() {
 
     }
 
-
     const novaSessao =
       await window
         .SupabaseAplicacao
         .obterSessaoAtual();
-
 
     if (
       novaSessao &&
       novaSessao.user
     ) {
 
+      marcarRecuperacaoAtiva();
       mostrarFormularioNovaSenha();
 
       return;
 
     }
 
+    limparMarcacaoRecuperacao();
 
     mostrarFormularioEmail();
 
@@ -1228,7 +1455,6 @@ async function verificarLinkRecuperacao() {
       "erro"
     );
 
-
   } catch (error) {
 
     console.error(
@@ -1236,9 +1462,9 @@ async function verificarLinkRecuperacao() {
       error
     );
 
+    limparMarcacaoRecuperacao();
 
     mostrarFormularioEmail();
-
 
     mostrarMensagemRecuperacao(
       "Não foi possível validar o link de recuperação. Solicite um novo link.",
