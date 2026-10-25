@@ -5485,7 +5485,6 @@ function atualizarCamposAdicionarRuido() {
     gaussian: document.getElementById("campoParametrosRuidoGaussian"),
     "salt & pepper": document.getElementById("campoParametrosRuidoSaltPepper"),
     speckle: document.getElementById("campoParametrosRuidoSpeckle"),
-    poisson: document.getElementById("campoParametrosRuidoPoisson"),
     localvar: document.getElementById("campoParametrosRuidoLocalvar")
   };
 
@@ -5628,10 +5627,6 @@ function obterConfiguracaoRuidoDaInterface() {
     );
   }
 
-  if (tipo === "poisson") {
-    return criarConfiguracaoRuido("poisson");
-  }
-
   if (tipo === "localvar") {
 
     const seletorModo =
@@ -5712,13 +5707,6 @@ function formatarParametrosRuidoFluxograma(configuracaoEntrada) {
     return `
       Tipo: Speckle<br>
       Variância: ${configuracao.variancia}
-    `;
-  }
-
-  if (configuracao.tipo === "poisson") {
-    return `
-      Tipo: Poisson<br>
-      Parâmetros adicionais: nenhum
     `;
   }
 
@@ -6241,7 +6229,6 @@ function selecionarFerramenta(nome, botaoClicado) {
 
       <div
         class="campo_parametro_info"
-        id="campoParametrosRuidoPoisson"
         style="display:none;"
       >
         <label>Parâmetros</label>
