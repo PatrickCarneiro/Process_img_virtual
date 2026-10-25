@@ -5540,14 +5540,14 @@ function interpretarListaNumericaRuidoInterface(texto, nomeCampo) {
 
   const partes =
     textoLimpo
-      .split(/[\s,;]+/)
+      .split(/[\s;]+/)
       .filter(function(valor) {
         return valor !== "";
       });
 
   const valores =
     partes.map(function(valor) {
-      return Number(valor);
+      return Number(valor.replace(",", "."));
     });
 
   if (
@@ -6278,7 +6278,7 @@ function selecionarFerramenta(nome, botaoClicado) {
             id="paramMapaVarianciaRuidoLocalvar"
             rows="5"
             style="width:100%; margin-top:4px; padding:8px; border-radius:8px; border:none; outline:none; resize:vertical;"
-            placeholder="Uma variância por pixel, separada por espaço, vírgula ou ponto e vírgula"
+            placeholder="Uma variância por pixel, separada por espaço ou ponto e vírgula (aceita vírgula decimal)"
           ></textarea>
 
           <div class="caixa_info_parametro">
