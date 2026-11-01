@@ -2122,16 +2122,18 @@ function ordenarListaProjetos(
 
       if (criterio === "antigos") {
 
-        const dataA =
+        const dataA = new Date(
           a.updatedAt ||
           a.createdAt ||
-          0;
+          0
+        ).getTime();
 
 
-        const dataB =
+        const dataB = new Date(
           b.updatedAt ||
           b.createdAt ||
-          0;
+          0
+        ).getTime();
 
 
         return dataA - dataB;
@@ -2197,16 +2199,18 @@ function ordenarListaProjetos(
       // PADRÃO: MAIS RECENTES
       // -------------------------------------------------------
 
-      const dataA =
+      const dataA = new Date(
         a.updatedAt ||
         a.createdAt ||
-        0;
+        0
+      ).getTime();
 
 
-      const dataB =
+      const dataB = new Date(
         b.updatedAt ||
         b.createdAt ||
-        0;
+        0
+      ).getTime();
 
 
       return dataB - dataA;
