@@ -16417,6 +16417,9 @@ function obterNomeCanonicoFerramentaFluxo(nomeInformado) {
     "contraste":
       "Contraste",
 
+    "adicionar ruido":
+      "Adicionar Ruído",
+
     "negativo":
       "Negativo",
 

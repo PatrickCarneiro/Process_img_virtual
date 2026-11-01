@@ -2573,6 +2573,7 @@ function obterNomeCanonicoFerramentaProjeto(nomeInformado) {
     "equalizacao": "Equalização Convencional",
     "histeq": "Equalização Convencional",
     "clahe": "CLAHE",
+    "adicionar ruido": "Adicionar Ruído",
     "limiarizacao manual": "Limiarização Manual",
     "limiar manual": "Limiarização Manual",
     "limiarizacao otsu": "Limiarização Otsu",
