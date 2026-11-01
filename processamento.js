@@ -6141,7 +6141,7 @@ function selecionarFerramenta(nome, botaoClicado) {
     return;
   }
 
-  if (nome === "Adicionar Ruído") {
+  if (nome === "Ruído") {
 
     parametrosDiv.innerHTML = `
       <h4>Adicionar Ruído</h4>
