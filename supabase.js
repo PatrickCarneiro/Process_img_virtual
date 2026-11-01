@@ -195,7 +195,7 @@ function traduzirErroSupabase(error) {
     )
   ) {
 
-    return "Já existe uma conta cadastrada com este e-mail.";
+    return "Esse e-mail já está sendo utilizado para uma conta.";
 
   }
 
@@ -608,6 +608,22 @@ async function cadastrarUsuario({
 
       throw new Error(
         "O Supabase não retornou o usuário criado."
+      );
+
+    }
+
+
+    // Em algumas configurações de confirmação de e-mail,
+    // o Supabase pode retornar um usuário simulado para
+    // um endereço já cadastrado, com identities vazia.
+    // Esta verificação não identifica todos os casos.
+    if (
+      Array.isArray(data.user.identities) &&
+      data.user.identities.length === 0
+    ) {
+
+      throw new Error(
+        "Esse e-mail já está sendo utilizado para uma conta."
       );
 
     }
