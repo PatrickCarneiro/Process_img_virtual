@@ -387,7 +387,27 @@ async function loadRecentImages() { // Função para carregar as imagens recente
 // quanto para arquivos arrastados e soltos sobre a caixa de upload.
 async function enviarArquivosParaProcessamento(arquivos) {
 
-  const files = Array.from(arquivos || []);
+  let files = Array.from(arquivos || []);
+
+  if (files.length === 0) {
+    return;
+  }
+
+  // Ignora arquivos TIFF e informa ao usuário quais não são suportados.
+  const arquivosTIFF = files.filter(function(file) {
+    return /\.(tif|tiff)$/i.test(String(file.name || ""));
+  });
+
+  if (arquivosTIFF.length > 0) {
+    alert(
+      "Arquivo não suportado:\n" +
+      arquivosTIFF.map(function(file) { return file.name; }).join("\n")
+    );
+  }
+
+  files = files.filter(function(file) {
+    return !/\.(tif|tiff)$/i.test(String(file.name || ""));
+  });
 
   if (files.length === 0) {
     return;

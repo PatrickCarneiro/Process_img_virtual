@@ -857,6 +857,34 @@ inputImagensProjeto.addEventListener(
     }
 
 
+    // ---------------------------------------------------------
+    // IGNORA TIFF/TIF E CONTINUA COM OS ARQUIVOS SUPORTADOS
+    // ---------------------------------------------------------
+
+    const arquivosTIFF = arquivos.filter(
+      file => /\.(tif|tiff)$/i.test(file.name)
+    );
+
+    if (arquivosTIFF.length > 0) {
+
+      alert(
+        "Arquivo não suportado:\n" +
+        arquivosTIFF.map(file => file.name).join("\n")
+      );
+
+    }
+
+    const arquivosSuportados = arquivos.filter(
+      file => !/\.(tif|tiff)$/i.test(file.name)
+    );
+
+    if (arquivosSuportados.length === 0) {
+
+      projetoAguardandoImagens = null;
+      return;
+
+    }
+
     try {
 
       statusProjetos.innerText =
@@ -883,7 +911,7 @@ inputImagensProjeto.addEventListener(
       // =======================================================
 
       for (
-        const file of arquivos
+        const file of arquivosSuportados
       ) {
 
         const nomeArquivo =

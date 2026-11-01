@@ -3617,7 +3617,23 @@ async function loadFiles() {
 
   try {
     const db = await openDatabase();
-    const files = await getFiles(db);
+    const arquivosCarregados = await getFiles(db);
+
+    // Arquivos TIFF nao sao suportados. Os demais continuam a carregar.
+    const arquivosTIFF = arquivosCarregados.filter(function(item) {
+      return /\.tiff?$/i.test(String(item && item.name || ""));
+    });
+
+    if (arquivosTIFF.length > 0) {
+      alert(
+        "Arquivo não suportado:\n" +
+        arquivosTIFF.map(function(item) { return item.name; }).join("\n")
+      );
+    }
+
+    const files = arquivosCarregados.filter(function(item) {
+      return !/\.tiff?$/i.test(String(item && item.name || ""));
+    });
 
     const projetoRestaurado =
       await restaurarProjetoSalvoSeNecessario();
@@ -4547,10 +4563,26 @@ async function adicionarMaisImagensAoProcessamento(
   arquivos
 ) {
 
-  const listaArquivos =
+  const arquivosSelecionados =
     Array.from(
       arquivos || []
     );
+
+  // Avisa sobre TIFF e segue apenas com os arquivos suportados.
+  const arquivosTIFF = arquivosSelecionados.filter(function(file) {
+    return /\.tiff?$/i.test(String(file && file.name || ""));
+  });
+
+  if (arquivosTIFF.length > 0) {
+    alert(
+      "Arquivo não suportado:\n" +
+      arquivosTIFF.map(function(file) { return file.name; }).join("\n")
+    );
+  }
+
+  const listaArquivos = arquivosSelecionados.filter(function(file) {
+    return !/\.tiff?$/i.test(String(file && file.name || ""));
+  });
 
   if (
     listaArquivos.length === 0
