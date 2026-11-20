@@ -518,7 +518,7 @@ if (uploadBox) {
 
     if (arquivosValidos.length === 0) {
       statusText.innerText =
-        "Solte arquivos PNG, JPG, JPEG, DCM ou DICOM.";
+        "Solte arquivos PNG, JPEG ou DICOM.";
       return;
     }
 
