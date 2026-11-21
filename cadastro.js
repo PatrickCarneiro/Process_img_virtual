@@ -807,13 +807,13 @@ function validarFormularioCadastro() {
 
 
   if (
-    senha.length < 6
+    senha.length < 15
   ) {
 
     senhaCadastro.focus();
 
     throw new Error(
-      "A senha deve possuir pelo menos 6 caracteres."
+      "A senha deve possuir pelo menos 15 caracteres."
     );
 
   }

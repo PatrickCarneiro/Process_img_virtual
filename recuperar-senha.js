@@ -701,13 +701,13 @@ function validarNovaSenha() {
   }
 
   if (
-    senha.length < 6
+    senha.length < 15
   ) {
 
     novaSenha.focus();
 
     throw new Error(
-      "A nova senha deve possuir pelo menos 6 caracteres."
+      "A nova senha deve possuir pelo menos 15 caracteres."
     );
 
   }

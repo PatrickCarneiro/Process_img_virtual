@@ -2709,7 +2709,7 @@
                 type="password"
                 id="novaSenhaUsuario"
                 autocomplete="new-password"
-                minlength="6"
+                minlength="15"
                 required
               >
 
@@ -2760,7 +2760,7 @@
                 type="password"
                 id="confirmarSenhaUsuario"
                 autocomplete="new-password"
-                minlength="6"
+                minlength="15"
                 required
               >
 
@@ -3084,11 +3084,11 @@
 
 
     if (
-      novaSenha.value.length < 6
+      novaSenha.value.length < 15
     ) {
 
       mensagem.textContent =
-        "A senha deve possuir pelo menos 6 caracteres.";
+        "A senha deve possuir pelo menos 15 caracteres.";
 
       mensagem.classList.add(
         "ativo",
